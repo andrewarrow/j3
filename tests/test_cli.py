@@ -16,6 +16,7 @@ def test_help_menu_prints_project_summary(capsys) -> None:
     output = capsys.readouterr().out
     assert "local-first JEPA coding agent" in output
     assert "patch" in output
+    assert "fix" in output
     assert "train" in output
     assert "eval" in output
 

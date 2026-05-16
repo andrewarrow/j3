@@ -96,6 +96,7 @@ j3 actions --json
 j3 train --data examples/greenshot_bug
 j3 train --data ../Decepticon ../scientific-agent-skills ../CLI-Anything
 j3 patch --repo examples/greenshot_bug --test "python -m pytest tests/test_calculator.py" --dry-run
+j3 fix --repo examples/greenshot_bug --test "python -m pytest tests/test_calculator.py" --dry-run
 j3 eval --tasks examples/greenshot_bugs
 pytest
 ```
@@ -186,6 +187,40 @@ j3 patch \
   --model runs/greenshot-1/model.json \
   --dry-run
 ```
+
+## Human-Facing Fix Workflow
+
+`j3 fix` is the first command meant to feel like a coding assistant workflow
+instead of a low-level patch primitive:
+
+```bash
+j3 fix --repo . --test "python -m pytest"
+```
+
+It runs the test command, parses failing pytest targets, plans a patch for each
+target, prints the diff, and asks before applying. Use `--dry-run` to preview
+without changing files:
+
+```bash
+j3 fix \
+  --repo examples/greenshot_bug \
+  --test "python -m pytest tests/test_calculator.py" \
+  --dry-run
+```
+
+Use `--yes` for non-interactive application after a candidate passes in a
+temporary copy:
+
+```bash
+j3 fix \
+  --repo examples/greenshot_bug \
+  --test "python -m pytest tests/test_calculator.py" \
+  --yes
+```
+
+This is still no-LLM mode. The human provides the executable target, and `j3`
+handles structured patch planning, model-ranked search, test validation, and
+review.
 
 ## GreenShot-2 Evaluation
 

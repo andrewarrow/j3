@@ -9,6 +9,7 @@ from typing import Sequence
 
 from actions import PatchActionKind
 from evaluation import evaluate_tasks
+from fixing import run_fix_workflow
 from patching import plan_and_maybe_apply_patch
 from training import train_from_paths
 
@@ -87,6 +88,55 @@ def build_parser() -> argparse.ArgumentParser:
         help="maximum candidate patches to test (default: 80)",
     )
     patch_parser.set_defaults(handler=handle_patch)
+
+    fix_parser = subparsers.add_parser(
+        "fix",
+        help="run tests, plan fixes for failing pytest targets, and review patches",
+        description=(
+            "Run a test command, identify failing pytest targets, then plan and "
+            "optionally apply structured patches with human review."
+        ),
+    )
+    fix_parser.add_argument(
+        "--repo",
+        type=Path,
+        default=Path("."),
+        help="repository root to inspect (default: current directory)",
+    )
+    fix_parser.add_argument(
+        "--test",
+        required=True,
+        help='test command to run, for example "python -m pytest"',
+    )
+    fix_parser.add_argument(
+        "--model",
+        type=Path,
+        default=Path("runs/greenshot-1/model.json"),
+        help="prototype model used to rank patch candidates (default: runs/greenshot-1/model.json)",
+    )
+    fix_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="show patch plans without applying them",
+    )
+    fix_parser.add_argument(
+        "--yes",
+        action="store_true",
+        help="apply passing patches without prompting",
+    )
+    fix_parser.add_argument(
+        "--timeout",
+        type=int,
+        default=30,
+        help="seconds to allow each test run (default: 30)",
+    )
+    fix_parser.add_argument(
+        "--max-candidates",
+        type=int,
+        default=80,
+        help="maximum candidate patches to test per failure (default: 80)",
+    )
+    fix_parser.set_defaults(handler=handle_fix)
 
     train_parser = subparsers.add_parser(
         "train",
@@ -213,6 +263,70 @@ def handle_patch(args: argparse.Namespace) -> int:
     return 0
 
 
+def handle_fix(args: argparse.Namespace) -> int:
+    repo = args.repo.expanduser().resolve()
+    if not repo.exists():
+        raise SystemExit(f"repo does not exist: {repo}")
+    if not repo.is_dir():
+        raise SystemExit(f"repo is not a directory: {repo}")
+
+    result = run_fix_workflow(
+        repo=repo,
+        test_command=args.test,
+        model_path=args.model,
+        yes=args.yes,
+        dry_run=args.dry_run,
+        timeout_seconds=args.timeout,
+        max_candidates=args.max_candidates,
+        confirm=_confirm,
+    )
+
+    mode = "dry run" if args.dry_run else "review"
+    if args.yes and not args.dry_run:
+        mode = "apply"
+
+    print(f"j3 fix ({mode})")
+    print(f"repo: {result.repo}")
+    print(f"test: {result.test_command}")
+    print(f"baseline exit code: {result.baseline_exit_code}")
+
+    if result.baseline_exit_code == 0:
+        print("status: tests already pass")
+        return 0
+
+    print(f"failing targets: {len(result.failing_targets)}")
+    for target in result.failing_targets:
+        print(f"  {target}")
+
+    if not result.attempts:
+        print("status: no patch attempts were made")
+        return 1
+
+    for attempt in result.attempts:
+        print("")
+        print(f"target: {attempt.target}")
+        print(f"target test: {attempt.test_command}")
+        print(f"candidates generated: {attempt.plan.candidates_generated}")
+        print(f"candidates tested: {attempt.plan.candidates_tested}")
+        if attempt.plan.selected is None:
+            print("status: no passing patch found")
+            continue
+
+        print(f"status: {'applied' if attempt.applied else 'planned'} passing patch")
+        print(f"action: {attempt.plan.selected.action.kind.value}")
+        print(f"file: {attempt.plan.selected.file_path}")
+        print(f"reason: {attempt.plan.selected.reason}")
+        if attempt.plan.selected.model_score is not None:
+            print(f"model score: {attempt.plan.selected.model_score:.4f}")
+        print("diff:")
+        print(
+            attempt.plan.selected.diff(),
+            end="" if attempt.plan.selected.diff().endswith("\n") else "\n",
+        )
+
+    return 0 if result.solved else 1
+
+
 def handle_train(args: argparse.Namespace) -> int:
     result = train_from_paths(
         data_paths=args.data,
@@ -282,6 +396,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
 
     return args.handler(args)
+
+
+def _confirm(prompt: str) -> bool:
+    try:
+        return input(prompt).strip().lower() in {"y", "yes"}
+    except EOFError:
+        return False
 
 
 if __name__ == "__main__":

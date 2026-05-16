@@ -77,8 +77,14 @@ new missing-action fixture.
 
 Next:
 
-- Start the next GreenShot-5 ladder task: wrong default value or config
-  constant in a separate module.
+- Close the current GreenShot-5 missing-action loop before adding another
+  benchmark task:
+  1. Add the smallest structured action for wrong dictionary/subscript keys.
+  2. Use `KeyError`, assertion, and traceback hints to prioritize that action.
+  3. Verify `order_customer_name_dict_key_helper` becomes solved.
+  4. Regenerate GreenShot-5 diagnostics and candidate outcomes.
+  5. Only then add the next ladder task: wrong default value or config constant
+     in a separate module.
 
 ## Current Diagnosis
 
@@ -90,23 +96,24 @@ The good parts:
 - Diagnostics now expose candidate order, scores, reasons, and pass/fail labels.
 - GreenShot-5 is a better benchmark direction because it starts to require
   multi-file reasoning.
+- Eval output and phase selection are now usable for day-to-day work.
+- Exploration diagnostics and candidate outcome JSONL now provide the right
+  shape of data for ranker training.
 
-The problems:
+The current blockers:
 
-- The `eval` baseline intentionally disables failure hints, so it tests many
-  irrelevant candidates. This is useful as a control, but it makes normal eval
-  output look worse than the actual ranked path.
-- Candidate logging is too verbose by default. Per-candidate logs should be a
-  verbose/debug mode, not the normal output.
-- The optional candidate ranker is currently only a tie-breaker after
-  `failure_hint_score`. It cannot fix cases where a wrong candidate has a higher
-  hint score than the passing candidate.
-- The ranker training data is too small. GreenShot-4 currently provides only one
-  useful training pair for the ranker, which is not a meaningful learning set.
-- Failure hint parsing is leaking traceback frame text such as `in` into
-  `exception_type`, which pollutes ranking features.
-- The benchmark is still mostly constructed around actions the system already
-  knows how to generate. It needs more missing-action and cross-file tasks.
+- `order_customer_name_dict_key_helper` is intentionally unsolved. It exposes a
+  missing action for wrong dictionary/subscript keys.
+- The refreshed GreenShot-5 ranker improved pass@1 from 1/5 to 2/5, but also
+  pushed import and attribute fixes deeper in the list. That is expected with
+  only a few training pairs, but it is not a good steady state.
+- `--candidate-outcomes` exports one row per tested candidate, but
+  `train-ranker` still trains from diagnostics and only learns from failed
+  candidates before the first passing candidate. Post-pass exploration data is
+  not yet used by the trainer.
+- GreenShot-5 is still too small for neural work. It should keep growing, but
+  only after each new missing-action fixture has been closed or clearly
+  classified.
 
 ## Principle
 
@@ -208,6 +215,10 @@ Tests to add:
 
 ### 3. Fix Failure Hint Exception Parsing
 
+Status: done. Traceback frame context such as `: in function_name` is captured
+as a function name, not as `exception_type`. Covered by focused failure-hint
+tests.
+
 Fix `failure_hints.py` so traceback frame lines like:
 
 ```text
@@ -239,6 +250,10 @@ pytest tests/test_failure_hints.py -q
 ```
 
 ### 4. Let the Ranker Override Bad Hint Ordering
+
+Status: done. With a candidate ranker present, candidate ordering now uses
+`ranker_score` before `failure_hint_score`. No-ranker hint-first ordering is
+preserved. Covered by focused candidate-ranking tests.
 
 Right now candidate sorting is:
 
@@ -331,15 +346,21 @@ GreenShot-5 should become the short-term ladder because it introduces:
 - signature propagation
 - imports outside the public API surface
 
-Add more GreenShot-5 tasks in this order:
+Current GreenShot-5 blocker:
 
-1. Wrong dictionary key across a helper boundary.
-2. Wrong default value or config constant in a separate module.
-3. Missing import in a nested module, with a decoy import elsewhere.
-4. Exception handling through a wrapper API.
-5. Swapped arguments across modules.
-6. Rename propagated through helper and public API.
-7. A task that has two plausible passing patches, where one is smaller or more
+- `order_customer_name_dict_key_helper` fails because the action space cannot
+  yet repair `order["name"]` to `order["customer_name"]`.
+- Do not add another GreenShot-5 fixture until this missing-action task is
+  either solved or explicitly documented as out of scope.
+
+Then add more GreenShot-5 tasks in this order:
+
+1. Wrong default value or config constant in a separate module.
+2. Missing import in a nested module, with a decoy import elsewhere.
+3. Exception handling through a wrapper API.
+4. Swapped arguments across modules.
+5. Rename propagated through helper and public API.
+6. A task that has two plausible passing patches, where one is smaller or more
    semantically correct.
 
 Every new benchmark task should answer one question:
@@ -368,10 +389,11 @@ Near-term data format should include:
 - whether the candidate was first pass
 - whether other candidates also passed
 
-Add a `candidate_outcomes.jsonl` export from diagnostics. Each row should be one
-candidate, not one task.
+Status: candidate outcome export exists. Each row is one candidate, not one
+task. The next training-data task is to make `train-ranker` consume this JSONL
+format so post-pass exploration data is actually used.
 
-Suggested fields:
+Current candidate outcome fields:
 
 ```json
 {
@@ -391,6 +413,18 @@ Suggested fields:
 ```
 
 This is the dataset a real ranker can learn from.
+
+Next ranker-data changes:
+
+- Add `python cli.py train-ranker --candidate-outcomes PATH`.
+- Train from all candidate outcome rows, not only failed candidates before first
+  pass.
+- Build pairwise examples from every passing candidate against nearby failing
+  candidates from the same task.
+- Keep diagnostics training as a compatibility path, but prefer JSONL outcomes
+  for new experiments.
+- Report how many tasks, candidate rows, passing rows, failing rows, and pairs
+  were used.
 
 ## Modeling Direction
 
@@ -557,17 +591,46 @@ Start neural work only when:
 
 ## Next Commit Sequence
 
-1. Fix noisy eval output and add `--verbose`.
-2. Add `--phase ranked|baseline|both`.
-3. Fix traceback `exception_type` parsing.
-4. Change ranker ordering so ranker can override hints.
-5. Add eval exploration after first pass.
-6. Export candidate outcome rows.
-7. Add the next GreenShot-5 missing-action task.
-8. Train and evaluate a new ranker from GreenShot-5 exploration diagnostics.
-9. Update `plan.md` with a short pointer to this file, but do not expand the
-   README.
+1. Add a structured dictionary/subscript-key repair action.
+   - Candidate action name: `change_subscript_key` or `change_dict_key`.
+   - Target: `ast.Subscript` with a string literal key.
+   - Example repair: `order["name"]` -> `order["customer_name"]`.
+   - Use nearby string evidence from failing tests, `KeyError`, assertion diffs,
+     and dictionary literals where available.
+   - Focused checks:
+     `pytest tests/test_patching.py tests/test_failure_hints.py -q`.
 
-The project is back on track when GreenShot-5 pass@1 improves because the model
-learned from candidate outcomes, not because another benchmark-specific
-heuristic was added.
+2. Prove the current GreenShot-5 missing-action task is solved.
+   - Run:
+     `python cli.py eval --tasks examples/greenshot_5 --checkpoint runs/mit-python-git/model.json --timeout 10 --max-candidates 80 --phase ranked --quiet`
+   - Expected direction: `order_customer_name_dict_key_helper` should no longer
+     be `missing_action`.
+   - If pass@1 is poor but the task solves, classify the remaining issue as
+     ranking, not action generation.
+
+3. Regenerate GreenShot-5 exploration data.
+   - Run ranked eval with `--explore-after-pass 5`, diagnostics, and
+     `--candidate-outcomes`.
+   - Record solved, pass@1, average candidates, missing-action count, and
+     bad-ranking count in this file.
+
+4. Teach `train-ranker` to consume candidate outcome JSONL.
+   - Add `--candidate-outcomes PATH`.
+   - Use all passing/failing candidate rows from each task.
+   - Keep the existing diagnostics input path for compatibility.
+   - Focused checks:
+     `pytest tests/test_candidate_ranking.py tests/test_cli.py -q`.
+
+5. Train and evaluate a new ranker from candidate outcomes.
+   - The ranker should improve pass@1 without pushing known import/attribute
+     repairs far down the list.
+   - If pass@1 improves but average candidates gets worse, inspect per-action
+     ranking before adding more benchmark tasks.
+
+6. Add the next GreenShot-5 ladder task only after the dict-key task is closed:
+   wrong default value or config constant in a separate module.
+
+The project is on track when each new fixture either creates a clear missing
+action that gets added, or creates ranking data that the ranker can learn from.
+Avoid adding another benchmark case while the current one is still an
+unaddressed missing action.

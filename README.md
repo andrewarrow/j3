@@ -152,7 +152,7 @@ runs/greenshot-1/
 This gives the next step something concrete to consume: `patch` can load
 `model.json`, score candidate structured edits, and make the first patch attempt.
 
-For the larger MIT Python corpus and reproduction commands, see
+For the larger Apache-licensed Python corpus and reproduction commands, see
 [TRAINING.md](TRAINING.md).
 
 `j3 mine` can also extract real Python file transitions from git history:
@@ -170,7 +170,7 @@ Those mined transitions can be included during training:
 j3 train \
   --data /Users/aa/os/python/*__* \
   --transitions data/transitions \
-  --out runs/mit-python-git \
+  --out runs/apache-python-git \
   --max-examples 10000
 ```
 

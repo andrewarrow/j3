@@ -424,7 +424,7 @@ Use GreenShot-5 for active ranking/action work:
 ```bash
 python cli.py eval \
   --tasks examples/greenshot_5 \
-  --checkpoint runs/mit-python-git/model.json \
+  --checkpoint runs/apache-python-git/model.json \
   --timeout 10 \
   --max-candidates 80 \
   --phase ranked \
@@ -436,13 +436,13 @@ Use exploration when collecting ranker data:
 ```bash
 python cli.py eval \
   --tasks examples/greenshot_5 \
-  --checkpoint runs/mit-python-git/model.json \
+  --checkpoint runs/apache-python-git/model.json \
   --timeout 10 \
   --max-candidates 80 \
   --phase ranked \
   --explore-after-pass 5 \
-  --diagnostics runs/mit-python-git/greenshot-5-explore-diagnostics.json \
-  --candidate-outcomes runs/mit-python-git/greenshot-5-candidate-outcomes.jsonl \
+  --diagnostics runs/apache-python-git/greenshot-5-explore-diagnostics.json \
+  --candidate-outcomes runs/apache-python-git/greenshot-5-candidate-outcomes.jsonl \
   --quiet
 ```
 
@@ -451,11 +451,11 @@ Use GreenShot-4 only as a periodic regression/reporting gate:
 ```bash
 python cli.py eval \
   --tasks examples/greenshot_4 \
-  --checkpoint runs/mit-python-git/model.json \
+  --checkpoint runs/apache-python-git/model.json \
   --timeout 10 \
   --phase both \
   --quiet \
-  --diagnostics runs/mit-python-git/greenshot-4-diagnostics.json
+  --diagnostics runs/apache-python-git/greenshot-4-diagnostics.json
 ```
 
 Run full pytest before broad merges:

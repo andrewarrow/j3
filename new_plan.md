@@ -31,6 +31,10 @@ Done:
   `: in function_name` frame context as a function name, not an exception type,
   and only records exception-looking traceback context as `exception_type`.
 - Added coverage for traceback frame context plus later `TypeError` output.
+- Completed Immediate Change 4. Candidate rankers now sort primarily by
+  `ranker_score`, then `failure_hint_score`, then `model_score`, while
+  no-ranker hint prioritization keeps the existing hint-first ordering.
+- Added coverage for ranker-over-hint ordering and preserved no-ranker ordering.
 
 Verified:
 
@@ -38,11 +42,13 @@ Verified:
 pytest tests/test_cli.py -q
 pytest tests/test_evaluation.py -q
 pytest tests/test_failure_hints.py -q
+pytest tests/test_patching.py tests/test_candidate_ranking.py -q
 ```
 
 Next:
 
-- Start Immediate Change 4: let the ranker override bad hint ordering.
+- Start Immediate Change 5: add diagnostic exploration mode after the first
+  passing candidate.
 
 ## Current Diagnosis
 

@@ -13,7 +13,7 @@ import subprocess
 import tempfile
 import time
 import tokenize
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Callable
 
@@ -287,25 +287,35 @@ def prioritize_candidate_patches(
 ) -> list[CandidatePatch]:
     """Sort candidates by structured evidence from the failing test output."""
 
-    scored = [
-        CandidatePatch(
-            file_path=candidate.file_path,
-            action=candidate.action,
-            edit=candidate.edit,
-            original_source=candidate.original_source,
-            patched_source=candidate.patched_source,
-            reason=candidate.reason,
-            model_score=candidate.model_score,
+    scored: list[CandidatePatch] = []
+    for candidate in candidates:
+        hint_scored = replace(
+            candidate,
             failure_hint_score=_failure_hint_score(candidate, hints),
-            ranker_score=ranker.score(candidate, hints) if ranker is not None else candidate.ranker_score,
+            ranker_score=candidate.ranker_score,
         )
-        for candidate in candidates
-    ]
+        if ranker is not None:
+            hint_scored = replace(
+                hint_scored,
+                ranker_score=ranker.score(hint_scored, hints),
+            )
+        scored.append(hint_scored)
+
+    if ranker is not None:
+        return sorted(
+            scored,
+            key=lambda candidate: (
+                candidate.ranker_score if candidate.ranker_score is not None else 0.0,
+                candidate.failure_hint_score,
+                candidate.model_score if candidate.model_score is not None else 0.0,
+            ),
+            reverse=True,
+        )
+
     return sorted(
         scored,
         key=lambda candidate: (
             candidate.failure_hint_score,
-            candidate.ranker_score if candidate.ranker_score is not None else 0.0,
             candidate.model_score if candidate.model_score is not None else 0.0,
         ),
         reverse=True,
@@ -336,6 +346,7 @@ def rank_with_candidate_ranker(
         scored,
         key=lambda candidate: (
             candidate.ranker_score if candidate.ranker_score is not None else 0.0,
+            candidate.failure_hint_score,
             candidate.model_score if candidate.model_score is not None else 0.0,
         ),
         reverse=True,

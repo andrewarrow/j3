@@ -4,7 +4,8 @@ import json
 
 from actions import PatchAction, PatchActionKind, PatchTarget
 from candidate_ranking import CandidateRankerModel, train_candidate_ranker
-from patching import CandidatePatch, rank_with_candidate_ranker
+from failure_hints import PytestFailureHint
+from patching import CandidatePatch, prioritize_candidate_patches, rank_with_candidate_ranker
 from synth import SourceEdit
 
 
@@ -55,6 +56,39 @@ def test_train_candidate_ranker_from_diagnostics_and_rerank(tmp_path) -> None:
     assert ranked[0].ranker_score is not None
 
 
+def test_ranker_overrides_higher_failure_hint_score(tmp_path) -> None:
+    ranker = CandidateRankerModel(
+        path=tmp_path / "ranker.json",
+        weights={"failure_hint_score": -100.0},
+    )
+    ranked = prioritize_candidate_patches(
+        [
+            _candidate(to="<", failure_hint_score=0.0, symbol="meets_minimum"),
+            _candidate(to=">=", failure_hint_score=0.0, symbol="other_minimum"),
+        ],
+        hints=[PytestFailureHint(function_names={"meets_minimum"})],
+        ranker=ranker,
+    )
+
+    assert ranked[0].action.params["to"] == ">="
+    assert ranked[1].failure_hint_score > ranked[0].failure_hint_score
+    assert ranked[0].ranker_score is not None
+    assert ranked[0].ranker_score > (ranked[1].ranker_score or 0.0)
+
+
+def test_hint_first_ordering_is_preserved_without_ranker() -> None:
+    ranked = prioritize_candidate_patches(
+        [
+            _candidate(to="<", failure_hint_score=0.0, symbol="meets_minimum"),
+            _candidate(to=">=", failure_hint_score=0.0, symbol="other_minimum", ranker_score=100.0),
+        ],
+        hints=[PytestFailureHint(function_names={"meets_minimum"})],
+    )
+
+    assert ranked[0].action.params["to"] == "<"
+    assert ranked[0].failure_hint_score > ranked[1].failure_hint_score
+
+
 def _candidate_record(*, to: str, passed: bool) -> dict[str, object]:
     return {
         "file_path": "bugs.py",
@@ -71,7 +105,13 @@ def _candidate_record(*, to: str, passed: bool) -> dict[str, object]:
     }
 
 
-def _candidate(*, to: str, failure_hint_score: float) -> CandidatePatch:
+def _candidate(
+    *,
+    to: str,
+    failure_hint_score: float,
+    symbol: str = "meets_minimum",
+    ranker_score: float | None = None,
+) -> CandidatePatch:
     source = "def meets_minimum(value, minimum):\n    return value > minimum\n"
     return CandidatePatch(
         file_path="bugs.py",
@@ -81,7 +121,7 @@ def _candidate(*, to: str, failure_hint_score: float) -> CandidatePatch:
                 file_path="bugs.py",
                 start_line=2,
                 end_line=2,
-                symbol="meets_minimum",
+                symbol=symbol,
                 node_kind="Compare",
             ),
             params={"from": ">", "to": to},
@@ -92,4 +132,5 @@ def _candidate(*, to: str, failure_hint_score: float) -> CandidatePatch:
         reason=f"try comparison operator {to}",
         model_score=0.5,
         failure_hint_score=failure_hint_score,
+        ranker_score=ranker_score,
     )

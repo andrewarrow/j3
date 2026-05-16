@@ -1,16 +1,16 @@
 # Training Data
 
-This document describes the first external Python corpus used for `j3` training
-and how another developer can reproduce it.
+This document describes the external Python corpus used for `j3` repair
+training and how another developer can reproduce it.
 
 The current corpus lives outside this repository at:
 
 ```text
-/Users/aa/os/python
+/Users/aa/os/python-apache
 ```
 
-It contains public GitHub repositories selected as an MIT-licensed Python corpus
-for local `j3` repair training.
+It contains public GitHub repositories selected as an Apache-2.0-licensed
+Python corpus for local `j3` repair training.
 
 ## Selection Rules
 
@@ -18,108 +18,119 @@ Selection rules used on May 16, 2026:
 
 - public GitHub repository
 - primary language: Python
-- GitHub license endpoint reports SPDX `MIT`
+- GitHub license endpoint reports SPDX `Apache-2.0`
 - enough source and/or tests to be useful for repair training
+- avoid repos that are mostly lists, course material, payload catalogs, model
+  weights, docs, generated examples, or thin release wrappers
 - cloned with recent history using `git clone --depth 50 --single-branch`
 
 The corpus is intentionally small enough to run locally:
 
 ```text
 repos cloned: 31
-Python files: 8,261
-test files: 3,475
-disk use: about 394 MB
+Python files: 10,208
+test files: 2,729
+disk use: about 630 MB
 ```
 
 ## How The Repos Were Found
 
 The first pass used GitHub CLI search for popular, public, non-archived Python
-repositories with MIT license metadata:
+repositories with Apache-2.0 license metadata:
 
 ```bash
 gh search repos \
   --language Python \
-  --license mit \
+  --license apache-2.0 \
   --archived=false \
   --visibility public \
-  --stars '>1000' \
+  --stars '>5000' \
   --size '<50000' \
   --sort stars \
-  --limit 80 \
+  --limit 120 \
   --json fullName,description,license,stargazersCount,language,size,forksCount,pushedAt,url
 ```
 
-That search output was manually filtered to avoid repos that are mostly lists,
-payload catalogs, model weights, docs, or examples without useful tests.
+That search output was manually filtered for repositories likely to provide
+useful repair-training signal: libraries, frameworks, tools, and applications
+with real implementation code and meaningful tests. Repositories with weak
+local source/test value were skipped even when popular.
 
-Because GitHub search metadata and repository license metadata can disagree, the
-final inclusion check used GitHub's repository license endpoint:
+Because GitHub search metadata and repository license metadata can disagree,
+the final inclusion check used GitHub's repository license endpoint:
 
 ```bash
-gh api repos/psf/black/license --jq '.license.spdx_id'
+gh api repos/psf/requests/license --jq '.license.spdx_id'
 ```
 
-Only repos returning `MIT` from that endpoint were cloned. Candidates returning
-`NOASSERTION` were skipped for this first corpus.
+Only repos returning `Apache-2.0` from that endpoint were cloned. Candidates
+returning `NOASSERTION`, no license, or any other SPDX value are not part of
+this corpus.
 
 ## Recreate The Corpus
 
 Create the target directory:
 
 ```bash
-mkdir -p /Users/aa/os/python
-cd /Users/aa/os/python
+mkdir -p /Users/aa/os/python-apache
+cd /Users/aa/os/python-apache
 ```
 
 Create `repos-to-clone.txt`:
 
 ```text
-psf/black
-python-poetry/poetry
-Delgan/loguru
-modelcontextprotocol/python-sdk
-openai/openai-agents-python
-magic-wormhole/magic-wormhole
-chriskiehl/Gooey
-Textualize/rich
-fastapi/fastapi
-fastapi/typer
-PyCQA/isort
-pytest-dev/pytest
-tox-dev/tox
-python-attrs/attrs
-pypa/pip
-sqlalchemy/sqlalchemy
-sqlalchemy/alembic
-locustio/locust
-ArchiveBox/ArchiveBox
-9001/copyparty
-nvbn/thefuck
-openai/whisper
-karpathy/nanoGPT
-karpathy/minGPT
-eriklindernoren/ML-From-Scratch
-lucidrains/vit-pytorch
-openai/swarm
-microsoft/markitdown
-github/spec-kit
-browser-use/browser-use
-agronholm/apscheduler
+psf/requests
+openai/openai-python
+tornadoweb/tornado
+google/yapf
+aws/chalice
+simonw/datasette
+simonw/llm
+dgtlmoon/changedetection.io
+reflex-dev/reflex
+Chainlit/chainlit
+darrenburns/posting
+ranaroussi/yfinance
+spotify/luigi
+treeverse/dvc
+bloomberg/memray
+plasma-umass/scalene
+microsoft/playwright-python
+cleanlab/cleanlab
+ludwig-ai/ludwig
+huggingface/smolagents
+huggingface/peft
+huggingface/trl
+huggingface/pytorch-image-models
+google/langextract
+getzep/graphiti
+vibrantlabsai/ragas
+Lightning-AI/litgpt
+Netflix/metaflow
+facebookresearch/detectron2
+dmlc/dgl
+boto/boto3
 ```
 
-Verify each repo's license before cloning:
+Verify each repo's license before cloning and keep the result:
 
 ```bash
+printf 'repo\tspdx\n' > license-check.tsv
+
 while read -r repo; do
+  [ -n "$repo" ] || continue
   spdx=$(gh api "repos/$repo/license" --jq '.license.spdx_id' 2>/dev/null || echo NO_LICENSE)
-  printf '%s\t%s\n' "$repo" "$spdx"
+  printf '%s\t%s\n' "$repo" "$spdx" >> license-check.tsv
 done < repos-to-clone.txt
+
+awk 'NR > 1 && $2 != "Apache-2.0" { bad = 1; print } END { exit bad }' license-check.tsv
 ```
 
 Clone the repos into stable local directory names:
 
 ```bash
 while read -r repo; do
+  [ -n "$repo" ] || continue
   dir=${repo//\//__}
   git clone --depth 50 --single-branch "https://github.com/$repo.git" "$dir"
 done < repos-to-clone.txt
@@ -140,39 +151,46 @@ for dir in */.git; do
 done
 ```
 
+Verify the final local shape:
+
+```bash
+find /Users/aa/os/python-apache -mindepth 1 -maxdepth 1 -type d -name '*__*' | wc -l
+awk 'NR > 1 { count[$2]++ } END { for (spdx in count) print spdx, count[spdx] }' license-check.tsv
+awk 'NR > 1 { py += $2; tests += $3 } END { printf "py_files\t%d\ntest_files\t%d\n", py, tests }' corpus-summary.tsv
+du -sh /Users/aa/os/python-apache
+```
+
+Expected output for the May 16, 2026 corpus:
+
+```text
+repos: 31
+license: Apache-2.0 31
+Python files: 10,208
+test files: 2,729
+disk use: about 630 MB
+```
+
 ## Train From This Corpus
 
 From the `j3` repo:
 
 ```bash
 cd /Users/aa/os/j3
-paths=($(find /Users/aa/os/python -maxdepth 1 -type d -name '*__*' | sort))
+paths=($(find /Users/aa/os/python-apache -maxdepth 1 -type d -name '*__*' | sort))
+
 python3 cli.py train \
   --data $paths \
-  --out runs/mit-python-10k \
+  --out runs/apache-python-10k \
   --max-examples 10000 \
   --embedding-dim 256
-```
-
-The first training run produced:
-
-```text
-source files: 8254
-synthetic transitions: 10000
-actions:
-  change_literal: 6128
-  change_operator: 772
-  change_return_value: 49
-  modify_condition: 2217
-  replace_expr: 834
 ```
 
 Resulting artifacts:
 
 ```text
-runs/mit-python-10k/model.json
-runs/mit-python-10k/metrics.json
-runs/mit-python-10k/examples.jsonl
+runs/apache-python-10k/model.json
+runs/apache-python-10k/metrics.json
+runs/apache-python-10k/examples.jsonl
 ```
 
 ## Mine Real Git Transitions
@@ -183,8 +201,8 @@ git commits:
 
 ```bash
 python3 cli.py mine \
-  --repo /Users/aa/os/python/psf__black \
-  --out data/transitions/psf__black.jsonl \
+  --repo /Users/aa/os/python-apache/psf__requests \
+  --out data/transitions/apache-python/psf__requests.jsonl \
   --max-commits 25 \
   --max-files-per-commit 8
 ```
@@ -192,60 +210,38 @@ python3 cli.py mine \
 To mine the full local corpus:
 
 ```bash
-mkdir -p data/transitions
+mkdir -p data/transitions/apache-python
 
-for repo in /Users/aa/os/python/*__*; do
+for repo in /Users/aa/os/python-apache/*__*; do
   [ -d "$repo/.git" ] || continue
   name=${repo##*/}
   python3 cli.py mine \
     --repo "$repo" \
-    --out "data/transitions/$name.jsonl" \
+    --out "data/transitions/apache-python/$name.jsonl" \
     --max-commits 25 \
     --max-files-per-commit 8
 done
 ```
 
-The first bounded mining run produced:
-
-```text
-repos mined: 31
-real Python file transitions: 1,396
-```
-
 Train with both synthetic transitions and mined git transitions:
 
 ```bash
-paths=($(find /Users/aa/os/python -maxdepth 1 -type d -name '*__*' | sort))
+paths=($(find /Users/aa/os/python-apache -maxdepth 1 -type d -name '*__*' | sort))
 
 python3 cli.py train \
   --data $paths \
-  --transitions data/transitions \
-  --out runs/mit-python-git \
+  --transitions data/transitions/apache-python \
+  --out runs/apache-python-git \
   --max-examples 10000 \
   --embedding-dim 256
-```
-
-The combined run produced:
-
-```text
-source files: 8254
-examples: 11396
-mined transitions: 1396
-actions:
-  change_literal: 6128
-  change_operator: 772
-  change_return_value: 49
-  git_transition: 1396
-  modify_condition: 2217
-  replace_expr: 834
 ```
 
 Resulting artifacts:
 
 ```text
-runs/mit-python-git/model.json
-runs/mit-python-git/metrics.json
-runs/mit-python-git/examples.jsonl
+runs/apache-python-git/model.json
+runs/apache-python-git/metrics.json
+runs/apache-python-git/examples.jsonl
 ```
 
 ## Evaluate The Corpus Model
@@ -255,89 +251,6 @@ Run GreenShot-2 against the trained model:
 ```bash
 python3 cli.py eval \
   --tasks examples/greenshot_bugs \
-  --checkpoint runs/mit-python-git/model.json \
+  --checkpoint runs/apache-python-git/model.json \
   --timeout 10
 ```
-
-Observed result:
-
-```text
-baseline: solved=5/5 pass@1=1/5 avg_candidates=21.80
-model-ranked: solved=5/5 pass@1=1/5 avg_candidates=11.00
-```
-
-The current prototype model now stores bounded action-delta exemplars alongside
-the old averaged prototypes. Mined `git_transition` examples are used as
-action-agnostic nearest-neighbor evidence during candidate ranking, which lets
-real commit history influence ordinary structured actions such as
-`replace_expr`, `change_literal`, and `change_operator`.
-
-This is still a shallow non-neural scorer. It improves the GreenShot-2 average
-search cost and restores one pass@1 result, but one task still regresses versus
-baseline. The next modeling step remains a trainable encoder/ranker with
-explicit positive and negative candidate pairs.
-
-## Train A Candidate Ranker
-
-Eval diagnostics can now train a small candidate-level tie-breaker. Generate
-diagnostics first:
-
-```bash
-python3 cli.py eval \
-  --tasks examples/greenshot_4 \
-  --checkpoint runs/mit-python-git/model.json \
-  --diagnostics runs/mit-python-git/greenshot-4-diagnostics.json \
-  --timeout 10
-```
-
-Train the ranker from failed candidates tested before the passing candidate:
-
-```bash
-python3 cli.py train-ranker \
-  --diagnostics runs/mit-python-git/greenshot-4-diagnostics.json \
-  --out runs/mit-python-git
-```
-
-Use it as an optional ranker after failure-hint scoring:
-
-```bash
-python3 cli.py eval \
-  --tasks examples/greenshot_4 \
-  --checkpoint runs/mit-python-git/model.json \
-  --ranker runs/mit-python-git/candidate-ranker.json \
-  --timeout 10
-```
-
-## Full Repository URLs
-
-- https://github.com/psf/black
-- https://github.com/python-poetry/poetry
-- https://github.com/Delgan/loguru
-- https://github.com/modelcontextprotocol/python-sdk
-- https://github.com/openai/openai-agents-python
-- https://github.com/magic-wormhole/magic-wormhole
-- https://github.com/chriskiehl/Gooey
-- https://github.com/Textualize/rich
-- https://github.com/fastapi/fastapi
-- https://github.com/fastapi/typer
-- https://github.com/PyCQA/isort
-- https://github.com/pytest-dev/pytest
-- https://github.com/tox-dev/tox
-- https://github.com/python-attrs/attrs
-- https://github.com/pypa/pip
-- https://github.com/sqlalchemy/sqlalchemy
-- https://github.com/sqlalchemy/alembic
-- https://github.com/locustio/locust
-- https://github.com/ArchiveBox/ArchiveBox
-- https://github.com/9001/copyparty
-- https://github.com/nvbn/thefuck
-- https://github.com/openai/whisper
-- https://github.com/karpathy/nanoGPT
-- https://github.com/karpathy/minGPT
-- https://github.com/eriklindernoren/ML-From-Scratch
-- https://github.com/lucidrains/vit-pytorch
-- https://github.com/openai/swarm
-- https://github.com/microsoft/markitdown
-- https://github.com/github/spec-kit
-- https://github.com/browser-use/browser-use
-- https://github.com/agronholm/apscheduler

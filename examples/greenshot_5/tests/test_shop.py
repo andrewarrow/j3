@@ -1,5 +1,6 @@
 from shop.accounts import Account
 from shop.api import (
+    balance_after_store_credit,
     loyalty_points,
     order_customer_label,
     profile_heading,
@@ -14,6 +15,10 @@ from shop.api import (
 
 def test_quote_total_applies_discount_in_helper() -> None:
     assert quote_total(100, 20) == 80
+
+
+def test_balance_after_store_credit_passes_arguments_to_helper() -> None:
+    assert balance_after_store_credit(1000, 150) == 850
 
 
 def test_uploaded_extension_uses_pathlib_in_paths_module() -> None:

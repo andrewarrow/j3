@@ -5,6 +5,11 @@
     "test": "python -m pytest tests/test_shop.py::test_quote_total_applies_discount_in_helper"
   },
   {
+    "name": "store_credit_swapped_args_across_modules",
+    "repo": ".",
+    "test": "python -m pytest tests/test_shop.py::test_balance_after_store_credit_passes_arguments_to_helper"
+  },
+  {
     "name": "uploaded_extension_module_import",
     "repo": ".",
     "test": "python -m pytest tests/test_shop.py::test_uploaded_extension_uses_pathlib_in_paths_module"

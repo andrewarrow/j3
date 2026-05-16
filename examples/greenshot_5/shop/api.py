@@ -2,7 +2,7 @@ from .accounts import Account, account_balance
 from .orders import customer_display_name
 from .paths import attachment_extension
 from .policies import default_return_window_days
-from .pricing import discounted_subtotal
+from .pricing import discounted_subtotal, total_after_store_credit
 from .profiles import display_profile, render_profile
 from .reports.summary import receipt_total_label
 from .rewards import parse_loyalty_points
@@ -10,6 +10,10 @@ from .rewards import parse_loyalty_points
 
 def quote_total(subtotal: float, discount_percent: float) -> float:
     return discounted_subtotal(subtotal, discount_percent)
+
+
+def balance_after_store_credit(total_cents: int, credit_cents: int) -> int:
+    return total_after_store_credit(credit_cents, total_cents)
 
 
 def uploaded_extension(filename: str) -> str:

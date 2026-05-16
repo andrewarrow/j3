@@ -64,21 +64,22 @@ Recent completed work:
 - [x] GreenShot-5 includes a nested-module missing import task with a decoy
   local import.
 - [x] GreenShot-5 includes exception handling through a wrapper API.
+- [x] GreenShot-5 includes swapped arguments across modules.
 
 Current GreenShot-5 signal:
 
 ```text
 ranked, no candidate ranker:
-  solved=8/8 pass@1=4/8 avg_candidates=1.62
+  solved=9/9 pass@1=5/9 avg_candidates=1.67
 
 ranked, legacy diagnostics candidate ranker:
-  solved=8/8 pass@1=5/8 avg_candidates=1.38
+  solved=9/9 pass@1=5/9 avg_candidates=1.56
 
-ranked, outcome-trained candidate ranker with v2 generalized features:
-  solved=8/8 pass@1=6/8 avg_candidates=1.25
+ranked, stale outcome-trained candidate ranker artifact:
+  solved=9/9 pass@1=5/9 avg_candidates=1.44
 
-ranked, outcome-trained candidate ranker with v3 hint context/locality features:
-  solved=8/8 pass@1=8/8 avg_candidates=1.00
+ranked, fresh outcome-trained candidate ranker with v3 hint context/locality features:
+  solved=9/9 pass@1=8/9 avg_candidates=1.11
 ```
 
 Current interpretation:
@@ -86,6 +87,10 @@ Current interpretation:
 - The action-generation loop is improving: the latest wrapper-exception ladder
   task was added, the right candidate was generated, and full-budget eval solves
   it at rank 1.
+- The swapped-arguments-across-modules task is action-covered by
+  `swap_call_arg`; hint-only ranking solves it at rank 1. A ranker trained from
+  old pre-hint outcome rows buries it, which confirms that current outcome data
+  needs serialized hint context.
 - The wrong-default task is solved by an existing `change_literal` candidate on
   the helper-module default parameter, so it is ranking/hint signal rather than
   a missing action.
@@ -99,12 +104,15 @@ Current interpretation:
 - Candidate-ranker v3 outcome rows carry compact failure hints, and the ranker
   has generalized hint-context/locality features for candidate token overlap,
   TypeError name direction, import package locality, and whether a candidate has
-  any structured hint support. This closes the current GreenShot-5 pass@1 misses
+  any structured hint support. Fresh 9-task outcome data gets to 8/9 pass@1
   in-sample.
-- The outcome-trained ranker now reaches 8/8 pass@1 on GreenShot-5, but this is
-  still in-sample signal from a tiny benchmark. Treat it as a sign that the
-  remaining failures were ranking/context failures, not evidence of broad
-  Python-editing competence.
+- The remaining fresh-ranker miss is `quote_total_helper_discount`: the passing
+  helper edit is ranked behind a public API swapped-argument decoy because the
+  assertion hint names only `quote_total`. This is target-context/call-graph
+  signal, not a missing action.
+- The outcome-trained ranker signal is still tiny and partly in-sample. Treat it
+  as a sign that current misses are ranking/context failures, not evidence of
+  broad Python-editing competence.
 - The benchmark is still tiny. It is good for tight iteration, not evidence of
   broad Python-editing competence.
 
@@ -131,7 +139,7 @@ has enough coverage and data to make neural regressions visible.
 - [x] Add wrong default/config constant in a separate module.
 - [x] Add nested-module missing import with at least one decoy import.
 - [x] Add exception handling through a wrapper API.
-- [ ] Add swapped arguments across modules.
+- [x] Add swapped arguments across modules.
 - [ ] Add rename propagated through helper and public API.
 - [ ] Add a task with two passing patches where one is semantically preferable.
 - [ ] Add a task where the correct edit is in a caller, not the failing frame.
@@ -436,17 +444,19 @@ pytest -q
 2. Add the next GreenShot-5 ladder task.
    - Nested-module missing import with a decoy import is done.
    - Exception handling through a wrapper API is done.
-   - Next ladder options: swapped arguments across modules or rename propagated
-     through helper and public API.
+   - Swapped arguments across modules is done.
+   - Next ladder option: rename propagated through helper and public API.
 
 3. Validate ranker calibration beyond in-sample GreenShot-5.
-   - The legacy diagnostics ranker solves 8/8 full-budget and 5/8 pass@1.
-   - The outcome-trained ranker with v2 generalized features solves 8/8
-     full-budget and 6/8 pass@1 in-sample.
-   - The outcome-trained ranker with v3 hint context/locality features solves
-     8/8 full-budget and 8/8 pass@1 in-sample.
+   - The legacy diagnostics ranker solves 9/9 full-budget and 5/9 pass@1.
+   - The stale outcome-ranker artifact solves 9/9 full-budget and 5/9 pass@1.
+   - A fresh v3 outcome ranker trained from 9-task exploration rows solves 9/9
+     full-budget and 8/9 pass@1 in-sample.
+   - A v3 ranker trained from old pre-hint outcome rows solves 9/9 full-budget
+     but only 6/9 pass@1 and ranks the new swapped-argument task 16th.
    - Next ranker work should use held-out or newly added tasks so improvements
-     do not only reflect GreenShot-5 memorization.
+     do not only reflect GreenShot-5 memorization. The current concrete target
+     is target-context/call-graph features for helper-vs-public-API ranking.
 
 ## Stop Conditions
 

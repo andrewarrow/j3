@@ -321,6 +321,25 @@ def test_patch_uses_key_error_hints_to_prioritize_subscript_key_fix(tmp_path) ->
     assert result.selected.failure_hint_score > 0
 
 
+def test_patch_solves_cross_module_swapped_arguments(tmp_path) -> None:
+    repo = tmp_path / "greenshot_5"
+    shutil.copytree("examples/greenshot_5", repo)
+
+    result = plan_and_maybe_apply_patch(
+        repo=repo,
+        test_command="python -m pytest tests/test_shop.py::test_balance_after_store_credit_passes_arguments_to_helper",
+        dry_run=True,
+        timeout_seconds=10,
+    )
+
+    assert result.selected is not None
+    assert result.candidates_tested == 1
+    assert result.selected.file_path == "shop/api.py"
+    assert result.selected.action.kind.value == "swap_call_arg"
+    assert result.selected.action.params == {"left": 0, "right": 1}
+    assert "total_after_store_credit(total_cents, credit_cents)" in result.selected.patched_source
+
+
 def test_patch_solves_helper_module_default_value(tmp_path) -> None:
     repo = tmp_path / "greenshot_5"
     shutil.copytree("examples/greenshot_5", repo)

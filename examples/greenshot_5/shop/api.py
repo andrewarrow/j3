@@ -1,4 +1,5 @@
 from .accounts import Account, account_balance
+from .orders import customer_display_name
 from .paths import attachment_extension
 from .pricing import discounted_subtotal
 from .profiles import display_profile, render_profile
@@ -23,3 +24,6 @@ def profile_heading(username: str) -> str:
 def profile_label(username: str) -> str:
     return render_profile(username=username)
 
+
+def order_customer_label(order: dict[str, str]) -> str:
+    return customer_display_name(order)

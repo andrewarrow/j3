@@ -1,5 +1,12 @@
 from shop.accounts import Account
-from shop.api import profile_heading, profile_label, quote_total, uploaded_extension, visible_balance
+from shop.api import (
+    order_customer_label,
+    profile_heading,
+    profile_label,
+    quote_total,
+    uploaded_extension,
+    visible_balance,
+)
 
 
 def test_quote_total_applies_discount_in_helper() -> None:
@@ -20,3 +27,6 @@ def test_profile_label_accepts_username_keyword() -> None:
     assert profile_heading("ada") == "Ada"
     assert profile_label("grace") == "Grace"
 
+
+def test_order_customer_label_uses_customer_name_key() -> None:
+    assert order_customer_label({"customer_name": "ada", "status": "paid"}) == "Ada"

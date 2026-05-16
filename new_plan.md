@@ -43,6 +43,10 @@ Done:
   candidate outcome JSONL with one row per tested candidate, including rank
   index, pass labels, first-pass index, and multiple-pass context.
 - Added focused evaluation and CLI coverage for candidate outcome export.
+- Completed Immediate Change 7. GreenShot-5 now includes
+  `order_customer_name_dict_key_helper`, a helper-boundary wrong-dictionary-key
+  task that currently exposes a missing action.
+- Added focused task-manifest coverage for the new GreenShot-5 task.
 
 Verified:
 
@@ -52,11 +56,17 @@ pytest tests/test_evaluation.py -q
 pytest tests/test_failure_hints.py -q
 pytest tests/test_patching.py tests/test_candidate_ranking.py -q
 python -m py_compile patching.py evaluation.py cli.py tests/test_evaluation.py tests/test_cli.py
+python -m py_compile examples/greenshot_5/shop/api.py examples/greenshot_5/shop/orders.py examples/greenshot_5/tests/test_shop.py tests/test_evaluation.py
 ```
+
+Observed GreenShot-5 ranked smoke with `--max-candidates 1` now reports 5 tasks
+and leaves `order_customer_name_dict_key_helper` failed, as expected for the
+new missing-action fixture.
 
 Next:
 
-- Start Immediate Change 7: add the next GreenShot-5 missing-action task.
+- Start Immediate Change 8: train and evaluate a new ranker from GreenShot-5
+  exploration diagnostics.
 
 ## Current Diagnosis
 

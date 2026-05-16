@@ -18,5 +18,10 @@
     "name": "profile_signature_propagation",
     "repo": ".",
     "test": "python -m pytest tests/test_shop.py::test_profile_label_accepts_username_keyword"
+  },
+  {
+    "name": "order_customer_name_dict_key_helper",
+    "repo": ".",
+    "test": "python -m pytest tests/test_shop.py::test_order_customer_label_uses_customer_name_key"
   }
 ]

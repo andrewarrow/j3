@@ -8,7 +8,7 @@ import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
-from patching import PatchPlanResult, plan_and_maybe_apply_patch
+from patching import CandidatePatch, PatchPlanResult, plan_and_maybe_apply_patch
 
 
 @dataclass(frozen=True, slots=True)
@@ -108,12 +108,14 @@ def evaluate_tasks(
             baseline=_run_task(
                 task=task,
                 model_path=None,
+                use_failure_hints=False,
                 timeout_seconds=timeout_seconds,
                 max_candidates=max_candidates,
             ),
             ranked=_run_task(
                 task=task,
                 model_path=model_path,
+                use_failure_hints=True,
                 timeout_seconds=timeout_seconds,
                 max_candidates=max_candidates,
             ),
@@ -123,10 +125,32 @@ def evaluate_tasks(
     return EvalSummary(tasks=results)
 
 
+def write_eval_diagnostics(summary: EvalSummary, path: Path) -> Path:
+    """Write per-task candidate diagnostics for later ranking analysis."""
+
+    resolved = path.expanduser().resolve()
+    resolved.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "tasks": [
+            {
+                "name": result.task.name,
+                "repo": str(result.task.repo),
+                "test_command": result.task.test_command,
+                "baseline": _plan_diagnostics(result.baseline),
+                "ranked": _plan_diagnostics(result.ranked),
+            }
+            for result in summary.tasks
+        ]
+    }
+    resolved.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    return resolved
+
+
 def _run_task(
     *,
     task: RepairTask,
     model_path: Path | None,
+    use_failure_hints: bool,
     timeout_seconds: int,
     max_candidates: int,
 ) -> PatchPlanResult:
@@ -140,6 +164,7 @@ def _run_task(
             timeout_seconds=timeout_seconds,
             max_candidates=max_candidates,
             model_path=model_path,
+            use_failure_hints=use_failure_hints,
         )
 
 
@@ -147,3 +172,31 @@ def _average(values: list[int]) -> float:
     if not values:
         return 0.0
     return sum(values) / len(values)
+
+
+def _plan_diagnostics(plan: PatchPlanResult) -> dict[str, object]:
+    return {
+        "baseline_exit_code": plan.baseline_exit_code,
+        "candidates_generated": plan.candidates_generated,
+        "candidates_tested": plan.candidates_tested,
+        "applied": plan.applied,
+        "selected": _candidate_diagnostics(plan.selected, passed=True) if plan.selected else None,
+        "tested_candidates": [
+            _candidate_diagnostics(candidate, passed=candidate == plan.selected)
+            for candidate in plan.tested_candidates
+        ],
+    }
+
+
+def _candidate_diagnostics(candidate: CandidatePatch, *, passed: bool) -> dict[str, object]:
+    return {
+        "file_path": candidate.file_path,
+        "action": candidate.action.kind.value,
+        "symbol": candidate.action.target.symbol,
+        "start_line": candidate.action.target.start_line,
+        "end_line": candidate.action.target.end_line,
+        "reason": candidate.reason,
+        "model_score": candidate.model_score,
+        "failure_hint_score": candidate.failure_hint_score,
+        "passed": passed,
+    }

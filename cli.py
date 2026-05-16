@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Sequence
 
 from actions import PatchActionKind
-from evaluation import evaluate_tasks
+from evaluation import evaluate_tasks, write_eval_diagnostics
 from fixing import run_fix_workflow
 from mining import mine_git_transitions
 from patching import plan_and_maybe_apply_patch
@@ -241,6 +241,11 @@ def build_parser() -> argparse.ArgumentParser:
         default=80,
         help="maximum candidate patches to test per task (default: 80)",
     )
+    eval_parser.add_argument(
+        "--diagnostics",
+        type=Path,
+        help="optional JSON file for per-task candidate ranking diagnostics",
+    )
     eval_parser.set_defaults(handler=handle_eval)
 
     return parser
@@ -413,6 +418,7 @@ def handle_eval(args: argparse.Namespace) -> int:
         timeout_seconds=args.timeout,
         max_candidates=args.max_candidates,
     )
+    diagnostics_path = write_eval_diagnostics(summary, args.diagnostics) if args.diagnostics else None
 
     print("j3 eval complete")
     print(f"tasks: {summary.total}")
@@ -440,6 +446,8 @@ def handle_eval(args: argparse.Namespace) -> int:
             f"model={ranked_status}/{task.ranked.candidates_tested} "
             f"action={ranked_action}"
         )
+    if diagnostics_path:
+        print(f"diagnostics: {diagnostics_path}")
     return 0 if summary.ranked_solved == summary.total else 1
 
 

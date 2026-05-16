@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from actions import PatchAction, PatchActionKind, PatchTarget
+from failure_hints import PytestFailureHint, parse_pytest_failure_hints
 from features import embed_python_source, vector_delta
 from repo import DEFAULT_EXCLUDE_DIRS, iter_python_sources
 from synth import SourceEdit, apply_edit
@@ -30,6 +31,7 @@ class CandidatePatch:
     patched_source: str
     reason: str
     model_score: float | None = None
+    failure_hint_score: float = 0.0
 
     def diff(self) -> str:
         return "".join(
@@ -53,6 +55,7 @@ class PatchPlanResult:
     applied: bool
     test_output: str
     model_path: Path | None = None
+    tested_candidates: tuple[CandidatePatch, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -124,6 +127,7 @@ def plan_and_maybe_apply_patch(
     timeout_seconds: int = DEFAULT_PATCH_TIMEOUT_SECONDS,
     max_candidates: int = 80,
     model_path: Path | None = None,
+    use_failure_hints: bool = True,
 ) -> PatchPlanResult:
     """Find the first candidate patch that makes the requested test pass."""
 
@@ -134,6 +138,7 @@ def plan_and_maybe_apply_patch(
         raise NotADirectoryError(f"repo is not a directory: {root}")
 
     baseline = _run_test(root, test_command, timeout_seconds)
+    baseline_output = _combined_output(baseline)
     if baseline.returncode == 0:
         return PatchPlanResult(
             repo=root,
@@ -143,7 +148,7 @@ def plan_and_maybe_apply_patch(
             candidates_tested=0,
             selected=None,
             applied=False,
-            test_output=_combined_output(baseline),
+            test_output=baseline_output,
             model_path=None,
         )
 
@@ -151,7 +156,11 @@ def plan_and_maybe_apply_patch(
     model = _load_model_if_available(model_path)
     if model is not None:
         candidates = rank_candidate_patches(candidates, model)
+    hints = parse_pytest_failure_hints(baseline_output) if use_failure_hints else []
+    if hints:
+        candidates = prioritize_candidate_patches(candidates, hints)
     candidates_tested = 0
+    tested_candidates: list[CandidatePatch] = []
     for candidate in candidates[:max_candidates]:
         candidates_tested += 1
         with tempfile.TemporaryDirectory(prefix="j3-patch-") as tmp:
@@ -159,6 +168,7 @@ def plan_and_maybe_apply_patch(
             _copy_repo(root, tmp_repo)
             _write_candidate(tmp_repo, candidate)
             attempt = _run_test(tmp_repo, test_command, timeout_seconds)
+            tested_candidates.append(candidate)
             if attempt.returncode == 0:
                 if not dry_run:
                     _write_candidate(root, candidate)
@@ -172,6 +182,7 @@ def plan_and_maybe_apply_patch(
                     applied=not dry_run,
                     test_output=_combined_output(attempt),
                     model_path=model.path if model else None,
+                    tested_candidates=tuple(tested_candidates),
                 )
 
     return PatchPlanResult(
@@ -182,8 +193,9 @@ def plan_and_maybe_apply_patch(
         candidates_tested=candidates_tested,
         selected=None,
         applied=False,
-        test_output=_combined_output(baseline),
+        test_output=baseline_output,
         model_path=model.path if model else None,
+        tested_candidates=tuple(tested_candidates),
     )
 
 
@@ -202,10 +214,40 @@ def rank_candidate_patches(
             patched_source=candidate.patched_source,
             reason=candidate.reason,
             model_score=model.score(candidate),
+            failure_hint_score=candidate.failure_hint_score,
         )
         for candidate in candidates
     ]
     return sorted(scored, key=lambda candidate: candidate.model_score or -1.0, reverse=True)
+
+
+def prioritize_candidate_patches(
+    candidates: list[CandidatePatch],
+    hints: list[PytestFailureHint],
+) -> list[CandidatePatch]:
+    """Sort candidates by structured evidence from the failing test output."""
+
+    scored = [
+        CandidatePatch(
+            file_path=candidate.file_path,
+            action=candidate.action,
+            edit=candidate.edit,
+            original_source=candidate.original_source,
+            patched_source=candidate.patched_source,
+            reason=candidate.reason,
+            model_score=candidate.model_score,
+            failure_hint_score=_failure_hint_score(candidate, hints),
+        )
+        for candidate in candidates
+    ]
+    return sorted(
+        scored,
+        key=lambda candidate: (
+            candidate.failure_hint_score,
+            candidate.model_score if candidate.model_score is not None else 0.0,
+        ),
+        reverse=True,
+    )
 
 
 def generate_candidate_patches(repo: Path) -> list[CandidatePatch]:
@@ -226,11 +268,13 @@ def generate_candidate_patches(repo: Path) -> list[CandidatePatch]:
             candidates.extend(_guard_candidates(source.relative_path, source.text, function, arg_names))
             for node in ast.walk(function):
                 if isinstance(node, ast.Return) and node.value is not None:
-                    candidates.extend(_return_candidates(source.relative_path, source.text, node, arg_names))
+                    candidates.extend(
+                        _return_candidates(source.relative_path, source.text, function, node, arg_names)
+                    )
                 elif isinstance(node, ast.Compare):
-                    candidates.extend(_compare_candidates(source.relative_path, source.text, node))
+                    candidates.extend(_compare_candidates(source.relative_path, source.text, function, node))
                 elif isinstance(node, ast.Constant):
-                    candidates.extend(_literal_candidates(source.relative_path, source.text, node))
+                    candidates.extend(_literal_candidates(source.relative_path, source.text, function, node))
     return candidates
 
 
@@ -285,6 +329,7 @@ def _guard_candidates(
 def _return_candidates(
     file_path: str,
     source: str,
+    function: ast.FunctionDef,
     node: ast.Return,
     arg_names: set[str],
 ) -> list[CandidatePatch]:
@@ -302,6 +347,7 @@ def _return_candidates(
                 kind=PatchActionKind.REPLACE_EXPR,
                 replacement="price * (1 - percent / 100)",
                 reason="discount formula candidate",
+                symbol=function.name,
             )
         )
 
@@ -317,18 +363,24 @@ def _return_candidates(
                     kind=PatchActionKind.REPLACE_EXPR,
                     replacement=f"{left} - ({left} * {right})",
                     reason="convert multiplier into subtraction from base value",
+                    symbol=function.name,
                 )
             )
 
     if isinstance(node.value, ast.Subscript):
-        subscript_candidate = _last_item_candidate(file_path, source, node.value)
+        subscript_candidate = _last_item_candidate(file_path, source, function, node.value)
         if subscript_candidate is not None:
             candidates.append(subscript_candidate)
 
     return candidates
 
 
-def _last_item_candidate(file_path: str, source: str, node: ast.Subscript) -> CandidatePatch | None:
+def _last_item_candidate(
+    file_path: str,
+    source: str,
+    function: ast.FunctionDef,
+    node: ast.Subscript,
+) -> CandidatePatch | None:
     if not isinstance(node.slice, ast.Constant) or node.slice.value != 0:
         return None
 
@@ -342,10 +394,16 @@ def _last_item_candidate(file_path: str, source: str, node: ast.Subscript) -> Ca
         kind=PatchActionKind.REPLACE_EXPR,
         replacement=f"{collection}[-1]",
         reason="replace first item access with last item access",
+        symbol=function.name,
     )
 
 
-def _literal_candidates(file_path: str, source: str, node: ast.Constant) -> list[CandidatePatch]:
+def _literal_candidates(
+    file_path: str,
+    source: str,
+    function: ast.FunctionDef,
+    node: ast.Constant,
+) -> list[CandidatePatch]:
     if isinstance(node.value, bool) or not isinstance(node.value, int | float):
         return []
 
@@ -360,12 +418,18 @@ def _literal_candidates(file_path: str, source: str, node: ast.Constant) -> list
                 replacement=repr(replacement),
                 reason=f"try nearby literal {replacement!r}",
                 params={"from": node.value, "to": replacement},
+                symbol=function.name,
             )
         )
     return candidates
 
 
-def _compare_candidates(file_path: str, source: str, node: ast.Compare) -> list[CandidatePatch]:
+def _compare_candidates(
+    file_path: str,
+    source: str,
+    function: ast.FunctionDef,
+    node: ast.Compare,
+) -> list[CandidatePatch]:
     if len(node.ops) != 1 or len(node.comparators) != 1:
         return []
 
@@ -388,6 +452,7 @@ def _compare_candidates(file_path: str, source: str, node: ast.Compare) -> list[
             replacement=f"{left} {operator} {right}",
             reason=f"try comparison operator {operator}",
             params={"from": original, "to": operator},
+            symbol=function.name,
         )
         for operator in alternatives
     ]
@@ -402,6 +467,7 @@ def _candidate(
     replacement: str,
     reason: str,
     params: dict[str, object] | None = None,
+    symbol: str | None = None,
 ) -> CandidatePatch:
     edit = _node_edit(node, replacement)
     patched = apply_edit(source, edit)
@@ -411,6 +477,7 @@ def _candidate(
             file_path=file_path,
             start_line=node.lineno,
             end_line=node.end_lineno,
+            symbol=symbol,
             node_kind=type(node).__name__,
         ),
         params=params or {"replacement": replacement},
@@ -470,6 +537,63 @@ def _load_model_if_available(model_path: Path | None) -> PatchRankingModel | Non
     if not resolved.exists():
         return None
     return PatchRankingModel.load(resolved)
+
+
+def _failure_hint_score(candidate: CandidatePatch, hints: list[PytestFailureHint]) -> float:
+    if not hints:
+        return 0.0
+    return max(_score_against_hint(candidate, hint) for hint in hints)
+
+
+def _score_against_hint(candidate: CandidatePatch, hint: PytestFailureHint) -> float:
+    score = 0.0
+    symbol = candidate.action.target.symbol
+    if symbol and symbol in hint.function_names:
+        score += 40.0
+
+    if candidate.file_path in hint.source_files:
+        score += 20.0
+
+    for location in hint.traceback_locations:
+        if candidate.file_path == location.file_path and candidate.action.target.start_line == location.line:
+            score += 12.0
+            break
+
+    if hint.exception_type == "ZeroDivisionError" and candidate.action.kind == PatchActionKind.INSERT_GUARD:
+        score += 20.0
+
+    if any(isinstance(assertion.expected, bool) for assertion in hint.assertions):
+        if candidate.action.kind in {PatchActionKind.CHANGE_OPERATOR, PatchActionKind.MODIFY_CONDITION}:
+            score += 10.0
+
+    literal_delta_score = _literal_delta_score(candidate, hint)
+    if literal_delta_score:
+        score += literal_delta_score
+
+    if candidate.action.kind == PatchActionKind.REPLACE_EXPR and hint.assertions:
+        score += 5.0
+
+    return score
+
+
+def _literal_delta_score(candidate: CandidatePatch, hint: PytestFailureHint) -> float:
+    if candidate.action.kind != PatchActionKind.CHANGE_LITERAL:
+        return 0.0
+    original = candidate.action.params.get("from")
+    replacement = candidate.action.params.get("to")
+    if not isinstance(original, (int, float)) or isinstance(original, bool):
+        return 0.0
+    if not isinstance(replacement, (int, float)) or isinstance(replacement, bool):
+        return 0.0
+
+    score = 0.0
+    for assertion in hint.assertions:
+        delta = assertion.numeric_delta
+        if original != 0 and delta is not None and replacement == original + delta:
+            score += 40.0
+        if replacement == assertion.expected:
+            score += 10.0
+    return score
 
 
 def _cosine_similarity(left: list[float], right: list[float]) -> float:

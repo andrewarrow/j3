@@ -10,3 +10,10 @@ Project direction:
 - The prototype model is still non-neural: hashed AST embeddings, action-delta prototypes, and bounded exemplar deltas. Mined git exemplars should influence ordinary candidate actions during ranking.
 - Keep evaluating against `examples/greenshot_bugs` and report baseline vs model-ranked solved, pass@1, and avg candidates.
 - Next priority after mining/scorer plumbing: build a stronger eval ladder, parse pytest/error logs into structured hints, expand the structured action space, then add a trainable encoder/ranker.
+
+Verification cadence:
+- Run focused tests for the modules touched by the change first.
+- Run full `pytest` once before final when the change affects behavior, ranking, diagnostics, candidate generation, parsing, CLI flows, or shared code.
+- Do not repeatedly rerun full `pytest` after tiny follow-up edits when a focused test covers the edit.
+- Run the GreenShot-4 checkpoint eval only when diagnostics/ranking behavior changed or when benchmark numbers are explicitly requested.
+- When running GreenShot-4 for the ranking-miss path, use `runs/mit-python-git/model.json` if it exists and report baseline vs model-ranked solved, pass@1, average candidates, plus any bad-ranking/missing-action summary.

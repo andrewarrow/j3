@@ -198,11 +198,62 @@ def generate_candidate_patches(repo: Path) -> list[CandidatePatch]:
 
         for function in [node for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)]:
             arg_names = {arg.arg for arg in function.args.args}
+            candidates.extend(_guard_candidates(source.relative_path, source.text, function, arg_names))
             for node in ast.walk(function):
                 if isinstance(node, ast.Return) and node.value is not None:
                     candidates.extend(_return_candidates(source.relative_path, source.text, node, arg_names))
                 elif isinstance(node, ast.Compare):
                     candidates.extend(_compare_candidates(source.relative_path, source.text, node))
+                elif isinstance(node, ast.Constant):
+                    candidates.extend(_literal_candidates(source.relative_path, source.text, node))
+    return candidates
+
+
+def _guard_candidates(
+    file_path: str,
+    source: str,
+    function: ast.FunctionDef,
+    arg_names: set[str],
+) -> list[CandidatePatch]:
+    if not function.body:
+        return []
+
+    candidates: list[CandidatePatch] = []
+    for arg_name in sorted(arg_names):
+        if not _function_uses_len_of(function, arg_name):
+            continue
+        first_statement = function.body[0]
+        indent = " " * first_statement.col_offset
+        guard = f"if not {arg_name}:\n{indent}    return 0\n{indent}"
+        edit = SourceEdit(
+            start_line=first_statement.lineno,
+            start_col=first_statement.col_offset,
+            end_line=first_statement.lineno,
+            end_col=first_statement.col_offset,
+            replacement=guard,
+        )
+        patched = apply_edit(source, edit)
+        action = PatchAction(
+            kind=PatchActionKind.INSERT_GUARD,
+            target=PatchTarget(
+                file_path=file_path,
+                start_line=first_statement.lineno,
+                end_line=first_statement.lineno,
+                symbol=function.name,
+                node_kind=type(first_statement).__name__,
+            ),
+            params={"condition": f"not {arg_name}", "return": 0},
+        )
+        candidates.append(
+            CandidatePatch(
+                file_path=file_path,
+                action=action,
+                edit=edit,
+                original_source=source,
+                patched_source=patched,
+                reason=f"insert empty-sequence guard for {arg_name}",
+            )
+        )
     return candidates
 
 
@@ -244,6 +295,48 @@ def _return_candidates(
                 )
             )
 
+    if isinstance(node.value, ast.Subscript):
+        subscript_candidate = _last_item_candidate(file_path, source, node.value)
+        if subscript_candidate is not None:
+            candidates.append(subscript_candidate)
+
+    return candidates
+
+
+def _last_item_candidate(file_path: str, source: str, node: ast.Subscript) -> CandidatePatch | None:
+    if not isinstance(node.slice, ast.Constant) or node.slice.value != 0:
+        return None
+
+    collection = ast.get_source_segment(source, node.value)
+    if not collection:
+        return None
+    return _candidate(
+        file_path=file_path,
+        source=source,
+        node=node,
+        kind=PatchActionKind.REPLACE_EXPR,
+        replacement=f"{collection}[-1]",
+        reason="replace first item access with last item access",
+    )
+
+
+def _literal_candidates(file_path: str, source: str, node: ast.Constant) -> list[CandidatePatch]:
+    if isinstance(node.value, bool) or not isinstance(node.value, int | float):
+        return []
+
+    candidates: list[CandidatePatch] = []
+    for replacement in _nearby_literals(node.value):
+        candidates.append(
+            _candidate(
+                file_path=file_path,
+                source=source,
+                node=node,
+                kind=PatchActionKind.CHANGE_LITERAL,
+                replacement=repr(replacement),
+                reason=f"try nearby literal {replacement!r}",
+                params={"from": node.value, "to": replacement},
+            )
+        )
     return candidates
 
 
@@ -396,3 +489,23 @@ def _operator_alternatives(operator: str | None) -> list[str]:
     if operator is None:
         return []
     return table.get(operator, [])
+
+
+def _nearby_literals(value: int | float) -> list[int | float]:
+    if isinstance(value, int):
+        return [value - 2, value - 1, value + 1, value + 2]
+    return [round(value - 0.1, 10), round(value + 0.1, 10)]
+
+
+def _function_uses_len_of(function: ast.FunctionDef, arg_name: str) -> bool:
+    for node in ast.walk(function):
+        if (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "len"
+            and len(node.args) == 1
+            and isinstance(node.args[0], ast.Name)
+            and node.args[0].id == arg_name
+        ):
+            return True
+    return False

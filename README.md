@@ -96,6 +96,7 @@ j3 actions --json
 j3 train --data examples/greenshot_bug
 j3 train --data ../Decepticon ../scientific-agent-skills ../CLI-Anything
 j3 patch --repo examples/greenshot_bug --test "python -m pytest tests/test_calculator.py" --dry-run
+j3 eval --tasks examples/greenshot_bugs
 pytest
 ```
 
@@ -185,6 +186,27 @@ j3 patch \
   --model runs/greenshot-1/model.json \
   --dry-run
 ```
+
+## GreenShot-2 Evaluation
+
+`examples/greenshot_bugs` is a five-task repair benchmark covering:
+
+- wrong return expression
+- wrong comparison operator
+- wrong literal constant
+- wrong item access
+- missing empty-input guard
+
+Run it with:
+
+```bash
+j3 eval --tasks examples/greenshot_bugs
+```
+
+`eval` runs each task in an isolated temporary copy and compares unranked
+candidate order against model-ranked candidate order. The current metrics are
+small and local by design; they are meant to show whether the latent scorer is
+reducing search, not to claim broad coding-agent capability yet.
 
 ## Initial Patch Action Space
 

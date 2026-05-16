@@ -1,0 +1,27 @@
+[
+  {
+    "name": "discount_return_expr",
+    "repo": ".",
+    "test": "python -m pytest tests/test_bugs.py::test_discount_returns_remaining_price"
+  },
+  {
+    "name": "comparison_boundary",
+    "repo": ".",
+    "test": "python -m pytest tests/test_bugs.py::test_includes_limit_boundary"
+  },
+  {
+    "name": "literal_fee",
+    "repo": ".",
+    "test": "python -m pytest tests/test_bugs.py::test_shipping_total_uses_expected_fee"
+  },
+  {
+    "name": "last_item",
+    "repo": ".",
+    "test": "python -m pytest tests/test_bugs.py::test_last_item_returns_tail"
+  },
+  {
+    "name": "missing_guard",
+    "repo": ".",
+    "test": "python -m pytest tests/test_bugs.py::test_average_empty_values_returns_zero"
+  }
+]

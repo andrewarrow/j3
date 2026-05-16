@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Sequence
 
 from actions import PatchActionKind
+from evaluation import evaluate_tasks
 from patching import plan_and_maybe_apply_patch
 from training import train_from_paths
 
@@ -125,19 +126,31 @@ def build_parser() -> argparse.ArgumentParser:
     eval_parser = subparsers.add_parser(
         "eval",
         help="evaluate a checkpoint on repair tasks",
-        description="Placeholder for pass@1 evaluation on synthetic Python repair tasks.",
+        description="Evaluate model-ranked patching against unranked candidate order.",
     )
     eval_parser.add_argument(
         "--checkpoint",
         type=Path,
-        required=True,
-        help="model checkpoint to evaluate",
+        default=Path("runs/greenshot-1/model.json"),
+        help="model checkpoint to evaluate (default: runs/greenshot-1/model.json)",
     )
     eval_parser.add_argument(
         "--tasks",
         type=Path,
         required=True,
         help="task directory or manifest",
+    )
+    eval_parser.add_argument(
+        "--timeout",
+        type=int,
+        default=30,
+        help="seconds to allow each test run (default: 30)",
+    )
+    eval_parser.add_argument(
+        "--max-candidates",
+        type=int,
+        default=80,
+        help="maximum candidate patches to test per task (default: 80)",
     )
     eval_parser.set_defaults(handler=handle_eval)
 
@@ -224,9 +237,40 @@ def handle_train(args: argparse.Namespace) -> int:
 
 
 def handle_eval(args: argparse.Namespace) -> int:
-    print(f"eval scaffold: checkpoint={args.checkpoint} tasks={args.tasks}")
-    print("status: pass@1 evaluation is not implemented yet")
-    return 0
+    summary = evaluate_tasks(
+        tasks_path=args.tasks,
+        model_path=args.checkpoint,
+        timeout_seconds=args.timeout,
+        max_candidates=args.max_candidates,
+    )
+
+    print("j3 eval complete")
+    print(f"tasks: {summary.total}")
+    print(f"checkpoint: {args.checkpoint.expanduser().resolve()}")
+    print(
+        "baseline: "
+        f"solved={summary.baseline_solved}/{summary.total} "
+        f"pass@1={summary.baseline_pass_at_1}/{summary.total} "
+        f"avg_candidates={summary.baseline_avg_candidates_tested:.2f}"
+    )
+    print(
+        "model-ranked: "
+        f"solved={summary.ranked_solved}/{summary.total} "
+        f"pass@1={summary.ranked_pass_at_1}/{summary.total} "
+        f"avg_candidates={summary.ranked_avg_candidates_tested:.2f}"
+    )
+    print("tasks:")
+    for task in summary.tasks:
+        baseline_status = "solved" if task.baseline_solved else "failed"
+        ranked_status = "solved" if task.ranked_solved else "failed"
+        ranked_action = task.ranked.selected.action.kind.value if task.ranked.selected else "-"
+        print(
+            f"  {task.task.name}: "
+            f"baseline={baseline_status}/{task.baseline.candidates_tested} "
+            f"model={ranked_status}/{task.ranked.candidates_tested} "
+            f"action={ranked_action}"
+        )
+    return 0 if summary.ranked_solved == summary.total else 1
 
 
 def main(argv: Sequence[str] | None = None) -> int:

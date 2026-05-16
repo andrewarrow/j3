@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Sequence
 
 from actions import PatchActionKind
+from patching import plan_and_maybe_apply_patch
 from training import train_from_paths
 
 
@@ -46,8 +47,8 @@ def build_parser() -> argparse.ArgumentParser:
         "patch",
         help="plan one structured patch for a failing pytest target",
         description=(
-            "Plan one patch attempt for a Python repository. The planner is a "
-            "scaffold for GreenShot-1 and does not yet modify files."
+            "Plan one patch attempt for a Python repository. Candidates are "
+            "tested in temporary copies before any file is changed."
         ),
     )
     patch_parser.add_argument(
@@ -64,7 +65,19 @@ def build_parser() -> argparse.ArgumentParser:
     patch_parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="show the intended operation without changing files",
+        help="find and show a passing candidate without changing files",
+    )
+    patch_parser.add_argument(
+        "--timeout",
+        type=int,
+        default=30,
+        help="seconds to allow each test run (default: 30)",
+    )
+    patch_parser.add_argument(
+        "--max-candidates",
+        type=int,
+        default=80,
+        help="maximum candidate patches to test (default: 80)",
     )
     patch_parser.set_defaults(handler=handle_patch)
 
@@ -142,11 +155,37 @@ def handle_patch(args: argparse.Namespace) -> int:
     if not repo.is_dir():
         raise SystemExit(f"repo is not a directory: {repo}")
 
-    mode = "dry run" if args.dry_run else "plan"
+    result = plan_and_maybe_apply_patch(
+        repo=repo,
+        test_command=args.test,
+        dry_run=args.dry_run,
+        timeout_seconds=args.timeout,
+        max_candidates=args.max_candidates,
+    )
+
+    mode = "dry run" if args.dry_run else "apply"
     print(f"j3 patch ({mode})")
     print(f"repo: {repo}")
     print(f"test: {args.test}")
-    print("status: planner scaffold is ready; patch materialization is not implemented yet")
+    print(f"baseline exit code: {result.baseline_exit_code}")
+
+    if result.baseline_exit_code == 0:
+        print("status: test already passes; no patch generated")
+        return 0
+
+    print(f"candidates generated: {result.candidates_generated}")
+    print(f"candidates tested: {result.candidates_tested}")
+
+    if result.selected is None:
+        print("status: no candidate patch made the test pass")
+        return 1
+
+    print(f"status: {'applied' if result.applied else 'found'} passing patch")
+    print(f"action: {result.selected.action.kind.value}")
+    print(f"file: {result.selected.file_path}")
+    print(f"reason: {result.selected.reason}")
+    print("diff:")
+    print(result.selected.diff(), end="" if result.selected.diff().endswith("\n") else "\n")
     return 0
 
 

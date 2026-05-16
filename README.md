@@ -171,6 +171,9 @@ From the `j3` repo root, use it with:
 j3 patch --repo examples/greenshot_bug --test "pytest tests/test_calculator.py" --dry-run
 ```
 
+Without `--dry-run`, `j3 patch` applies the first candidate that passes the
+requested test in a temporary copy of the repo.
+
 ## Initial Patch Action Space
 
 The early action space is deliberately small:
@@ -214,7 +217,7 @@ The project should grow in this order:
 3. Add a deterministic patch materializer.
 4. Generate synthetic break/fix transitions from small repos.
 5. Train a compact local JEPA predictor.
-6. Run the GreenShot-1 demo end to end.
+6. Replace the current deterministic candidate scorer with the trained model.
 7. Add a distributed node that contributes anonymized transition metrics,
    adapters, or public examples.
 
@@ -226,6 +229,6 @@ should be small enough that iteration speed matters more than benchmark scale.
 
 ## Status
 
-This repository is at the foundation stage. The first code defines the structured
-patch actions and CLI surface that the rest of the system will learn to select
-and apply.
+This repository is at the first working prototype stage. It can generate local
+training artifacts, find a passing structured patch for the bundled failing
+example, and apply that patch without using an LLM.

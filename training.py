@@ -66,20 +66,31 @@ def train_from_paths(
 
     sources_by_repo = [(repo_root, iter_python_sources(repo_root)) for repo_root in repo_roots]
     transitions: list[SyntheticTransition] = []
-    for repo_root, sources in sources_by_repo:
-        for source in sources:
-            remaining = max_examples - len(transitions)
-            if remaining <= 0:
+    source_indexes = [0 for _ in sources_by_repo]
+    while len(transitions) < max_examples:
+        added_this_round = False
+        for repo_index, (repo_root, sources) in enumerate(sources_by_repo):
+            if len(transitions) >= max_examples:
                 break
-            file_path = f"{repo_root.name}/{source.relative_path}"
-            transitions.extend(
-                generate_transitions(
-                    file_path=file_path,
-                    source=source.text,
-                    max_examples=min(remaining, 20),
-                )
+            source_index = source_indexes[repo_index]
+            if source_index >= len(sources):
+                continue
+
+            source_indexes[repo_index] += 1
+            remaining = max_examples - len(transitions)
+            file_path = f"{repo_root.name}/{sources[source_index].relative_path}"
+            examples = generate_transitions(
+                file_path=file_path,
+                source=sources[source_index].text,
+                max_examples=min(remaining, 20),
             )
-        if len(transitions) >= max_examples:
+            transitions.extend(examples)
+            added_this_round = added_this_round or bool(examples)
+
+        if not added_this_round and all(
+            source_indexes[index] >= len(sources)
+            for index, (_, sources) in enumerate(sources_by_repo)
+        ):
             break
 
     if not transitions:

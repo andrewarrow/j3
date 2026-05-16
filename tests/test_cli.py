@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import shutil
+
 import pytest
 
 from cli import main
@@ -27,8 +29,24 @@ def test_actions_command_lists_structured_actions(capsys) -> None:
 
 
 def test_patch_command_accepts_repo_and_test(capsys, tmp_path) -> None:
-    assert main(["patch", "--repo", str(tmp_path), "--test", "pytest tests/test_bug.py", "--dry-run"]) == 0
+    repo = tmp_path / "greenshot_bug"
+    shutil.copytree("examples/greenshot_bug", repo)
+
+    assert (
+        main(
+            [
+                "patch",
+                "--repo",
+                str(repo),
+                "--test",
+                "python -m pytest tests/test_calculator.py",
+                "--dry-run",
+            ]
+        )
+        == 0
+    )
 
     output = capsys.readouterr().out
     assert "j3 patch (dry run)" in output
-    assert "pytest tests/test_bug.py" in output
+    assert "pytest tests/test_calculator.py" in output
+    assert "status: found passing patch" in output

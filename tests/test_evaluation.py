@@ -39,7 +39,7 @@ def test_load_greenshot_5_tasks() -> None:
 
     by_name = {task.name: task for task in tasks}
 
-    assert len(tasks) == 17
+    assert len(tasks) == 18
     assert tasks[0].name == "quote_total_helper_discount"
     assert tasks[0].family == "expression_helper"
     assert by_name["delivery_summary_multi_step_import_then_literal"].family == "multi_step_revealed_failure"
@@ -68,6 +68,16 @@ def test_load_greenshot_5_tasks() -> None:
             "condition": "_checkout_hooks_started",
             "state_flag": "_checkout_hooks_started",
             "return": "checkout_start_events",
+        },
+    }
+    assert by_name["cache_backend_import_compatibility_fallback"].preferred_patch == {
+        "file_path": "shop/cache.py",
+        "action": "add_import_fallback",
+        "symbol": "CacheBackend",
+        "params": {
+            "name": "CacheBackend",
+            "primary_module": "shop.cache_v2",
+            "fallback_module": "shop.cache_legacy",
         },
     }
 

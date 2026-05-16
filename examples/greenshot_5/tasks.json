@@ -149,5 +149,21 @@
         "return": "checkout_start_events"
       }
     }
+  },
+  {
+    "name": "cache_backend_import_compatibility_fallback",
+    "family": "import_compatibility",
+    "repo": ".",
+    "test": "python -m pytest tests/test_shop.py::test_cache_backend_import_falls_back_to_legacy_path",
+    "preferred": {
+      "file_path": "shop/cache.py",
+      "action": "add_import_fallback",
+      "symbol": "CacheBackend",
+      "params": {
+        "name": "CacheBackend",
+        "primary_module": "shop.cache_v2",
+        "fallback_module": "shop.cache_legacy"
+      }
+    }
   }
 ]

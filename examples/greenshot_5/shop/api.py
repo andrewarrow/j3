@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from .accounts import Account, account_balance
+from .cache import cache_backend_label
 from .data import TrainingDataConfig
 from .orders import customer_display_name
 from .paths import attachment_extension
@@ -86,3 +87,7 @@ def checkout_startup_events() -> list[str]:
     start_checkout_hooks()
     start_checkout_hooks()
     return checkout_start_events
+
+
+def cache_status_label() -> str:
+    return cache_backend_label()

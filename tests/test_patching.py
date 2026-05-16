@@ -483,6 +483,40 @@ def test_generate_local_import_candidates_with_decoy(tmp_path) -> None:
     assert "from shop.reports.money import format_receipt_total" in imports
 
 
+def test_generate_import_compatibility_fallback_candidate(tmp_path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    package = repo / "shop"
+    package.mkdir()
+    (package / "__init__.py").write_text("", encoding="utf-8")
+    (package / "cache_legacy.py").write_text(
+        "class CacheBackend:\n"
+        "    pass\n",
+        encoding="utf-8",
+    )
+    (package / "cache.py").write_text(
+        "def cache_backend_label() -> str:\n"
+        "    from shop.cache_v2 import CacheBackend\n"
+        "    return CacheBackend().__class__.__name__\n",
+        encoding="utf-8",
+    )
+
+    candidates = generate_candidate_patches(repo)
+
+    assert any(
+        candidate.file_path == "shop/cache.py"
+        and candidate.action.kind.value == "add_import_fallback"
+        and candidate.action.params["name"] == "CacheBackend"
+        and candidate.action.params["primary_module"] == "shop.cache_v2"
+        and candidate.action.params["fallback_module"] == "shop.cache_legacy"
+        and "try:" in candidate.patched_source
+        and "from shop.cache_v2 import CacheBackend" in candidate.patched_source
+        and "except ImportError:" in candidate.patched_source
+        and "from shop.cache_legacy import CacheBackend" in candidate.patched_source
+        for candidate in candidates
+    )
+
+
 def test_patch_uses_key_error_hints_to_prioritize_subscript_key_fix(tmp_path) -> None:
     repo = tmp_path / "greenshot_5"
     shutil.copytree("examples/greenshot_5", repo)
@@ -721,3 +755,24 @@ def test_patch_solves_duplicate_side_effects_with_state_flag_guard(tmp_path) -> 
     }
     assert "global _checkout_hooks_started" in result.selected.patched_source
     assert "_checkout_hooks_started = True" in result.selected.patched_source
+
+
+def test_patch_solves_import_compatibility_fallback(tmp_path) -> None:
+    repo = tmp_path / "greenshot_5"
+    shutil.copytree("examples/greenshot_5", repo)
+
+    result = plan_and_maybe_apply_patch(
+        repo=repo,
+        test_command="python -m pytest tests/test_shop.py::test_cache_backend_import_falls_back_to_legacy_path",
+        dry_run=True,
+        timeout_seconds=10,
+    )
+
+    assert result.selected is not None
+    assert result.candidates_tested == 1
+    assert result.selected.file_path == "shop/cache.py"
+    assert result.selected.action.kind.value == "add_import_fallback"
+    assert result.selected.action.params["name"] == "CacheBackend"
+    assert result.selected.action.params["primary_module"] == "shop.cache_v2"
+    assert result.selected.action.params["fallback_module"] == "shop.cache_legacy"
+    assert "except ImportError:" in result.selected.patched_source

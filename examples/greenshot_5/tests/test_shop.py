@@ -3,6 +3,7 @@ import pytest
 from shop.accounts import Account
 from shop.api import (
     balance_after_store_credit,
+    cache_status_label,
     carrier_timeout_label,
     checkout_widget,
     checkout_startup_events,
@@ -101,3 +102,7 @@ def test_training_data_file_defaults_validation_fraction_with_warning(tmp_path) 
 
 def test_checkout_startup_hooks_are_idempotent() -> None:
     assert checkout_startup_events() == ["cart_loaded", "payment_ready"]
+
+
+def test_cache_backend_import_falls_back_to_legacy_path() -> None:
+    assert cache_status_label() == "sqlite:ready"

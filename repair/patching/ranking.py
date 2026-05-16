@@ -149,6 +149,20 @@ def _score_against_hint(candidate: CandidatePatch, hint: PytestFailureHint) -> f
         if imported in hint.missing_names or module in hint.missing_modules:
             score += 60.0
 
+    if candidate.action.kind == PatchActionKind.ADD_IMPORT_FALLBACK:
+        imported = str(candidate.action.params.get("name", ""))
+        primary_module = str(candidate.action.params.get("primary_module", ""))
+        fallback_module = str(candidate.action.params.get("fallback_module", ""))
+        if primary_module in hint.missing_modules:
+            score += 70.0
+        if imported in hint.missing_names:
+            score += 40.0
+        if fallback_module and any(
+            missing.startswith(fallback_module) or fallback_module.startswith(missing)
+            for missing in hint.missing_modules
+        ):
+            score -= 20.0
+
     if candidate.action.kind == PatchActionKind.CHANGE_ATTRIBUTE:
         original = str(candidate.action.params.get("from", ""))
         if original in hint.missing_attributes:

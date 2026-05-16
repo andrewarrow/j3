@@ -88,6 +88,10 @@ Recent completed work:
   the repair replaces a hard `ValueError` with a default plus warning.
 - [x] The fallback-plus-warning loop is covered with `add_fallback_warning`, and
   pytest warning `match=...` text is parsed into compact expected-string hints.
+- [x] GreenShot-5 includes an Apache-mined import compatibility fallback task
+  where a new module path falls back to a legacy module path.
+- [x] The import compatibility loop is covered with `add_import_fallback`, and
+  `ModuleNotFoundError` hints rank the fallback edit at rank 1.
 
 Current GreenShot-5 signal:
 
@@ -126,6 +130,9 @@ ranked, Apache checkpoint after adding the fallback-plus-warning task:
 ranked, Apache checkpoint after adding the duplicate-side-effect state-flag
 guard task:
   solved=17/17 pass@1=12/17 avg_candidates=1.29
+
+ranked, Apache checkpoint after adding the import compatibility fallback task:
+  solved=18/18 pass@1=13/18 avg_candidates=1.28
 ```
 
 Current interpretation:
@@ -147,6 +154,9 @@ Current interpretation:
   `insert_guard` candidate that recognizes module-level list side effects and
   related `False` state flags; call-graph hint scoring ranks the helper guard at
   rank 1 from the public wrapper assertion.
+- The import compatibility task is action-covered by `add_import_fallback`;
+  missing-module hints rank the fallback from the absent new package path to the
+  legacy local module at rank 1.
 - The swapped-arguments-across-modules task is action-covered by
   `swap_call_arg`; hint-only ranking solves it at rank 1. A ranker trained from
   old pre-hint outcome rows buries it, which confirms that current outcome data
@@ -220,7 +230,7 @@ has enough coverage and data to make neural regressions visible.
   default/fallback plus warning.
 - [x] Add Apache-mined GreenShot-5 task: guard that prevents duplicate side
   effects with a state flag.
-- [ ] Add Apache-mined GreenShot-5 task: import compatibility fallback from a
+- [x] Add Apache-mined GreenShot-5 task: import compatibility fallback from a
   new package path to an old package path.
 - [ ] Add Apache-mined GreenShot-5 task: module-level config constant repair.
 - [ ] Create GreenShot-6 for small real packages, not only toy fixtures.
@@ -239,6 +249,7 @@ has enough coverage and data to make neural regressions visible.
 - [x] `add_import`
 - [x] `change_attribute`
 - [x] `wrap_try_except`
+- [x] `add_import_fallback`
 - [x] `rename_symbol`
 - [x] `modify_condition`
 - [x] `propagate_signature`
@@ -258,6 +269,8 @@ has enough coverage and data to make neural regressions visible.
 - [x] Add fallback plus warning for a missing optional setting.
 - [ ] Insert narrow exception handler around non-return statements.
 - [ ] Propagate rename across multiple files.
+- [x] Add import compatibility fallback from a new module path to a legacy
+  module path.
 - [ ] Update imports after symbol movement.
 - [ ] Support multi-edit actions with bounded, typed edit lists.
 - [ ] Deduplicate equivalent candidates before test execution.

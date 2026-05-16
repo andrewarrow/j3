@@ -28,6 +28,7 @@ class PatchActionKind(str, Enum):
     SWAP_CALL_ARG = "swap_call_arg"
     ADD_KEYWORD_ARG = "add_keyword_arg"
     ADD_IMPORT = "add_import"
+    ADD_IMPORT_FALLBACK = "add_import_fallback"
     CHANGE_ATTRIBUTE = "change_attribute"
     WRAP_TRY_EXCEPT = "wrap_try_except"
     ADD_FALLBACK_WARNING = "add_fallback_warning"

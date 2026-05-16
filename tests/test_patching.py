@@ -296,6 +296,28 @@ def test_generate_subscript_key_candidate_from_repo_string_literals(tmp_path) ->
     )
 
 
+def test_generate_string_literal_candidate_from_repo_string_literals(tmp_path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "bug.py").write_text(
+        "VALID_MODE = 'priority'\n\n"
+        "def choose_mode(mode: str) -> str:\n"
+        "    return mode\n\n"
+        "def shipping_label() -> str:\n"
+        "    return choose_mode('priorty')\n",
+        encoding="utf-8",
+    )
+
+    candidates = generate_candidate_patches(repo)
+
+    assert any(
+        candidate.action.kind.value == "change_literal"
+        and candidate.action.params == {"from": "priorty", "to": "priority"}
+        and "choose_mode('priority')" in candidate.patched_source
+        for candidate in candidates
+    )
+
+
 def test_generate_local_import_candidates_with_decoy(tmp_path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()
@@ -430,3 +452,21 @@ def test_patch_solves_nested_module_missing_import_with_decoy(tmp_path) -> None:
         candidate.action.params.get("module") == "shop.money"
         for candidate in result.tested_candidates
     )
+
+
+def test_patch_solves_string_mode_literal_in_caller_not_helper(tmp_path) -> None:
+    repo = tmp_path / "greenshot_5"
+    shutil.copytree("examples/greenshot_5", repo)
+
+    result = plan_and_maybe_apply_patch(
+        repo=repo,
+        test_command="python -m pytest tests/test_shop.py::test_priority_shipping_mode_literal_is_fixed_in_caller",
+        dry_run=True,
+        timeout_seconds=10,
+    )
+
+    assert result.selected is not None
+    assert result.candidates_tested == 1
+    assert result.selected.file_path == "shop/api.py"
+    assert result.selected.action.kind.value == "change_literal"
+    assert result.selected.action.params == {"from": "priorty", "to": "priority"}

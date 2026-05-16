@@ -7,6 +7,7 @@ from shop.api import (
     profile_badge,
     profile_heading,
     profile_label,
+    priority_shipping_service,
     quote_total,
     receipt_label,
     return_window_days,
@@ -60,3 +61,7 @@ def test_receipt_label_imports_nested_report_formatter() -> None:
 
 def test_loyalty_points_wrapper_handles_pending_value() -> None:
     assert loyalty_points("pending") == 0
+
+
+def test_priority_shipping_mode_literal_is_fixed_in_caller() -> None:
+    assert priority_shipping_service() == "air"

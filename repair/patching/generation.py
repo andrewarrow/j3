@@ -33,6 +33,7 @@ from .ast_utils import (
     _operator_text,
     _rename_identifier_in_text,
     _render_call_with_keyword_rename,
+    _string_literal_alternatives,
     _string_literals,
     _subscript_key_alternatives,
 )
@@ -120,7 +121,15 @@ def generate_candidate_patches(repo: Path) -> list[CandidatePatch]:
                         )
                     )
                 elif isinstance(node, ast.Constant):
-                    candidates.extend(_literal_candidates(source.relative_path, source.text, function, node))
+                    candidates.extend(
+                        _literal_candidates(
+                            source.relative_path,
+                            source.text,
+                            function,
+                            node,
+                            repo_string_literals,
+                        )
+                    )
                 elif isinstance(node, ast.If):
                     candidates.extend(_modify_condition_candidates(source.relative_path, source.text, function, node))
                 elif isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load):
@@ -614,12 +623,20 @@ def _literal_candidates(
     source: str,
     function: ast.FunctionDef,
     node: ast.Constant,
+    repo_string_literals: set[str],
 ) -> list[CandidatePatch]:
-    if isinstance(node.value, bool) or not isinstance(node.value, int | float):
+    if isinstance(node.value, bool):
         return []
 
     candidates: list[CandidatePatch] = []
-    for replacement in _nearby_literals(node.value):
+    if isinstance(node.value, int | float):
+        replacements: list[object] = list(_nearby_literals(node.value))
+    elif isinstance(node.value, str):
+        replacements = list(_string_literal_alternatives(node.value, repo_string_literals))
+    else:
+        return []
+
+    for replacement in replacements:
         candidates.append(
             _candidate(
                 file_path=file_path,

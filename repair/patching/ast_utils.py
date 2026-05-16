@@ -206,6 +206,17 @@ def _subscript_key_alternatives(original: str, repo_string_literals: set[str]) -
     return sorted(alternatives, key=lambda value: (-_key_similarity(original, value), value))[:5]
 
 
+def _string_literal_alternatives(original: str, repo_string_literals: set[str]) -> list[str]:
+    if not _looks_like_key_literal(original):
+        return []
+    alternatives = [
+        value
+        for value in repo_string_literals
+        if value != original and _keys_look_related(original, value)
+    ]
+    return sorted(alternatives, key=lambda value: (-_key_similarity(original, value), value))[:5]
+
+
 def _keys_look_related(original: str, candidate: str) -> bool:
     normalized_original = original.casefold()
     normalized_candidate = candidate.casefold()

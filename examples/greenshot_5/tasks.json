@@ -62,5 +62,10 @@
     "name": "loyalty_points_wrapper_exception_handler",
     "repo": ".",
     "test": "python -m pytest tests/test_shop.py::test_loyalty_points_wrapper_handles_pending_value"
+  },
+  {
+    "name": "priority_shipping_mode_literal_caller",
+    "repo": ".",
+    "test": "python -m pytest tests/test_shop.py::test_priority_shipping_mode_literal_is_fixed_in_caller"
   }
 ]

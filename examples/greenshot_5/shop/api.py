@@ -6,6 +6,7 @@ from .pricing import discounted_subtotal, total_after_store_credit
 from .profiles import display_profile, render_profile, user_badge_label
 from .reports.summary import receipt_total_label
 from .rewards import parse_loyalty_points
+from .shipping import shipping_service_label
 
 
 def quote_total(subtotal: float, discount_percent: float) -> float:
@@ -54,3 +55,7 @@ def receipt_label(total_cents: int) -> str:
 
 def loyalty_points(raw_points: str) -> int:
     return parse_loyalty_points(raw_points)
+
+
+def priority_shipping_service() -> str:
+    return shipping_service_label("priorty")

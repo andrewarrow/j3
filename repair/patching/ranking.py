@@ -179,7 +179,7 @@ def _score_against_hint(candidate: CandidatePatch, hint: PytestFailureHint) -> f
         if candidate.action.kind in {PatchActionKind.CHANGE_OPERATOR, PatchActionKind.MODIFY_CONDITION}:
             score += 10.0
 
-    literal_delta_score = _literal_delta_score(candidate, hint)
+    literal_delta_score = _literal_hint_score(candidate, hint)
     if literal_delta_score:
         score += literal_delta_score
 
@@ -189,11 +189,19 @@ def _score_against_hint(candidate: CandidatePatch, hint: PytestFailureHint) -> f
     return score
 
 
-def _literal_delta_score(candidate: CandidatePatch, hint: PytestFailureHint) -> float:
+def _literal_hint_score(candidate: CandidatePatch, hint: PytestFailureHint) -> float:
     if candidate.action.kind != PatchActionKind.CHANGE_LITERAL:
         return 0.0
     original = candidate.action.params.get("from")
     replacement = candidate.action.params.get("to")
+    if isinstance(original, str) and isinstance(replacement, str):
+        score = 0.0
+        if original in hint.missing_keys:
+            score += 35.0
+        if any(key in replacement for key in hint.missing_keys):
+            score += 8.0
+        return score
+
     if not isinstance(original, (int, float)) or isinstance(original, bool):
         return 0.0
     if not isinstance(replacement, (int, float)) or isinstance(replacement, bool):
@@ -207,4 +215,3 @@ def _literal_delta_score(candidate: CandidatePatch, hint: PytestFailureHint) -> 
         if replacement == assertion.expected:
             score += 10.0
     return score
-

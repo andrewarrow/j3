@@ -68,14 +68,16 @@ Recent completed work:
 - [x] GreenShot-5 includes rename propagated through a helper and public API.
 - [x] GreenShot-5 includes a multi-pass boundary task where the preferred edit
   is in a helper rather than a narrow public API default.
+- [x] GreenShot-5 includes a caller-side string/mode literal repair where the
+  traceback runs through a helper.
 - [x] Candidate outcome rows carry compact target context and preferred-patch
   labels for tasks that define them.
 
 Current GreenShot-5 signal:
 
 ```text
-ranked, no candidate ranker:
-  solved=11/11 pass@1=7/11 avg_candidates=1.64
+ranked, no candidate ranker after adding the caller-side string/mode literal task:
+  solved=12/12 pass@1=8/12 avg_candidates=1.58
 
 ranked, legacy diagnostics candidate ranker:
   solved=9/9 pass@1=5/9 avg_candidates=1.56
@@ -160,7 +162,7 @@ has enough coverage and data to make neural regressions visible.
 - [x] Add swapped arguments across modules.
 - [x] Add rename propagated through helper and public API.
 - [x] Add a task with two passing patches where one is semantically preferable.
-- [ ] Add a task where the correct edit is in a caller, not the failing frame.
+- [x] Add a task where the correct edit is in a caller, not the failing frame.
 - [x] Add a task where the correct edit is in a callee, not the public API.
 - [ ] Add a task where tests expose an error only after one repair is applied.
 - [ ] Grow GreenShot-5 to at least 20 tasks before neural ranker work.
@@ -192,7 +194,7 @@ has enough coverage and data to make neural regressions visible.
 - [ ] Remove wrong keyword argument.
 - [ ] Change call target to nearby helper.
 - [ ] Replace attribute chain segment.
-- [ ] Replace enum/string mode value.
+- [x] Replace enum/string mode value.
 - [ ] Add simple branch case.
 - [ ] Add early return for `None`.
 - [ ] Add fallback for missing mapping key.

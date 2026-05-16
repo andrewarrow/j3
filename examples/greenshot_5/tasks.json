@@ -117,5 +117,21 @@
         "callee": "shipping_timeout_label"
       }
     }
+  },
+  {
+    "name": "training_data_file_default_warning",
+    "family": "fallback_warning",
+    "repo": ".",
+    "test": "python -m pytest tests/test_shop.py::test_training_data_file_defaults_validation_fraction_with_warning",
+    "preferred": {
+      "file_path": "shop/data.py",
+      "action": "add_fallback_warning",
+      "symbol": "__post_init__",
+      "params": {
+        "attribute": "validation_fraction",
+        "value": 0.05,
+        "exception": "ValueError"
+      }
+    }
   }
 ]

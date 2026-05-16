@@ -23,6 +23,7 @@ ATTRIBUTE_ERROR_RE = re.compile(r"AttributeError:\s+.+ has no attribute '([^']+)
 MODULE_NOT_FOUND_RE = re.compile(r"ModuleNotFoundError:\s+No module named '([^']+)'")
 IMPORT_ERROR_RE = re.compile(r"ImportError:\s+cannot import name '([^']+)'")
 TYPE_ERROR_NAME_RE = re.compile(r"TypeError:\s+.*(?:argument|parameter|keyword).*'([^']+)'")
+PYTEST_MATCH_RE = re.compile(r"\bmatch=(['\"])(.*?)\1")
 MYPY_RE = re.compile(r"^([^:\s][^:]*\.py):(\d+):\s+(error|note|warning):\s+(.+?)(?:\s+\[([-\w]+)\])?$")
 RUFF_RE = re.compile(r"^([^:\s][^:]*\.py):(\d+):(\d+):\s+([A-Z]+\d+)\s+(.+)$")
 RUFF_UNDEFINED_NAME_RE = re.compile(r"Undefined name [`'\"]?([A-Za-z_]\w*)[`'\"]?")
@@ -87,6 +88,7 @@ class PytestFailureHint:
     missing_modules: set[str] = field(default_factory=set)
     missing_keys: set[str] = field(default_factory=set)
     type_error_names: set[str] = field(default_factory=set)
+    expected_strings: set[str] = field(default_factory=set)
     assertion_diff_lines: list[str] = field(default_factory=list)
     tool_diagnostics: list[ToolDiagnostic] = field(default_factory=list)
 
@@ -238,6 +240,9 @@ def _collect_error_details(hint: PytestFailureHint, text: str) -> None:
     if type_error:
         hint.type_error_names.add(type_error.group(1))
 
+    for match in PYTEST_MATCH_RE.finditer(text):
+        hint.expected_strings.add(match.group(2))
+
 
 def _collect_tool_diagnostics(hint: PytestFailureHint, text: str) -> None:
     mypy = MYPY_RE.match(text)
@@ -304,6 +309,7 @@ def _has_signal(hint: PytestFailureHint) -> bool:
         or hint.missing_modules
         or hint.missing_keys
         or hint.type_error_names
+        or hint.expected_strings
         or hint.assertion_diff_lines
         or hint.tool_diagnostics
     )

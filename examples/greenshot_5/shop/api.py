@@ -1,4 +1,7 @@
+from pathlib import Path
+
 from .accounts import Account, account_balance
+from .data import TrainingDataConfig
 from .orders import customer_display_name
 from .paths import attachment_extension
 from .policies import default_return_window_days, express_shipping_eligible
@@ -72,3 +75,7 @@ def checkout_widget(label: str) -> dict[str, object]:
 
 def carrier_timeout_label(timeout_seconds: int = 30) -> str:
     return shipping_timeout_label()
+
+
+def training_data_config(data_path: Path) -> TrainingDataConfig:
+    return TrainingDataConfig(data_path)

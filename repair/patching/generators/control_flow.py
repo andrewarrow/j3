@@ -7,7 +7,13 @@ import ast
 from actions import PatchAction, PatchActionKind, PatchTarget
 from synth import SourceEdit, apply_edit
 
-from ..ast_utils import _call_exception, _function_uses_len_of
+from ..ast_utils import (
+    _call_exception,
+    _full_source_edit,
+    _function_uses_len_of,
+    _import_insert_line,
+    _is_valid_python,
+)
 from ..types import CandidatePatch
 from .common import _candidate
 from .data_access import _last_item_candidate
@@ -200,3 +206,136 @@ def _modify_condition_candidates(
             )
 
     return candidates
+
+
+def _fallback_warning_candidates(
+    file_path: str,
+    source: str,
+    tree: ast.Module,
+    function: ast.FunctionDef,
+    node: ast.If,
+) -> list[CandidatePatch]:
+    """Replace a hard missing-setting error with a default plus warning."""
+
+    if len(node.body) != 1 or not isinstance(node.body[0], ast.Raise):
+        return []
+    if not _raises_value_error(node.body[0]):
+        return []
+
+    missing_attribute = _none_checked_self_attribute(node.test)
+    if missing_attribute is None:
+        return []
+
+    candidates: list[CandidatePatch] = []
+    for fallback in (0.05, 0.1, 0):
+        candidate = _fallback_warning_candidate(
+            file_path=file_path,
+            source=source,
+            tree=tree,
+            function=function,
+            raise_node=node.body[0],
+            attribute=missing_attribute,
+            fallback=fallback,
+        )
+        if candidate is not None:
+            candidates.append(candidate)
+    return candidates
+
+
+def _fallback_warning_candidate(
+    *,
+    file_path: str,
+    source: str,
+    tree: ast.Module,
+    function: ast.FunctionDef,
+    raise_node: ast.Raise,
+    attribute: str,
+    fallback: float | int,
+) -> CandidatePatch | None:
+    indent = " " * raise_node.col_offset
+    fallback_text = repr(fallback)
+    replacement = (
+        f"{indent}self.{attribute} = {fallback_text}\n"
+        f"{indent}warnings.warn(\n"
+        f"{indent}    \"Defaulting to `{attribute}={fallback_text}`.\",\n"
+        f"{indent}    UserWarning,\n"
+        f"{indent}    stacklevel=2,\n"
+        f"{indent})"
+    )
+    edit = SourceEdit(
+        start_line=raise_node.lineno,
+        start_col=0,
+        end_line=raise_node.end_lineno,
+        end_col=raise_node.end_col_offset,
+        replacement=replacement,
+    )
+    patched = apply_edit(source, edit)
+    if not _has_warnings_import(tree):
+        insert_line = _import_insert_line(tree)
+        lines = patched.splitlines(keepends=True)
+        insertion = "import warnings\n"
+        offset = sum(len(line) for line in lines[: insert_line - 1])
+        patched = patched[:offset] + insertion + patched[offset:]
+
+    if patched == source or not _is_valid_python(patched):
+        return None
+
+    action = PatchAction(
+        kind=PatchActionKind.ADD_FALLBACK_WARNING,
+        target=PatchTarget(
+            file_path=file_path,
+            start_line=raise_node.lineno,
+            end_line=raise_node.end_lineno,
+            symbol=function.name,
+            node_kind="Raise",
+        ),
+        params={"attribute": attribute, "value": fallback, "exception": "ValueError"},
+    )
+    return CandidatePatch(
+        file_path=file_path,
+        action=action,
+        edit=_full_source_edit(source),
+        original_source=source,
+        patched_source=patched,
+        reason=f"default missing {attribute} to {fallback_text} with warning",
+    )
+
+
+def _raises_value_error(node: ast.Raise) -> bool:
+    exc = node.exc
+    if isinstance(exc, ast.Call):
+        exc = exc.func
+    return isinstance(exc, ast.Name) and exc.id == "ValueError"
+
+
+def _none_checked_self_attribute(node: ast.AST) -> str | None:
+    if isinstance(node, ast.BoolOp):
+        for value in node.values:
+            attribute = _none_checked_self_attribute(value)
+            if attribute is not None:
+                return attribute
+        return None
+
+    if not isinstance(node, ast.Compare) or len(node.ops) != 1 or len(node.comparators) != 1:
+        return None
+    if not isinstance(node.ops[0], ast.Is):
+        return None
+    if not isinstance(node.comparators[0], ast.Constant) or node.comparators[0].value is not None:
+        return None
+
+    left = node.left
+    if not isinstance(left, ast.Attribute):
+        return None
+    if not isinstance(left.value, ast.Name) or left.value.id != "self":
+        return None
+    return left.attr
+
+
+def _has_warnings_import(tree: ast.Module) -> bool:
+    for statement in tree.body:
+        if isinstance(statement, ast.Import):
+            if any(alias.name == "warnings" for alias in statement.names):
+                return True
+        elif isinstance(statement, ast.ImportFrom) and statement.module == "warnings":
+            return True
+    return False

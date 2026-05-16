@@ -227,6 +227,7 @@ def _hint_tokens(hints: list[object] | tuple[object, ...]) -> set[str]:
             "missing_modules",
             "missing_keys",
             "type_error_names",
+            "expected_strings",
             "assertion_diff_lines",
             "source_files",
         ):
@@ -252,6 +253,7 @@ def _hint_record_tokens(hints: list[dict[str, object]]) -> set[str]:
             "missing_modules",
             "missing_keys",
             "type_error_names",
+            "expected_strings",
             "assertion_diff_lines",
             "source_files",
         ):

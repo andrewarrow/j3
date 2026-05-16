@@ -81,6 +81,10 @@ Recent completed work:
 - [x] The missing dictionary output-key loop is covered with `add_dict_key`.
 - [x] GreenShot-5 includes an Apache-mined timeout propagation task where the
   repair adds a missing keyword argument through a helper call.
+- [x] GreenShot-5 includes an Apache-mined required-setting fallback task where
+  the repair replaces a hard `ValueError` with a default plus warning.
+- [x] The fallback-plus-warning loop is covered with `add_fallback_warning`, and
+  pytest warning `match=...` text is parsed into compact expected-string hints.
 
 Current GreenShot-5 signal:
 
@@ -112,6 +116,9 @@ ranked, Apache checkpoint after adding the missing serialized payload key task:
 
 ranked, Apache checkpoint after adding the timeout keyword passthrough task:
   solved=15/15 pass@1=10/15 avg_candidates=1.67
+
+ranked, Apache checkpoint after adding the fallback-plus-warning task:
+  solved=16/16 pass@1=11/16 avg_candidates=1.62
 ```
 
 Current interpretation:
@@ -126,6 +133,9 @@ Current interpretation:
   KeyError hints rank the preferred helper serializer edit at rank 1.
 - The timeout keyword passthrough task is action-covered by `add_keyword_arg`;
   helper-call signature context ranks the public API passthrough edit at rank 1.
+- The required-setting fallback task is action-covered by
+  `add_fallback_warning`; warning `match=...` text distinguishes the preferred
+  default value from decoy fallback candidates and ranks it at rank 1.
 - The swapped-arguments-across-modules task is action-covered by
   `swap_call_arg`; hint-only ranking solves it at rank 1. A ranker trained from
   old pre-hint outcome rows buries it, which confirms that current outcome data
@@ -195,7 +205,7 @@ has enough coverage and data to make neural regressions visible.
 - [ ] Grow GreenShot-5 to at least 20 tasks before neural ranker work.
 - [x] Add Apache-mined GreenShot-5 task: missing keyword argument propagated
   through a call chain.
-- [ ] Add Apache-mined GreenShot-5 task: hard failure replaced by a
+- [x] Add Apache-mined GreenShot-5 task: hard failure replaced by a
   default/fallback plus warning.
 - [ ] Add Apache-mined GreenShot-5 task: guard that prevents duplicate side
   effects with a state flag.
@@ -234,6 +244,7 @@ has enough coverage and data to make neural regressions visible.
 - [ ] Add simple branch case.
 - [ ] Add early return for `None`.
 - [ ] Add fallback for missing mapping key.
+- [x] Add fallback plus warning for a missing optional setting.
 - [ ] Insert narrow exception handler around non-return statements.
 - [ ] Propagate rename across multiple files.
 - [ ] Update imports after symbol movement.

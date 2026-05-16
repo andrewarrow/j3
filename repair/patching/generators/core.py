@@ -21,6 +21,7 @@ from .calls import (
     _swap_call_arg_candidates,
 )
 from .control_flow import (
+    _fallback_warning_candidates,
     _guard_candidates,
     _modify_condition_candidates,
     _return_candidates,
@@ -117,6 +118,15 @@ def generate_candidate_patches(repo: Path) -> list[CandidatePatch]:
                     )
                 elif isinstance(node, ast.If):
                     candidates.extend(_modify_condition_candidates(source.relative_path, source.text, function, node))
+                    candidates.extend(
+                        _fallback_warning_candidates(
+                            source.relative_path,
+                            source.text,
+                            tree,
+                            function,
+                            node,
+                        )
+                    )
                 elif isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load):
                     candidates.extend(
                         _rename_symbol_candidates(

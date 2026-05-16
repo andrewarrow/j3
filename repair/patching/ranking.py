@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import replace
 
 from actions import PatchActionKind
@@ -170,6 +171,17 @@ def _score_against_hint(candidate: CandidatePatch, hint: PytestFailureHint) -> f
         exception = str(candidate.action.params.get("exception", ""))
         if exception and exception == hint.exception_type:
             score += 35.0
+
+    if candidate.action.kind == PatchActionKind.ADD_FALLBACK_WARNING:
+        exception = str(candidate.action.params.get("exception", ""))
+        if exception and exception == hint.exception_type:
+            score += 45.0
+        attribute = str(candidate.action.params.get("attribute", ""))
+        value = str(candidate.action.params.get("value", ""))
+        expected_fragments = getattr(hint, "expected_strings", set())
+        value_pattern = re.compile(rf"\b{re.escape(attribute)}={re.escape(value)}(?![\d.])")
+        if attribute and value and any(value_pattern.search(fragment) for fragment in expected_fragments):
+            score += 25.0
 
     if candidate.action.kind == PatchActionKind.SWAP_CALL_ARG and hint.assertions:
         score += 10.0

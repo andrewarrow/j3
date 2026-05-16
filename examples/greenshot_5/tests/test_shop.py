@@ -1,3 +1,5 @@
+import pytest
+
 from shop.accounts import Account
 from shop.api import (
     balance_after_store_credit,
@@ -14,6 +16,7 @@ from shop.api import (
     quote_total,
     receipt_label,
     return_window_days,
+    training_data_config,
     uploaded_extension,
     visible_balance,
 )
@@ -83,3 +86,13 @@ def test_checkout_widget_payload_includes_disabled_key() -> None:
 
 def test_carrier_timeout_label_passes_timeout_keyword() -> None:
     assert carrier_timeout_label(timeout_seconds=30) == "extended"
+
+
+def test_training_data_file_defaults_validation_fraction_with_warning(tmp_path) -> None:
+    data_file = tmp_path / "train.json"
+    data_file.write_text("[]", encoding="utf-8")
+
+    with pytest.warns(UserWarning, match="Defaulting to `validation_fraction=0.05`"):
+        config = training_data_config(data_file)
+
+    assert config.validation_fraction == 0.05

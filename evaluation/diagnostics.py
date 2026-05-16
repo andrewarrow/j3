@@ -188,6 +188,7 @@ def _failure_hint_diagnostics(hint: object) -> dict[str, object]:
         "missing_modules": sorted(getattr(hint, "missing_modules", set())),
         "missing_keys": sorted(getattr(hint, "missing_keys", set())),
         "type_error_names": sorted(getattr(hint, "type_error_names", set())),
+        "expected_strings": sorted(getattr(hint, "expected_strings", set())),
         "assertion_diff_lines": list(getattr(hint, "assertion_diff_lines", [])),
         "assertions": [
             {

@@ -37,17 +37,28 @@ def test_load_greenshot_4_tasks() -> None:
 def test_load_greenshot_5_tasks() -> None:
     tasks = load_tasks(Path("examples/greenshot_5"))
 
-    assert len(tasks) == 13
+    by_name = {task.name: task for task in tasks}
+
+    assert len(tasks) == 16
     assert tasks[0].name == "quote_total_helper_discount"
     assert tasks[0].family == "expression_helper"
-    assert tasks[-1].name == "delivery_summary_multi_step_import_then_literal"
-    assert tasks[-1].family == "multi_step_revealed_failure"
-    assert tasks[-1].max_steps == 2
+    assert by_name["delivery_summary_multi_step_import_then_literal"].family == "multi_step_revealed_failure"
+    assert by_name["delivery_summary_multi_step_import_then_literal"].max_steps == 2
     assert tasks[8].preferred_patch == {
         "file_path": "shop/policies.py",
         "action": "change_operator",
         "symbol": "express_shipping_eligible",
         "params": {"from": ">", "to": ">="},
+    }
+    assert by_name["training_data_file_default_warning"].preferred_patch == {
+        "file_path": "shop/data.py",
+        "action": "add_fallback_warning",
+        "symbol": "__post_init__",
+        "params": {
+            "attribute": "validation_fraction",
+            "value": 0.05,
+            "exception": "ValueError",
+        },
     }
 
 

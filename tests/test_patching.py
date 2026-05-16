@@ -302,6 +302,38 @@ def test_generate_missing_keyword_argument_passthrough_candidate(tmp_path) -> No
     )
 
 
+def test_generate_fallback_warning_candidate_for_missing_setting(tmp_path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "config.py").write_text(
+        "from dataclasses import dataclass\n"
+        "from pathlib import Path\n\n"
+        "@dataclass\n"
+        "class TrainingDataConfig:\n"
+        "    data_path: Path\n"
+        "    validation_fraction: float | None = None\n\n"
+        "    def __post_init__(self) -> None:\n"
+        "        if self.data_path.is_file() and self.validation_fraction is None:\n"
+        "            raise ValueError('validation_fraction must be set')\n",
+        encoding="utf-8",
+    )
+
+    candidates = generate_candidate_patches(repo)
+
+    assert any(
+        candidate.action.kind.value == "add_fallback_warning"
+        and candidate.action.params == {
+            "attribute": "validation_fraction",
+            "value": 0.05,
+            "exception": "ValueError",
+        }
+        and "import warnings" in candidate.patched_source
+        and "self.validation_fraction = 0.05" in candidate.patched_source
+        and "warnings.warn(" in candidate.patched_source
+        for candidate in candidates
+    )
+
+
 def test_generate_subscript_key_candidate_from_repo_string_literals(tmp_path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()
@@ -609,3 +641,28 @@ def test_patch_solves_missing_keyword_argument_passthrough(tmp_path) -> None:
         "callee": "shipping_timeout_label",
     }
     assert "shipping_timeout_label(timeout_seconds=timeout_seconds)" in result.selected.patched_source
+
+
+def test_patch_solves_missing_setting_with_default_warning(tmp_path) -> None:
+    repo = tmp_path / "greenshot_5"
+    shutil.copytree("examples/greenshot_5", repo)
+
+    result = plan_and_maybe_apply_patch(
+        repo=repo,
+        test_command="python -m pytest tests/test_shop.py::test_training_data_file_defaults_validation_fraction_with_warning",
+        dry_run=True,
+        timeout_seconds=10,
+    )
+
+    assert result.selected is not None
+    assert result.candidates_tested == 1
+    assert result.selected.file_path == "shop/data.py"
+    assert result.selected.action.kind.value == "add_fallback_warning"
+    assert result.selected.action.params == {
+        "attribute": "validation_fraction",
+        "value": 0.05,
+        "exception": "ValueError",
+    }
+    assert "import warnings" in result.selected.patched_source
+    assert "self.validation_fraction = 0.05" in result.selected.patched_source
+    assert "warnings.warn(" in result.selected.patched_source

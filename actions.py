@@ -30,6 +30,7 @@ class PatchActionKind(str, Enum):
     ADD_IMPORT = "add_import"
     CHANGE_ATTRIBUTE = "change_attribute"
     WRAP_TRY_EXCEPT = "wrap_try_except"
+    ADD_FALLBACK_WARNING = "add_fallback_warning"
     CHANGE_RETURN_VALUE = "change_return_value"
     RENAME_SYMBOL = "rename_symbol"
     MODIFY_CONDITION = "modify_condition"

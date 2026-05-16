@@ -157,3 +157,15 @@ bugs.py:14:8: F821 Undefined name `Counter`
     assert hint.tool_diagnostics[1].tool == "ruff"
     assert hint.tool_diagnostics[1].code == "F821"
     assert hint.missing_names == {"Counter"}
+
+
+def test_parse_pytest_warning_match_string() -> None:
+    output = """
+    def test_config_warns() -> None:
+>       with pytest.warns(UserWarning, match="Defaulting to `validation_fraction=0.05`"):
+E       Failed: DID NOT WARN. No warnings of type (<class 'UserWarning'>,) were emitted.
+"""
+
+    [hint] = parse_pytest_failure_hints(output)
+
+    assert hint.expected_strings == {"Defaulting to `validation_fraction=0.05`"}

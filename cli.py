@@ -477,6 +477,8 @@ def handle_train_ranker(args: argparse.Namespace) -> int:
     print(f"training pairs: {result.training_pairs}")
     print(f"features: {result.features}")
     print(f"mistakes: {result.mistakes}")
+    print(f"training accuracy: {result.training_accuracy:.3f}")
+    print(f"margin violations: {result.margin_violations}")
     print(f"ranker: {result.ranker_path}")
     print(f"metrics: {result.metrics_path}")
     return 0

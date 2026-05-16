@@ -65,7 +65,12 @@ j3 eval \
 ```
 
 The diagnostics JSON records tested candidates, action kind, symbol, reason,
-model score, failure-hint score, and pass/fail status.
+model score, failure-hint score, optional candidate-ranker score, structured
+failure hints, and pass/fail status.
+- Added `j3 train-ranker` for a lightweight pairwise candidate ranker trained
+  from diagnostics.
+- Added default stdout progress logging for `j3 eval` so long benchmark runs
+  show task, phase, candidate, and elapsed-time information as they execute.
 
 ## Current Result
 
@@ -115,11 +120,24 @@ operator candidates, and the checkpoint ranks `<` before the passing `>=`.
 These results prove the loop is promising, not that the system is ready for
 broad Python repair.
 
-Verification:
+Verification baseline:
 
 ```text
-pytest: 29 passed
+pytest: 36 passed
 ```
+
+Everyday verification should stay focused. Use the smallest test that covers
+the touched behavior, for example:
+
+```bash
+pytest tests/test_candidate_ranking.py -q
+pytest tests/test_evaluation.py -q
+pytest tests/test_patching.py -q
+python3 cli.py eval --tasks examples/greenshot_3 --checkpoint runs/mit-python-git/model.json --timeout 10 --max-candidates 1
+```
+
+Run full `pytest` and the full GreenShot-4 checkpoint eval as periodic gates or
+before merging broader behavior changes, not after every small edit.
 
 ## Neural Model Gate
 
@@ -184,16 +202,28 @@ Done:
    - passing second candidate: `>` -> `>=`
    - both had equal failure-hint score, but the checkpoint ranked the wrong
      candidate higher
+- Added a lightweight pairwise candidate ranker:
+   - positive candidate: first tested patch that passes
+   - negative candidates: tested patches that fail before it
+   - features: action kind, action params, target symbol, reason, model score,
+     failure-hint score, and structured failure hints
+   - output artifact: `candidate-ranker.json`
+- Added cheap ranker training self-check metrics:
+   - training accuracy
+   - margin violations
+   - targeted verification: `pytest tests/test_candidate_ranking.py -q`
+- Added stdout eval progress logging with `--quiet` for silent runs.
 
 Next task:
 
-1. Train a lightweight candidate ranker from diagnostics:
-   - positive candidate: first tested patch that passes
-   - negative candidates: tested patches that fail
-   - features: action kind, action params, target symbol, reason, model score,
-     failure-hint score, failure mode, and structured failure hints
-   - first target: fix GreenShot-4 bad ranking without regressing pass@1
-   - keep this separate from the full neural repo JEPA
+1. Train the new ranker on the current GreenShot-4 diagnostics and compare:
+   - checkpoint-only model+hints
+   - checkpoint + candidate ranker
+   - first target: fix the `meets_minimum_boundary` bad ranking without
+     regressing pass@1
+   - targeted pre-check: `pytest tests/test_candidate_ranking.py -q`
+   - full GreenShot-4 eval only when intentionally refreshing benchmark
+     numbers
 
 ### Later Tasks
 

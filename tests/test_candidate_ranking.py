@@ -49,6 +49,8 @@ def test_train_candidate_ranker_from_diagnostics_and_rerank(tmp_path) -> None:
     )
 
     assert result.training_pairs == 1
+    assert result.training_accuracy == 1.0
+    assert result.margin_violations == 0
     assert ranked[0].action.params["to"] == ">="
     assert ranked[0].ranker_score is not None
 

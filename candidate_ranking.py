@@ -33,6 +33,8 @@ class CandidateRankerTrainingResult:
     training_pairs: int
     features: int
     mistakes: int
+    training_accuracy: float
+    margin_violations: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -107,6 +109,9 @@ def train_candidate_ranker(
                 _update_weights(weights, negative, -learning_rate)
                 mistakes += 1
 
+    correct_pairs, margin_violations = _score_training_pairs(pairs, weights, margin=margin)
+    training_accuracy = correct_pairs / len(pairs)
+
     output = out_dir.expanduser().resolve()
     output.mkdir(parents=True, exist_ok=True)
     ranker_path = output / "candidate-ranker.json"
@@ -130,6 +135,8 @@ def train_candidate_ranker(
         "training_pairs": len(pairs),
         "features": len(weights),
         "mistakes": mistakes,
+        "training_accuracy": training_accuracy,
+        "margin_violations": margin_violations,
         "artifacts": {
             "ranker": ranker_path.name,
             "metrics": metrics_path.name,
@@ -146,6 +153,8 @@ def train_candidate_ranker(
         training_pairs=len(pairs),
         features=len(weights),
         mistakes=mistakes,
+        training_accuracy=training_accuracy,
+        margin_violations=margin_violations,
     )
 
 
@@ -298,6 +307,24 @@ def _update_weights(weights: dict[str, float], features: Mapping[str, float], sc
         weights[name] = weights.get(name, 0.0) + scale * value
         if abs(weights[name]) < 1e-12:
             del weights[name]
+
+
+def _score_training_pairs(
+    pairs: list[tuple[dict[str, float], dict[str, float]]],
+    weights: Mapping[str, float],
+    *,
+    margin: float,
+) -> tuple[int, int]:
+    correct = 0
+    margin_violations = 0
+    for positive, negative in pairs:
+        pos_score = score_features(positive, weights)
+        neg_score = score_features(negative, weights)
+        if pos_score > neg_score:
+            correct += 1
+        if pos_score <= neg_score + margin:
+            margin_violations += 1
+    return correct, margin_violations
 
 
 def _normalize_value(value: object) -> str:

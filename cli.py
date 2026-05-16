@@ -10,6 +10,7 @@ from typing import Sequence
 from actions import PatchActionKind
 from evaluation import evaluate_tasks
 from fixing import run_fix_workflow
+from mining import mine_git_transitions
 from patching import plan_and_maybe_apply_patch
 from training import train_from_paths
 
@@ -138,6 +139,37 @@ def build_parser() -> argparse.ArgumentParser:
     )
     fix_parser.set_defaults(handler=handle_fix)
 
+    mine_parser = subparsers.add_parser(
+        "mine",
+        help="mine real Python file transitions from git history",
+        description="Extract before/after Python file transitions from recent git commits.",
+    )
+    mine_parser.add_argument(
+        "--repo",
+        type=Path,
+        required=True,
+        help="git repository to mine",
+    )
+    mine_parser.add_argument(
+        "--out",
+        type=Path,
+        required=True,
+        help="JSONL output path",
+    )
+    mine_parser.add_argument(
+        "--max-commits",
+        type=int,
+        default=50,
+        help="maximum recent Python-changing commits to scan (default: 50)",
+    )
+    mine_parser.add_argument(
+        "--max-files-per-commit",
+        type=int,
+        default=20,
+        help="maximum Python files to record from each commit (default: 20)",
+    )
+    mine_parser.set_defaults(handler=handle_mine)
+
     train_parser = subparsers.add_parser(
         "train",
         help="train a local JEPA predictor from transition records",
@@ -170,6 +202,13 @@ def build_parser() -> argparse.ArgumentParser:
         type=int,
         default=500,
         help="maximum synthetic transitions to generate (default: 500)",
+    )
+    train_parser.add_argument(
+        "--transitions",
+        type=Path,
+        nargs="*",
+        default=[],
+        help="mined git-transition JSONL files or directories to include",
     )
     train_parser.set_defaults(handler=handle_train)
 
@@ -333,6 +372,7 @@ def handle_train(args: argparse.Namespace) -> int:
         out_dir=args.out,
         embedding_dim=args.embedding_dim,
         max_examples=args.max_examples,
+        transition_paths=args.transitions,
     )
     print("j3 train complete")
     print("data:")
@@ -340,13 +380,29 @@ def handle_train(args: argparse.Namespace) -> int:
         print(f"  {path.expanduser().resolve()}")
     print(f"out: {result.out_dir}")
     print(f"source files: {result.source_files}")
-    print(f"synthetic transitions: {result.parsed_examples}")
+    print(f"examples: {result.parsed_examples}")
+    print(f"mined transitions: {result.mined_examples}")
     print("actions:")
     for action, count in result.action_counts.items():
         print(f"  {action}: {count}")
     print(f"model: {result.model_path}")
     print(f"metrics: {result.metrics_path}")
     print(f"examples: {result.examples_path}")
+    return 0
+
+
+def handle_mine(args: argparse.Namespace) -> int:
+    result = mine_git_transitions(
+        repo=args.repo,
+        out_path=args.out,
+        max_commits=args.max_commits,
+        max_files_per_commit=args.max_files_per_commit,
+    )
+    print("j3 mine complete")
+    print(f"repo: {result.repo}")
+    print(f"out: {result.out_path}")
+    print(f"commits scanned: {result.commits_scanned}")
+    print(f"transitions written: {result.transitions_written}")
     return 0
 
 

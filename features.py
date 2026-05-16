@@ -5,6 +5,7 @@ from __future__ import annotations
 import ast
 import hashlib
 import math
+import warnings
 from collections import Counter
 
 
@@ -19,7 +20,9 @@ def embed_python_source(text: str, *, dim: int) -> list[float]:
 
     features = Counter[str]()
     try:
-        tree = ast.parse(text)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", SyntaxWarning)
+            tree = ast.parse(text)
     except SyntaxError:
         features["syntax:error"] += 1
         return _normalize(_hash_features(features, dim))

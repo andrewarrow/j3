@@ -175,6 +175,79 @@ runs/mit-python-10k/metrics.json
 runs/mit-python-10k/examples.jsonl
 ```
 
+## Mine Real Git Transitions
+
+The synthetic corpus is useful, but real repository history is the next better
+training signal. `j3 mine` extracts Python file before/after pairs from recent
+git commits:
+
+```bash
+python3 cli.py mine \
+  --repo /Users/aa/os/python/psf__black \
+  --out data/transitions/psf__black.jsonl \
+  --max-commits 25 \
+  --max-files-per-commit 8
+```
+
+To mine the full local corpus:
+
+```bash
+mkdir -p data/transitions
+
+for repo in /Users/aa/os/python/*__*; do
+  [ -d "$repo/.git" ] || continue
+  name=${repo##*/}
+  python3 cli.py mine \
+    --repo "$repo" \
+    --out "data/transitions/$name.jsonl" \
+    --max-commits 25 \
+    --max-files-per-commit 8
+done
+```
+
+The first bounded mining run produced:
+
+```text
+repos mined: 31
+real Python file transitions: 1,396
+```
+
+Train with both synthetic transitions and mined git transitions:
+
+```bash
+paths=($(find /Users/aa/os/python -maxdepth 1 -type d -name '*__*' | sort))
+
+python3 cli.py train \
+  --data $paths \
+  --transitions data/transitions \
+  --out runs/mit-python-git \
+  --max-examples 10000 \
+  --embedding-dim 256
+```
+
+The combined run produced:
+
+```text
+source files: 8254
+examples: 11396
+mined transitions: 1396
+actions:
+  change_literal: 6128
+  change_operator: 772
+  change_return_value: 49
+  git_transition: 1396
+  modify_condition: 2217
+  replace_expr: 834
+```
+
+Resulting artifacts:
+
+```text
+runs/mit-python-git/model.json
+runs/mit-python-git/metrics.json
+runs/mit-python-git/examples.jsonl
+```
+
 ## Evaluate The Corpus Model
 
 Run GreenShot-2 against the trained model:
@@ -196,6 +269,12 @@ model-ranked: solved=5/5 pass@1=0/5 avg_candidates=16.80
 The current prototype model reduces average search but does not improve pass@1
 yet. That is expected: the current trainer uses synthetic transitions and a
 prototype latent action-delta scorer, not a neural JEPA model.
+
+The combined synthetic plus git-transition model currently produces the same
+GreenShot-2 metrics. That means the data path works, but the prototype scorer is
+too shallow to benefit from real commit history yet. The next modeling step is a
+trainable encoder/ranker that can learn from the `git_transition` examples
+instead of only averaging action deltas.
 
 ## Full Repository URLs
 

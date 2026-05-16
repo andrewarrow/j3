@@ -27,6 +27,7 @@ def double(value):
 
     assert result.source_files == 1
     assert result.parsed_examples > 0
+    assert result.mined_examples == 0
     assert result.model_path.exists()
     assert result.metrics_path.exists()
     assert result.examples_path.exists()
@@ -72,3 +73,38 @@ def test_train_from_paths_combines_multiple_repos(tmp_path) -> None:
 
     assert result.source_files == 2
     assert result.parsed_examples >= 2
+
+
+def test_train_includes_mined_transitions(tmp_path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "source.py").write_text("def local():\n    return 1\n", encoding="utf-8")
+    transitions = tmp_path / "transitions.jsonl"
+    transitions.write_text(
+        json.dumps(
+            {
+                "kind": "git_transition",
+                "repo": "demo",
+                "commit": "b",
+                "parent": "a",
+                "file_path": "source.py",
+                "before_source": "def value():\n    return 1\n",
+                "after_source": "def value():\n    return 2\n",
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    result = train_from_path(
+        data_path=repo,
+        out_dir=tmp_path / "run",
+        embedding_dim=32,
+        max_examples=10,
+        transition_paths=[transitions],
+    )
+
+    metrics = json.loads(result.metrics_path.read_text(encoding="utf-8"))
+    assert result.mined_examples == 1
+    assert metrics["mined_examples"] == 1
+    assert "git_transition" in result.action_counts

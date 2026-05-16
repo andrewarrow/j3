@@ -95,6 +95,7 @@ j3 actions
 j3 actions --json
 j3 train --data examples/greenshot_bug
 j3 train --data ../Decepticon ../scientific-agent-skills ../CLI-Anything
+j3 mine --repo ../some-python-project --out data/transitions/project.jsonl
 j3 patch --repo examples/greenshot_bug --test "python -m pytest tests/test_calculator.py" --dry-run
 j3 fix --repo examples/greenshot_bug --test "python -m pytest tests/test_calculator.py" --dry-run
 j3 eval --tasks examples/greenshot_bugs
@@ -153,6 +154,25 @@ This gives the next step something concrete to consume: `patch` can load
 
 For the larger MIT Python corpus and reproduction commands, see
 [TRAINING.md](TRAINING.md).
+
+`j3 mine` can also extract real Python file transitions from git history:
+
+```bash
+j3 mine \
+  --repo /Users/aa/os/python/psf__black \
+  --out data/transitions/psf__black.jsonl \
+  --max-commits 25
+```
+
+Those mined transitions can be included during training:
+
+```bash
+j3 train \
+  --data /Users/aa/os/python/*__* \
+  --transitions data/transitions \
+  --out runs/mit-python-git \
+  --max-examples 10000
+```
 
 ## Example Failing Repo
 

@@ -170,119 +170,113 @@ That should come before a full neural repo JEPA. A full neural JEPA needs a
 larger benchmark and enough positive/negative candidate data to make regressions
 visible.
 
-## Next
+## Active Direction
 
-The evaluation ladder now emits richer diagnostics, the remaining listed
-structured actions have first candidate materializers, and common pytest/mypy/
-ruff failures are parsed into hints. The current priority is to use those
-diagnostics to train a lightweight candidate ranker, not a full neural repo
-JEPA.
+Do not start the full neural JEPA yet. The active work is to make the
+evaluation ladder expose repeatable failures, then use diagnostics to decide
+whether the next fix is ranking, hint parsing, action generation, or repo
+context.
 
-### Picked Task Queue
+GreenShot-5 is now the main short-term benchmark because it is multi-file and
+already exposes ranking misses that GreenShot-4 did not.
 
-Done:
+## Recent Work
 
 - Added richer diagnostics summaries:
-   - per-action pass@1
-   - per-action average candidates
-   - top failed candidate reasons
-   - whether failures are missing-action or bad-ranking failures
-- Expanded candidate materialization for:
-   - `rename_symbol`
-   - richer `modify_condition`
-   - signature/call-site propagation
-- Improved failure hints for common real failures:
-   - KeyError missing keys
-   - assertion substring/list/dict diffs
-   - mypy output
-   - ruff output
-- Summarized the GreenShot-4 ranking miss as a bad-ranking failure:
-   - `meets_minimum_boundary`
-   - wrong first candidate: `>` -> `<`
-   - passing second candidate: `>` -> `>=`
-   - both had equal failure-hint score, but the checkpoint ranked the wrong
-     candidate higher
-- Added a lightweight pairwise candidate ranker:
-   - positive candidate: first tested patch that passes
-   - negative candidates: tested patches that fail before it
-   - features: action kind, action params, target symbol, reason, model score,
-     failure-hint score, and structured failure hints
-   - output artifact: `candidate-ranker.json`
-- Added cheap ranker training self-check metrics:
-   - training accuracy
-   - margin violations
-   - targeted verification: `pytest tests/test_candidate_ranking.py -q`
-- Added stdout eval progress logging with `--quiet` for silent runs.
-- Trained the ranker on refreshed GreenShot-4 diagnostics:
-   - plans: 1
-   - training pairs: 1
-   - training accuracy: 1.000
-   - margin violations: 0
-   - artifacts: `runs/mit-python-git/candidate-ranker.json` and
-     `runs/mit-python-git/candidate-ranker-metrics.json`
-- Added CLI regression coverage for `train-ranker` stdout fields.
-- Added ranker-aware diagnostics summary fields:
-   - ranker path(s)
-   - whether ranker scores are present
-   - selected candidate ranker score
+  - per-action pass@1 and average candidates
+  - top failed candidate reasons
+  - missing-action vs bad-ranking failure modes
+  - ranker paths, ranker-score presence, and selected ranker score
+- Added first materializers for:
+  - `rename_symbol`
+  - richer `modify_condition`
+  - signature/call-site propagation
+- Improved failure hints for:
+  - KeyError missing keys
+  - assertion substring/list/dict diffs
+  - mypy output
+  - ruff output
+- Added `j3 train-ranker` and trained the first lightweight ranker on refreshed
+  GreenShot-4 diagnostics:
+  - plans: 1
+  - training pairs: 1
+  - training accuracy: 1.000
+  - margin violations: 0
+  - artifacts:
+    - `runs/mit-python-git/candidate-ranker.json`
+    - `runs/mit-python-git/candidate-ranker-metrics.json`
+- Added CLI and diagnostics regression coverage for the ranker path.
 - Added GreenShot-5 as a multi-file package benchmark fixture:
-   - helper repair through a public API call chain
-   - module-local missing import
-   - attribute rename with nearby decoy fields
-   - signature propagation with a plausible call-site-only wrong fix
-- Added `load_tasks` coverage for `examples/greenshot_5`.
-- Ran a tight GreenShot-5 eval smoke with the mined corpus checkpoint:
+  - helper repair through a public API call chain
+  - module-local missing import
+  - attribute rename with nearby decoy fields
+  - signature propagation with a plausible call-site-only wrong fix
+
+GreenShot-5 smoke with the mined corpus checkpoint:
 
 ```text
 baseline:     solved=1/4 pass@1=0/4 avg_candidates=2.75
 model+hints:  solved=4/4 pass@1=1/4 avg_candidates=1.75
 ```
-- Summarized GreenShot-5 smoke diagnostics:
-   - bad ranking: `quote_total_helper_discount`
-     - first failed: `swap_call_arg`
-     - passing second: `replace_expr`
-   - bad ranking: `visible_balance_attribute_decoys`
-     - first failed: `change_attribute` to `available_cents`
-     - passing second: `change_attribute` to `balance_cents`
-   - bad ranking: `profile_signature_propagation`
-     - first failed: call-site-only `rename_symbol`
-     - passing second: `propagate_signature`
-- Added diagnostics coverage for actual selected ranker score values.
-- Ran GreenShot-5 with the trained GreenShot-4 candidate ranker; results were
-  unchanged from model+hints, so the current ranker does not generalize to
-  these new ranking misses.
 
-Next 10 small tasks:
+GreenShot-5 with the GreenShot-4-trained candidate ranker was unchanged from
+model+hints. That means the current ranker learned the GreenShot-4 boundary tie
+but does not generalize to the new GreenShot-5 misses.
 
-1. Add more GreenShot-5 tasks that are currently missing-action failures,
-   starting with wrong dictionary key/default value repairs.
-   Focused check: run the new pytest node directly.
+Current GreenShot-5 bad-ranking cases:
 
-2. Add parser hints for common dictionary/default-value assertion failures if
-   the new GreenShot-5 tasks expose weak hinting.
-   Focused check: `pytest tests/test_failure_hints.py -q`.
+- `quote_total_helper_discount`
+  - wrong first candidate: `swap_call_arg`
+  - passing second candidate: `replace_expr`
+- `visible_balance_attribute_decoys`
+  - wrong first candidate: `change_attribute` to `available_cents`
+  - passing second candidate: `change_attribute` to `balance_cents`
+- `profile_signature_propagation`
+  - wrong first candidate: call-site-only `rename_symbol`
+  - passing second candidate: `propagate_signature`
 
-3. Train a candidate ranker on GreenShot-5 smoke diagnostics and compare it
-   against the unranked GreenShot-5 smoke.
-   Focused check: `python cli.py train-ranker --diagnostics runs/mit-python-git/greenshot-5-smoke-diagnostics.json --out runs/greenshot-5-ranker`.
+## Immediate Queue
 
-4. Add a compact regression test for the GreenShot-5 manifest count and first
-   failure shape if future fixture edits change the benchmark unintentionally.
-   Focused check: `pytest tests/test_evaluation.py -q`.
+1. Train a GreenShot-5-specific candidate ranker and compare it against the
+   current GreenShot-5 smoke.
+   - Command:
+     `python cli.py train-ranker --diagnostics runs/mit-python-git/greenshot-5-smoke-diagnostics.json --out runs/greenshot-5-ranker`
+   - Then run:
+     `python cli.py eval --tasks examples/greenshot_5 --checkpoint runs/mit-python-git/model.json --ranker runs/greenshot-5-ranker/candidate-ranker.json --timeout 10 --max-candidates 3 --quiet`
+   - Record whether pass@1 improves beyond `1/4`.
 
-### Later Tasks
+2. Add a compact regression test that guards the GreenShot-5 fixture shape.
+   - Verify manifest count, task names, and that the first task still fails
+     before repair.
+   - Focused check: `pytest tests/test_evaluation.py -q`.
 
-- Add more synthetic-but-realistic repair tasks:
-   - attribute rename
-   - swapped call arguments
-   - missing import
-   - wrong default/config value
-   - exception handling
-   - signature/call-site propagation
-   - test updates where appropriate
+3. Add one GreenShot-5 missing-action task for a wrong dictionary key or
+   default-value repair.
+   - The test should fail in a way the current action space cannot fix.
+   - Focused check: run the new pytest node directly.
 
-- Expand the new ranker beyond heuristic/features-only data when diagnostics
-  show repeated ranking failures across a broader benchmark.
+4. Inspect the new missing-action diagnostics.
+   - If hints are weak, improve failure hint parsing first.
+   - If hints are good but no candidate exists, add the smallest structured
+     action/materializer that covers the case.
+   - Focused checks:
+     - `pytest tests/test_failure_hints.py -q` for hint parser changes
+     - `pytest tests/test_patching.py -q` for candidate generation changes
 
-The neural JEPA version should wait until the benchmark can reveal regressions
-that the current prototype scorer and failure-hint heuristics cannot handle.
+5. Re-run the tight GreenShot-5 eval and update this plan with baseline vs
+   model+hints numbers.
+   - Command:
+     `python cli.py eval --tasks examples/greenshot_5 --checkpoint runs/mit-python-git/model.json --timeout 10 --max-candidates 3 --diagnostics runs/mit-python-git/greenshot-5-smoke-diagnostics.json --quiet`
+
+## Later
+
+- Expand GreenShot-5 with more multi-file tasks:
+  - swapped call arguments across modules
+  - missing import across modules
+  - wrong default/config value
+  - exception handling through wrapper APIs
+  - signature/call-site propagation across modules
+- Broaden the ranker only after diagnostics contain more than a few independent
+  bad-ranking examples.
+- Start neural model work only after a larger benchmark can distinguish
+  ranking failures from missing actions and weak hints.

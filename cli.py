@@ -230,19 +230,26 @@ def build_parser() -> argparse.ArgumentParser:
 
     ranker_parser = subparsers.add_parser(
         "train-ranker",
-        help="train a lightweight candidate ranker from eval diagnostics",
+        help="train a lightweight candidate ranker from eval diagnostics or outcomes",
         description=(
-            "Train a small linear tie-breaker from diagnostics produced by j3 eval. "
-            "Positive examples are passing tested candidates; negatives are failed "
-            "candidates tested before them."
+            "Train a small linear tie-breaker from diagnostics or candidate outcome "
+            "JSONL produced by j3 eval. Positive examples are passing tested "
+            "candidates; negatives are failed tested candidates."
         ),
     )
     ranker_parser.add_argument(
         "--diagnostics",
         type=Path,
-        required=True,
         nargs="+",
+        default=[],
         help="one or more diagnostics JSON files from j3 eval",
+    )
+    ranker_parser.add_argument(
+        "--candidate-outcomes",
+        type=Path,
+        nargs="+",
+        default=[],
+        help="one or more candidate outcome JSONL files from j3 eval",
     )
     ranker_parser.add_argument(
         "--out",
@@ -495,17 +502,30 @@ def handle_train(args: argparse.Namespace) -> int:
 
 
 def handle_train_ranker(args: argparse.Namespace) -> int:
+    if not args.diagnostics and not args.candidate_outcomes:
+        raise SystemExit("provide --diagnostics or --candidate-outcomes")
+
     result = train_candidate_ranker(
         diagnostics_paths=args.diagnostics,
+        candidate_outcome_paths=args.candidate_outcomes,
         out_dir=args.out,
         epochs=args.epochs,
         learning_rate=args.learning_rate,
     )
     print("j3 train-ranker complete")
-    print("diagnostics:")
-    for path in result.diagnostics_paths:
-        print(f"  {path}")
+    if result.diagnostics_paths:
+        print("diagnostics:")
+        for path in result.diagnostics_paths:
+            print(f"  {path}")
+    if result.candidate_outcome_paths:
+        print("candidate outcomes:")
+        for path in result.candidate_outcome_paths:
+            print(f"  {path}")
     print(f"out: {result.out_dir}")
+    print(f"rows: {result.rows}")
+    print(f"passing rows: {result.passing_rows}")
+    print(f"failing rows: {result.failing_rows}")
+    print(f"tasks: {result.tasks}")
     print(f"plans: {result.plans}")
     print(f"training pairs: {result.training_pairs}")
     print(f"features: {result.features}")

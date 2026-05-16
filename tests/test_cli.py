@@ -95,6 +95,75 @@ def test_train_ranker_command_prints_artifact_summary(capsys, tmp_path) -> None:
     assert (out_dir / "candidate-ranker-metrics.json").exists()
 
 
+def test_train_ranker_command_accepts_candidate_outcomes(capsys, tmp_path) -> None:
+    outcomes = tmp_path / "candidate-outcomes.jsonl"
+    rows = [
+        {
+            "task": "boundary",
+            "phase": "ranked",
+            "file_path": "bugs.py",
+            "action": "change_operator",
+            "symbol": "meets_minimum",
+            "start_line": 2,
+            "end_line": 2,
+            "params": {"from": ">", "to": "<"},
+            "reason": "try comparison operator <",
+            "model_score": 0.5,
+            "failure_hint_score": 50.0,
+            "ranker_score": None,
+            "passed": False,
+            "rank_index": 1,
+            "first_passing_index": 2,
+            "is_first_pass": False,
+        },
+        {
+            "task": "boundary",
+            "phase": "ranked",
+            "file_path": "bugs.py",
+            "action": "change_operator",
+            "symbol": "meets_minimum",
+            "start_line": 2,
+            "end_line": 2,
+            "params": {"from": ">", "to": ">="},
+            "reason": "try comparison operator >=",
+            "model_score": 0.5,
+            "failure_hint_score": 50.0,
+            "ranker_score": None,
+            "passed": True,
+            "rank_index": 2,
+            "first_passing_index": 2,
+            "is_first_pass": True,
+        },
+    ]
+    outcomes.write_text(
+        "\n".join(json.dumps(row) for row in rows) + "\n",
+        encoding="utf-8",
+    )
+    out_dir = tmp_path / "ranker"
+
+    assert (
+        main(
+            [
+                "train-ranker",
+                "--candidate-outcomes",
+                str(outcomes),
+                "--out",
+                str(out_dir),
+            ]
+        )
+        == 0
+    )
+
+    output = capsys.readouterr().out
+    assert "candidate outcomes:" in output
+    assert "rows: 2" in output
+    assert "passing rows: 1" in output
+    assert "failing rows: 1" in output
+    assert "tasks: 1" in output
+    assert "training pairs: 1" in output
+    assert (out_dir / "candidate-ranker.json").exists()
+
+
 def test_patch_command_accepts_repo_and_test(capsys, tmp_path) -> None:
     repo = tmp_path / "greenshot_bug"
     shutil.copytree("examples/greenshot_bug", repo)

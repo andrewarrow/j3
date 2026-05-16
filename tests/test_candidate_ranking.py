@@ -91,6 +91,49 @@ def test_train_candidate_ranker_uses_post_pass_exploration_failures(tmp_path) ->
     assert ranked[0].action.kind == PatchActionKind.CHANGE_SUBSCRIPT_KEY
 
 
+def test_train_candidate_ranker_from_candidate_outcomes_jsonl(tmp_path) -> None:
+    outcomes = tmp_path / "candidate-outcomes.jsonl"
+    rows = [
+        {
+            "task": "boundary",
+            "phase": "ranked",
+            **_candidate_record(to="<", passed=False),
+            "rank_index": 1,
+            "first_passing_index": 2,
+            "is_first_pass": False,
+        },
+        {
+            "task": "boundary",
+            "phase": "ranked",
+            **_candidate_record(to=">=", passed=True),
+            "rank_index": 2,
+            "first_passing_index": 2,
+            "is_first_pass": True,
+        },
+        {
+            "task": "boundary",
+            "phase": "ranked",
+            **_candidate_record(to="!=", passed=False),
+            "rank_index": 3,
+            "first_passing_index": 2,
+            "is_first_pass": False,
+        },
+    ]
+    outcomes.write_text(
+        "\n".join(json.dumps(row) for row in rows) + "\n",
+        encoding="utf-8",
+    )
+
+    result = train_candidate_ranker(candidate_outcome_paths=[outcomes], out_dir=tmp_path / "run")
+
+    assert result.rows == 3
+    assert result.passing_rows == 1
+    assert result.failing_rows == 2
+    assert result.tasks == 1
+    assert result.plans == 1
+    assert result.training_pairs == 2
+
+
 def test_ranker_overrides_higher_failure_hint_score(tmp_path) -> None:
     ranker = CandidateRankerModel(
         path=tmp_path / "ranker.json",

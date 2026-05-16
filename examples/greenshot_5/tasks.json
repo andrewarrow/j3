@@ -23,5 +23,10 @@
     "name": "order_customer_name_dict_key_helper",
     "repo": ".",
     "test": "python -m pytest tests/test_shop.py::test_order_customer_label_uses_customer_name_key"
+  },
+  {
+    "name": "return_window_policy_default",
+    "repo": ".",
+    "test": "python -m pytest tests/test_shop.py::test_return_window_uses_policy_default"
   }
 ]

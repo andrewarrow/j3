@@ -29,6 +29,11 @@ class CandidateRankerTrainingResult:
     ranker_path: Path
     metrics_path: Path
     diagnostics_paths: list[Path]
+    candidate_outcome_paths: list[Path]
+    rows: int
+    passing_rows: int
+    failing_rows: int
+    tasks: int
     plans: int
     training_pairs: int
     features: int
@@ -63,17 +68,21 @@ class CandidateRankerModel:
 
 def train_candidate_ranker(
     *,
-    diagnostics_paths: list[Path],
+    diagnostics_paths: list[Path] | None = None,
+    candidate_outcome_paths: list[Path] | None = None,
     out_dir: Path,
     epochs: int = 8,
     learning_rate: float = 0.25,
     margin: float = 1.0,
     plan_name: str = "ranked",
 ) -> CandidateRankerTrainingResult:
-    """Train a pairwise linear ranker from eval diagnostics JSON files."""
+    """Train a pairwise linear ranker from eval diagnostics or outcome rows."""
 
+    diagnostics_paths = diagnostics_paths or []
+    candidate_outcome_paths = candidate_outcome_paths or []
     if not diagnostics_paths:
-        raise ValueError("at least one diagnostics path is required")
+        if not candidate_outcome_paths:
+            raise ValueError("at least one diagnostics or candidate outcome path is required")
     if epochs < 1:
         raise ValueError("epochs must be >= 1")
     if learning_rate <= 0:
@@ -82,11 +91,20 @@ def train_candidate_ranker(
         raise ValueError("margin must be positive")
 
     resolved_paths = [path.expanduser().resolve() for path in diagnostics_paths]
+    resolved_outcome_paths = [path.expanduser().resolve() for path in candidate_outcome_paths]
     pairs: list[tuple[dict[str, float], dict[str, float]]] = []
     plans = 0
+    task_names: set[str] = set()
+    rows = 0
+    passing_rows = 0
+    failing_rows = 0
     for path in resolved_paths:
         payload = json.loads(path.read_text(encoding="utf-8"))
         for task in payload.get("tasks", []):
+            if not isinstance(task, dict):
+                continue
+            if task.get("name"):
+                task_names.add(str(task["name"]))
             plan = task.get(plan_name)
             if not isinstance(plan, dict):
                 continue
@@ -94,9 +112,42 @@ def train_candidate_ranker(
             if plan_pairs:
                 plans += 1
                 pairs.extend(plan_pairs)
+            tested = plan.get("tested_candidates")
+            if isinstance(tested, list):
+                rows += len(tested)
+                passing_rows += sum(
+                    1 for candidate in tested if isinstance(candidate, dict) and candidate.get("passed") is True
+                )
+
+    for path in resolved_outcome_paths:
+        grouped_rows: dict[tuple[str, str], list[dict[str, object]]] = {}
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if not line.strip():
+                continue
+            row = json.loads(line)
+            if not isinstance(row, dict):
+                continue
+            rows += 1
+            task = str(row.get("task", ""))
+            phase = str(row.get("phase", plan_name))
+            if task:
+                task_names.add(task)
+            if row.get("passed") is True:
+                passing_rows += 1
+            grouped_rows.setdefault((task, phase), []).append(row)
+
+        for (_task, phase), task_rows in grouped_rows.items():
+            if phase != plan_name:
+                continue
+            plan_pairs = _training_pairs_from_outcome_rows(task_rows)
+            if plan_pairs:
+                plans += 1
+                pairs.extend(plan_pairs)
+
+    failing_rows = rows - passing_rows
 
     if not pairs:
-        raise ValueError("diagnostics did not contain solved plans with failed candidates")
+        raise ValueError("training sources did not contain solved plans with failed candidates")
 
     weights: dict[str, float] = {}
     mistakes = 0
@@ -121,6 +172,7 @@ def train_candidate_ranker(
         "created_at": datetime.now(timezone.utc).isoformat(),
         "feature_version": RANKER_FEATURE_VERSION,
         "diagnostics_sources": [str(path) for path in resolved_paths],
+        "candidate_outcome_sources": [str(path) for path in resolved_outcome_paths],
         "plan": plan_name,
         "epochs": epochs,
         "learning_rate": learning_rate,
@@ -130,7 +182,12 @@ def train_candidate_ranker(
     }
     metrics = {
         "diagnostics_sources": [str(path) for path in resolved_paths],
+        "candidate_outcome_sources": [str(path) for path in resolved_outcome_paths],
         "plan": plan_name,
+        "rows": rows,
+        "passing_rows": passing_rows,
+        "failing_rows": failing_rows,
+        "tasks": len(task_names),
         "plans": plans,
         "training_pairs": len(pairs),
         "features": len(weights),
@@ -149,6 +206,11 @@ def train_candidate_ranker(
         ranker_path=ranker_path,
         metrics_path=metrics_path,
         diagnostics_paths=resolved_paths,
+        candidate_outcome_paths=resolved_outcome_paths,
+        rows=rows,
+        passing_rows=passing_rows,
+        failing_rows=failing_rows,
+        tasks=len(task_names),
         plans=plans,
         training_pairs=len(pairs),
         features=len(weights),
@@ -216,6 +278,32 @@ def _training_pairs_from_plan(plan: dict[str, object]) -> list[tuple[dict[str, f
         if isinstance(candidate, dict) and candidate.get("passed") is not True:
             pairs.append((positive_features, _candidate_record_features(candidate, hints)))
     return pairs
+
+
+def _training_pairs_from_outcome_rows(
+    rows: list[dict[str, object]],
+) -> list[tuple[dict[str, float], dict[str, float]]]:
+    ordered_rows = sorted(rows, key=lambda row: _int_value(row.get("rank_index"), default=0))
+    positive = _first_passing_outcome_row(ordered_rows)
+    if positive is None:
+        return []
+
+    positive_features = _candidate_record_features(positive, [])
+    return [
+        (positive_features, _candidate_record_features(candidate, []))
+        for candidate in ordered_rows
+        if candidate is not positive and candidate.get("passed") is not True
+    ]
+
+
+def _first_passing_outcome_row(rows: list[dict[str, object]]) -> dict[str, object] | None:
+    for candidate in rows:
+        if candidate.get("is_first_pass") is True:
+            return candidate
+    for candidate in rows:
+        if candidate.get("passed") is True:
+            return candidate
+    return None
 
 
 def _first_passing_index(candidates: list[object]) -> int | None:
@@ -373,3 +461,12 @@ def _float_value(value: object) -> float:
         return float(str(value))
     except ValueError:
         return 0.0
+
+
+def _int_value(value: object, *, default: int) -> int:
+    if isinstance(value, int):
+        return value
+    try:
+        return int(str(value))
+    except ValueError:
+        return default

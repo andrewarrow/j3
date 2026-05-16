@@ -282,3 +282,21 @@ def test_patch_uses_key_error_hints_to_prioritize_subscript_key_fix(tmp_path) ->
     assert result.selected.action.kind.value == "change_subscript_key"
     assert result.selected.action.params == {"from": "name", "to": "customer_name"}
     assert result.selected.failure_hint_score > 0
+
+
+def test_patch_solves_helper_module_default_value(tmp_path) -> None:
+    repo = tmp_path / "greenshot_5"
+    shutil.copytree("examples/greenshot_5", repo)
+
+    result = plan_and_maybe_apply_patch(
+        repo=repo,
+        test_command="python -m pytest tests/test_shop.py::test_return_window_uses_policy_default",
+        dry_run=True,
+        timeout_seconds=10,
+    )
+
+    assert result.selected is not None
+    assert result.candidates_tested == 1
+    assert result.selected.file_path == "shop/policies.py"
+    assert result.selected.action.kind.value == "change_literal"
+    assert result.selected.action.params == {"from": 13, "to": 14}

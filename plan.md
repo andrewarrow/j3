@@ -59,24 +59,33 @@ Recent completed work:
 - [x] The patching implementation was split from one large `patching.py` file
   into focused modules under `repair/patching/`; root `patching.py` remains a
   compatibility shim.
+- [x] GreenShot-5 includes a helper-module wrong default value task.
+- [x] `train-ranker` can consume candidate outcome JSONL directly.
 
 Current GreenShot-5 signal:
 
 ```text
 ranked, no candidate ranker:
-  solved=5/5 pass@1=2/5 avg_candidates=1.80
+  solved=6/6 pass@1=3/6 avg_candidates=1.67
 
-ranked, diagnostics candidate ranker:
-  solved=5/5 pass@1=3/5 avg_candidates=1.40
+ranked, legacy diagnostics candidate ranker:
+  solved=6/6 pass@1=3/6 avg_candidates=2.00
+
+ranked, outcome-trained candidate ranker:
+  solved=6/6 pass@1=5/6 avg_candidates=1.67
 ```
 
 Current interpretation:
 
-- The action-generation loop is improving: the latest missing action was found,
-  implemented, and verified.
-- The ranker is useful but still shallow. It improves pass@1 on GreenShot-5, but
-  the remaining max-candidate-1 misses are ranking calibration failures, not
-  missing actions.
+- The action-generation loop is improving: the latest ladder task was added,
+  the right candidate was generated, and full-budget eval solves it.
+- The wrong-default task is solved by an existing `change_literal` candidate on
+  the helper-module default parameter, so it is ranking/hint signal rather than
+  a missing action.
+- The outcome-trained ranker improves pass@1 on GreenShot-5, but this is
+  in-sample signal from a tiny benchmark. Treat the remaining
+  `quote_total_helper_discount` max-candidate-1 miss as a ranking calibration
+  failure, not a missing action.
 - The benchmark is still tiny. It is good for tight iteration, not evidence of
   broad Python-editing competence.
 
@@ -100,7 +109,7 @@ has enough coverage and data to make neural regressions visible.
 - [x] GreenShot-2/3/4 cover single-file structured repairs.
 - [x] GreenShot-5 starts multi-file helper/API repair.
 - [x] GreenShot-5 includes helper-boundary dictionary key repair.
-- [ ] Add wrong default/config constant in a separate module.
+- [x] Add wrong default/config constant in a separate module.
 - [ ] Add nested-module missing import with at least one decoy import.
 - [ ] Add exception handling through a wrapper API.
 - [ ] Add swapped arguments across modules.
@@ -132,7 +141,7 @@ has enough coverage and data to make neural regressions visible.
 - [ ] Change dictionary literal key.
 - [ ] Change dictionary literal value.
 - [ ] Add missing dictionary key/default.
-- [ ] Change function default parameter value.
+- [x] Change function default parameter value.
 - [ ] Change module-level config constant.
 - [ ] Add missing keyword argument.
 - [ ] Remove wrong keyword argument.
@@ -177,7 +186,7 @@ has enough coverage and data to make neural regressions visible.
 - [x] Exploration mode tests bounded candidates after first pass.
 - [x] Candidate outcome JSONL writes one row per tested candidate.
 - [x] Diagnostics ranker can learn from post-pass failed candidates.
-- [ ] Teach `train-ranker` to consume `--candidate-outcomes PATH` directly.
+- [x] Teach `train-ranker` to consume `--candidate-outcomes PATH` directly.
 - [ ] Include before/after AST delta features in outcome rows.
 - [ ] Include compact target context in outcome rows.
 - [ ] Include failing observation features in outcome rows.
@@ -193,9 +202,9 @@ has enough coverage and data to make neural regressions visible.
 
 - [x] Lightweight diagnostics ranker exists.
 - [x] Ranker can override handcrafted hint score.
-- [x] GreenShot-5 ranker improves pass@1 from 2/5 to 3/5 on full-budget ranked
-  eval.
-- [ ] Train ranker from candidate outcome JSONL.
+- [x] GreenShot-5 ranker improves pass@1 from 3/6 to 5/6 on full-budget ranked
+  eval when trained from in-sample candidate outcomes.
+- [x] Train ranker from candidate outcome JSONL.
 - [ ] Add per-action and per-task-family ranker metrics.
 - [ ] Penalize over-memorized reason/action strings when they regress other task
   families.
@@ -400,38 +409,25 @@ pytest -q
 
 ## Immediate Next Tasks
 
-1. Add the next GreenShot-5 ladder task: wrong default value or config constant
-   in a separate module.
-   - Keep it small and diagnostic.
-   - The failing test should distinguish action-generation failure from ranking
-     failure.
-   - The correct edit should not be in the public API wrapper.
-
-2. Close the loop for that task.
-   - Generate the right structured candidate.
-   - Parse/prioritize the observation.
-   - Verify GreenShot-5 solves with full budget.
-   - Regenerate diagnostics and candidate outcomes.
-   - Record whether the remaining problem is missing action, weak hint, or bad
-     ranking.
-
-3. Teach `train-ranker` to consume candidate outcome JSONL directly.
-   - Add `--candidate-outcomes PATH`.
-   - Keep `--diagnostics` compatibility.
-   - Report rows, passing rows, failing rows, tasks, and training pairs.
-   - Prefer outcome JSONL for new experiments.
-
-4. Improve ranker calibration.
-   - The current diagnostics ranker solves 5/5 full-budget but only 3/5 pass@1.
-   - Investigate the two remaining max-candidate-1 misses before adding many
-     more tasks.
+1. Improve ranker calibration.
+   - The legacy diagnostics ranker solves 6/6 full-budget but only 3/6 pass@1.
+   - The outcome-trained ranker solves 6/6 full-budget and 5/6 pass@1 in-sample.
+   - Investigate `quote_total_helper_discount`, where the passing candidate is
+     present but still ranked fifth by the outcome-trained ranker.
    - Avoid overfitting to exact action/reason strings when hint and context
      features should generalize.
 
-5. Add a compact diagnostics comparison command.
+2. Add a compact diagnostics comparison command.
    - Compare two diagnostics files.
    - Show per-task rank movement, pass@1 changes, bad-ranking changes, and top
      failed candidate reasons.
+
+3. Add the next GreenShot-5 ladder task.
+   - Prefer nested-module missing import with at least one decoy import, unless
+     ranker calibration is blocked on needing more candidate-outcome rows.
+   - Keep it small and diagnostic.
+   - Record whether the remaining problem is missing action, weak hint, or bad
+     ranking.
 
 ## Stop Conditions
 

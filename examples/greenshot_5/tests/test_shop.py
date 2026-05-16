@@ -4,6 +4,7 @@ from shop.api import (
     profile_heading,
     profile_label,
     quote_total,
+    return_window_days,
     uploaded_extension,
     visible_balance,
 )
@@ -30,3 +31,7 @@ def test_profile_label_accepts_username_keyword() -> None:
 
 def test_order_customer_label_uses_customer_name_key() -> None:
     assert order_customer_label({"customer_name": "ada", "status": "paid"}) == "Ada"
+
+
+def test_return_window_uses_policy_default() -> None:
+    assert return_window_days() == 14

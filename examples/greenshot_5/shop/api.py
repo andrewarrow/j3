@@ -1,6 +1,7 @@
 from .accounts import Account, account_balance
 from .orders import customer_display_name
 from .paths import attachment_extension
+from .policies import default_return_window_days
 from .pricing import discounted_subtotal
 from .profiles import display_profile, render_profile
 
@@ -27,3 +28,7 @@ def profile_label(username: str) -> str:
 
 def order_customer_label(order: dict[str, str]) -> str:
     return customer_display_name(order)
+
+
+def return_window_days() -> int:
+    return default_return_window_days()

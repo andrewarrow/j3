@@ -20,6 +20,7 @@ def test_help_menu_prints_project_summary(capsys) -> None:
     assert "fix" in output
     assert "train" in output
     assert "train-ranker" in output
+    assert "compare-diagnostics" in output
     assert "eval" in output
 
 
@@ -162,6 +163,121 @@ def test_train_ranker_command_accepts_candidate_outcomes(capsys, tmp_path) -> No
     assert "tasks: 1" in output
     assert "training pairs: 1" in output
     assert (out_dir / "candidate-ranker.json").exists()
+
+
+def test_compare_diagnostics_command_reports_rank_movement(capsys, tmp_path) -> None:
+    old = tmp_path / "old-diagnostics.json"
+    new = tmp_path / "new-diagnostics.json"
+    old.write_text(
+        json.dumps(
+            {
+                "tasks": [
+                    {
+                        "name": "boundary",
+                        "ranked": {
+                            "skipped": False,
+                            "first_passing_index": 2,
+                            "summary": {
+                                "failure_mode": "bad_ranking",
+                                "top_failed_candidate_reasons": [
+                                    {"reason": "try comparison operator <", "count": 1}
+                                ],
+                            },
+                            "tested_candidates": [
+                                {
+                                    "reason": "try comparison operator <",
+                                    "passed": False,
+                                },
+                                {
+                                    "reason": "try comparison operator >=",
+                                    "passed": True,
+                                },
+                            ],
+                        },
+                    },
+                    {
+                        "name": "nested_import",
+                        "ranked": {
+                            "skipped": False,
+                            "first_passing_index": 1,
+                            "summary": {
+                                "failure_mode": "pass_at_1",
+                                "top_failed_candidate_reasons": [],
+                            },
+                            "tested_candidates": [
+                                {
+                                    "reason": "add import shop.reports.money",
+                                    "passed": True,
+                                }
+                            ],
+                        },
+                    },
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    new.write_text(
+        json.dumps(
+            {
+                "tasks": [
+                    {
+                        "name": "boundary",
+                        "ranked": {
+                            "skipped": False,
+                            "first_passing_index": 1,
+                            "summary": {
+                                "failure_mode": "pass_at_1",
+                                "top_failed_candidate_reasons": [
+                                    {"reason": "try comparison operator <", "count": 1}
+                                ],
+                            },
+                            "tested_candidates": [
+                                {
+                                    "reason": "try comparison operator >=",
+                                    "passed": True,
+                                },
+                                {
+                                    "reason": "try comparison operator <",
+                                    "passed": False,
+                                },
+                            ],
+                        },
+                    },
+                    {
+                        "name": "nested_import",
+                        "ranked": {
+                            "skipped": False,
+                            "first_passing_index": 1,
+                            "summary": {
+                                "failure_mode": "pass_at_1",
+                                "top_failed_candidate_reasons": [],
+                            },
+                            "tested_candidates": [
+                                {
+                                    "reason": "add import shop.reports.money",
+                                    "passed": True,
+                                }
+                            ],
+                        },
+                    },
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    assert main(["compare-diagnostics", str(old), str(new)]) == 0
+
+    output = capsys.readouterr().out
+    assert "j3 compare-diagnostics" in output
+    assert "phase: ranked" in output
+    assert "tasks: old=2 new=2 shared=2" in output
+    assert "pass@1: 1/2 -> 2/2 (+1)" in output
+    assert "bad-ranking: 1 -> 0 (-1)" in output
+    assert "boundary: first_pass=2->1 movement=+1" in output
+    assert "mode=bad_ranking->pass_at_1 pass@1 gained" in output
+    assert "try comparison operator <: 1" in output
 
 
 def test_patch_command_accepts_repo_and_test(capsys, tmp_path) -> None:

@@ -428,7 +428,7 @@ pytest -q
 
 ## Immediate Next Tasks
 
-1. Add a compact diagnostics comparison command.
+1. [x] Add a compact diagnostics comparison command.
    - Compare two diagnostics files.
    - Show per-task rank movement, pass@1 changes, bad-ranking changes, and top
      failed candidate reasons.

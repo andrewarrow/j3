@@ -9,6 +9,7 @@ from typing import Sequence
 
 from actions import PatchActionKind
 from candidate_ranking import train_candidate_ranker
+from diagnostics_compare import compare_diagnostics, format_diagnostics_comparison
 from evaluation import (
     EvalSummary,
     evaluate_tasks,
@@ -270,6 +271,38 @@ def build_parser() -> argparse.ArgumentParser:
         help="pairwise perceptron learning rate (default: 0.25)",
     )
     ranker_parser.set_defaults(handler=handle_train_ranker)
+
+    compare_parser = subparsers.add_parser(
+        "compare-diagnostics",
+        help="compare two eval diagnostics files",
+        description=(
+            "Compare two j3 eval diagnostics files and summarize rank movement, "
+            "pass@1 changes, bad-ranking changes, and failed candidate reasons."
+        ),
+    )
+    compare_parser.add_argument(
+        "old",
+        type=Path,
+        help="earlier diagnostics JSON file",
+    )
+    compare_parser.add_argument(
+        "new",
+        type=Path,
+        help="later diagnostics JSON file",
+    )
+    compare_parser.add_argument(
+        "--phase",
+        choices=("ranked", "baseline"),
+        default="ranked",
+        help="diagnostics phase to compare (default: ranked)",
+    )
+    compare_parser.add_argument(
+        "--top-reasons",
+        type=int,
+        default=5,
+        help="number of failed candidate reasons to show per file (default: 5)",
+    )
+    compare_parser.set_defaults(handler=handle_compare_diagnostics)
 
     eval_parser = subparsers.add_parser(
         "eval",
@@ -534,6 +567,17 @@ def handle_train_ranker(args: argparse.Namespace) -> int:
     print(f"margin violations: {result.margin_violations}")
     print(f"ranker: {result.ranker_path}")
     print(f"metrics: {result.metrics_path}")
+    return 0
+
+
+def handle_compare_diagnostics(args: argparse.Namespace) -> int:
+    comparison = compare_diagnostics(
+        old_path=args.old,
+        new_path=args.new,
+        phase=args.phase,
+        top_reasons=args.top_reasons,
+    )
+    print(format_diagnostics_comparison(comparison))
     return 0
 
 

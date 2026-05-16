@@ -86,5 +86,20 @@
     "repo": ".",
     "test": "python -m pytest tests/test_shop.py::test_multi_step_delivery_summary_reveals_literal_after_import",
     "max_steps": 2
+  },
+  {
+    "name": "checkout_widget_payload_missing_disabled_key",
+    "family": "mapping_key",
+    "repo": ".",
+    "test": "python -m pytest tests/test_shop.py::test_checkout_widget_payload_includes_disabled_key",
+    "preferred": {
+      "file_path": "shop/widgets.py",
+      "action": "add_dict_key",
+      "symbol": "checkout_widget_payload",
+      "params": {
+        "key": "disabled",
+        "value": false
+      }
+    }
   }
 ]

@@ -296,6 +296,38 @@ def test_generate_subscript_key_candidate_from_repo_string_literals(tmp_path) ->
     )
 
 
+def test_generate_add_dict_key_candidate_from_repo_string_literals(tmp_path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "bug.py").write_text(
+        "def widget_payload(label: str) -> dict[str, object]:\n"
+        "    return {\n"
+        "        'label': label,\n"
+        "        'enabled': True\n"
+        "    }\n",
+        encoding="utf-8",
+    )
+    tests = repo / "tests"
+    tests.mkdir()
+    (tests / "test_bug.py").write_text(
+        "from bug import widget_payload\n\n"
+        "def test_widget_payload() -> None:\n"
+        "    payload = widget_payload('Pay')\n"
+        "    assert payload['disabled'] is False\n",
+        encoding="utf-8",
+    )
+
+    candidates = generate_candidate_patches(repo)
+
+    assert any(
+        candidate.action.kind.value == "add_dict_key"
+        and candidate.action.params == {"key": "disabled", "value": False}
+        and "'enabled': True," in candidate.patched_source
+        and "'disabled': False," in candidate.patched_source
+        for candidate in candidates
+    )
+
+
 def test_generate_string_literal_candidate_from_repo_string_literals(tmp_path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()
@@ -502,3 +534,22 @@ def test_patch_solves_revealed_failure_with_bounded_second_step(tmp_path) -> Non
     patched_api = (repo / "shop/api.py").read_text(encoding="utf-8")
     assert "from shop.shipping import delivery_speed_label" in patched_api
     assert "return delivery_speed_label('express')" in patched_api
+
+
+def test_patch_solves_missing_dictionary_output_key(tmp_path) -> None:
+    repo = tmp_path / "greenshot_5"
+    shutil.copytree("examples/greenshot_5", repo)
+
+    result = plan_and_maybe_apply_patch(
+        repo=repo,
+        test_command="python -m pytest tests/test_shop.py::test_checkout_widget_payload_includes_disabled_key",
+        dry_run=True,
+        timeout_seconds=10,
+    )
+
+    assert result.selected is not None
+    assert result.candidates_tested == 1
+    assert result.selected.file_path == "shop/widgets.py"
+    assert result.selected.action.kind.value == "add_dict_key"
+    assert result.selected.action.params == {"key": "disabled", "value": False}
+    assert '"disabled": False,' in result.selected.patched_source

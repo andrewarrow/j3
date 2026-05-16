@@ -7,6 +7,7 @@ from .profiles import display_profile, render_profile, user_badge_label
 from .reports.summary import receipt_total_label
 from .rewards import parse_loyalty_points
 from .shipping import shipping_service_label
+from .widgets import checkout_widget_payload
 
 
 def quote_total(subtotal: float, discount_percent: float) -> float:
@@ -63,3 +64,7 @@ def priority_shipping_service() -> str:
 
 def delivery_summary_service() -> str:
     return delivery_speed_label("expres")
+
+
+def checkout_widget(label: str) -> dict[str, object]:
+    return checkout_widget_payload(label)

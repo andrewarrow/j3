@@ -62,12 +62,16 @@ def _merge_hint_features(
         params = dict(candidate.action.params)
         original = params.get("from")
         replacement = params.get("to")
+        key_param = params.get("key")
         if isinstance(original, str) and original in missing_keys:
             features["hint_missing_key_matches_from"] = 1.0
             features[f"action_hint_missing_key_matches_from:{action}"] = 1.0
         if isinstance(replacement, str) and any(key in replacement for key in missing_keys):
             features["hint_missing_key_in_to"] = 1.0
             features[f"action_hint_missing_key_in_to:{action}"] = 1.0
+        if isinstance(key_param, str) and key_param in missing_keys:
+            features["hint_missing_key_matches_key"] = 1.0
+            features[f"action_hint_missing_key_matches_key:{action}"] = 1.0
 
 
 def _merge_hint_record_features(
@@ -126,12 +130,16 @@ def _merge_hint_record_features(
         if isinstance(params, dict):
             original = params.get("from")
             replacement = params.get("to")
+            key_param = params.get("key")
             if isinstance(original, str) and original in missing_keys:
                 features["hint_missing_key_matches_from"] = 1.0
                 features[f"action_hint_missing_key_matches_from:{action}"] = 1.0
             if isinstance(replacement, str) and any(key in replacement for key in missing_keys):
                 features["hint_missing_key_in_to"] = 1.0
                 features[f"action_hint_missing_key_in_to:{action}"] = 1.0
+            if isinstance(key_param, str) and key_param in missing_keys:
+                features["hint_missing_key_matches_key"] = 1.0
+                features[f"action_hint_missing_key_matches_key:{action}"] = 1.0
 
 
 def _merge_name_set_features(
@@ -179,7 +187,7 @@ def _add_hint_token_overlap_features(
         features["hint_candidate_token_overlap"] = value
         features[f"action_hint_candidate_token_overlap:{action}"] = value
 
-    for key in ("from", "to", "name", "module"):
+    for key in ("from", "to", "name", "module", "key"):
         value = params.get(key)
         if not isinstance(value, str):
             continue
@@ -199,7 +207,7 @@ def _candidate_tokens(
     tokens = _tokens(file_path)
     if isinstance(symbol, str):
         tokens |= _tokens(symbol)
-    for key in ("from", "to", "name", "module", "import", "replacement"):
+    for key in ("from", "to", "name", "module", "import", "replacement", "key"):
         value = params.get(key)
         if isinstance(value, str):
             tokens |= _tokens(value)

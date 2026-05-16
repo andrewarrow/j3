@@ -159,6 +159,13 @@ def _score_against_hint(candidate: CandidatePatch, hint: PytestFailureHint) -> f
         if hint.assertions:
             score += 10.0
 
+    if candidate.action.kind == PatchActionKind.ADD_DICT_KEY:
+        key = str(candidate.action.params.get("key", ""))
+        if key in hint.missing_keys:
+            score += 70.0
+        if hint.assertions:
+            score += 10.0
+
     if candidate.action.kind == PatchActionKind.WRAP_TRY_EXCEPT:
         exception = str(candidate.action.params.get("exception", ""))
         if exception and exception == hint.exception_type:

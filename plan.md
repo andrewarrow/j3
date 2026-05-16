@@ -76,6 +76,9 @@ Recent completed work:
   candidate outcome rows, and ranker metrics report per-task-family signal.
 - [x] GreenShot-5 includes a bounded multi-step task where the first repair
   changes the observed failure and exposes the second repair.
+- [x] GreenShot-5 includes an Apache-mined serialized payload task where the
+  repair adds a missing dictionary output key.
+- [x] The missing dictionary output-key loop is covered with `add_dict_key`.
 
 Current GreenShot-5 signal:
 
@@ -101,6 +104,9 @@ express-shipping task:
 
 ranked, fresh 11-task preferred-aware v4 outcome ranker:
   solved=11/11 pass@1=11/11 avg_candidates=1.00
+
+ranked, Apache checkpoint after adding the missing serialized payload key task:
+  solved=14/14 pass@1=9/14 avg_candidates=1.64
 ```
 
 Current interpretation:
@@ -111,6 +117,8 @@ Current interpretation:
 - The repair loop now supports task-level bounded multi-step planning. The first
   GreenShot-5 multi-step task is solved by applying a missing import, reparsing
   the new failure, then changing the caller-side mode literal.
+- The serialized payload missing-key task is action-covered by `add_dict_key`;
+  KeyError hints rank the preferred helper serializer edit at rank 1.
 - The swapped-arguments-across-modules task is action-covered by
   `swap_call_arg`; hint-only ranking solves it at rank 1. A ranker trained from
   old pre-hint outcome rows buries it, which confirms that current outcome data
@@ -175,9 +183,9 @@ has enough coverage and data to make neural regressions visible.
 - [x] Add a task where the correct edit is in a caller, not the failing frame.
 - [x] Add a task where the correct edit is in a callee, not the public API.
 - [x] Add a task where tests expose an error only after one repair is applied.
-- [ ] Grow GreenShot-5 to at least 20 tasks before neural ranker work.
-- [ ] Add Apache-mined GreenShot-5 task: missing dictionary/output key in a
+- [x] Add Apache-mined GreenShot-5 task: missing dictionary/output key in a
   serialized payload.
+- [ ] Grow GreenShot-5 to at least 20 tasks before neural ranker work.
 - [ ] Add Apache-mined GreenShot-5 task: missing keyword argument propagated
   through a call chain.
 - [ ] Add Apache-mined GreenShot-5 task: hard failure replaced by a
@@ -208,7 +216,7 @@ has enough coverage and data to make neural regressions visible.
 - [x] `propagate_signature`
 - [ ] Change dictionary literal key.
 - [ ] Change dictionary literal value.
-- [ ] Add missing dictionary key/default.
+- [x] Add missing dictionary key/default.
 - [x] Change function default parameter value.
 - [ ] Change module-level config constant.
 - [ ] Add missing keyword argument.

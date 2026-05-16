@@ -1,6 +1,7 @@
 from shop.accounts import Account
 from shop.api import (
     balance_after_store_credit,
+    checkout_widget,
     delivery_summary_service,
     express_shipping_label,
     loyalty_points,
@@ -70,3 +71,10 @@ def test_priority_shipping_mode_literal_is_fixed_in_caller() -> None:
 
 def test_multi_step_delivery_summary_reveals_literal_after_import() -> None:
     assert delivery_summary_service() == "air"
+
+
+def test_checkout_widget_payload_includes_disabled_key() -> None:
+    payload = checkout_widget("Pay now")
+
+    assert payload["label"] == "Pay now"
+    assert payload["disabled"] is False

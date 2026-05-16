@@ -72,6 +72,8 @@ class PatchPlanResult:
     ranker_path: Path | None = None
     tested_candidates: tuple[CandidatePatch, ...] = ()
     failure_hints: tuple[PytestFailureHint, ...] = ()
+    first_passing_index: int | None = None
+    passing_candidates: tuple[CandidatePatch, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -145,9 +147,13 @@ def plan_and_maybe_apply_patch(
     model_path: Path | None = None,
     ranker_path: Path | None = None,
     use_failure_hints: bool = True,
+    explore_after_pass: int = 0,
     progress: Callable[[str], None] | None = None,
 ) -> PatchPlanResult:
     """Find the first candidate patch that makes the requested test pass."""
+
+    if explore_after_pass < 0:
+        raise ValueError("explore_after_pass must be >= 0")
 
     root = repo.expanduser().resolve()
     if not root.exists():
@@ -199,6 +205,9 @@ def plan_and_maybe_apply_patch(
         candidates = rank_with_candidate_ranker(candidates, ranker, hints=[])
     candidates_tested = 0
     tested_candidates: list[CandidatePatch] = []
+    passing_candidates: list[CandidatePatch] = []
+    selected: CandidatePatch | None = None
+    first_passing_index: int | None = None
     for candidate in candidates[:max_candidates]:
         candidates_tested += 1
         _emit_progress(
@@ -222,23 +231,39 @@ def plan_and_maybe_apply_patch(
                 f"test: candidate={candidates_tested} exit={attempt.returncode} elapsed={elapsed:.2f}s",
             )
             if attempt.returncode == 0:
-                _emit_progress(progress, f"selected: candidate={candidates_tested} passed")
-                if not dry_run:
-                    _write_candidate(root, candidate)
-                return PatchPlanResult(
-                    repo=root,
-                    test_command=test_command,
-                    baseline_exit_code=baseline.returncode,
-                    candidates_generated=len(candidates),
-                    candidates_tested=candidates_tested,
-                    selected=candidate,
-                    applied=not dry_run,
-                    test_output=_combined_output(attempt),
-                    model_path=model.path if model else None,
-                    ranker_path=ranker.path if ranker else None,
-                    tested_candidates=tuple(tested_candidates),
-                    failure_hints=tuple(baseline_hints),
-                )
+                passing_candidates.append(candidate)
+                if selected is None:
+                    selected = candidate
+                    first_passing_index = candidates_tested
+                    baseline_output = _combined_output(attempt)
+                    _emit_progress(progress, f"selected: candidate={candidates_tested} passed")
+
+            if (
+                selected is not None
+                and first_passing_index is not None
+                and candidates_tested - first_passing_index >= explore_after_pass
+            ):
+                break
+
+    if selected is not None:
+        if not dry_run:
+            _write_candidate(root, selected)
+        return PatchPlanResult(
+            repo=root,
+            test_command=test_command,
+            baseline_exit_code=baseline.returncode,
+            candidates_generated=len(candidates),
+            candidates_tested=candidates_tested,
+            selected=selected,
+            applied=not dry_run,
+            test_output=baseline_output,
+            model_path=model.path if model else None,
+            ranker_path=ranker.path if ranker else None,
+            tested_candidates=tuple(tested_candidates),
+            failure_hints=tuple(baseline_hints),
+            first_passing_index=first_passing_index,
+            passing_candidates=tuple(passing_candidates),
+        )
 
     _emit_progress(progress, f"status: no passing candidate within tested={candidates_tested}")
     return PatchPlanResult(
@@ -254,6 +279,8 @@ def plan_and_maybe_apply_patch(
         ranker_path=ranker.path if ranker else None,
         tested_candidates=tuple(tested_candidates),
         failure_hints=tuple(baseline_hints),
+        first_passing_index=None,
+        passing_candidates=(),
     )
 
 

@@ -164,6 +164,52 @@ def test_diagnostics_records_skipped_phase(tmp_path) -> None:
     assert payload["tasks"][0]["ranked"]["skipped"] is False
 
 
+def test_eval_explores_after_first_passing_candidate(tmp_path) -> None:
+    tasks_dir = _write_multi_pass_task(tmp_path)
+
+    summary = evaluate_tasks(
+        tasks_path=tasks_dir,
+        model_path=None,
+        timeout_seconds=10,
+        max_candidates=3,
+        phase="ranked",
+        explore_after_pass=2,
+    )
+
+    plan = summary.tasks[0].ranked
+    assert plan is not None
+    assert plan.selected is not None
+    assert plan.first_passing_index == 1
+    assert plan.candidates_tested == 3
+    assert len(plan.passing_candidates) == 2
+    assert summary.ranked_solved == 1
+    assert summary.ranked_pass_at_1 == 1
+
+
+def test_diagnostics_records_exploration_after_pass(tmp_path) -> None:
+    tasks_dir = _write_multi_pass_task(tmp_path)
+    summary = evaluate_tasks(
+        tasks_path=tasks_dir,
+        model_path=None,
+        timeout_seconds=10,
+        max_candidates=3,
+        phase="ranked",
+        explore_after_pass=2,
+    )
+
+    diagnostics = write_eval_diagnostics(summary, tmp_path / "diagnostics.json")
+    payload = json.loads(diagnostics.read_text(encoding="utf-8"))
+    ranked = payload["tasks"][0]["ranked"]
+
+    assert ranked["first_passing_index"] == 1
+    assert ranked["candidates_tested_before_pass"] == 0
+    assert ranked["candidates_tested_after_pass"] == 2
+    assert len(ranked["passing_candidates"]) == 2
+    assert [candidate["passed"] for candidate in ranked["tested_candidates"]] == [True, True, False]
+    assert ranked["summary"]["first_passing_index"] == 1
+    assert ranked["summary"]["passing_candidates"] == 2
+
+
 def _candidate_patch(*, ranker_score: float | None) -> CandidatePatch:
     source = "def answer() -> int:\n    return 1\n"
     patched = "def answer() -> int:\n    return 2\n"
@@ -186,3 +232,33 @@ def _candidate_patch(*, ranker_score: float | None) -> CandidatePatch:
         reason="try nearby literal 2",
         ranker_score=ranker_score,
     )
+
+
+def _write_multi_pass_task(tmp_path) -> Path:
+    repo = tmp_path / "multi_pass"
+    tests = repo / "tests"
+    tests.mkdir(parents=True)
+    (repo / "bug.py").write_text(
+        "def lucky() -> int:\n"
+        "    return 10\n",
+        encoding="utf-8",
+    )
+    (tests / "test_bug.py").write_text(
+        "from bug import lucky\n\n"
+        "def test_accepts_two_repairs() -> None:\n"
+        "    assert 7 < lucky() < 10\n",
+        encoding="utf-8",
+    )
+    (repo / "tasks.json").write_text(
+        json.dumps(
+            [
+                {
+                    "name": "multi_pass_literal",
+                    "repo": ".",
+                    "test": "python -m pytest tests/test_bug.py -q",
+                }
+            ]
+        ),
+        encoding="utf-8",
+    )
+    return repo

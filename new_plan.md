@@ -35,6 +35,10 @@ Done:
   `ranker_score`, then `failure_hint_score`, then `model_score`, while
   no-ranker hint prioritization keeps the existing hint-first ordering.
 - Added coverage for ranker-over-hint ordering and preserved no-ranker ordering.
+- Completed Immediate Change 5. `j3 eval --explore-after-pass N` now tests a
+  bounded number of additional candidates after the first pass and diagnostics
+  record first-pass index, passing candidates, and before/after-pass counts.
+- Added focused eval and diagnostics coverage for post-pass exploration.
 
 Verified:
 
@@ -43,12 +47,12 @@ pytest tests/test_cli.py -q
 pytest tests/test_evaluation.py -q
 pytest tests/test_failure_hints.py -q
 pytest tests/test_patching.py tests/test_candidate_ranking.py -q
+python -m py_compile patching.py evaluation.py cli.py tests/test_evaluation.py
 ```
 
 Next:
 
-- Start Immediate Change 5: add diagnostic exploration mode after the first
-  passing candidate.
+- Start Immediate Change 6: export candidate outcome rows.
 
 ## Current Diagnosis
 
@@ -244,6 +248,10 @@ pytest tests/test_patching.py tests/test_candidate_ranking.py -q
 ```
 
 ### 5. Add Diagnostic Exploration Mode
+
+Status: done. Implemented for eval through `--explore-after-pass`; normal
+`patch` and `fix` still use the default first-pass stopping behavior. Covered
+by focused evaluation diagnostics tests.
 
 The ranker cannot learn from only the failed candidates before the first passing
 candidate. Add an eval-only exploration mode that keeps testing a bounded number

@@ -70,7 +70,7 @@ class EvalSummary:
             if (
                 task.baseline_solved
                 and task.baseline is not None
-                and task.baseline.candidates_tested == 1
+                and _first_passing_index(task.baseline) == 1
             )
         )
 
@@ -82,7 +82,7 @@ class EvalSummary:
             if (
                 task.ranked_solved
                 and task.ranked is not None
-                and task.ranked.candidates_tested == 1
+                and _first_passing_index(task.ranked) == 1
             )
         )
 
@@ -135,10 +135,13 @@ def evaluate_tasks(
     timeout_seconds: int = 30,
     max_candidates: int = 80,
     phase: EvalPhase = "both",
+    explore_after_pass: int = 0,
     progress: Callable[[str], None] | None = None,
 ) -> EvalSummary:
     if phase not in {"baseline", "ranked", "both"}:
         raise ValueError(f"unsupported eval phase: {phase}")
+    if explore_after_pass < 0:
+        raise ValueError("explore_after_pass must be >= 0")
     tasks = load_tasks(tasks_path)
     _emit_progress(progress, f"eval: loaded {len(tasks)} task(s) from {tasks_path}")
     results: list[TaskEvalResult] = []
@@ -155,6 +158,7 @@ def evaluate_tasks(
                 use_failure_hints=False,
                 timeout_seconds=timeout_seconds,
                 max_candidates=max_candidates,
+                explore_after_pass=explore_after_pass,
                 progress=progress,
             )
             _emit_progress(
@@ -176,6 +180,7 @@ def evaluate_tasks(
                 use_failure_hints=True,
                 timeout_seconds=timeout_seconds,
                 max_candidates=max_candidates,
+                explore_after_pass=explore_after_pass,
                 progress=progress,
             )
             _emit_progress(
@@ -236,6 +241,7 @@ def _run_task(
     use_failure_hints: bool,
     timeout_seconds: int,
     max_candidates: int,
+    explore_after_pass: int,
     progress: Callable[[str], None] | None,
 ) -> PatchPlanResult:
     with tempfile.TemporaryDirectory(prefix="j3-eval-") as tmp:
@@ -251,6 +257,7 @@ def _run_task(
             model_path=model_path,
             ranker_path=ranker_path,
             use_failure_hints=use_failure_hints,
+            explore_after_pass=explore_after_pass,
             progress=(
                 (lambda message: progress(f"{prefix}: {message}"))
                 if progress is not None
@@ -278,12 +285,19 @@ def _plan_diagnostics(plan: PatchPlanResult | None) -> dict[str, object]:
         "baseline_exit_code": plan.baseline_exit_code,
         "candidates_generated": plan.candidates_generated,
         "candidates_tested": plan.candidates_tested,
+        "first_passing_index": _first_passing_index(plan),
+        "passing_candidates": [
+            _candidate_diagnostics(candidate, passed=True)
+            for candidate in _passing_candidates(plan)
+        ],
+        "candidates_tested_before_pass": _candidates_tested_before_pass(plan),
+        "candidates_tested_after_pass": _candidates_tested_after_pass(plan),
         "applied": plan.applied,
         "summary": _single_plan_summary(plan),
         "failure_hints": [_failure_hint_diagnostics(hint) for hint in plan.failure_hints],
         "selected": _candidate_diagnostics(plan.selected, passed=True) if plan.selected else None,
         "tested_candidates": [
-            _candidate_diagnostics(candidate, passed=candidate == plan.selected)
+            _candidate_diagnostics(candidate, passed=_candidate_passed(candidate, plan))
             for candidate in plan.tested_candidates
         ],
     }
@@ -368,13 +382,13 @@ def _aggregate_plan_summaries(
         stats.candidate_counts.append(plan.candidates_tested)
         if plan.selected is not None:
             stats.solved += 1
-            if plan.candidates_tested == 1:
+            if _first_passing_index(plan) == 1:
                 stats.pass_at_1 += 1
 
         failed_reasons.update(
             candidate.reason
             for candidate in plan.tested_candidates
-            if candidate != plan.selected
+            if not _candidate_passed(candidate, plan)
         )
         failure_modes[_failure_mode(plan)] += 1
 
@@ -403,13 +417,17 @@ def _single_plan_summary(plan: PatchPlanResult) -> dict[str, object]:
     failed_reasons = Counter(
         candidate.reason
         for candidate in plan.tested_candidates
-        if candidate != plan.selected
+        if not _candidate_passed(candidate, plan)
     )
     return {
         "failure_mode": _failure_mode(plan),
         "ranker_path": str(plan.ranker_path) if plan.ranker_path is not None else None,
         "ranker_scores_present": _plan_has_ranker_scores(plan),
         "selected_ranker_score": plan.selected.ranker_score if plan.selected else None,
+        "first_passing_index": _first_passing_index(plan),
+        "passing_candidates": len(_passing_candidates(plan)),
+        "candidates_tested_before_pass": _candidates_tested_before_pass(plan),
+        "candidates_tested_after_pass": _candidates_tested_after_pass(plan),
         "top_failed_candidate_reasons": _top_counter(failed_reasons),
     }
 
@@ -420,7 +438,7 @@ def _plan_has_ranker_scores(plan: PatchPlanResult) -> bool:
 
 def _failure_mode(plan: PatchPlanResult) -> str:
     if plan.selected is not None:
-        if plan.candidates_tested == 1:
+        if _first_passing_index(plan) == 1:
             return "pass_at_1"
         return "bad_ranking"
     if plan.candidates_generated == 0:
@@ -428,6 +446,43 @@ def _failure_mode(plan: PatchPlanResult) -> str:
     if plan.candidates_tested >= plan.candidates_generated:
         return "missing_action"
     return "search_budget_or_bad_ranking"
+
+
+def _first_passing_index(plan: PatchPlanResult) -> int | None:
+    if plan.first_passing_index is not None:
+        return plan.first_passing_index
+    if plan.selected is None:
+        return None
+    for index, candidate in enumerate(plan.tested_candidates, start=1):
+        if candidate == plan.selected:
+            return index
+    return plan.candidates_tested if plan.candidates_tested > 0 else None
+
+
+def _passing_candidates(plan: PatchPlanResult) -> tuple[CandidatePatch, ...]:
+    if plan.passing_candidates:
+        return plan.passing_candidates
+    if plan.selected is None:
+        return ()
+    return (plan.selected,)
+
+
+def _candidate_passed(candidate: CandidatePatch, plan: PatchPlanResult) -> bool:
+    return any(candidate == passing for passing in _passing_candidates(plan))
+
+
+def _candidates_tested_before_pass(plan: PatchPlanResult) -> int | None:
+    first_passing_index = _first_passing_index(plan)
+    if first_passing_index is None:
+        return None
+    return first_passing_index - 1
+
+
+def _candidates_tested_after_pass(plan: PatchPlanResult) -> int:
+    first_passing_index = _first_passing_index(plan)
+    if first_passing_index is None:
+        return 0
+    return max(0, plan.candidates_tested - first_passing_index)
 
 
 def _top_counter(counter: Counter[str], limit: int = 10) -> list[dict[str, object]]:

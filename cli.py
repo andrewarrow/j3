@@ -294,6 +294,15 @@ def build_parser() -> argparse.ArgumentParser:
         help="maximum candidate patches to test per task (default: 80)",
     )
     eval_parser.add_argument(
+        "--explore-after-pass",
+        type=int,
+        default=0,
+        help=(
+            "test this many additional candidates after the first pass "
+            "for diagnostics (default: 0)"
+        ),
+    )
+    eval_parser.add_argument(
         "--phase",
         choices=("ranked", "both", "baseline"),
         default="ranked",
@@ -521,6 +530,8 @@ def handle_eval(args: argparse.Namespace) -> int:
         progress(f"checkpoint: {args.checkpoint.expanduser().resolve()}")
         progress(f"timeout per test run: {args.timeout}s")
         progress(f"max candidates per phase: {args.max_candidates}")
+        if args.explore_after_pass:
+            progress(f"explore after pass: {args.explore_after_pass}")
         progress(f"phase: {args.phase}")
     summary = evaluate_tasks(
         tasks_path=args.tasks,
@@ -529,6 +540,7 @@ def handle_eval(args: argparse.Namespace) -> int:
         timeout_seconds=args.timeout,
         max_candidates=args.max_candidates,
         phase=args.phase,
+        explore_after_pass=args.explore_after_pass,
         progress=progress,
     )
     diagnostics_path = write_eval_diagnostics(summary, args.diagnostics) if args.diagnostics else None

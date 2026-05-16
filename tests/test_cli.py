@@ -167,6 +167,75 @@ def test_train_ranker_command_accepts_candidate_outcomes(capsys, tmp_path) -> No
     assert (out_dir / "candidate-ranker.json").exists()
 
 
+def test_train_ranker_command_accepts_validation_outcomes(capsys, tmp_path) -> None:
+    outcomes = tmp_path / "candidate-outcomes.jsonl"
+    validation = tmp_path / "validation-candidate-outcomes.jsonl"
+    rows = [
+        {
+            "task": "boundary",
+            "phase": "ranked",
+            "file_path": "bugs.py",
+            "action": "change_operator",
+            "symbol": "meets_minimum",
+            "start_line": 2,
+            "end_line": 2,
+            "params": {"from": ">", "to": "<"},
+            "reason": "try comparison operator <",
+            "model_score": 0.5,
+            "failure_hint_score": 50.0,
+            "ranker_score": None,
+            "passed": False,
+            "rank_index": 1,
+            "first_passing_index": 2,
+            "is_first_pass": False,
+        },
+        {
+            "task": "boundary",
+            "phase": "ranked",
+            "file_path": "bugs.py",
+            "action": "change_operator",
+            "symbol": "meets_minimum",
+            "start_line": 2,
+            "end_line": 2,
+            "params": {"from": ">", "to": ">="},
+            "reason": "try comparison operator >=",
+            "model_score": 0.5,
+            "failure_hint_score": 50.0,
+            "ranker_score": None,
+            "passed": True,
+            "rank_index": 2,
+            "first_passing_index": 2,
+            "is_first_pass": True,
+        },
+    ]
+    text = "\n".join(json.dumps(row) for row in rows) + "\n"
+    outcomes.write_text(text, encoding="utf-8")
+    validation.write_text(text, encoding="utf-8")
+    out_dir = tmp_path / "ranker"
+
+    assert (
+        main(
+            [
+                "train-ranker",
+                "--candidate-outcomes",
+                str(outcomes),
+                "--validation-candidate-outcomes",
+                str(validation),
+                "--out",
+                str(out_dir),
+            ]
+        )
+        == 0
+    )
+
+    output = capsys.readouterr().out
+    metrics = json.loads((out_dir / "candidate-ranker-metrics.json").read_text(encoding="utf-8"))
+    assert "validation candidate outcomes:" in output
+    assert f"  {validation.resolve()}" in output
+    assert "validation: plans=1 solved=1/1 pass@1=1/1 positive@1=1/1" in output
+    assert metrics["validation"]["pass_at_1"] == 1
+
+
 def test_compare_diagnostics_command_reports_rank_movement(capsys, tmp_path) -> None:
     old = tmp_path / "old-diagnostics.json"
     new = tmp_path / "new-diagnostics.json"

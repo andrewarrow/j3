@@ -24,6 +24,8 @@ class CandidateRankerTrainingResult:
     metrics_path: Path
     diagnostics_paths: list[Path]
     candidate_outcome_paths: list[Path]
+    validation_diagnostics_paths: list[Path]
+    validation_candidate_outcome_paths: list[Path]
     rows: int
     passing_rows: int
     failing_rows: int
@@ -35,5 +37,6 @@ class CandidateRankerTrainingResult:
     training_accuracy: float
     margin_violations: int
     calibration: dict[str, object]
+    validation: dict[str, object]
     per_action: dict[str, dict[str, object]]
     per_task_family: dict[str, dict[str, object]]

@@ -74,6 +74,9 @@ Recent completed work:
   labels for tasks that define them.
 - [x] GreenShot-5 task manifests carry task-family labels, and diagnostics,
   candidate outcome rows, and ranker metrics report per-task-family signal.
+- [x] `train-ranker` can score held-out diagnostics/outcome files after training
+  and reports validation pass@1, preferred-positive rank, calibration, and
+  per-family slices.
 - [x] GreenShot-5 includes a bounded multi-step task where the first repair
   changes the observed failure and exposes the second repair.
 - [x] GreenShot-5 includes an Apache-mined serialized payload task where the
@@ -316,7 +319,7 @@ Apache-mined action examples to prioritize:
 - [ ] Penalize over-memorized reason/action strings when they regress other task
   families.
 - [ ] Add feature ablation reporting.
-- [ ] Add cross-benchmark validation: train on GreenShot-5 subset, test on held
+- [x] Add cross-benchmark validation: train on GreenShot-5 subset, test on held
   out tasks.
 - [ ] Add a baseline ranker that uses only hints and model scores.
 - [ ] Add a learned ranker that uses AST delta/context features.

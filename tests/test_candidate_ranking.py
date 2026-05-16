@@ -154,6 +154,77 @@ def test_train_candidate_ranker_from_candidate_outcomes_jsonl(tmp_path) -> None:
     assert result.calibration["rows"] == 3
 
 
+def test_train_candidate_ranker_reports_held_out_validation_metrics(tmp_path) -> None:
+    train_outcomes = tmp_path / "train-candidate-outcomes.jsonl"
+    validation_outcomes = tmp_path / "validation-candidate-outcomes.jsonl"
+    train_rows = [
+        {
+            "task": "train_boundary",
+            "task_family": "operator_boundary",
+            "phase": "ranked",
+            **_candidate_record(to="<", passed=False),
+            "rank_index": 1,
+            "first_passing_index": 2,
+            "is_first_pass": False,
+        },
+        {
+            "task": "train_boundary",
+            "task_family": "operator_boundary",
+            "phase": "ranked",
+            **_candidate_record(to=">=", passed=True),
+            "rank_index": 2,
+            "first_passing_index": 2,
+            "is_first_pass": True,
+        },
+    ]
+    validation_rows = [
+        {
+            "task": "held_out_boundary",
+            "task_family": "operator_boundary",
+            "phase": "ranked",
+            **_candidate_record(to="<", passed=False),
+            "rank_index": 1,
+            "first_passing_index": 2,
+            "is_first_pass": False,
+        },
+        {
+            "task": "held_out_boundary",
+            "task_family": "operator_boundary",
+            "phase": "ranked",
+            **_candidate_record(to=">=", passed=True),
+            "rank_index": 2,
+            "first_passing_index": 2,
+            "is_first_pass": True,
+        },
+    ]
+    train_outcomes.write_text(
+        "\n".join(json.dumps(row) for row in train_rows) + "\n",
+        encoding="utf-8",
+    )
+    validation_outcomes.write_text(
+        "\n".join(json.dumps(row) for row in validation_rows) + "\n",
+        encoding="utf-8",
+    )
+
+    result = train_candidate_ranker(
+        candidate_outcome_paths=[train_outcomes],
+        validation_candidate_outcome_paths=[validation_outcomes],
+        out_dir=tmp_path / "run",
+    )
+
+    assert result.validation["plans"] == 1
+    assert result.validation["rows"] == 2
+    assert result.validation["solved"] == 1
+    assert result.validation["pass_at_1"] == 1
+    assert result.validation["positive_at_1"] == 1
+    assert result.validation["avg_first_passing_index"] == 1.0
+    assert result.validation["per_task_family"]["operator_boundary"]["pass_at_1"] == 1
+
+    metrics = json.loads(result.metrics_path.read_text(encoding="utf-8"))
+    assert metrics["validation"]["calibration"]["rows"] == 2
+    assert metrics["validation_candidate_outcome_sources"] == [str(validation_outcomes.resolve())]
+
+
 def test_train_candidate_ranker_prefers_marked_passing_outcome(tmp_path) -> None:
     outcomes = tmp_path / "candidate-outcomes.jsonl"
     rows = [

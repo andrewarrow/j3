@@ -190,6 +190,8 @@ def handle_train_ranker(args: argparse.Namespace) -> int:
     result = train_candidate_ranker(
         diagnostics_paths=args.diagnostics,
         candidate_outcome_paths=args.candidate_outcomes,
+        validation_diagnostics_paths=args.validation_diagnostics,
+        validation_candidate_outcome_paths=args.validation_candidate_outcomes,
         out_dir=args.out,
         epochs=args.epochs,
         learning_rate=args.learning_rate,
@@ -202,6 +204,14 @@ def handle_train_ranker(args: argparse.Namespace) -> int:
     if result.candidate_outcome_paths:
         print("candidate outcomes:")
         for path in result.candidate_outcome_paths:
+            print(f"  {path}")
+    if result.validation_diagnostics_paths:
+        print("validation diagnostics:")
+        for path in result.validation_diagnostics_paths:
+            print(f"  {path}")
+    if result.validation_candidate_outcome_paths:
+        print("validation candidate outcomes:")
+        for path in result.validation_candidate_outcome_paths:
             print(f"  {path}")
     print(f"out: {result.out_dir}")
     print(f"rows: {result.rows}")
@@ -220,6 +230,23 @@ def handle_train_ranker(args: argparse.Namespace) -> int:
         print(f"calibration brier: {brier_score:.3f}")
     if isinstance(calibration_error, float):
         print(f"calibration ece: {calibration_error:.3f}")
+    validation = result.validation
+    if validation.get("plans"):
+        print(
+            "validation: "
+            f"plans={validation['plans']} "
+            f"solved={validation['solved']}/{validation['plans']} "
+            f"pass@1={validation['pass_at_1']}/{validation['plans']} "
+            f"positive@1={validation['positive_at_1']}/{validation['plans']}"
+        )
+        validation_calibration = validation.get("calibration")
+        if isinstance(validation_calibration, dict):
+            validation_brier = validation_calibration.get("brier_score")
+            validation_ece = validation_calibration.get("expected_calibration_error")
+            if isinstance(validation_brier, float):
+                print(f"validation calibration brier: {validation_brier:.3f}")
+            if isinstance(validation_ece, float):
+                print(f"validation calibration ece: {validation_ece:.3f}")
     print(f"ranker: {result.ranker_path}")
     print(f"metrics: {result.metrics_path}")
     return 0

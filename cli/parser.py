@@ -253,6 +253,20 @@ def build_parser() -> argparse.ArgumentParser:
         help="one or more candidate outcome JSONL files from j3 eval",
     )
     ranker_parser.add_argument(
+        "--validation-diagnostics",
+        type=Path,
+        nargs="+",
+        default=[],
+        help="held-out diagnostics JSON files to score after training",
+    )
+    ranker_parser.add_argument(
+        "--validation-candidate-outcomes",
+        type=Path,
+        nargs="+",
+        default=[],
+        help="held-out candidate outcome JSONL files to score after training",
+    )
+    ranker_parser.add_argument(
         "--out",
         type=Path,
         default=Path("runs/candidate-ranker"),

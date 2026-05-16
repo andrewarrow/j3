@@ -36,6 +36,7 @@ j3 = "cli:main"
 
 [tool.setuptools]
 py-modules = ["actions", "candidate_ranking", "cli", "evaluation", "failure_hints", "features", "fixing", "mining", "patching", "repo", "synth", "training"]
+packages = ["repair", "repair.patching"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

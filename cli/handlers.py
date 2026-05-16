@@ -214,6 +214,12 @@ def handle_train_ranker(args: argparse.Namespace) -> int:
     print(f"mistakes: {result.mistakes}")
     print(f"training accuracy: {result.training_accuracy:.3f}")
     print(f"margin violations: {result.margin_violations}")
+    brier_score = result.calibration.get("brier_score")
+    calibration_error = result.calibration.get("expected_calibration_error")
+    if isinstance(brier_score, float):
+        print(f"calibration brier: {brier_score:.3f}")
+    if isinstance(calibration_error, float):
+        print(f"calibration ece: {calibration_error:.3f}")
     print(f"ranker: {result.ranker_path}")
     print(f"metrics: {result.metrics_path}")
     return 0

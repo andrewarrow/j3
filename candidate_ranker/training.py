@@ -11,11 +11,14 @@ from .constants import RANKER_FEATURE_VERSION, RANKER_FORMAT
 from .metrics import (
     _RankerMetricsAccumulator,
     _accumulate_ranker_metrics,
+    _ranker_calibration_record,
     _ranker_metrics_records,
 )
 from .model import score_features
 from .outcomes import (
+    _candidate_record_features,
     _outcome_task_family,
+    _record_hints,
     _training_pairs_from_outcome_rows,
     _training_pairs_from_plan,
 )
@@ -52,6 +55,7 @@ def train_candidate_ranker(
     task_names: set[str] = set()
     action_metrics: dict[str, _RankerMetricsAccumulator] = {}
     family_metrics: dict[str, _RankerMetricsAccumulator] = {}
+    calibration_rows: list[tuple[dict[str, float], bool]] = []
     rows = 0
     passing_rows = 0
 
@@ -61,6 +65,7 @@ def train_candidate_ranker(
             plan_name=plan_name,
             action_metrics=action_metrics,
             family_metrics=family_metrics,
+            calibration_rows=calibration_rows,
         )
         pairs.extend(path_pairs)
         plans += path_plans
@@ -74,6 +79,7 @@ def train_candidate_ranker(
             plan_name=plan_name,
             action_metrics=action_metrics,
             family_metrics=family_metrics,
+            calibration_rows=calibration_rows,
         )
         pairs.extend(path_pairs)
         plans += path_plans
@@ -113,6 +119,7 @@ def train_candidate_ranker(
     }
     per_action = _ranker_metrics_records(action_metrics)
     per_task_family = _ranker_metrics_records(family_metrics)
+    calibration = _ranker_calibration_record(calibration_rows, weights)
     metrics = {
         "diagnostics_sources": [str(path) for path in resolved_paths],
         "candidate_outcome_sources": [str(path) for path in resolved_outcome_paths],
@@ -127,6 +134,7 @@ def train_candidate_ranker(
         "mistakes": mistakes,
         "training_accuracy": training_accuracy,
         "margin_violations": margin_violations,
+        "calibration": calibration,
         "per_action": per_action,
         "per_task_family": per_task_family,
         "artifacts": {
@@ -152,6 +160,7 @@ def train_candidate_ranker(
         mistakes=mistakes,
         training_accuracy=training_accuracy,
         margin_violations=margin_violations,
+        calibration=calibration,
         per_action=per_action,
         per_task_family=per_task_family,
     )
@@ -163,6 +172,7 @@ def _read_diagnostics_path(
     plan_name: str,
     action_metrics: dict[str, _RankerMetricsAccumulator],
     family_metrics: dict[str, _RankerMetricsAccumulator],
+    calibration_rows: list[tuple[dict[str, float], bool]],
 ) -> tuple[list[tuple[dict[str, float], dict[str, float]]], int, int, int, set[str]]:
     payload = json.loads(path.read_text(encoding="utf-8"))
     pairs: list[tuple[dict[str, float], dict[str, float]]] = []
@@ -183,6 +193,11 @@ def _read_diagnostics_path(
         plan_pairs = _training_pairs_from_plan(plan)
         tested = plan.get("tested_candidates")
         if isinstance(tested, list):
+            _append_plan_calibration_rows(
+                plan=plan,
+                candidates=[candidate for candidate in tested if isinstance(candidate, dict)],
+                calibration_rows=calibration_rows,
+            )
             _accumulate_ranker_metrics(
                 action_metrics=action_metrics,
                 family_metrics=family_metrics,
@@ -207,6 +222,7 @@ def _read_candidate_outcome_path(
     plan_name: str,
     action_metrics: dict[str, _RankerMetricsAccumulator],
     family_metrics: dict[str, _RankerMetricsAccumulator],
+    calibration_rows: list[tuple[dict[str, float], bool]],
 ) -> tuple[list[tuple[dict[str, float], dict[str, float]]], int, int, int, set[str]]:
     grouped_rows: dict[tuple[str, str], list[dict[str, object]]] = {}
     rows = 0
@@ -233,6 +249,7 @@ def _read_candidate_outcome_path(
     for (_task, phase), task_rows in grouped_rows.items():
         if phase != plan_name:
             continue
+        _append_outcome_calibration_rows(task_rows, calibration_rows)
         plan_pairs = _training_pairs_from_outcome_rows(task_rows)
         _accumulate_ranker_metrics(
             action_metrics=action_metrics,
@@ -246,6 +263,35 @@ def _read_candidate_outcome_path(
             pairs.extend(plan_pairs)
 
     return pairs, plans, rows, passing_rows, task_names
+
+
+def _append_plan_calibration_rows(
+    *,
+    plan: dict[str, object],
+    candidates: list[dict[str, object]],
+    calibration_rows: list[tuple[dict[str, float], bool]],
+) -> None:
+    plan_hints = plan.get("failure_hints", [])
+    for candidate in candidates:
+        calibration_rows.append(
+            (
+                _candidate_record_features(candidate, _record_hints(candidate, plan_hints)),
+                candidate.get("passed") is True,
+            )
+        )
+
+
+def _append_outcome_calibration_rows(
+    rows: list[dict[str, object]],
+    calibration_rows: list[tuple[dict[str, float], bool]],
+) -> None:
+    for row in rows:
+        calibration_rows.append(
+            (
+                _candidate_record_features(row, _record_hints(row, [])),
+                row.get("passed") is True,
+            )
+        )
 
 
 def _fit_pairwise_weights(

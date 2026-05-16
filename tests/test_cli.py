@@ -91,6 +91,8 @@ def test_train_ranker_command_prints_artifact_summary(capsys, tmp_path) -> None:
     assert "training pairs: 1" in output
     assert "training accuracy: 1.000" in output
     assert "margin violations: 0" in output
+    assert "calibration brier:" in output
+    assert "calibration ece:" in output
     assert f"ranker: {out_dir.resolve() / 'candidate-ranker.json'}" in output
     assert (out_dir / "candidate-ranker.json").exists()
     assert (out_dir / "candidate-ranker-metrics.json").exists()

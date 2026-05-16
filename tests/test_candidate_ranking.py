@@ -146,6 +146,12 @@ def test_train_candidate_ranker_from_candidate_outcomes_jsonl(tmp_path) -> None:
     metrics = json.loads(result.metrics_path.read_text(encoding="utf-8"))
     assert metrics["per_action"]["change_operator"]["training_pairs"] == 2
     assert metrics["per_task_family"]["operator_boundary"]["passing_rows"] == 1
+    assert metrics["calibration"]["rows"] == 3
+    assert metrics["calibration"]["passing_rows"] == 1
+    assert metrics["calibration"]["brier_score"] is not None
+    assert metrics["calibration"]["expected_calibration_error"] is not None
+    assert sum(bucket["rows"] for bucket in metrics["calibration"]["buckets"]) == 3
+    assert result.calibration["rows"] == 3
 
 
 def test_train_candidate_ranker_prefers_marked_passing_outcome(tmp_path) -> None:

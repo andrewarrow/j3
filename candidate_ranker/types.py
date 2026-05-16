@@ -34,5 +34,6 @@ class CandidateRankerTrainingResult:
     mistakes: int
     training_accuracy: float
     margin_violations: int
+    calibration: dict[str, object]
     per_action: dict[str, dict[str, object]]
     per_task_family: dict[str, dict[str, object]]

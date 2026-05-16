@@ -294,10 +294,10 @@ Apache-mined action examples to prioritize:
   eval when trained from in-sample candidate outcomes.
 - [x] Train ranker from candidate outcome JSONL.
 - [x] Add per-action and per-task-family ranker metrics.
+- [x] Add calibration reporting, not just pairwise accuracy.
 - [ ] Penalize over-memorized reason/action strings when they regress other task
   families.
 - [ ] Add feature ablation reporting.
-- [ ] Add calibration reporting, not just pairwise accuracy.
 - [ ] Add cross-benchmark validation: train on GreenShot-5 subset, test on held
   out tasks.
 - [ ] Add a baseline ranker that uses only hints and model scores.

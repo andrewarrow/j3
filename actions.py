@@ -23,6 +23,7 @@ class PatchActionKind(str, Enum):
     INSERT_GUARD = "insert_guard"
     CHANGE_LITERAL = "change_literal"
     CHANGE_OPERATOR = "change_operator"
+    CHANGE_SUBSCRIPT_KEY = "change_subscript_key"
     SWAP_CALL_ARG = "swap_call_arg"
     ADD_IMPORT = "add_import"
     CHANGE_ATTRIBUTE = "change_attribute"

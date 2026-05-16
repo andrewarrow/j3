@@ -383,14 +383,20 @@ def rank_with_candidate_ranker(
 def generate_candidate_patches(repo: Path) -> list[CandidatePatch]:
     """Generate structured candidate edits for source files in a repo."""
 
-    candidates: list[CandidatePatch] = []
+    parsed_sources = []
+    repo_string_literals: set[str] = set()
     for source in iter_python_sources(repo):
-        path = Path(source.relative_path)
-        if "tests" in path.parts or path.name.startswith("test_"):
-            continue
         try:
             tree = ast.parse(source.text)
         except SyntaxError:
+            continue
+        parsed_sources.append((source, tree))
+        repo_string_literals.update(_string_literals(tree))
+
+    candidates: list[CandidatePatch] = []
+    for source, tree in parsed_sources:
+        path = Path(source.relative_path)
+        if "tests" in path.parts or path.name.startswith("test_"):
             continue
 
         class_fields = _class_fields(tree)
@@ -410,6 +416,16 @@ def generate_candidate_patches(repo: Path) -> list[CandidatePatch]:
                     candidates.extend(_wrap_try_except_candidates(source.relative_path, source.text, function, node))
                 elif isinstance(node, ast.Compare):
                     candidates.extend(_compare_candidates(source.relative_path, source.text, function, node))
+                elif isinstance(node, ast.Subscript):
+                    candidates.extend(
+                        _subscript_key_candidates(
+                            source.relative_path,
+                            source.text,
+                            function,
+                            node,
+                            repo_string_literals,
+                        )
+                    )
                 elif isinstance(node, ast.Constant):
                     candidates.extend(_literal_candidates(source.relative_path, source.text, function, node))
                 elif isinstance(node, ast.If):
@@ -710,6 +726,46 @@ def _last_item_candidate(
         reason="replace first item access with last item access",
         symbol=function.name,
     )
+
+
+def _subscript_key_candidates(
+    file_path: str,
+    source: str,
+    function: ast.FunctionDef,
+    node: ast.Subscript,
+    repo_string_literals: set[str],
+) -> list[CandidatePatch]:
+    if not isinstance(node.slice, ast.Constant) or not isinstance(node.slice.value, str):
+        return []
+
+    original = node.slice.value
+    alternatives = _subscript_key_alternatives(original, repo_string_literals)
+    candidates: list[CandidatePatch] = []
+    for replacement in alternatives:
+        edit = _node_edit(node.slice, repr(replacement))
+        patched = apply_edit(source, edit)
+        action = PatchAction(
+            kind=PatchActionKind.CHANGE_SUBSCRIPT_KEY,
+            target=PatchTarget(
+                file_path=file_path,
+                start_line=node.lineno,
+                end_line=node.end_lineno,
+                symbol=function.name,
+                node_kind="Subscript",
+            ),
+            params={"from": original, "to": replacement},
+        )
+        candidates.append(
+            CandidatePatch(
+                file_path=file_path,
+                action=action,
+                edit=edit,
+                original_source=source,
+                patched_source=patched,
+                reason=f"try subscript key {replacement!r}",
+            )
+        )
+    return candidates
 
 
 def _literal_candidates(
@@ -1191,6 +1247,16 @@ def _score_against_hint(candidate: CandidatePatch, hint: PytestFailureHint) -> f
         if original in hint.missing_attributes:
             score += 50.0
 
+    if candidate.action.kind == PatchActionKind.CHANGE_SUBSCRIPT_KEY:
+        original = str(candidate.action.params.get("from", ""))
+        replacement = str(candidate.action.params.get("to", ""))
+        if original in hint.missing_keys:
+            score += 60.0
+        if any(key in replacement for key in hint.missing_keys):
+            score += 10.0
+        if hint.assertions:
+            score += 10.0
+
     if candidate.action.kind == PatchActionKind.WRAP_TRY_EXCEPT:
         exception = str(candidate.action.params.get("exception", ""))
         if exception and exception == hint.exception_type:
@@ -1295,6 +1361,39 @@ def _nearby_literals(value: int | float) -> list[int | float]:
     if isinstance(value, int):
         return [value - 2, value - 1, value + 1, value + 2]
     return [round(value - 0.1, 10), round(value + 0.1, 10)]
+
+
+def _string_literals(tree: ast.AST) -> set[str]:
+    values: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Constant) and isinstance(node.value, str) and _looks_like_key_literal(node.value):
+            values.add(node.value)
+    return values
+
+
+def _looks_like_key_literal(value: str) -> bool:
+    return 0 < len(value) <= 80 and any(character.isalnum() for character in value)
+
+
+def _subscript_key_alternatives(original: str, repo_string_literals: set[str]) -> list[str]:
+    alternatives = [
+        value
+        for value in repo_string_literals
+        if value != original and _keys_look_related(original, value)
+    ]
+    return sorted(alternatives, key=lambda value: (-_key_similarity(original, value), value))[:5]
+
+
+def _keys_look_related(original: str, candidate: str) -> bool:
+    normalized_original = original.casefold()
+    normalized_candidate = candidate.casefold()
+    if normalized_original in normalized_candidate or normalized_candidate in normalized_original:
+        return True
+    return _key_similarity(original, candidate) >= 0.62
+
+
+def _key_similarity(left: str, right: str) -> float:
+    return difflib.SequenceMatcher(None, left.casefold(), right.casefold()).ratio()
 
 
 def _call_exception(node: ast.Call) -> str | None:

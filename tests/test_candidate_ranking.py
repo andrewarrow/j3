@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 
 from actions import PatchAction, PatchActionKind, PatchTarget
-from candidate_ranking import CandidateRankerModel, train_candidate_ranker
+from candidate_ranking import CandidateRankerModel, candidate_features, train_candidate_ranker
 from failure_hints import PytestFailureHint
 from patching import CandidatePatch, prioritize_candidate_patches, rank_with_candidate_ranker
 from synth import SourceEdit
@@ -56,6 +56,41 @@ def test_train_candidate_ranker_from_diagnostics_and_rerank(tmp_path) -> None:
     assert ranked[0].ranker_score is not None
 
 
+def test_train_candidate_ranker_uses_post_pass_exploration_failures(tmp_path) -> None:
+    diagnostics = tmp_path / "diagnostics.json"
+    diagnostics.write_text(
+        json.dumps(
+            {
+                "tasks": [
+                    {
+                        "name": "dict_key",
+                        "ranked": {
+                            "selected": {"passed": True},
+                            "failure_hints": [{"missing_keys": ["name"]}],
+                            "tested_candidates": [
+                                _subscript_key_candidate_record(passed=True),
+                                _candidate_record(to="<", passed=False),
+                            ],
+                        },
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = train_candidate_ranker(diagnostics_paths=[diagnostics], out_dir=tmp_path / "run")
+    ranker = CandidateRankerModel.load(result.ranker_path)
+    ranked = rank_with_candidate_ranker(
+        [_candidate(to="<", failure_hint_score=0.0), _subscript_key_candidate()],
+        ranker,
+        hints=[PytestFailureHint(missing_keys={"name"})],
+    )
+
+    assert result.training_pairs == 1
+    assert ranked[0].action.kind == PatchActionKind.CHANGE_SUBSCRIPT_KEY
+
+
 def test_ranker_overrides_higher_failure_hint_score(tmp_path) -> None:
     ranker = CandidateRankerModel(
         path=tmp_path / "ranker.json",
@@ -89,6 +124,18 @@ def test_hint_first_ordering_is_preserved_without_ranker() -> None:
     assert ranked[0].failure_hint_score > ranked[1].failure_hint_score
 
 
+def test_candidate_features_include_missing_key_hint_matches() -> None:
+    candidate = _subscript_key_candidate()
+
+    features = candidate_features(candidate, hints=[PytestFailureHint(missing_keys={"name"})])
+
+    assert features["hint_has_missing_key"] == 1.0
+    assert features["hint_missing_key:name"] == 1.0
+    assert features["hint_missing_key_matches_from"] == 1.0
+    assert features["hint_missing_key_in_to"] == 1.0
+    assert features["action_hint_missing_key_matches_from:change_subscript_key"] == 1.0
+
+
 def _candidate_record(*, to: str, passed: bool) -> dict[str, object]:
     return {
         "file_path": "bugs.py",
@@ -100,6 +147,23 @@ def _candidate_record(*, to: str, passed: bool) -> dict[str, object]:
         "reason": f"try comparison operator {to}",
         "model_score": 0.5,
         "failure_hint_score": 50.0,
+        "ranker_score": None,
+        "passed": passed,
+    }
+
+
+def _subscript_key_candidate_record(*, passed: bool) -> dict[str, object]:
+    return {
+        "file_path": "orders.py",
+        "action": "change_subscript_key",
+        "symbol": "customer_display_name",
+        "start_line": 2,
+        "end_line": 2,
+        "node_kind": "Subscript",
+        "params": {"from": "name", "to": "customer_name"},
+        "reason": "try subscript key 'customer_name'",
+        "model_score": 0.0,
+        "failure_hint_score": 142.0,
         "ranker_score": None,
         "passed": passed,
     }
@@ -133,4 +197,29 @@ def _candidate(
         model_score=0.5,
         failure_hint_score=failure_hint_score,
         ranker_score=ranker_score,
+    )
+
+
+def _subscript_key_candidate() -> CandidatePatch:
+    source = "def customer_display_name(order):\n    return order['name'].title()\n"
+    patched = "def customer_display_name(order):\n    return order['customer_name'].title()\n"
+    return CandidatePatch(
+        file_path="orders.py",
+        action=PatchAction(
+            kind=PatchActionKind.CHANGE_SUBSCRIPT_KEY,
+            target=PatchTarget(
+                file_path="orders.py",
+                start_line=2,
+                end_line=2,
+                symbol="customer_display_name",
+                node_kind="Subscript",
+            ),
+            params={"from": "name", "to": "customer_name"},
+        ),
+        edit=SourceEdit(start_line=2, start_col=17, end_line=2, end_col=23, replacement="'customer_name'"),
+        original_source=source,
+        patched_source=patched,
+        reason="try subscript key 'customer_name'",
+        model_score=0.5,
+        failure_hint_score=122.0,
     )

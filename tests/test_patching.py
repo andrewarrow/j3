@@ -237,3 +237,48 @@ def test_generate_signature_and_call_site_propagation_candidates(tmp_path) -> No
         and "label(value='x')" in candidate.patched_source
         for candidate in candidates
     )
+
+
+def test_generate_subscript_key_candidate_from_repo_string_literals(tmp_path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "bug.py").write_text(
+        "def customer_display_name(order: dict[str, str]) -> str:\n"
+        "    return order['name'].title()\n",
+        encoding="utf-8",
+    )
+    tests = repo / "tests"
+    tests.mkdir()
+    (tests / "test_bug.py").write_text(
+        "from bug import customer_display_name\n\n"
+        "def test_customer_name() -> None:\n"
+        "    assert customer_display_name({'customer_name': 'ada'}) == 'Ada'\n",
+        encoding="utf-8",
+    )
+
+    candidates = generate_candidate_patches(repo)
+
+    assert any(
+        candidate.action.kind.value == "change_subscript_key"
+        and candidate.action.params == {"from": "name", "to": "customer_name"}
+        and "order['customer_name'].title()" in candidate.patched_source
+        for candidate in candidates
+    )
+
+
+def test_patch_uses_key_error_hints_to_prioritize_subscript_key_fix(tmp_path) -> None:
+    repo = tmp_path / "greenshot_5"
+    shutil.copytree("examples/greenshot_5", repo)
+
+    result = plan_and_maybe_apply_patch(
+        repo=repo,
+        test_command="python -m pytest tests/test_shop.py::test_order_customer_label_uses_customer_name_key",
+        dry_run=True,
+        timeout_seconds=10,
+    )
+
+    assert result.selected is not None
+    assert result.candidates_tested == 1
+    assert result.selected.action.kind.value == "change_subscript_key"
+    assert result.selected.action.params == {"from": "name", "to": "customer_name"}
+    assert result.selected.failure_hint_score > 0

@@ -210,8 +210,10 @@ def _training_pairs_from_plan(plan: dict[str, object]) -> list[tuple[dict[str, f
 
     positive_features = _candidate_record_features(positive, hints)
     pairs: list[tuple[dict[str, float], dict[str, float]]] = []
-    for candidate in tested[:positive_index]:
-        if isinstance(candidate, dict):
+    for index, candidate in enumerate(tested):
+        if index == positive_index:
+            continue
+        if isinstance(candidate, dict) and candidate.get("passed") is not True:
             pairs.append((positive_features, _candidate_record_features(candidate, hints)))
     return pairs
 
@@ -275,6 +277,21 @@ def _merge_hint_features(
     if candidate.file_path in getattr(hint, "source_files", set()):
         features["hint_file_match"] = 1.0
         features[f"action_hint_file_match:{action}"] = 1.0
+    missing_keys = getattr(hint, "missing_keys", set())
+    if missing_keys:
+        features["hint_has_missing_key"] = 1.0
+        for key in missing_keys:
+            features[f"hint_missing_key:{key}"] = 1.0
+            features[f"action_hint_missing_key:{action}:{key}"] = 1.0
+        params = dict(candidate.action.params)
+        original = params.get("from")
+        replacement = params.get("to")
+        if isinstance(original, str) and original in missing_keys:
+            features["hint_missing_key_matches_from"] = 1.0
+            features[f"action_hint_missing_key_matches_from:{action}"] = 1.0
+        if isinstance(replacement, str) and any(key in replacement for key in missing_keys):
+            features["hint_missing_key_in_to"] = 1.0
+            features[f"action_hint_missing_key_in_to:{action}"] = 1.0
 
 
 def _merge_hint_record_features(
@@ -300,6 +317,22 @@ def _merge_hint_record_features(
     if candidate.get("file_path") in set(hint.get("source_files", [])):
         features["hint_file_match"] = 1.0
         features[f"action_hint_file_match:{action}"] = 1.0
+    missing_keys = set(hint.get("missing_keys", []))
+    if missing_keys:
+        features["hint_has_missing_key"] = 1.0
+        for key in missing_keys:
+            features[f"hint_missing_key:{key}"] = 1.0
+            features[f"action_hint_missing_key:{action}:{key}"] = 1.0
+        params = candidate.get("params", {})
+        if isinstance(params, dict):
+            original = params.get("from")
+            replacement = params.get("to")
+            if isinstance(original, str) and original in missing_keys:
+                features["hint_missing_key_matches_from"] = 1.0
+                features[f"action_hint_missing_key_matches_from:{action}"] = 1.0
+            if isinstance(replacement, str) and any(key in replacement for key in missing_keys):
+                features["hint_missing_key_in_to"] = 1.0
+                features[f"action_hint_missing_key_in_to:{action}"] = 1.0
 
 
 def _update_weights(weights: dict[str, float], features: Mapping[str, float], scale: float) -> None:

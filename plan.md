@@ -55,6 +55,17 @@ Done:
   still diagnosed as a missing action.
 - Completed Immediate Change 9. Added `plan.md` as a short pointer to this live
   recovery plan without expanding the README.
+- Completed the GreenShot-5 wrong dictionary/subscript key loop. Added a
+  `change_subscript_key` structured action, generated replacement keys from repo
+  string literals, and used `KeyError`/traceback/assertion hints to prioritize
+  subscript-key repairs.
+- Updated candidate-ranker training to learn from post-pass exploration
+  failures, so pass-at-1 tasks can still contribute positive-vs-failed pairs.
+- Regenerated GreenShot-5 exploration diagnostics, candidate outcome JSONL, and
+  the diagnostics ranker after adding the subscript-key action.
+- GreenShot-5 full-budget ranked eval now solves 5/5; ranker pass@1 improved to
+  3/5, with the remaining max-candidate-1 misses classified as ranking
+  calibration rather than missing actions.
 
 Verified:
 
@@ -69,22 +80,22 @@ python cli.py eval --tasks examples/greenshot_5 --checkpoint runs/mit-python-git
 python cli.py train-ranker --diagnostics runs/mit-python-git/greenshot-5-explore-diagnostics.json --out runs/mit-python-git --epochs 12 --learning-rate 0.25
 python cli.py eval --tasks examples/greenshot_5 --checkpoint runs/mit-python-git/model.json --ranker runs/mit-python-git/candidate-ranker.json --timeout 10 --max-candidates 1 --phase ranked --diagnostics runs/mit-python-git/greenshot-5-ranker-smoke-diagnostics.json --quiet
 python cli.py eval --tasks examples/greenshot_5 --checkpoint runs/mit-python-git/model.json --ranker runs/mit-python-git/candidate-ranker.json --timeout 10 --max-candidates 80 --phase ranked --diagnostics runs/mit-python-git/greenshot-5-ranker-diagnostics.json --quiet
+pytest tests/test_candidate_ranking.py tests/test_patching.py -q
+python -m py_compile actions.py patching.py candidate_ranking.py tests/test_patching.py tests/test_candidate_ranking.py
+python cli.py eval --tasks examples/greenshot_5 --checkpoint runs/mit-python-git/model.json --timeout 10 --max-candidates 80 --phase ranked --diagnostics runs/mit-python-git/greenshot-5-subscript-smoke-diagnostics.json --quiet
 ```
 
-Observed GreenShot-5 ranked smoke with `--max-candidates 1` now reports 5 tasks
-and leaves `order_customer_name_dict_key_helper` failed, as expected for the
-new missing-action fixture.
+Observed GreenShot-5 ranked smoke with `--max-candidates 1` now reports 5
+tasks, solves 3/5 with the refreshed diagnostics ranker, and leaves the two
+remaining failures as ranking misses rather than missing actions.
 
 Next:
 
-- Close the current GreenShot-5 missing-action loop before adding another
-  benchmark task:
-  1. Add the smallest structured action for wrong dictionary/subscript keys.
-  2. Use `KeyError`, assertion, and traceback hints to prioritize that action.
-  3. Verify `order_customer_name_dict_key_helper` becomes solved.
-  4. Regenerate GreenShot-5 diagnostics and candidate outcomes.
-  5. Only then add the next ladder task: wrong default value or config constant
-     in a separate module.
+- Add the next GreenShot-5 ladder task: wrong default value or config constant
+  in a separate module.
+- Keep the task small enough to diagnose action generation vs. ranking clearly.
+- After adding it, close the loop the same way: generate the action, prioritize
+  it from structured observations, verify the task, and regenerate diagnostics.
 
 ## Current Diagnosis
 
@@ -102,15 +113,13 @@ The good parts:
 
 The current blockers:
 
-- `order_customer_name_dict_key_helper` is intentionally unsolved. It exposes a
-  missing action for wrong dictionary/subscript keys.
-- The refreshed GreenShot-5 ranker improved pass@1 from 1/5 to 2/5, but also
-  pushed import and attribute fixes deeper in the list. That is expected with
-  only a few training pairs, but it is not a good steady state.
-- `--candidate-outcomes` exports one row per tested candidate, but
-  `train-ranker` still trains from diagnostics and only learns from failed
-  candidates before the first passing candidate. Post-pass exploration data is
-  not yet used by the trainer.
+- The refreshed GreenShot-5 ranker solves 5/5 with full budget and improves
+  pass@1 to 3/5, but the remaining misses show that exact action/reason
+  memorization can still outrank stronger task-specific hints.
+- `--candidate-outcomes` exports one row per tested candidate, while
+  `train-ranker` still reads diagnostics. The trainer now uses post-pass
+  exploration failures from diagnostics, but it does not yet consume the JSONL
+  outcome stream directly.
 - GreenShot-5 is still too small for neural work. It should keep growing, but
   only after each new missing-action fixture has been closed or clearly
   classified.

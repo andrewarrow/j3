@@ -1,0 +1,137 @@
+[
+  {
+    "name": "discount_remaining_price",
+    "repo": ".",
+    "test": "python -m pytest tests/test_bugs.py::test_discount_returns_remaining_price"
+  },
+  {
+    "name": "sale_total_remaining_price",
+    "repo": ".",
+    "test": "python -m pytest tests/test_bugs.py::test_sale_total_returns_remaining_price"
+  },
+  {
+    "name": "net_after_fee_subtracts_fee",
+    "repo": ".",
+    "test": "python -m pytest tests/test_bugs.py::test_net_after_fee_subtracts_fee"
+  },
+  {
+    "name": "includes_threshold_boundary",
+    "repo": ".",
+    "test": "python -m pytest tests/test_bugs.py::test_includes_threshold_boundary"
+  },
+  {
+    "name": "meets_minimum_boundary",
+    "repo": ".",
+    "test": "python -m pytest tests/test_bugs.py::test_meets_minimum_boundary"
+  },
+  {
+    "name": "below_limit_excludes_boundary",
+    "repo": ".",
+    "test": "python -m pytest tests/test_bugs.py::test_below_limit_excludes_boundary"
+  },
+  {
+    "name": "shipping_total_literal",
+    "repo": ".",
+    "test": "python -m pytest tests/test_bugs.py::test_shipping_total_uses_expected_fee"
+  },
+  {
+    "name": "retry_limit_literal",
+    "repo": ".",
+    "test": "python -m pytest tests/test_bugs.py::test_retry_limit_uses_expected_count"
+  },
+  {
+    "name": "bonus_points_literal",
+    "repo": ".",
+    "test": "python -m pytest tests/test_bugs.py::test_bonus_points_uses_expected_increment"
+  },
+  {
+    "name": "last_order_id_tail",
+    "repo": ".",
+    "test": "python -m pytest tests/test_bugs.py::test_last_order_id_returns_tail"
+  },
+  {
+    "name": "newest_event_tail",
+    "repo": ".",
+    "test": "python -m pytest tests/test_bugs.py::test_newest_event_returns_tail"
+  },
+  {
+    "name": "final_score_tail",
+    "repo": ".",
+    "test": "python -m pytest tests/test_bugs.py::test_final_score_returns_tail"
+  },
+  {
+    "name": "mean_score_empty_guard",
+    "repo": ".",
+    "test": "python -m pytest tests/test_bugs.py::test_mean_score_empty_returns_zero"
+  },
+  {
+    "name": "average_age_empty_guard",
+    "repo": ".",
+    "test": "python -m pytest tests/test_bugs.py::test_average_age_empty_returns_zero"
+  },
+  {
+    "name": "error_rate_empty_guard",
+    "repo": ".",
+    "test": "python -m pytest tests/test_bugs.py::test_error_rate_empty_returns_zero"
+  },
+  {
+    "name": "display_name_swap_args",
+    "repo": ".",
+    "test": "python -m pytest tests/test_bugs.py::test_display_name_keeps_first_then_last"
+  },
+  {
+    "name": "product_slug_swap_args",
+    "repo": ".",
+    "test": "python -m pytest tests/test_bugs.py::test_product_slug_keeps_category_then_name"
+  },
+  {
+    "name": "display_range_swap_args",
+    "repo": ".",
+    "test": "python -m pytest tests/test_bugs.py::test_display_range_keeps_start_then_end"
+  },
+  {
+    "name": "file_extension_missing_import",
+    "repo": ".",
+    "test": "python -m pytest tests/test_bugs.py::test_file_extension_uses_pathlib"
+  },
+  {
+    "name": "count_statuses_missing_import",
+    "repo": ".",
+    "test": "python -m pytest tests/test_bugs.py::test_count_statuses_uses_counter"
+  },
+  {
+    "name": "group_values_missing_import",
+    "repo": ".",
+    "test": "python -m pytest tests/test_bugs.py::test_group_values_uses_defaultdict"
+  },
+  {
+    "name": "account_balance_attribute",
+    "repo": ".",
+    "test": "python -m pytest tests/test_bugs.py::test_account_balance_uses_existing_attribute"
+  },
+  {
+    "name": "shipping_weight_attribute",
+    "repo": ".",
+    "test": "python -m pytest tests/test_bugs.py::test_shipping_weight_uses_existing_attribute"
+  },
+  {
+    "name": "feature_enabled_attribute",
+    "repo": ".",
+    "test": "python -m pytest tests/test_bugs.py::test_feature_enabled_uses_existing_attribute"
+  },
+  {
+    "name": "parse_count_try_except",
+    "repo": ".",
+    "test": "python -m pytest tests/test_bugs.py::test_parse_count_returns_zero_for_invalid_input"
+  },
+  {
+    "name": "parse_ratio_try_except",
+    "repo": ".",
+    "test": "python -m pytest tests/test_bugs.py::test_parse_ratio_returns_zero_for_invalid_input"
+  },
+  {
+    "name": "parse_port_try_except",
+    "repo": ".",
+    "test": "python -m pytest tests/test_bugs.py::test_parse_port_returns_zero_for_invalid_input"
+  }
+]

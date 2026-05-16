@@ -15,6 +15,14 @@ def test_load_tasks_from_directory() -> None:
     assert tasks[0].name == "discount_return_expr"
 
 
+def test_load_greenshot_4_tasks() -> None:
+    tasks = load_tasks(Path("examples/greenshot_4"))
+
+    assert len(tasks) == 27
+    assert tasks[0].name == "discount_remaining_price"
+    assert tasks[-1].name == "parse_port_try_except"
+
+
 def test_evaluate_greenshot_bugs(tmp_path) -> None:
     training = train_from_path(
         data_path=Path("examples/greenshot_bugs"),

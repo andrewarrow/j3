@@ -151,6 +151,9 @@ runs/greenshot-1/
 This gives the next step something concrete to consume: `patch` can load
 `model.json`, score candidate structured edits, and make the first patch attempt.
 
+For the larger MIT Python corpus and reproduction commands, see
+[TRAINING.md](TRAINING.md).
+
 ## Example Failing Repo
 
 `examples/greenshot_bug` is a tiny Python repo with one intentional bug and one

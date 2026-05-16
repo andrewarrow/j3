@@ -299,6 +299,7 @@ def _aggregate_plan_summaries(plans: Iterable[PatchPlanResult]) -> dict[str, obj
     action_stats: defaultdict[str, _ActionSummaryAccumulator] = defaultdict(_ActionSummaryAccumulator)
     failed_reasons: Counter[str] = Counter()
     failure_modes: Counter[str] = Counter()
+    ranker_paths = sorted({str(plan.ranker_path) for plan in plan_list if plan.ranker_path is not None})
 
     for plan in plan_list:
         action = plan.selected.action.kind.value if plan.selected else "unsolved"
@@ -319,6 +320,8 @@ def _aggregate_plan_summaries(plans: Iterable[PatchPlanResult]) -> dict[str, obj
 
     return {
         "tasks": len(plan_list),
+        "ranker_paths": ranker_paths,
+        "ranker_scores_present": any(_plan_has_ranker_scores(plan) for plan in plan_list),
         "per_action": {
             action: {
                 "tasks": stats.tasks,
@@ -341,8 +344,15 @@ def _single_plan_summary(plan: PatchPlanResult) -> dict[str, object]:
     )
     return {
         "failure_mode": _failure_mode(plan),
+        "ranker_path": str(plan.ranker_path) if plan.ranker_path is not None else None,
+        "ranker_scores_present": _plan_has_ranker_scores(plan),
+        "selected_ranker_score": plan.selected.ranker_score if plan.selected else None,
         "top_failed_candidate_reasons": _top_counter(failed_reasons),
     }
+
+
+def _plan_has_ranker_scores(plan: PatchPlanResult) -> bool:
+    return any(candidate.ranker_score is not None for candidate in plan.tested_candidates)
 
 
 def _failure_mode(plan: PatchPlanResult) -> str:

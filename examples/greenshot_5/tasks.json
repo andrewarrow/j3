@@ -1,0 +1,22 @@
+[
+  {
+    "name": "quote_total_helper_discount",
+    "repo": ".",
+    "test": "python -m pytest tests/test_shop.py::test_quote_total_applies_discount_in_helper"
+  },
+  {
+    "name": "uploaded_extension_module_import",
+    "repo": ".",
+    "test": "python -m pytest tests/test_shop.py::test_uploaded_extension_uses_pathlib_in_paths_module"
+  },
+  {
+    "name": "visible_balance_attribute_decoys",
+    "repo": ".",
+    "test": "python -m pytest tests/test_shop.py::test_visible_balance_uses_balance_cents"
+  },
+  {
+    "name": "profile_signature_propagation",
+    "repo": ".",
+    "test": "python -m pytest tests/test_shop.py::test_profile_label_accepts_username_keyword"
+  }
+]

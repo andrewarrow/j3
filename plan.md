@@ -213,48 +213,62 @@ Done:
    - margin violations
    - targeted verification: `pytest tests/test_candidate_ranking.py -q`
 - Added stdout eval progress logging with `--quiet` for silent runs.
+- Trained the ranker on refreshed GreenShot-4 diagnostics:
+   - plans: 1
+   - training pairs: 1
+   - training accuracy: 1.000
+   - margin violations: 0
+   - artifacts: `runs/mit-python-git/candidate-ranker.json` and
+     `runs/mit-python-git/candidate-ranker-metrics.json`
+- Added CLI regression coverage for `train-ranker` stdout fields.
+- Added ranker-aware diagnostics summary fields:
+   - ranker path(s)
+   - whether ranker scores are present
+   - selected candidate ranker score
+- Added GreenShot-5 as a multi-file package benchmark fixture:
+   - helper repair through a public API call chain
+   - module-local missing import
+   - attribute rename with nearby decoy fields
+   - signature propagation with a plausible call-site-only wrong fix
+- Added `load_tasks` coverage for `examples/greenshot_5`.
+- Ran a tight GreenShot-5 eval smoke with the mined corpus checkpoint:
+
+```text
+baseline:     solved=1/4 pass@1=0/4 avg_candidates=2.75
+model+hints:  solved=4/4 pass@1=1/4 avg_candidates=1.75
+```
+- Summarized GreenShot-5 smoke diagnostics:
+   - bad ranking: `quote_total_helper_discount`
+     - first failed: `swap_call_arg`
+     - passing second: `replace_expr`
+   - bad ranking: `visible_balance_attribute_decoys`
+     - first failed: `change_attribute` to `available_cents`
+     - passing second: `change_attribute` to `balance_cents`
+   - bad ranking: `profile_signature_propagation`
+     - first failed: call-site-only `rename_symbol`
+     - passing second: `propagate_signature`
+- Added diagnostics coverage for actual selected ranker score values.
+- Ran GreenShot-5 with the trained GreenShot-4 candidate ranker; results were
+  unchanged from model+hints, so the current ranker does not generalize to
+  these new ranking misses.
 
 Next 10 small tasks:
 
-1. Train the new ranker on current GreenShot-4 diagnostics and inspect
-   `candidate-ranker-metrics.json`.
-   Focused check: `pytest tests/test_candidate_ranking.py -q`.
+1. Add more GreenShot-5 tasks that are currently missing-action failures,
+   starting with wrong dictionary key/default value repairs.
+   Focused check: run the new pytest node directly.
 
-2. Add a tiny CLI regression test for `train-ranker` stdout fields:
-   training pairs, training accuracy, margin violations, ranker path.
-   Focused check: `pytest tests/test_cli.py -q`.
+2. Add parser hints for common dictionary/default-value assertion failures if
+   the new GreenShot-5 tasks expose weak hinting.
+   Focused check: `pytest tests/test_failure_hints.py -q`.
 
-3. Add ranker-aware diagnostics summary fields: ranker path, ranker score
-   presence, and selected candidate ranker score.
+3. Train a candidate ranker on GreenShot-5 smoke diagnostics and compare it
+   against the unranked GreenShot-5 smoke.
+   Focused check: `python cli.py train-ranker --diagnostics runs/mit-python-git/greenshot-5-smoke-diagnostics.json --out runs/greenshot-5-ranker`.
+
+4. Add a compact regression test for the GreenShot-5 manifest count and first
+   failure shape if future fixture edits change the benchmark unintentionally.
    Focused check: `pytest tests/test_evaluation.py -q`.
-
-4. Create `examples/greenshot_5` as a multi-file benchmark fixture with a
-   `tasks.json`, package code, and pytest tests.
-   Focused check: run one new GreenShot-5 pytest node directly.
-
-5. Add the first GreenShot-5 task: a repair through a call chain where the
-   failing assertion names a public API but the edit belongs in a helper.
-   Focused check: run that one new pytest node directly.
-
-6. Add a GreenShot-5 multi-file missing import task where the traceback points
-   to one module and the import belongs in that module.
-   Focused check: run that one new pytest node directly.
-
-7. Add a GreenShot-5 attribute rename task with repeated nearby attributes so
-   candidate ranking has plausible wrong choices.
-   Focused check: run that one new pytest node directly.
-
-8. Add a GreenShot-5 signature/call-site propagation task that spans two
-   functions and includes a plausible call-site-only wrong fix.
-   Focused check: run that one new pytest node directly.
-
-9. Add `tests/test_evaluation.py` coverage that `load_tasks` handles
-   `examples/greenshot_5`.
-   Focused check: `pytest tests/test_evaluation.py -q`.
-
-10. Run a small GreenShot-5 eval smoke with a tight candidate budget and record
-    baseline vs model-ranked numbers in this plan.
-    Focused check: `python3 cli.py eval --tasks examples/greenshot_5 --checkpoint runs/mit-python-git/model.json --timeout 10 --max-candidates 3`.
 
 ### Later Tasks
 

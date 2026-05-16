@@ -20,6 +20,12 @@ from synth import SourceEdit, apply_edit
 
 
 DEFAULT_PATCH_TIMEOUT_SECONDS = 30
+COMMON_IMPORTS = {
+    "Counter": "from collections import Counter",
+    "defaultdict": "from collections import defaultdict",
+    "datetime": "from datetime import datetime",
+    "Path": "from pathlib import Path",
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -263,18 +269,80 @@ def generate_candidate_patches(repo: Path) -> list[CandidatePatch]:
         except SyntaxError:
             continue
 
+        class_fields = _class_fields(tree)
+        candidates.extend(_add_import_candidates(source.relative_path, source.text, tree))
         for function in [node for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)]:
             arg_names = {arg.arg for arg in function.args.args}
+            arg_types = _function_arg_types(function)
             candidates.extend(_guard_candidates(source.relative_path, source.text, function, arg_names))
             for node in ast.walk(function):
                 if isinstance(node, ast.Return) and node.value is not None:
                     candidates.extend(
                         _return_candidates(source.relative_path, source.text, function, node, arg_names)
                     )
+                    candidates.extend(_wrap_try_except_candidates(source.relative_path, source.text, function, node))
                 elif isinstance(node, ast.Compare):
                     candidates.extend(_compare_candidates(source.relative_path, source.text, function, node))
                 elif isinstance(node, ast.Constant):
                     candidates.extend(_literal_candidates(source.relative_path, source.text, function, node))
+                elif isinstance(node, ast.Call):
+                    candidates.extend(_swap_call_arg_candidates(source.relative_path, source.text, function, node))
+                elif isinstance(node, ast.Attribute):
+                    candidates.extend(
+                        _attribute_candidates(
+                            source.relative_path,
+                            source.text,
+                            function,
+                            node,
+                            arg_types,
+                            class_fields,
+                        )
+                    )
+    return candidates
+
+
+def _add_import_candidates(file_path: str, source: str, tree: ast.Module) -> list[CandidatePatch]:
+    imported_names = _imported_names(tree)
+    defined_names = _defined_names(tree)
+    used_names = {
+        node.id
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load)
+    }
+    candidates: list[CandidatePatch] = []
+    for name, import_line in COMMON_IMPORTS.items():
+        if name in imported_names or name in defined_names or name not in used_names:
+            continue
+        insert_line = _import_insert_line(tree)
+        edit = SourceEdit(
+            start_line=insert_line,
+            start_col=0,
+            end_line=insert_line,
+            end_col=0,
+            replacement=f"{import_line}\n",
+        )
+        patched = apply_edit(source, edit)
+        action = PatchAction(
+            kind=PatchActionKind.ADD_IMPORT,
+            target=PatchTarget(
+                file_path=file_path,
+                start_line=insert_line,
+                end_line=insert_line,
+                symbol=name,
+                node_kind="Import",
+            ),
+            params={"name": name, "module": _import_module(import_line), "import": import_line},
+        )
+        candidates.append(
+            CandidatePatch(
+                file_path=file_path,
+                action=action,
+                edit=edit,
+                original_source=source,
+                patched_source=patched,
+                reason=f"add missing import for {name}",
+            )
+        )
     return candidates
 
 
@@ -373,6 +441,113 @@ def _return_candidates(
             candidates.append(subscript_candidate)
 
     return candidates
+
+
+def _wrap_try_except_candidates(
+    file_path: str,
+    source: str,
+    function: ast.FunctionDef,
+    node: ast.Return,
+) -> list[CandidatePatch]:
+    value = ast.get_source_segment(source, node.value) if node.value is not None else None
+    if value is None or not isinstance(node.value, ast.Call):
+        return []
+
+    exception = _call_exception(node.value)
+    if exception is None:
+        return []
+
+    inner_indent = " " * (node.col_offset + 4)
+    outer_indent = " " * node.col_offset
+    replacement = f"try:\n{inner_indent}return {value}\n{outer_indent}except {exception}:\n{inner_indent}return 0"
+    return [
+        _candidate(
+            file_path=file_path,
+            source=source,
+            node=node,
+            kind=PatchActionKind.WRAP_TRY_EXCEPT,
+            replacement=replacement,
+            reason=f"wrap return in {exception} handler",
+            params={"exception": exception, "return": 0},
+            symbol=function.name,
+        )
+    ]
+
+
+def _swap_call_arg_candidates(
+    file_path: str,
+    source: str,
+    function: ast.FunctionDef,
+    node: ast.Call,
+) -> list[CandidatePatch]:
+    if len(node.args) < 2:
+        return []
+    func = ast.get_source_segment(source, node.func)
+    args = [ast.get_source_segment(source, arg) for arg in node.args]
+    if not func or any(arg is None for arg in args):
+        return []
+
+    keyword_parts: list[str] = []
+    for keyword in node.keywords:
+        value = ast.get_source_segment(source, keyword.value)
+        if value is None:
+            return []
+        if keyword.arg is None:
+            keyword_parts.append(f"**{value}")
+        else:
+            keyword_parts.append(f"{keyword.arg}={value}")
+
+    candidates: list[CandidatePatch] = []
+    for left in range(len(args) - 1):
+        right = left + 1
+        swapped = list(args)
+        swapped[left], swapped[right] = swapped[right], swapped[left]
+        call_args = [arg for arg in swapped if arg is not None] + keyword_parts
+        candidates.append(
+            _candidate(
+                file_path=file_path,
+                source=source,
+                node=node,
+                kind=PatchActionKind.SWAP_CALL_ARG,
+                replacement=f"{func}({', '.join(call_args)})",
+                reason=f"swap call arguments {left} and {right}",
+                params={"left": left, "right": right},
+                symbol=function.name,
+            )
+        )
+    return candidates
+
+
+def _attribute_candidates(
+    file_path: str,
+    source: str,
+    function: ast.FunctionDef,
+    node: ast.Attribute,
+    arg_types: dict[str, str],
+    class_fields: dict[str, set[str]],
+) -> list[CandidatePatch]:
+    if not isinstance(node.value, ast.Name):
+        return []
+
+    class_name = arg_types.get(node.value.id)
+    if class_name is None:
+        return []
+
+    fields = class_fields.get(class_name, set())
+    alternatives = sorted(field for field in fields if field != node.attr)
+    return [
+        _candidate(
+            file_path=file_path,
+            source=source,
+            node=node,
+            kind=PatchActionKind.CHANGE_ATTRIBUTE,
+            replacement=f"{node.value.id}.{field}",
+            reason=f"try attribute {field}",
+            params={"from": node.attr, "to": field},
+            symbol=function.name,
+        )
+        for field in alternatives
+    ]
 
 
 def _last_item_candidate(
@@ -562,6 +737,25 @@ def _score_against_hint(candidate: CandidatePatch, hint: PytestFailureHint) -> f
     if hint.exception_type == "ZeroDivisionError" and candidate.action.kind == PatchActionKind.INSERT_GUARD:
         score += 20.0
 
+    if candidate.action.kind == PatchActionKind.ADD_IMPORT:
+        imported = str(candidate.action.params.get("name", ""))
+        module = str(candidate.action.params.get("module", ""))
+        if imported in hint.missing_names or module in hint.missing_modules:
+            score += 60.0
+
+    if candidate.action.kind == PatchActionKind.CHANGE_ATTRIBUTE:
+        original = str(candidate.action.params.get("from", ""))
+        if original in hint.missing_attributes:
+            score += 50.0
+
+    if candidate.action.kind == PatchActionKind.WRAP_TRY_EXCEPT:
+        exception = str(candidate.action.params.get("exception", ""))
+        if exception and exception == hint.exception_type:
+            score += 35.0
+
+    if candidate.action.kind == PatchActionKind.SWAP_CALL_ARG and hint.assertions:
+        score += 10.0
+
     if any(isinstance(assertion.expected, bool) for assertion in hint.assertions):
         if candidate.action.kind in {PatchActionKind.CHANGE_OPERATOR, PatchActionKind.MODIFY_CONDITION}:
             score += 10.0
@@ -650,6 +844,84 @@ def _nearby_literals(value: int | float) -> list[int | float]:
     if isinstance(value, int):
         return [value - 2, value - 1, value + 1, value + 2]
     return [round(value - 0.1, 10), round(value + 0.1, 10)]
+
+
+def _call_exception(node: ast.Call) -> str | None:
+    if isinstance(node.func, ast.Name) and node.func.id in {"int", "float"}:
+        return "ValueError"
+    return None
+
+
+def _function_arg_types(function: ast.FunctionDef) -> dict[str, str]:
+    arg_types: dict[str, str] = {}
+    for arg in function.args.args:
+        if isinstance(arg.annotation, ast.Name):
+            arg_types[arg.arg] = arg.annotation.id
+    return arg_types
+
+
+def _class_fields(tree: ast.Module) -> dict[str, set[str]]:
+    fields: dict[str, set[str]] = {}
+    for node in tree.body:
+        if not isinstance(node, ast.ClassDef):
+            continue
+        class_fields: set[str] = set()
+        for statement in node.body:
+            if isinstance(statement, ast.AnnAssign) and isinstance(statement.target, ast.Name):
+                class_fields.add(statement.target.id)
+            elif isinstance(statement, ast.Assign):
+                for target in statement.targets:
+                    if isinstance(target, ast.Name):
+                        class_fields.add(target.id)
+        fields[node.name] = class_fields
+    return fields
+
+
+def _imported_names(tree: ast.Module) -> set[str]:
+    names: set[str] = set()
+    for node in tree.body:
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                names.add(alias.asname or alias.name.split(".", maxsplit=1)[0])
+        elif isinstance(node, ast.ImportFrom):
+            for alias in node.names:
+                names.add(alias.asname or alias.name)
+    return names
+
+
+def _defined_names(tree: ast.Module) -> set[str]:
+    names: set[str] = set()
+    for node in tree.body:
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            names.add(node.name)
+        elif isinstance(node, ast.Assign):
+            for target in node.targets:
+                if isinstance(target, ast.Name):
+                    names.add(target.id)
+        elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+            names.add(node.target.id)
+    return names
+
+
+def _import_insert_line(tree: ast.Module) -> int:
+    insert_line = 1
+    for node in tree.body:
+        if isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant) and isinstance(node.value.value, str):
+            insert_line = (node.end_lineno or node.lineno) + 1
+            continue
+        if isinstance(node, ast.ImportFrom) and node.module == "__future__":
+            insert_line = (node.end_lineno or node.lineno) + 1
+            continue
+        break
+    return insert_line
+
+
+def _import_module(import_line: str) -> str:
+    if import_line.startswith("from "):
+        return import_line.split()[1]
+    if import_line.startswith("import "):
+        return import_line.split()[1].split(".", maxsplit=1)[0]
+    return ""
 
 
 def _function_uses_len_of(function: ast.FunctionDef, arg_name: str) -> bool:

@@ -16,6 +16,11 @@ WHERE_CALL_RE = re.compile(r"where\s+(.+?)\s+=\s+([A-Za-z_]\w*)\(")
 CALL_RE = re.compile(r"\b([A-Za-z_]\w*)\s*\(")
 DEF_RE = re.compile(r"^\s*def\s+([A-Za-z_]\w*)\(")
 EXCEPTION_RE = re.compile(r"\b([A-Za-z_][\w.]*?(?:Error|Exception|Warning))\b")
+NAME_ERROR_RE = re.compile(r"NameError:\s+name '([^']+)' is not defined")
+ATTRIBUTE_ERROR_RE = re.compile(r"AttributeError:\s+.+ has no attribute '([^']+)'")
+MODULE_NOT_FOUND_RE = re.compile(r"ModuleNotFoundError:\s+No module named '([^']+)'")
+IMPORT_ERROR_RE = re.compile(r"ImportError:\s+cannot import name '([^']+)'")
+TYPE_ERROR_NAME_RE = re.compile(r"TypeError:\s+.*(?:argument|parameter|keyword).*'([^']+)'")
 
 IGNORED_CALL_NAMES = {
     "assert",
@@ -61,6 +66,10 @@ class PytestFailureHint:
     assertions: list[AssertionComparison] = field(default_factory=list)
     traceback_locations: list[TracebackLocation] = field(default_factory=list)
     function_names: set[str] = field(default_factory=set)
+    missing_names: set[str] = field(default_factory=set)
+    missing_attributes: set[str] = field(default_factory=set)
+    missing_modules: set[str] = field(default_factory=set)
+    type_error_names: set[str] = field(default_factory=set)
 
     @property
     def source_files(self) -> set[str]:
@@ -111,6 +120,7 @@ def _merge_summary(hint: PytestFailureHint, summary: str | None) -> None:
     exception = EXCEPTION_RE.search(summary)
     if exception and hint.exception_type is None:
         hint.exception_type = exception.group(1)
+    _collect_error_details(hint, summary)
     _collect_function_names(hint, summary)
 
 
@@ -151,6 +161,7 @@ def _merge_line(hint: PytestFailureHint, line: str) -> None:
     exception = EXCEPTION_RE.search(stripped)
     if exception and hint.exception_type is None:
         hint.exception_type = exception.group(1)
+    _collect_error_details(hint, stripped)
 
     _collect_function_names(hint, stripped)
 
@@ -159,6 +170,28 @@ def _collect_function_names(hint: PytestFailureHint, text: str) -> None:
     for name in CALL_RE.findall(text):
         if name not in IGNORED_CALL_NAMES and not name.startswith("test_"):
             hint.function_names.add(name)
+
+
+def _collect_error_details(hint: PytestFailureHint, text: str) -> None:
+    name_error = NAME_ERROR_RE.search(text)
+    if name_error:
+        hint.missing_names.add(name_error.group(1))
+
+    attribute_error = ATTRIBUTE_ERROR_RE.search(text)
+    if attribute_error:
+        hint.missing_attributes.add(attribute_error.group(1))
+
+    module_not_found = MODULE_NOT_FOUND_RE.search(text)
+    if module_not_found:
+        hint.missing_modules.add(module_not_found.group(1))
+
+    import_error = IMPORT_ERROR_RE.search(text)
+    if import_error:
+        hint.missing_names.add(import_error.group(1))
+
+    type_error = TYPE_ERROR_NAME_RE.search(text)
+    if type_error:
+        hint.type_error_names.add(type_error.group(1))
 
 
 def _literal_value(text: str) -> Any:
@@ -188,4 +221,8 @@ def _has_signal(hint: PytestFailureHint) -> bool:
         or hint.assertions
         or hint.traceback_locations
         or hint.function_names
+        or hint.missing_names
+        or hint.missing_attributes
+        or hint.missing_modules
+        or hint.type_error_names
     )

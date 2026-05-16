@@ -55,3 +55,27 @@ FAILED tests/test_bugs.py::test_average_empty_values_returns_zero - ZeroDivis...
     assert hint.exception_type == "ZeroDivisionError"
     assert hint.function_names == {"average"}
     assert hint.source_files == {"bugs.py"}
+
+
+def test_parse_name_and_attribute_error_details() -> None:
+    output = """
+    def file_extension(name: str) -> str:
+>       return Path(name).suffix
+               ^^^^
+E       NameError: name 'Path' is not defined
+
+bugs.py:13: NameError
+
+    def invoice_total(invoice: Invoice) -> int:
+>       return invoice.amount_cents
+               ^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: 'Invoice' object has no attribute 'amount_cents'
+
+bugs.py:22: AttributeError
+"""
+
+    [hint] = parse_pytest_failure_hints(output)
+
+    assert hint.missing_names == {"Path"}
+    assert hint.missing_attributes == {"amount_cents"}
+    assert hint.exception_type == "NameError"

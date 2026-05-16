@@ -33,6 +33,18 @@ def test_evaluate_greenshot_bugs(tmp_path) -> None:
     assert summary.ranked_solved >= 4
 
 
+def test_evaluate_greenshot_3() -> None:
+    summary = evaluate_tasks(
+        tasks_path=Path("examples/greenshot_3"),
+        model_path=None,
+        timeout_seconds=10,
+    )
+
+    assert summary.total == 4
+    assert summary.ranked_solved == 4
+    assert summary.ranked_pass_at_1 == 4
+
+
 def test_write_eval_diagnostics(tmp_path) -> None:
     training = train_from_path(
         data_path=Path("examples/greenshot_bugs"),

@@ -1,0 +1,22 @@
+[
+  {
+    "name": "swap_call_args",
+    "repo": ".",
+    "test": "python -m pytest tests/test_bugs.py::test_display_name_uses_first_then_last"
+  },
+  {
+    "name": "missing_import",
+    "repo": ".",
+    "test": "python -m pytest tests/test_bugs.py::test_file_extension_uses_pathlib"
+  },
+  {
+    "name": "change_attribute",
+    "repo": ".",
+    "test": "python -m pytest tests/test_bugs.py::test_invoice_total_uses_existing_attribute"
+  },
+  {
+    "name": "wrap_try_except",
+    "repo": ".",
+    "test": "python -m pytest tests/test_bugs.py::test_parse_quantity_returns_zero_for_invalid_input"
+  }
+]

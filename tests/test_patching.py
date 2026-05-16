@@ -133,3 +133,38 @@ def test_patch_uses_pytest_failure_hints_to_prioritize_literal_fix(tmp_path) -> 
     assert result.selected.action.target.symbol == "shipping_total"
     assert result.selected.action.params["to"] == 5
     assert result.selected.failure_hint_score > 0
+
+
+def test_patch_handles_greenshot_3_actions(tmp_path) -> None:
+    repo = tmp_path / "greenshot_3"
+    shutil.copytree("examples/greenshot_3", repo)
+    cases = [
+        (
+            "python -m pytest tests/test_bugs.py::test_display_name_uses_first_then_last",
+            "swap_call_arg",
+        ),
+        (
+            "python -m pytest tests/test_bugs.py::test_file_extension_uses_pathlib",
+            "add_import",
+        ),
+        (
+            "python -m pytest tests/test_bugs.py::test_invoice_total_uses_existing_attribute",
+            "change_attribute",
+        ),
+        (
+            "python -m pytest tests/test_bugs.py::test_parse_quantity_returns_zero_for_invalid_input",
+            "wrap_try_except",
+        ),
+    ]
+
+    for test_command, action in cases:
+        result = plan_and_maybe_apply_patch(
+            repo=repo,
+            test_command=test_command,
+            dry_run=True,
+            timeout_seconds=10,
+        )
+
+        assert result.selected is not None
+        assert result.candidates_tested == 1
+        assert result.selected.action.kind.value == action

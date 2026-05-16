@@ -1,46 +1,55 @@
 [
   {
     "name": "quote_total_helper_discount",
+    "family": "expression_helper",
     "repo": ".",
     "test": "python -m pytest tests/test_shop.py::test_quote_total_applies_discount_in_helper"
   },
   {
     "name": "store_credit_swapped_args_across_modules",
+    "family": "call_argument_order",
     "repo": ".",
     "test": "python -m pytest tests/test_shop.py::test_balance_after_store_credit_passes_arguments_to_helper"
   },
   {
     "name": "uploaded_extension_module_import",
+    "family": "missing_import",
     "repo": ".",
     "test": "python -m pytest tests/test_shop.py::test_uploaded_extension_uses_pathlib_in_paths_module"
   },
   {
     "name": "visible_balance_attribute_decoys",
+    "family": "attribute_repair",
     "repo": ".",
     "test": "python -m pytest tests/test_shop.py::test_visible_balance_uses_balance_cents"
   },
   {
     "name": "profile_signature_propagation",
+    "family": "signature_propagation",
     "repo": ".",
     "test": "python -m pytest tests/test_shop.py::test_profile_label_accepts_username_keyword"
   },
   {
     "name": "profile_badge_public_api_signature_propagation",
+    "family": "signature_propagation",
     "repo": ".",
     "test": "python -m pytest tests/test_shop.py::test_profile_badge_propagates_public_api_username"
   },
   {
     "name": "order_customer_name_dict_key_helper",
+    "family": "mapping_key",
     "repo": ".",
     "test": "python -m pytest tests/test_shop.py::test_order_customer_label_uses_customer_name_key"
   },
   {
     "name": "return_window_policy_default",
+    "family": "default_value",
     "repo": ".",
     "test": "python -m pytest tests/test_shop.py::test_return_window_uses_policy_default"
   },
   {
     "name": "express_shipping_boundary_preferred_helper",
+    "family": "operator_boundary",
     "repo": ".",
     "test": "python -m pytest tests/test_shop.py::test_express_shipping_boundary_prefers_helper_condition",
     "preferred": {
@@ -55,16 +64,19 @@
   },
   {
     "name": "receipt_label_nested_module_import_decoy",
+    "family": "missing_import",
     "repo": ".",
     "test": "python -m pytest tests/test_shop.py::test_receipt_label_imports_nested_report_formatter"
   },
   {
     "name": "loyalty_points_wrapper_exception_handler",
+    "family": "exception_handling",
     "repo": ".",
     "test": "python -m pytest tests/test_shop.py::test_loyalty_points_wrapper_handles_pending_value"
   },
   {
     "name": "priority_shipping_mode_literal_caller",
+    "family": "mode_literal",
     "repo": ".",
     "test": "python -m pytest tests/test_shop.py::test_priority_shipping_mode_literal_is_fixed_in_caller"
   }

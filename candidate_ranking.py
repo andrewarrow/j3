@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import re
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Protocol
@@ -64,6 +64,21 @@ class CandidateRankerTrainingResult:
     mistakes: int
     training_accuracy: float
     margin_violations: int
+    per_action: dict[str, dict[str, object]]
+    per_task_family: dict[str, dict[str, object]]
+
+
+@dataclass(slots=True)
+class _RankerMetricsAccumulator:
+    plans: int = 0
+    rows: int = 0
+    passing_rows: int = 0
+    failing_rows: int = 0
+    pass_at_1: int = 0
+    positive_at_1: int = 0
+    training_pairs: int = 0
+    first_passing_indices: list[int] = field(default_factory=list)
+    positive_ranks: list[int] = field(default_factory=list)
 
 
 @dataclass(frozen=True, slots=True)
@@ -119,6 +134,8 @@ def train_candidate_ranker(
     pairs: list[tuple[dict[str, float], dict[str, float]]] = []
     plans = 0
     task_names: set[str] = set()
+    action_metrics: dict[str, _RankerMetricsAccumulator] = {}
+    family_metrics: dict[str, _RankerMetricsAccumulator] = {}
     rows = 0
     passing_rows = 0
     failing_rows = 0
@@ -129,14 +146,23 @@ def train_candidate_ranker(
                 continue
             if task.get("name"):
                 task_names.add(str(task["name"]))
+            task_family = str(task.get("family", "unclassified"))
             plan = task.get(plan_name)
             if not isinstance(plan, dict):
                 continue
             plan_pairs = _training_pairs_from_plan(plan)
+            tested = plan.get("tested_candidates")
+            if isinstance(tested, list):
+                _accumulate_ranker_metrics(
+                    action_metrics=action_metrics,
+                    family_metrics=family_metrics,
+                    task_family=task_family,
+                    rows=[candidate for candidate in tested if isinstance(candidate, dict)],
+                    training_pairs=len(plan_pairs),
+                )
             if plan_pairs:
                 plans += 1
                 pairs.extend(plan_pairs)
-            tested = plan.get("tested_candidates")
             if isinstance(tested, list):
                 rows += len(tested)
                 passing_rows += sum(
@@ -164,6 +190,14 @@ def train_candidate_ranker(
             if phase != plan_name:
                 continue
             plan_pairs = _training_pairs_from_outcome_rows(task_rows)
+            task_family = _outcome_task_family(task_rows)
+            _accumulate_ranker_metrics(
+                action_metrics=action_metrics,
+                family_metrics=family_metrics,
+                task_family=task_family,
+                rows=task_rows,
+                training_pairs=len(plan_pairs),
+            )
             if plan_pairs:
                 plans += 1
                 pairs.extend(plan_pairs)
@@ -218,6 +252,8 @@ def train_candidate_ranker(
         "mistakes": mistakes,
         "training_accuracy": training_accuracy,
         "margin_violations": margin_violations,
+        "per_action": _ranker_metrics_records(action_metrics),
+        "per_task_family": _ranker_metrics_records(family_metrics),
         "artifacts": {
             "ranker": ranker_path.name,
             "metrics": metrics_path.name,
@@ -241,6 +277,8 @@ def train_candidate_ranker(
         mistakes=mistakes,
         training_accuracy=training_accuracy,
         margin_violations=margin_violations,
+        per_action=_ranker_metrics_records(action_metrics),
+        per_task_family=_ranker_metrics_records(family_metrics),
     )
 
 
@@ -342,6 +380,106 @@ def _training_pairs_from_outcome_rows(
         ):
             pairs.append((positive_features, _candidate_record_features(candidate, hints)))
     return pairs
+
+
+def _accumulate_ranker_metrics(
+    *,
+    action_metrics: dict[str, _RankerMetricsAccumulator],
+    family_metrics: dict[str, _RankerMetricsAccumulator],
+    task_family: str,
+    rows: list[dict[str, object]],
+    training_pairs: int,
+) -> None:
+    if not rows:
+        return
+
+    positive = _positive_outcome_row(rows)
+    action = str(positive.get("action", "unsolved")) if positive is not None else "unsolved"
+    first_passing_index = _first_passing_rank(rows)
+    positive_rank = _row_rank(positive, rows) if positive is not None else None
+    passing_rows = sum(1 for row in rows if row.get("passed") is True)
+
+    family = task_family or "unclassified"
+    for metrics in (
+        action_metrics.setdefault(action, _RankerMetricsAccumulator()),
+        family_metrics.setdefault(family, _RankerMetricsAccumulator()),
+    ):
+        metrics.plans += 1
+        metrics.rows += len(rows)
+        metrics.passing_rows += passing_rows
+        metrics.failing_rows += len(rows) - passing_rows
+        metrics.training_pairs += training_pairs
+        if first_passing_index is not None:
+            metrics.first_passing_indices.append(first_passing_index)
+            if first_passing_index == 1:
+                metrics.pass_at_1 += 1
+        if positive_rank is not None:
+            metrics.positive_ranks.append(positive_rank)
+            if positive_rank == 1:
+                metrics.positive_at_1 += 1
+
+
+def _ranker_metrics_records(
+    metrics: Mapping[str, _RankerMetricsAccumulator],
+) -> dict[str, dict[str, object]]:
+    records: dict[str, dict[str, object]] = {}
+    for name, stats in sorted(metrics.items()):
+        average_first_pass = (
+            sum(stats.first_passing_indices) / len(stats.first_passing_indices)
+            if stats.first_passing_indices
+            else None
+        )
+        average_positive_rank = (
+            sum(stats.positive_ranks) / len(stats.positive_ranks)
+            if stats.positive_ranks
+            else None
+        )
+        records[name] = {
+            "plans": stats.plans,
+            "rows": stats.rows,
+            "passing_rows": stats.passing_rows,
+            "failing_rows": stats.failing_rows,
+            "pass_at_1": stats.pass_at_1,
+            "positive_at_1": stats.positive_at_1,
+            "avg_first_passing_index": average_first_pass,
+            "avg_positive_rank": average_positive_rank,
+            "training_pairs": stats.training_pairs,
+        }
+    return records
+
+
+def _first_passing_rank(rows: list[dict[str, object]]) -> int | None:
+    for row in rows:
+        if row.get("is_first_pass") is True:
+            value = row.get("rank_index")
+            if isinstance(value, int):
+                return value
+    for index, row in enumerate(
+        sorted(rows, key=lambda candidate: _int_value(candidate.get("rank_index"), default=0)),
+        start=1,
+    ):
+        if row.get("passed") is True:
+            value = row.get("rank_index")
+            return value if isinstance(value, int) and value > 0 else index
+    return None
+
+
+def _row_rank(row: dict[str, object], rows: list[dict[str, object]]) -> int | None:
+    rank = row.get("rank_index")
+    if isinstance(rank, int) and rank > 0:
+        return rank
+    for index, candidate in enumerate(rows, start=1):
+        if candidate is row:
+            return index
+    return None
+
+
+def _outcome_task_family(rows: list[dict[str, object]]) -> str:
+    for row in rows:
+        family = row.get("task_family")
+        if isinstance(family, str) and family:
+            return family
+    return "unclassified"
 
 
 def _positive_outcome_row(rows: list[dict[str, object]]) -> dict[str, object] | None:

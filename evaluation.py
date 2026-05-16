@@ -21,6 +21,7 @@ class RepairTask:
     name: str
     repo: Path
     test_command: str
+    family: str = "unclassified"
     preferred_patch: dict[str, object] | None = None
 
 
@@ -123,6 +124,7 @@ def load_tasks(path: Path) -> list[RepairTask]:
                 name=str(item["name"]),
                 repo=(base_dir / str(item.get("repo", "."))).resolve(),
                 test_command=str(item["test"]),
+                family=str(item.get("family", "unclassified")),
                 preferred_patch=(
                     dict(item["preferred"])
                     if isinstance(item.get("preferred"), dict)
@@ -215,17 +217,18 @@ def write_eval_diagnostics(summary: EvalSummary, path: Path) -> Path:
     payload = {
         "summary": {
             "baseline": _aggregate_plan_summaries(
-                (result.baseline for result in summary.tasks),
+                ((result.task, result.baseline) for result in summary.tasks),
                 total_tasks=summary.total,
             ),
             "ranked": _aggregate_plan_summaries(
-                (result.ranked for result in summary.tasks),
+                ((result.task, result.ranked) for result in summary.tasks),
                 total_tasks=summary.total,
             ),
         },
         "tasks": [
             {
                 "name": result.task.name,
+                "family": result.task.family,
                 "repo": str(result.task.repo),
                 "test_command": result.task.test_command,
                 "baseline": _plan_diagnostics(result.baseline),
@@ -363,6 +366,7 @@ def _candidate_outcome_rows(summary: EvalSummary) -> Iterable[dict[str, object]]
                 passed = _candidate_passed(candidate, plan)
                 yield {
                     "task": result.task.name,
+                    "task_family": result.task.family,
                     "phase": phase,
                     "file_path": candidate.file_path,
                     "action": candidate.action.kind.value,
@@ -433,25 +437,33 @@ def _failure_hint_diagnostics(hint: object) -> dict[str, object]:
 
 
 def _aggregate_plan_summaries(
-    plans: Iterable[PatchPlanResult | None],
+    task_plans: Iterable[tuple[RepairTask, PatchPlanResult | None]],
     *,
     total_tasks: int,
 ) -> dict[str, object]:
-    plan_list = [plan for plan in plans if plan is not None]
+    plan_items = [(task, plan) for task, plan in task_plans if plan is not None]
+    plan_list = [plan for _task, plan in plan_items]
     action_stats: defaultdict[str, _ActionSummaryAccumulator] = defaultdict(_ActionSummaryAccumulator)
+    family_stats: defaultdict[str, _ActionSummaryAccumulator] = defaultdict(_ActionSummaryAccumulator)
     failed_reasons: Counter[str] = Counter()
     failure_modes: Counter[str] = Counter()
     ranker_paths = sorted({str(plan.ranker_path) for plan in plan_list if plan.ranker_path is not None})
 
-    for plan in plan_list:
+    for task, plan in plan_items:
         action = plan.selected.action.kind.value if plan.selected else "unsolved"
         stats = action_stats[action]
         stats.tasks += 1
         stats.candidate_counts.append(plan.candidates_tested)
+        family = task.family or "unclassified"
+        family_stat = family_stats[family]
+        family_stat.tasks += 1
+        family_stat.candidate_counts.append(plan.candidates_tested)
         if plan.selected is not None:
             stats.solved += 1
+            family_stat.solved += 1
             if _first_passing_index(plan) == 1:
                 stats.pass_at_1 += 1
+                family_stat.pass_at_1 += 1
 
         failed_reasons.update(
             candidate.reason
@@ -475,6 +487,15 @@ def _aggregate_plan_summaries(
                 "avg_candidates": _average(stats.candidate_counts),
             }
             for action, stats in sorted(action_stats.items())
+        },
+        "per_task_family": {
+            family: {
+                "tasks": stats.tasks,
+                "solved": stats.solved,
+                "pass_at_1": stats.pass_at_1,
+                "avg_candidates": _average(stats.candidate_counts),
+            }
+            for family, stats in sorted(family_stats.items())
         },
         "top_failed_candidate_reasons": _top_counter(failed_reasons),
         "failure_modes": dict(sorted(failure_modes.items())),

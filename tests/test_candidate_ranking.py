@@ -17,6 +17,7 @@ def test_train_candidate_ranker_from_diagnostics_and_rerank(tmp_path) -> None:
                 "tasks": [
                     {
                         "name": "boundary",
+                        "family": "operator_boundary",
                         "ranked": {
                             "selected": {"passed": True},
                             "failure_hints": [
@@ -52,6 +53,8 @@ def test_train_candidate_ranker_from_diagnostics_and_rerank(tmp_path) -> None:
     assert result.training_pairs == 1
     assert result.training_accuracy == 1.0
     assert result.margin_violations == 0
+    assert result.per_action["change_operator"]["pass_at_1"] == 0
+    assert result.per_task_family["operator_boundary"]["training_pairs"] == 1
     assert ranked[0].action.params["to"] == ">="
     assert ranked[0].ranker_score is not None
 
@@ -96,6 +99,7 @@ def test_train_candidate_ranker_from_candidate_outcomes_jsonl(tmp_path) -> None:
     rows = [
         {
             "task": "boundary",
+            "task_family": "operator_boundary",
             "phase": "ranked",
             **_candidate_record(to="<", passed=False),
             "rank_index": 1,
@@ -104,6 +108,7 @@ def test_train_candidate_ranker_from_candidate_outcomes_jsonl(tmp_path) -> None:
         },
         {
             "task": "boundary",
+            "task_family": "operator_boundary",
             "phase": "ranked",
             **_candidate_record(to=">=", passed=True),
             "rank_index": 2,
@@ -112,6 +117,7 @@ def test_train_candidate_ranker_from_candidate_outcomes_jsonl(tmp_path) -> None:
         },
         {
             "task": "boundary",
+            "task_family": "operator_boundary",
             "phase": "ranked",
             **_candidate_record(to="!=", passed=False),
             "rank_index": 3,
@@ -132,6 +138,14 @@ def test_train_candidate_ranker_from_candidate_outcomes_jsonl(tmp_path) -> None:
     assert result.tasks == 1
     assert result.plans == 1
     assert result.training_pairs == 2
+    assert result.per_action["change_operator"]["rows"] == 3
+    assert result.per_action["change_operator"]["avg_first_passing_index"] == 2.0
+    assert result.per_action["change_operator"]["avg_positive_rank"] == 2.0
+    assert result.per_task_family["operator_boundary"]["pass_at_1"] == 0
+
+    metrics = json.loads(result.metrics_path.read_text(encoding="utf-8"))
+    assert metrics["per_action"]["change_operator"]["training_pairs"] == 2
+    assert metrics["per_task_family"]["operator_boundary"]["passing_rows"] == 1
 
 
 def test_train_candidate_ranker_prefers_marked_passing_outcome(tmp_path) -> None:

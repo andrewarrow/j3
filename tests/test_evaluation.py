@@ -37,9 +37,11 @@ def test_load_greenshot_4_tasks() -> None:
 def test_load_greenshot_5_tasks() -> None:
     tasks = load_tasks(Path("examples/greenshot_5"))
 
-    assert len(tasks) == 11
+    assert len(tasks) == 12
     assert tasks[0].name == "quote_total_helper_discount"
-    assert tasks[-1].name == "loyalty_points_wrapper_exception_handler"
+    assert tasks[0].family == "expression_helper"
+    assert tasks[-1].name == "priority_shipping_mode_literal_caller"
+    assert tasks[-1].family == "mode_literal"
     assert tasks[8].preferred_patch == {
         "file_path": "shop/policies.py",
         "action": "change_operator",
@@ -100,8 +102,10 @@ def test_write_eval_diagnostics(tmp_path) -> None:
     assert "ranker_paths" in payload["summary"]["ranked"]
     assert "ranker_scores_present" in payload["summary"]["ranked"]
     assert "per_action" in payload["summary"]["ranked"]
+    assert "per_task_family" in payload["summary"]["ranked"]
     assert "top_failed_candidate_reasons" in payload["summary"]["ranked"]
     assert "failure_modes" in payload["summary"]["ranked"]
+    assert payload["tasks"][0]["family"] == "unclassified"
     assert "summary" in payload["tasks"][0]["ranked"]
     assert "ranker_path" in payload["tasks"][0]["ranked"]["summary"]
     assert "ranker_scores_present" in payload["tasks"][0]["ranked"]["summary"]
@@ -237,6 +241,7 @@ def test_write_candidate_outcomes_jsonl_records_one_row_per_tested_candidate(tmp
 
     assert len(rows) == 3
     assert {row["task"] for row in rows} == {"multi_pass_literal"}
+    assert {row["task_family"] for row in rows} == {"unclassified"}
     assert {row["phase"] for row in rows} == {"ranked"}
     assert [row["rank_index"] for row in rows] == [1, 2, 3]
     assert [row["passed"] for row in rows] == [True, True, False]

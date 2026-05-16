@@ -72,6 +72,8 @@ Recent completed work:
   traceback runs through a helper.
 - [x] Candidate outcome rows carry compact target context and preferred-patch
   labels for tasks that define them.
+- [x] GreenShot-5 task manifests carry task-family labels, and diagnostics,
+  candidate outcome rows, and ranker metrics report per-task-family signal.
 
 Current GreenShot-5 signal:
 
@@ -252,7 +254,7 @@ has enough coverage and data to make neural regressions visible.
 - [x] GreenShot-5 ranker improves pass@1 from 3/7 to 5/7 on full-budget ranked
   eval when trained from in-sample candidate outcomes.
 - [x] Train ranker from candidate outcome JSONL.
-- [ ] Add per-action and per-task-family ranker metrics.
+- [x] Add per-action and per-task-family ranker metrics.
 - [ ] Penalize over-memorized reason/action strings when they regress other task
   families.
 - [ ] Add feature ablation reporting.
@@ -481,6 +483,8 @@ pytest -q
      at rank 2 by the preferred helper operator edit.
    - Fresh preferred-aware 11-task outcome data solves 11/11 at pass@1
      in-sample.
+   - GreenShot-5 now records explicit task families so held-out calibration can
+     be sliced by family instead of relying on task names alone.
    - Next ranker work should focus on held-out calibration and operator/value
      preference, because the remaining held-out miss is a wrong helper operator
      ranked just ahead of the preferred `>=` edit.

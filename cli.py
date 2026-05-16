@@ -303,6 +303,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="suppress per-task progress logging",
     )
+    eval_parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="print per-candidate eval progress",
+    )
     eval_parser.set_defaults(handler=handle_eval)
 
     return parser
@@ -500,7 +505,7 @@ def handle_mine(args: argparse.Namespace) -> int:
 
 
 def handle_eval(args: argparse.Namespace) -> int:
-    progress = None if args.quiet else _progress
+    progress = None if args.quiet else (_verbose_progress if args.verbose else _summary_progress)
     if progress is not None:
         progress("j3 eval starting")
         progress(f"tasks: {args.tasks.expanduser().resolve()}")
@@ -570,6 +575,34 @@ def _confirm(prompt: str) -> bool:
 
 def _progress(message: str) -> None:
     print(f"[eval] {message}", flush=True)
+
+
+def _summary_progress(message: str) -> None:
+    if not _is_candidate_level_progress(message):
+        _progress(message)
+
+
+def _verbose_progress(message: str) -> None:
+    _progress(message)
+
+
+_CANDIDATE_LEVEL_PROGRESS_PREFIXES = (
+    "baseline: running",
+    "baseline: exit",
+    "candidates:",
+    "rank:",
+    "hints:",
+    "test: candidate=",
+    "selected:",
+    "status: no passing candidate",
+)
+
+
+def _is_candidate_level_progress(message: str) -> bool:
+    if message.startswith(_CANDIDATE_LEVEL_PROGRESS_PREFIXES):
+        return True
+    _, separator, phase_message = message.partition(": ")
+    return bool(separator) and phase_message.startswith(_CANDIDATE_LEVEL_PROGRESS_PREFIXES)
 
 
 if __name__ == "__main__":

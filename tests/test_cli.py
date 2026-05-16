@@ -117,3 +117,76 @@ def test_patch_command_accepts_repo_and_test(capsys, tmp_path) -> None:
     assert "j3 patch (dry run)" in output
     assert "pytest tests/test_calculator.py" in output
     assert "status: found passing patch" in output
+
+
+def test_eval_default_progress_suppresses_candidate_lines(capsys) -> None:
+    assert (
+        main(
+            [
+                "eval",
+                "--tasks",
+                "examples/greenshot_3",
+                "--checkpoint",
+                "runs/greenshot-1/model.json",
+                "--timeout",
+                "10",
+                "--max-candidates",
+                "1",
+            ]
+        )
+        == 0
+    )
+
+    output = capsys.readouterr().out
+    assert "[eval] j3 eval starting" in output
+    assert "task 1/4 swap_call_args: start" in output
+    assert "test: candidate=" not in output
+    assert "j3 eval complete" in output
+
+
+def test_eval_verbose_progress_prints_candidate_lines(capsys) -> None:
+    assert (
+        main(
+            [
+                "eval",
+                "--tasks",
+                "examples/greenshot_3",
+                "--checkpoint",
+                "runs/greenshot-1/model.json",
+                "--timeout",
+                "10",
+                "--max-candidates",
+                "1",
+                "--verbose",
+            ]
+        )
+        == 0
+    )
+
+    output = capsys.readouterr().out
+    assert "test: candidate=" in output
+    assert "j3 eval complete" in output
+
+
+def test_eval_quiet_suppresses_progress_lines(capsys) -> None:
+    assert (
+        main(
+            [
+                "eval",
+                "--tasks",
+                "examples/greenshot_3",
+                "--checkpoint",
+                "runs/greenshot-1/model.json",
+                "--timeout",
+                "10",
+                "--max-candidates",
+                "1",
+                "--quiet",
+            ]
+        )
+        == 0
+    )
+
+    output = capsys.readouterr().out
+    assert "[eval]" not in output
+    assert "j3 eval complete" in output

@@ -10,6 +10,30 @@ The current prototype has useful pieces, but it is drifting toward benchmark
 heuristics and noisy exhaustive candidate testing. The next work should make
 the system produce better learning signal, not just more hand-written fixes.
 
+## Progress Update
+
+Done:
+
+- Synced durable guidance into `AGENTS.md`: learning-signal priority,
+  GreenShot-5 as the near-term ladder, task-level eval output by default, and
+  candidate-level eval logs behind `--verbose`.
+- Completed Immediate Change 1. `j3 eval` now keeps `--quiet`, adds
+  `--verbose`, prints task-level progress by default, and suppresses
+  candidate-level planning/testing chatter unless verbose mode is enabled.
+- Added CLI coverage for default eval output, verbose eval output, and quiet
+  eval output.
+
+Verified:
+
+```bash
+pytest tests/test_cli.py -q
+```
+
+Next:
+
+- Start Immediate Change 2: add `j3 eval --phase ranked|both|baseline`, with
+  skipped phases represented explicitly in summaries and diagnostics.
+
 ## Current Diagnosis
 
 The good parts:
@@ -55,6 +79,9 @@ only a label generator and safety check.
 ## Immediate Changes
 
 ### 1. Make Eval Output Less Repetitive
+
+Status: done. Implemented in `cli.py` with `--verbose` and summary progress
+filtering. Covered by focused CLI tests.
 
 Change `cli.py` and `evaluation.py` so normal eval output is task-level, not
 candidate-level.

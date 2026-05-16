@@ -5,11 +5,14 @@ Project direction:
 - Treat the repo as a world: code is state, patches are actions, tests/type checks/stack traces are observations, and a passing suite is the target state.
 - The current codebase is the prototype proving that loop: mine/train/rank structured patches, then validate with tests.
 - Current milestone is moving from toy synthetic transitions toward real git-history signal and better ranking.
+- Optimize for learning signal, not exhaustive pytest search: the correct action should be generated, the correct target represented, observations parsed into structured evidence, the ranker should put passing candidates near the top before validation, and diagnostics should distinguish missing actions from bad ranking or weak hints.
 - `j3 mine` writes real Python before/after transitions to `data/transitions/*.jsonl`.
 - `j3 train --transitions ...` combines synthetic transitions with mined `git_transition` examples.
 - The prototype model is still non-neural: hashed AST embeddings, action-delta prototypes, and bounded exemplar deltas. Mined git exemplars should influence ordinary candidate actions during ranking.
-- Keep evaluating against `examples/greenshot_bugs` and report baseline vs model-ranked solved, pass@1, and avg candidates.
-- Next priority after mining/scorer plumbing: build a stronger eval ladder, parse pytest/error logs into structured hints, expand the structured action space, then add a trainable encoder/ranker.
+- Keep GreenShot-4 as a periodic regression gate, and use GreenShot-5 as the short-term development ladder for multi-file call chains, decoy candidates, helper-level repairs, signature propagation, and nested imports.
+- When reporting benchmark-style evals, include baseline vs model-ranked solved, pass@1, and average candidates. For day-to-day work, prefer the fastest focused eval mode that exercises the changed behavior.
+- Eval output should be task-level by default. Candidate-level progress belongs behind `--verbose`; `--quiet` should suppress progress logging.
+- Next priority after mining/scorer plumbing: build a stronger eval ladder, parse pytest/error logs into structured hints, expand the structured action space, improve ranker authority and diagnostic exploration, then add a trainable encoder/ranker.
 
 Verification cadence:
 - Default to the smallest focused test that proves the touched behavior. Good examples:

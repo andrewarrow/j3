@@ -12,6 +12,7 @@
   - [Candidate Outcome Data](#candidate-outcome-data)
   - [Ranker Before Neural](#ranker-before-neural)
   - [Architecture and Tooling](#architecture-and-tooling)
+  - [Language Strategy](#language-strategy)
 - [Neural Model Track](#neural-model-track)
   - [Trainable Candidate Ranker](#trainable-candidate-ranker)
   - [Repo-State Encoder](#repo-state-encoder)
@@ -220,6 +221,62 @@ has enough coverage and data to make neural regressions visible.
 - [ ] Add a command to replay one candidate outcome row.
 - [ ] Add regression tests for public imports after module splits.
 - [ ] Keep README small; put detailed design in focused markdown files.
+
+### Language Strategy
+
+Python-first is intentional. The project should prove the full repair loop in
+one language before expanding to JavaScript, Go, or others. That does not paint
+the project into a Python-only corner as long as the model-facing records stay
+language-neutral and Python-specific code remains in adapters.
+
+Keep portable:
+
+- [ ] Candidate outcome rows should include `language`.
+- [ ] Core records should use portable fields: `file_path`, `span`,
+  `node_kind`, `symbol`, `action`, `params`, `observation`, `passed`.
+- [ ] Action concepts should stay language-neutral where possible:
+  change literal, change call argument, add import, rename symbol, change field
+  or key, modify condition.
+- [ ] Evaluation should stay command/tool based. Pytest is the Python adapter,
+  not the core abstraction.
+- [ ] The future JEPA layer should consume normalized repo/action/observation
+  records, not raw Python AST objects.
+
+Keep language-specific:
+
+- [ ] Python AST parsing and patch materialization.
+- [ ] Pytest failure parsing.
+- [ ] Python import/name/attribute semantics.
+- [ ] Python benchmark fixtures.
+
+Eventually reshape modules toward:
+
+```text
+repair/
+  core/
+    actions
+    candidates
+    outcomes
+    diagnostics
+    ranking
+    planning
+  languages/
+    python/
+      parser
+      generator
+      test_hints_pytest
+    javascript/
+      parser
+      generator
+      test_hints_jest
+    go/
+      parser
+      generator
+      test_hints_go_test
+```
+
+Do not do this extraction too early. First make the Python loop strong enough
+that the core abstractions are earned by real use, not guessed upfront.
 
 ## Neural Model Track
 

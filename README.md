@@ -77,6 +77,37 @@ should be a repo-world predictor and planner:
 
 In pure mode, the first demo uses no hosted LLM and no API tokens.
 
+## Quick Start
+
+This repo currently uses a flat Python module layout at the project root.
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -e ".[dev]"
+j3 --help
+```
+
+Useful starter commands:
+
+```bash
+j3 actions
+j3 actions --json
+j3 patch --repo . --test "pytest" --dry-run
+pytest
+```
+
+## Repository Layout
+
+```text
+.
+├── actions.py        # structured patch actions and targets
+├── cli.py            # command line interface
+├── tests/            # pytest suite
+├── pyproject.toml    # packaging, CLI entry point, test config
+└── README.md
+```
+
 ## Initial Patch Action Space
 
 The early action space is deliberately small:
@@ -133,4 +164,5 @@ should be small enough that iteration speed matters more than benchmark scale.
 ## Status
 
 This repository is at the foundation stage. The first code defines the structured
-patch actions that the rest of the system will learn to select and apply.
+patch actions and CLI surface that the rest of the system will learn to select
+and apply.

@@ -3,7 +3,7 @@ from .orders import customer_display_name
 from .paths import attachment_extension
 from .policies import default_return_window_days
 from .pricing import discounted_subtotal, total_after_store_credit
-from .profiles import display_profile, render_profile
+from .profiles import display_profile, render_profile, user_badge_label
 from .reports.summary import receipt_total_label
 from .rewards import parse_loyalty_points
 
@@ -30,6 +30,10 @@ def profile_heading(username: str) -> str:
 
 def profile_label(username: str) -> str:
     return render_profile(username=username)
+
+
+def profile_badge(username: str) -> str:
+    return user_badge_label(username=username)
 
 
 def order_customer_label(order: dict[str, str]) -> str:

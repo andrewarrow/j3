@@ -66,6 +66,14 @@ def _render_call_with_keyword_rename(
 
 
 def _rename_identifier_in_text(source: str, old_name: str, new_name: str) -> str:
+    renamed = _rename_identifier_with_tokens(source, old_name, new_name)
+    if not _contains_identifier(renamed, old_name):
+        return renamed
+    parsed = _rename_identifier_with_ast(source, old_name, new_name)
+    return parsed if parsed is not None else renamed
+
+
+def _rename_identifier_with_tokens(source: str, old_name: str, new_name: str) -> str:
     tokens = []
     reader = io.StringIO(source).readline
     for token in tokenize.generate_tokens(reader):
@@ -73,6 +81,44 @@ def _rename_identifier_in_text(source: str, old_name: str, new_name: str) -> str
             token = tokenize.TokenInfo(token.type, new_name, token.start, token.end, token.line)
         tokens.append(token)
     return tokenize.untokenize(tokens)
+
+
+def _contains_identifier(source: str, name: str) -> bool:
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return False
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Name) and node.id == name:
+            return True
+        if isinstance(node, ast.arg) and node.arg == name:
+            return True
+    return False
+
+
+def _rename_identifier_with_ast(source: str, old_name: str, new_name: str) -> str | None:
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return None
+
+    class Renamer(ast.NodeTransformer):
+        def visit_Name(self, node: ast.Name) -> ast.AST:
+            if node.id == old_name:
+                return ast.copy_location(ast.Name(id=new_name, ctx=node.ctx), node)
+            return node
+
+        def visit_arg(self, node: ast.arg) -> ast.arg:
+            if node.arg == old_name:
+                return ast.copy_location(
+                    ast.arg(arg=new_name, annotation=node.annotation, type_comment=node.type_comment),
+                    node,
+                )
+            return node
+
+    renamed = Renamer().visit(tree)
+    ast.fix_missing_locations(renamed)
+    return ast.unparse(renamed)
 
 
 def _apply_node_replacements(source: str, replacements: list[tuple[ast.AST, str]]) -> str:

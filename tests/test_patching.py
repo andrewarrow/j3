@@ -239,6 +239,36 @@ def test_generate_signature_and_call_site_propagation_candidates(tmp_path) -> No
     )
 
 
+def test_generate_cross_module_signature_propagation_from_imported_keyword(tmp_path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    package = repo / "shop"
+    package.mkdir()
+    (package / "__init__.py").write_text("", encoding="utf-8")
+    (package / "profiles.py").write_text(
+        "def user_badge_label(name: str) -> str:\n"
+        "    return f'@{name.lower()}'\n",
+        encoding="utf-8",
+    )
+    (package / "api.py").write_text(
+        "from .profiles import user_badge_label\n\n"
+        "def profile_badge(username: str) -> str:\n"
+        "    return user_badge_label(username=username)\n",
+        encoding="utf-8",
+    )
+
+    candidates = generate_candidate_patches(repo)
+
+    assert any(
+        candidate.file_path == "shop/profiles.py"
+        and candidate.action.kind.value == "propagate_signature"
+        and candidate.action.params == {"from": "name", "to": "username"}
+        and "def user_badge_label(username: str) -> str:" in candidate.patched_source
+        and "return f'@{username.lower()}'" in candidate.patched_source
+        for candidate in candidates
+    )
+
+
 def test_generate_subscript_key_candidate_from_repo_string_literals(tmp_path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()
@@ -356,6 +386,25 @@ def test_patch_solves_helper_module_default_value(tmp_path) -> None:
     assert result.selected.file_path == "shop/policies.py"
     assert result.selected.action.kind.value == "change_literal"
     assert result.selected.action.params == {"from": 13, "to": 14}
+
+
+def test_patch_solves_public_api_signature_propagation(tmp_path) -> None:
+    repo = tmp_path / "greenshot_5"
+    shutil.copytree("examples/greenshot_5", repo)
+
+    result = plan_and_maybe_apply_patch(
+        repo=repo,
+        test_command="python -m pytest tests/test_shop.py::test_profile_badge_propagates_public_api_username",
+        dry_run=True,
+        timeout_seconds=10,
+    )
+
+    assert result.selected is not None
+    assert result.candidates_tested == 1
+    assert result.selected.file_path == "shop/profiles.py"
+    assert result.selected.action.kind.value == "propagate_signature"
+    assert result.selected.action.params == {"from": "name", "to": "username"}
+    assert "def user_badge_label(username: str) -> str:" in result.selected.patched_source
 
 
 def test_patch_solves_nested_module_missing_import_with_decoy(tmp_path) -> None:

@@ -65,12 +65,13 @@ Recent completed work:
   local import.
 - [x] GreenShot-5 includes exception handling through a wrapper API.
 - [x] GreenShot-5 includes swapped arguments across modules.
+- [x] GreenShot-5 includes rename propagated through a helper and public API.
 
 Current GreenShot-5 signal:
 
 ```text
 ranked, no candidate ranker:
-  solved=9/9 pass@1=5/9 avg_candidates=1.67
+  solved=10/10 pass@1=6/10 avg_candidates=1.60
 
 ranked, legacy diagnostics candidate ranker:
   solved=9/9 pass@1=5/9 avg_candidates=1.56
@@ -91,6 +92,9 @@ Current interpretation:
   `swap_call_arg`; hint-only ranking solves it at rank 1. A ranker trained from
   old pre-hint outcome rows buries it, which confirms that current outcome data
   needs serialized hint context.
+- The public-API signature propagation task is action-covered by
+  `propagate_signature`; imported helper keyword context lets the generator
+  propose the helper parameter rename, and hint-only ranking solves it at rank 1.
 - The wrong-default task is solved by an existing `change_literal` candidate on
   the helper-module default parameter, so it is ranking/hint signal rather than
   a missing action.
@@ -140,7 +144,7 @@ has enough coverage and data to make neural regressions visible.
 - [x] Add nested-module missing import with at least one decoy import.
 - [x] Add exception handling through a wrapper API.
 - [x] Add swapped arguments across modules.
-- [ ] Add rename propagated through helper and public API.
+- [x] Add rename propagated through helper and public API.
 - [ ] Add a task with two passing patches where one is semantically preferable.
 - [ ] Add a task where the correct edit is in a caller, not the failing frame.
 - [ ] Add a task where the correct edit is in a callee, not the public API.
@@ -441,11 +445,11 @@ pytest -q
    - Show per-task rank movement, pass@1 changes, bad-ranking changes, and top
      failed candidate reasons.
 
-2. Add the next GreenShot-5 ladder task.
+2. [x] Add the next GreenShot-5 ladder task.
    - Nested-module missing import with a decoy import is done.
    - Exception handling through a wrapper API is done.
    - Swapped arguments across modules is done.
-   - Next ladder option: rename propagated through helper and public API.
+   - Rename propagated through helper and public API is done.
 
 3. Validate ranker calibration beyond in-sample GreenShot-5.
    - The legacy diagnostics ranker solves 9/9 full-budget and 5/9 pass@1.

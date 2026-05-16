@@ -5,6 +5,7 @@ from __future__ import annotations
 import ast
 import builtins
 import difflib
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -55,6 +56,12 @@ class _LocalImport:
     source_path: str
 
 
+@dataclass(frozen=True, slots=True)
+class _FunctionOrigin:
+    file_path: str
+    name: str
+
+
 def generate_candidate_patches(repo: Path) -> list[CandidatePatch]:
     """Generate structured candidate edits for source files in a repo."""
 
@@ -69,6 +76,7 @@ def generate_candidate_patches(repo: Path) -> list[CandidatePatch]:
         repo_string_literals.update(_string_literals(tree))
 
     local_imports = _local_import_index(parsed_sources)
+    external_signature_keywords = _external_signature_keyword_index(parsed_sources)
     candidates: list[CandidatePatch] = []
     for source, tree in parsed_sources:
         path = Path(source.relative_path)
@@ -80,7 +88,14 @@ def generate_candidate_patches(repo: Path) -> list[CandidatePatch]:
         candidates.extend(
             _add_import_candidates(source.relative_path, source.text, tree, local_imports)
         )
-        candidates.extend(_signature_propagation_candidates(source.relative_path, source.text, tree))
+        candidates.extend(
+            _signature_propagation_candidates(
+                source.relative_path,
+                source.text,
+                tree,
+                external_keywords=external_signature_keywords.get(source.relative_path, {}),
+            )
+        )
         for function in [node for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)]:
             arg_names = {arg.arg for arg in function.args.args}
             arg_types = _function_arg_types(function)
@@ -159,6 +174,89 @@ def _local_import_index(
     for matches in imports.values():
         matches.sort(key=lambda item: (item.module, item.name))
     return imports
+
+
+def _external_signature_keyword_index(
+    parsed_sources: list[tuple[PythonSource, ast.Module]],
+) -> dict[str, dict[str, set[str]]]:
+    module_paths: dict[str, str] = {}
+    module_functions: dict[str, set[str]] = {}
+    for source, tree in parsed_sources:
+        module = _module_name_from_path(Path(source.relative_path))
+        if not module:
+            continue
+        module_paths[module] = source.relative_path
+        module_functions[module] = {
+            node.name for node in tree.body if isinstance(node, ast.FunctionDef)
+        }
+
+    index: dict[str, dict[str, set[str]]] = {}
+    for source, tree in parsed_sources:
+        current_module = _module_name_from_path(Path(source.relative_path))
+        imported_functions = _imported_function_origins(
+            tree,
+            current_module=current_module,
+            module_paths=module_paths,
+            module_functions=module_functions,
+        )
+        if not imported_functions:
+            continue
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Name):
+                continue
+            origin = imported_functions.get(node.func.id)
+            if origin is None or origin.file_path == source.relative_path:
+                continue
+            keyword_names = [keyword.arg for keyword in node.keywords if keyword.arg]
+            if not keyword_names:
+                continue
+            function_keywords = index.setdefault(origin.file_path, {}).setdefault(origin.name, set())
+            function_keywords.update(keyword_names)
+    return index
+
+
+def _imported_function_origins(
+    tree: ast.Module,
+    *,
+    current_module: str,
+    module_paths: Mapping[str, str],
+    module_functions: Mapping[str, set[str]],
+) -> dict[str, _FunctionOrigin]:
+    origins: dict[str, _FunctionOrigin] = {}
+    for node in tree.body:
+        if not isinstance(node, ast.ImportFrom):
+            continue
+        module = _resolve_import_from_module(current_module, node)
+        if module is None or module not in module_functions:
+            continue
+        file_path = module_paths.get(module)
+        if file_path is None:
+            continue
+        for alias in node.names:
+            if alias.name not in module_functions[module]:
+                continue
+            origins[alias.asname or alias.name] = _FunctionOrigin(
+                file_path=file_path,
+                name=alias.name,
+            )
+    return origins
+
+
+def _resolve_import_from_module(current_module: str, node: ast.ImportFrom) -> str | None:
+    if node.level == 0:
+        return node.module
+    if not current_module:
+        return node.module
+
+    parts = current_module.split(".")
+    if node.level > len(parts):
+        return node.module
+    base = parts[: len(parts) - node.level]
+    if node.module:
+        base.append(node.module)
+    if not base:
+        return None
+    return ".".join(base)
 
 
 def _module_name_from_path(path: Path) -> str:
@@ -662,6 +760,8 @@ def _signature_propagation_candidates(
     file_path: str,
     source: str,
     tree: ast.Module,
+    *,
+    external_keywords: Mapping[str, set[str]] | None = None,
 ) -> list[CandidatePatch]:
     functions = {
         node.name: node
@@ -677,6 +777,7 @@ def _signature_propagation_candidates(
             calls_by_name[node.func.id].append(node)
 
     candidates: list[CandidatePatch] = []
+    seen: set[tuple[str, str, str, str]] = set()
     for function_name, function in functions.items():
         params = [arg.arg for arg in function.args.args]
         if not params:
@@ -714,9 +815,38 @@ def _signature_propagation_candidates(
                     params=params,
                 )
                 if candidate is not None:
+                    key = _signature_candidate_key(candidate)
+                    if key not in seen:
+                        seen.add(key)
+                        candidates.append(candidate)
+
+        for keyword_name in sorted((external_keywords or {}).get(function_name, set())):
+            if keyword_name in params:
+                continue
+            candidate = _signature_candidate_from_keyword(
+                file_path=file_path,
+                source=source,
+                function=function,
+                calls=calls,
+                keyword_name=keyword_name,
+                params=params,
+            )
+            if candidate is not None:
+                key = _signature_candidate_key(candidate)
+                if key not in seen:
+                    seen.add(key)
                     candidates.append(candidate)
 
     return candidates
+
+
+def _signature_candidate_key(candidate: CandidatePatch) -> tuple[str, str, str, str]:
+    return (
+        candidate.file_path,
+        candidate.action.target.symbol or "",
+        str(candidate.action.params.get("from", "")),
+        str(candidate.action.params.get("to", "")),
+    )
 
 
 def _signature_candidate_from_keyword(

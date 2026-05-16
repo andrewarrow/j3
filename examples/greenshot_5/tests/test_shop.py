@@ -3,6 +3,7 @@ from shop.api import (
     balance_after_store_credit,
     loyalty_points,
     order_customer_label,
+    profile_badge,
     profile_heading,
     profile_label,
     quote_total,
@@ -34,6 +35,10 @@ def test_visible_balance_uses_balance_cents() -> None:
 def test_profile_label_accepts_username_keyword() -> None:
     assert profile_heading("ada") == "Ada"
     assert profile_label("grace") == "Grace"
+
+
+def test_profile_badge_propagates_public_api_username() -> None:
+    assert profile_badge("Ada") == "@ada"
 
 
 def test_order_customer_label_uses_customer_name_key() -> None:

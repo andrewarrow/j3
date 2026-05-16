@@ -79,3 +79,50 @@ bugs.py:22: AttributeError
     assert hint.missing_names == {"Path"}
     assert hint.missing_attributes == {"amount_cents"}
     assert hint.exception_type == "NameError"
+
+
+def test_parse_key_error_and_collection_assertion_diffs() -> None:
+    output = """
+    def test_payload() -> None:
+>       assert payload["id"] == {"items": [1, 2]}
+E       KeyError: 'id'
+E       assert {'items': [1, 3]} == {'items': [1, 2]}
+E       Differing items:
+E       {'items': [1, 3]} != {'items': [1, 2]}
+"""
+
+    [hint] = parse_pytest_failure_hints(output)
+
+    assert hint.missing_keys == {"id"}
+    assert hint.assertions[-1].actual == {"items": [1, 3]}
+    assert hint.assertions[-1].expected == {"items": [1, 2]}
+    assert hint.assertion_diff_lines
+
+
+def test_parse_substring_assertion() -> None:
+    output = """
+    def test_message() -> None:
+>       assert "ready" in message
+E       assert 'ready' in 'not yet'
+"""
+
+    [hint] = parse_pytest_failure_hints(output)
+
+    assert hint.assertions[0].operator == "in"
+    assert hint.assertions[0].actual == "ready"
+    assert hint.assertions[0].expected == "not yet"
+
+
+def test_parse_mypy_and_ruff_output() -> None:
+    output = """
+bugs.py:12: error: Name "subtotal" is not defined  [name-defined]
+bugs.py:14:8: F821 Undefined name `Counter`
+"""
+
+    [hint] = parse_pytest_failure_hints(output)
+
+    assert hint.tool_diagnostics[0].tool == "mypy"
+    assert hint.tool_diagnostics[0].code == "name-defined"
+    assert hint.tool_diagnostics[1].tool == "ruff"
+    assert hint.tool_diagnostics[1].code == "F821"
+    assert hint.missing_names == {"Counter"}

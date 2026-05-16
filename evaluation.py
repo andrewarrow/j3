@@ -5,8 +5,10 @@ from __future__ import annotations
 import json
 import shutil
 import tempfile
-from dataclasses import dataclass
+from collections import Counter, defaultdict
+from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Iterable
 
 from patching import CandidatePatch, PatchPlanResult, plan_and_maybe_apply_patch
 
@@ -131,6 +133,10 @@ def write_eval_diagnostics(summary: EvalSummary, path: Path) -> Path:
     resolved = path.expanduser().resolve()
     resolved.parent.mkdir(parents=True, exist_ok=True)
     payload = {
+        "summary": {
+            "baseline": _aggregate_plan_summaries(result.baseline for result in summary.tasks),
+            "ranked": _aggregate_plan_summaries(result.ranked for result in summary.tasks),
+        },
         "tasks": [
             {
                 "name": result.task.name,
@@ -180,6 +186,7 @@ def _plan_diagnostics(plan: PatchPlanResult) -> dict[str, object]:
         "candidates_generated": plan.candidates_generated,
         "candidates_tested": plan.candidates_tested,
         "applied": plan.applied,
+        "summary": _single_plan_summary(plan),
         "selected": _candidate_diagnostics(plan.selected, passed=True) if plan.selected else None,
         "tested_candidates": [
             _candidate_diagnostics(candidate, passed=candidate == plan.selected)
@@ -195,8 +202,87 @@ def _candidate_diagnostics(candidate: CandidatePatch, *, passed: bool) -> dict[s
         "symbol": candidate.action.target.symbol,
         "start_line": candidate.action.target.start_line,
         "end_line": candidate.action.target.end_line,
+        "params": dict(candidate.action.params),
         "reason": candidate.reason,
         "model_score": candidate.model_score,
         "failure_hint_score": candidate.failure_hint_score,
         "passed": passed,
     }
+
+
+def _aggregate_plan_summaries(plans: Iterable[PatchPlanResult]) -> dict[str, object]:
+    plan_list = list(plans)
+    action_stats: defaultdict[str, _ActionSummaryAccumulator] = defaultdict(_ActionSummaryAccumulator)
+    failed_reasons: Counter[str] = Counter()
+    failure_modes: Counter[str] = Counter()
+
+    for plan in plan_list:
+        action = plan.selected.action.kind.value if plan.selected else "unsolved"
+        stats = action_stats[action]
+        stats.tasks += 1
+        stats.candidate_counts.append(plan.candidates_tested)
+        if plan.selected is not None:
+            stats.solved += 1
+            if plan.candidates_tested == 1:
+                stats.pass_at_1 += 1
+
+        failed_reasons.update(
+            candidate.reason
+            for candidate in plan.tested_candidates
+            if candidate != plan.selected
+        )
+        failure_modes[_failure_mode(plan)] += 1
+
+    return {
+        "tasks": len(plan_list),
+        "per_action": {
+            action: {
+                "tasks": stats.tasks,
+                "solved": stats.solved,
+                "pass_at_1": stats.pass_at_1,
+                "avg_candidates": _average(stats.candidate_counts),
+            }
+            for action, stats in sorted(action_stats.items())
+        },
+        "top_failed_candidate_reasons": _top_counter(failed_reasons),
+        "failure_modes": dict(sorted(failure_modes.items())),
+    }
+
+
+def _single_plan_summary(plan: PatchPlanResult) -> dict[str, object]:
+    failed_reasons = Counter(
+        candidate.reason
+        for candidate in plan.tested_candidates
+        if candidate != plan.selected
+    )
+    return {
+        "failure_mode": _failure_mode(plan),
+        "top_failed_candidate_reasons": _top_counter(failed_reasons),
+    }
+
+
+def _failure_mode(plan: PatchPlanResult) -> str:
+    if plan.selected is not None:
+        if plan.candidates_tested == 1:
+            return "pass_at_1"
+        return "bad_ranking"
+    if plan.candidates_generated == 0:
+        return "missing_action"
+    if plan.candidates_tested >= plan.candidates_generated:
+        return "missing_action"
+    return "search_budget_or_bad_ranking"
+
+
+def _top_counter(counter: Counter[str], limit: int = 10) -> list[dict[str, object]]:
+    return [
+        {"reason": reason, "count": count}
+        for reason, count in counter.most_common(limit)
+    ]
+
+
+@dataclass(slots=True)
+class _ActionSummaryAccumulator:
+    tasks: int = 0
+    solved: int = 0
+    pass_at_1: int = 0
+    candidate_counts: list[int] = field(default_factory=list)

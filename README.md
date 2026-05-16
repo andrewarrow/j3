@@ -281,6 +281,7 @@ The early action space is deliberately small:
 - `change_return_value`
 - `rename_symbol`
 - `modify_condition`
+- `propagate_signature`
 
 This keeps the first model honest. It either learns to choose useful edits from
 real repo signals, or it fails visibly.

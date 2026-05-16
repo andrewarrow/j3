@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import ast
+import builtins
 import difflib
+import io
 import json
 import math
 import shutil
 import subprocess
 import tempfile
+import tokenize
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -26,6 +29,7 @@ COMMON_IMPORTS = {
     "datetime": "from datetime import datetime",
     "Path": "from pathlib import Path",
 }
+BUILTIN_NAMES = set(dir(builtins))
 
 
 @dataclass(frozen=True, slots=True)
@@ -270,10 +274,13 @@ def generate_candidate_patches(repo: Path) -> list[CandidatePatch]:
             continue
 
         class_fields = _class_fields(tree)
+        module_symbols = _module_symbols(tree)
         candidates.extend(_add_import_candidates(source.relative_path, source.text, tree))
+        candidates.extend(_signature_propagation_candidates(source.relative_path, source.text, tree))
         for function in [node for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)]:
             arg_names = {arg.arg for arg in function.args.args}
             arg_types = _function_arg_types(function)
+            local_symbols = module_symbols | _local_symbols(function)
             candidates.extend(_guard_candidates(source.relative_path, source.text, function, arg_names))
             for node in ast.walk(function):
                 if isinstance(node, ast.Return) and node.value is not None:
@@ -285,6 +292,18 @@ def generate_candidate_patches(repo: Path) -> list[CandidatePatch]:
                     candidates.extend(_compare_candidates(source.relative_path, source.text, function, node))
                 elif isinstance(node, ast.Constant):
                     candidates.extend(_literal_candidates(source.relative_path, source.text, function, node))
+                elif isinstance(node, ast.If):
+                    candidates.extend(_modify_condition_candidates(source.relative_path, source.text, function, node))
+                elif isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load):
+                    candidates.extend(
+                        _rename_symbol_candidates(
+                            source.relative_path,
+                            source.text,
+                            function,
+                            node,
+                            local_symbols,
+                        )
+                    )
                 elif isinstance(node, ast.Call):
                     candidates.extend(_swap_call_arg_candidates(source.relative_path, source.text, function, node))
                 elif isinstance(node, ast.Attribute):
@@ -633,6 +652,212 @@ def _compare_candidates(
     ]
 
 
+def _modify_condition_candidates(
+    file_path: str,
+    source: str,
+    function: ast.FunctionDef,
+    node: ast.If,
+) -> list[CandidatePatch]:
+    condition = ast.get_source_segment(source, node.test)
+    if not condition:
+        return []
+
+    candidates: list[CandidatePatch] = []
+    if isinstance(node.test, ast.UnaryOp) and isinstance(node.test.op, ast.Not):
+        operand = ast.get_source_segment(source, node.test.operand)
+        if operand:
+            candidates.append(
+                _candidate(
+                    file_path=file_path,
+                    source=source,
+                    node=node.test,
+                    kind=PatchActionKind.MODIFY_CONDITION,
+                    replacement=operand,
+                    reason="remove condition negation",
+                    params={"operation": "remove_not", "from": condition, "to": operand},
+                    symbol=function.name,
+                )
+            )
+    else:
+        candidates.append(
+            _candidate(
+                file_path=file_path,
+                source=source,
+                node=node.test,
+                kind=PatchActionKind.MODIFY_CONDITION,
+                replacement=f"not ({condition})",
+                reason="negate condition",
+                params={"operation": "add_not", "from": condition, "to": f"not ({condition})"},
+                symbol=function.name,
+            )
+        )
+
+    if isinstance(node.test, ast.BoolOp):
+        for index, value in enumerate(node.test.values):
+            replacement = ast.get_source_segment(source, value)
+            if not replacement or replacement == condition:
+                continue
+            candidates.append(
+                _candidate(
+                    file_path=file_path,
+                    source=source,
+                    node=node.test,
+                    kind=PatchActionKind.MODIFY_CONDITION,
+                    replacement=replacement,
+                    reason=f"simplify condition to branch {index}",
+                    params={"operation": "simplify_boolop", "branch": index, "from": condition, "to": replacement},
+                    symbol=function.name,
+                )
+            )
+
+    return candidates
+
+
+def _rename_symbol_candidates(
+    file_path: str,
+    source: str,
+    function: ast.FunctionDef,
+    node: ast.Name,
+    local_symbols: set[str],
+) -> list[CandidatePatch]:
+    if node.id in local_symbols or node.id in BUILTIN_NAMES:
+        return []
+
+    alternatives = difflib.get_close_matches(node.id, sorted(local_symbols), n=3, cutoff=0.72)
+    return [
+        _candidate(
+            file_path=file_path,
+            source=source,
+            node=node,
+            kind=PatchActionKind.RENAME_SYMBOL,
+            replacement=alternative,
+            reason=f"rename unknown symbol {node.id} to {alternative}",
+            params={"from": node.id, "to": alternative},
+            symbol=function.name,
+        )
+        for alternative in alternatives
+    ]
+
+
+def _signature_propagation_candidates(
+    file_path: str,
+    source: str,
+    tree: ast.Module,
+) -> list[CandidatePatch]:
+    functions = {
+        node.name: node
+        for node in tree.body
+        if isinstance(node, ast.FunctionDef)
+    }
+    if not functions:
+        return []
+
+    calls_by_name: dict[str, list[ast.Call]] = {name: [] for name in functions}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in functions:
+            calls_by_name[node.func.id].append(node)
+
+    candidates: list[CandidatePatch] = []
+    for function_name, function in functions.items():
+        params = [arg.arg for arg in function.args.args]
+        if not params:
+            continue
+
+        calls = calls_by_name[function_name]
+        for call in calls:
+            for keyword in [keyword for keyword in call.keywords if keyword.arg]:
+                if keyword.arg in params:
+                    continue
+
+                close_params = difflib.get_close_matches(keyword.arg, params, n=2, cutoff=0.65)
+                for parameter in close_params:
+                    replacement = _render_call_with_keyword_rename(source, call, keyword.arg, parameter)
+                    if replacement:
+                        candidates.append(
+                            _candidate(
+                                file_path=file_path,
+                                source=source,
+                                node=call,
+                                kind=PatchActionKind.RENAME_SYMBOL,
+                                replacement=replacement,
+                                reason=f"rename call keyword {keyword.arg} to {parameter}",
+                                params={"from": keyword.arg, "to": parameter, "scope": "call_site"},
+                                symbol=function_name,
+                            )
+                        )
+
+                candidate = _signature_candidate_from_keyword(
+                    file_path=file_path,
+                    source=source,
+                    function=function,
+                    calls=calls,
+                    keyword_name=keyword.arg,
+                    params=params,
+                )
+                if candidate is not None:
+                    candidates.append(candidate)
+
+    return candidates
+
+
+def _signature_candidate_from_keyword(
+    *,
+    file_path: str,
+    source: str,
+    function: ast.FunctionDef,
+    calls: list[ast.Call],
+    keyword_name: str,
+    params: list[str],
+) -> CandidatePatch | None:
+    keyword_names = {
+        keyword.arg
+        for call in calls
+        for keyword in call.keywords
+        if keyword.arg
+    }
+    rename_from = [param for param in params if param not in keyword_names]
+    if len(rename_from) != 1 or keyword_name in params:
+        return None
+
+    old_name = rename_from[0]
+    function_segment = ast.get_source_segment(source, function)
+    if function_segment is None:
+        return None
+
+    replacements: list[tuple[ast.AST, str]] = [
+        (function, _rename_identifier_in_text(function_segment, old_name, keyword_name))
+    ]
+    for call in calls:
+        replacement = _render_call_with_keyword_rename(source, call, old_name, keyword_name)
+        if replacement is not None:
+            replacements.append((call, replacement))
+
+    patched = _apply_node_replacements(source, replacements)
+    if patched == source or not _is_valid_python(patched):
+        return None
+
+    edit = _full_source_edit(source)
+    action = PatchAction(
+        kind=PatchActionKind.PROPAGATE_SIGNATURE,
+        target=PatchTarget(
+            file_path=file_path,
+            start_line=function.lineno,
+            end_line=function.end_lineno,
+            symbol=function.name,
+            node_kind="FunctionDef",
+        ),
+        params={"from": old_name, "to": keyword_name},
+    )
+    return CandidatePatch(
+        file_path=file_path,
+        action=action,
+        edit=edit,
+        original_source=source,
+        patched_source=patched,
+        reason=f"propagate signature name {old_name} to {keyword_name}",
+    )
+
+
 def _candidate(
     *,
     file_path: str,
@@ -675,6 +900,85 @@ def _node_edit(node: ast.AST, replacement: str) -> SourceEdit:
         end_col=node.end_col_offset,
         replacement=replacement,
     )
+
+
+def _full_source_edit(source: str) -> SourceEdit:
+    lines = source.splitlines(keepends=True)
+    if not lines:
+        return SourceEdit(start_line=1, start_col=0, end_line=1, end_col=0, replacement="")
+    return SourceEdit(
+        start_line=1,
+        start_col=0,
+        end_line=len(lines),
+        end_col=len(lines[-1]),
+        replacement=source,
+    )
+
+
+def _render_call_with_keyword_rename(
+    source: str,
+    node: ast.Call,
+    old_name: str,
+    new_name: str,
+) -> str | None:
+    func = ast.get_source_segment(source, node.func)
+    if not func:
+        return None
+
+    parts: list[str] = []
+    for arg in node.args:
+        value = ast.get_source_segment(source, arg)
+        if value is None:
+            return None
+        parts.append(value)
+    changed = False
+    for keyword in node.keywords:
+        value = ast.get_source_segment(source, keyword.value)
+        if value is None:
+            return None
+        if keyword.arg is None:
+            parts.append(f"**{value}")
+            continue
+        name = new_name if keyword.arg == old_name else keyword.arg
+        changed = changed or keyword.arg == old_name
+        parts.append(f"{name}={value}")
+    if not changed:
+        return None
+    return f"{func}({', '.join(parts)})"
+
+
+def _rename_identifier_in_text(source: str, old_name: str, new_name: str) -> str:
+    tokens = []
+    reader = io.StringIO(source).readline
+    for token in tokenize.generate_tokens(reader):
+        if token.type == tokenize.NAME and token.string == old_name:
+            token = tokenize.TokenInfo(token.type, new_name, token.start, token.end, token.line)
+        tokens.append(token)
+    return tokenize.untokenize(tokens)
+
+
+def _apply_node_replacements(source: str, replacements: list[tuple[ast.AST, str]]) -> str:
+    lines = source.splitlines(keepends=True)
+    spans = [
+        (
+            _offset(lines, node.lineno, node.col_offset),
+            _offset(lines, node.end_lineno, node.end_col_offset),
+            replacement,
+        )
+        for node, replacement in replacements
+    ]
+    patched = source
+    for start, end, replacement in sorted(spans, reverse=True):
+        patched = patched[:start] + replacement + patched[end:]
+    return patched
+
+
+def _is_valid_python(source: str) -> bool:
+    try:
+        ast.parse(source)
+    except SyntaxError:
+        return False
+    return True
 
 
 def _write_candidate(repo: Path, candidate: CandidatePatch) -> None:
@@ -734,6 +1038,11 @@ def _score_against_hint(candidate: CandidatePatch, hint: PytestFailureHint) -> f
             score += 12.0
             break
 
+    for diagnostic in hint.tool_diagnostics:
+        if candidate.file_path == diagnostic.file_path and candidate.action.target.start_line == diagnostic.line:
+            score += 12.0
+            break
+
     if hint.exception_type == "ZeroDivisionError" and candidate.action.kind == PatchActionKind.INSERT_GUARD:
         score += 20.0
 
@@ -755,6 +1064,14 @@ def _score_against_hint(candidate: CandidatePatch, hint: PytestFailureHint) -> f
 
     if candidate.action.kind == PatchActionKind.SWAP_CALL_ARG and hint.assertions:
         score += 10.0
+
+    if candidate.action.kind in {PatchActionKind.RENAME_SYMBOL, PatchActionKind.PROPAGATE_SIGNATURE}:
+        original = str(candidate.action.params.get("from", ""))
+        replacement = str(candidate.action.params.get("to", ""))
+        if original in hint.missing_names or original in hint.type_error_names:
+            score += 45.0
+        if replacement in hint.type_error_names:
+            score += 20.0
 
     if any(isinstance(assertion.expected, bool) for assertion in hint.assertions):
         if candidate.action.kind in {PatchActionKind.CHANGE_OPERATOR, PatchActionKind.MODIFY_CONDITION}:
@@ -903,6 +1220,42 @@ def _defined_names(tree: ast.Module) -> set[str]:
     return names
 
 
+def _module_symbols(tree: ast.Module) -> set[str]:
+    return _imported_names(tree) | _defined_names(tree)
+
+
+def _local_symbols(function: ast.FunctionDef) -> set[str]:
+    names = {arg.arg for arg in function.args.args}
+    names.update(arg.arg for arg in function.args.kwonlyargs)
+    if function.args.vararg is not None:
+        names.add(function.args.vararg.arg)
+    if function.args.kwarg is not None:
+        names.add(function.args.kwarg.arg)
+    for node in ast.walk(function):
+        if isinstance(node, ast.Name) and isinstance(node.ctx, (ast.Store, ast.Param)):
+            names.add(node.id)
+        elif isinstance(node, ast.ExceptHandler) and node.name:
+            names.add(node.name)
+        elif isinstance(node, ast.For):
+            names.update(_target_names(node.target))
+        elif isinstance(node, ast.With):
+            for item in node.items:
+                if item.optional_vars is not None:
+                    names.update(_target_names(item.optional_vars))
+    return names
+
+
+def _target_names(node: ast.AST) -> set[str]:
+    if isinstance(node, ast.Name):
+        return {node.id}
+    if isinstance(node, (ast.Tuple, ast.List)):
+        names: set[str] = set()
+        for element in node.elts:
+            names.update(_target_names(element))
+        return names
+    return set()
+
+
 def _import_insert_line(tree: ast.Module) -> int:
     insert_line = 1
     for node in tree.body:
@@ -936,3 +1289,7 @@ def _function_uses_len_of(function: ast.FunctionDef, arg_name: str) -> bool:
         ):
             return True
     return False
+
+
+def _offset(lines: list[str], line: int, col: int) -> int:
+    return sum(len(value) for value in lines[: line - 1]) + col

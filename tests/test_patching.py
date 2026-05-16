@@ -168,3 +168,72 @@ def test_patch_handles_greenshot_3_actions(tmp_path) -> None:
         assert result.selected is not None
         assert result.candidates_tested == 1
         assert result.selected.action.kind.value == action
+
+
+def test_generate_rename_symbol_candidate_for_unknown_local(tmp_path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "bug.py").write_text(
+        "def total_price(subtotal: int, tax: int) -> int:\n"
+        "    return subtotla + tax\n",
+        encoding="utf-8",
+    )
+
+    candidates = generate_candidate_patches(repo)
+
+    assert any(
+        candidate.action.kind.value == "rename_symbol"
+        and candidate.action.params == {"from": "subtotla", "to": "subtotal"}
+        for candidate in candidates
+    )
+
+
+def test_generate_modify_condition_candidates_for_if_tests(tmp_path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "bug.py").write_text(
+        "def is_ready(enabled: bool) -> bool:\n"
+        "    if not enabled:\n"
+        "        return True\n"
+        "    return False\n",
+        encoding="utf-8",
+    )
+
+    candidates = generate_candidate_patches(repo)
+
+    assert any(
+        candidate.action.kind.value == "modify_condition"
+        and candidate.action.params["operation"] == "remove_not"
+        and "if enabled:" in candidate.patched_source
+        for candidate in candidates
+    )
+
+
+def test_generate_signature_and_call_site_propagation_candidates(tmp_path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "bug.py").write_text(
+        "def greet(first: str) -> str:\n"
+        "    return first.upper()\n\n"
+        "def render() -> str:\n"
+        "    return greet(name='Ada')\n\n"
+        "def label(value: str) -> str:\n"
+        "    return value\n\n"
+        "def render_label() -> str:\n"
+        "    return label(vlaue='x')\n",
+        encoding="utf-8",
+    )
+
+    candidates = generate_candidate_patches(repo)
+
+    assert any(
+        candidate.action.kind.value == "propagate_signature"
+        and "def greet(name: str) -> str:" in candidate.patched_source
+        and "return name.upper()" in candidate.patched_source
+        for candidate in candidates
+    )
+    assert any(
+        candidate.action.kind.value == "rename_symbol"
+        and "label(value='x')" in candidate.patched_source
+        for candidate in candidates
+    )

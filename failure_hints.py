@@ -11,16 +11,20 @@ from typing import Any
 
 FAILED_TARGET_RE = re.compile(r"^FAILED\s+([^\s]+::[^\s]+)(?:\s+-\s+(.*))?")
 TRACEBACK_LOCATION_RE = re.compile(r"^([^\s:][^:]*\.py):(\d+):(?:\s+([A-Za-z_][\w.]*))?")
-ASSERT_EQ_RE = re.compile(r"^E\s+assert\s+(.+?)\s*(==|is)\s*(.+)$")
+ASSERT_OP_RE = re.compile(r"^E\s+assert\s+(.+?)\s+(==|is|in|not in)\s+(.+)$")
 WHERE_CALL_RE = re.compile(r"where\s+(.+?)\s+=\s+([A-Za-z_]\w*)\(")
 CALL_RE = re.compile(r"\b([A-Za-z_]\w*)\s*\(")
 DEF_RE = re.compile(r"^\s*def\s+([A-Za-z_]\w*)\(")
 EXCEPTION_RE = re.compile(r"\b([A-Za-z_][\w.]*?(?:Error|Exception|Warning))\b")
 NAME_ERROR_RE = re.compile(r"NameError:\s+name '([^']+)' is not defined")
+KEY_ERROR_RE = re.compile(r"KeyError:\s+(['\"])(.*?)\1")
 ATTRIBUTE_ERROR_RE = re.compile(r"AttributeError:\s+.+ has no attribute '([^']+)'")
 MODULE_NOT_FOUND_RE = re.compile(r"ModuleNotFoundError:\s+No module named '([^']+)'")
 IMPORT_ERROR_RE = re.compile(r"ImportError:\s+cannot import name '([^']+)'")
 TYPE_ERROR_NAME_RE = re.compile(r"TypeError:\s+.*(?:argument|parameter|keyword).*'([^']+)'")
+MYPY_RE = re.compile(r"^([^:\s][^:]*\.py):(\d+):\s+(error|note|warning):\s+(.+?)(?:\s+\[([-\w]+)\])?$")
+RUFF_RE = re.compile(r"^([^:\s][^:]*\.py):(\d+):(\d+):\s+([A-Z]+\d+)\s+(.+)$")
+RUFF_UNDEFINED_NAME_RE = re.compile(r"Undefined name [`'\"]?([A-Za-z_]\w*)[`'\"]?")
 
 IGNORED_CALL_NAMES = {
     "assert",
@@ -58,6 +62,17 @@ class AssertionComparison:
         return None
 
 
+@dataclass(frozen=True, slots=True)
+class ToolDiagnostic:
+    tool: str
+    file_path: str
+    line: int
+    message: str
+    severity: str | None = None
+    code: str | None = None
+    column: int | None = None
+
+
 @dataclass(slots=True)
 class PytestFailureHint:
     nodeid: str | None = None
@@ -69,15 +84,24 @@ class PytestFailureHint:
     missing_names: set[str] = field(default_factory=set)
     missing_attributes: set[str] = field(default_factory=set)
     missing_modules: set[str] = field(default_factory=set)
+    missing_keys: set[str] = field(default_factory=set)
     type_error_names: set[str] = field(default_factory=set)
+    assertion_diff_lines: list[str] = field(default_factory=list)
+    tool_diagnostics: list[ToolDiagnostic] = field(default_factory=list)
 
     @property
     def source_files(self) -> set[str]:
-        return {
+        traceback_files = {
             location.file_path
             for location in self.traceback_locations
             if not PurePosixPath(location.file_path).name.startswith("test_")
         }
+        diagnostic_files = {
+            diagnostic.file_path
+            for diagnostic in self.tool_diagnostics
+            if not PurePosixPath(diagnostic.file_path).name.startswith("test_")
+        }
+        return traceback_files | diagnostic_files
 
 
 def parse_pytest_failure_hints(output: str) -> list[PytestFailureHint]:
@@ -103,6 +127,9 @@ def parse_pytest_failure_hints(output: str) -> list[PytestFailureHint]:
             if " FAILURES " in line:
                 current = PytestFailureHint()
                 hints.append(current)
+            elif MYPY_RE.match(stripped) or RUFF_RE.match(stripped):
+                current = PytestFailureHint()
+                hints.append(current)
             elif stripped.startswith((">", "E ")) or DEF_RE.match(line):
                 current = PytestFailureHint()
                 hints.append(current)
@@ -126,6 +153,10 @@ def _merge_summary(hint: PytestFailureHint, summary: str | None) -> None:
 
 def _merge_line(hint: PytestFailureHint, line: str) -> None:
     stripped = line.strip()
+    if MYPY_RE.match(stripped) or RUFF_RE.match(stripped):
+        _collect_tool_diagnostics(hint, stripped)
+        return
+
     location = TRACEBACK_LOCATION_RE.match(stripped)
     if location:
         exception_type = location.group(3)
@@ -140,7 +171,7 @@ def _merge_line(hint: PytestFailureHint, line: str) -> None:
         )
         return
 
-    assertion = ASSERT_EQ_RE.match(stripped)
+    assertion = ASSERT_OP_RE.match(stripped)
     if assertion:
         hint.assertions.append(
             AssertionComparison(
@@ -149,6 +180,9 @@ def _merge_line(hint: PytestFailureHint, line: str) -> None:
                 expected=_literal_value(assertion.group(3)),
             )
         )
+
+    if stripped.startswith("E ") and _looks_like_assertion_diff(stripped):
+        hint.assertion_diff_lines.append(stripped[2:].strip())
 
     where = WHERE_CALL_RE.search(stripped)
     if where:
@@ -162,6 +196,7 @@ def _merge_line(hint: PytestFailureHint, line: str) -> None:
     if exception and hint.exception_type is None:
         hint.exception_type = exception.group(1)
     _collect_error_details(hint, stripped)
+    _collect_tool_diagnostics(hint, stripped)
 
     _collect_function_names(hint, stripped)
 
@@ -176,6 +211,10 @@ def _collect_error_details(hint: PytestFailureHint, text: str) -> None:
     name_error = NAME_ERROR_RE.search(text)
     if name_error:
         hint.missing_names.add(name_error.group(1))
+
+    key_error = KEY_ERROR_RE.search(text)
+    if key_error:
+        hint.missing_keys.add(key_error.group(2))
 
     attribute_error = ATTRIBUTE_ERROR_RE.search(text)
     if attribute_error:
@@ -192,6 +231,39 @@ def _collect_error_details(hint: PytestFailureHint, text: str) -> None:
     type_error = TYPE_ERROR_NAME_RE.search(text)
     if type_error:
         hint.type_error_names.add(type_error.group(1))
+
+
+def _collect_tool_diagnostics(hint: PytestFailureHint, text: str) -> None:
+    mypy = MYPY_RE.match(text)
+    if mypy:
+        hint.tool_diagnostics.append(
+            ToolDiagnostic(
+                tool="mypy",
+                file_path=_normalize_path(mypy.group(1)),
+                line=int(mypy.group(2)),
+                severity=mypy.group(3),
+                message=mypy.group(4),
+                code=mypy.group(5),
+            )
+        )
+        return
+
+    ruff = RUFF_RE.match(text)
+    if ruff:
+        message = ruff.group(5)
+        hint.tool_diagnostics.append(
+            ToolDiagnostic(
+                tool="ruff",
+                file_path=_normalize_path(ruff.group(1)),
+                line=int(ruff.group(2)),
+                column=int(ruff.group(3)),
+                code=ruff.group(4),
+                message=message,
+            )
+        )
+        undefined = RUFF_UNDEFINED_NAME_RE.search(message)
+        if undefined:
+            hint.missing_names.add(undefined.group(1))
 
 
 def _literal_value(text: str) -> Any:
@@ -224,5 +296,22 @@ def _has_signal(hint: PytestFailureHint) -> bool:
         or hint.missing_names
         or hint.missing_attributes
         or hint.missing_modules
+        or hint.missing_keys
         or hint.type_error_names
+        or hint.assertion_diff_lines
+        or hint.tool_diagnostics
+    )
+
+
+def _looks_like_assertion_diff(text: str) -> bool:
+    return text.startswith(
+        (
+            "E       - ",
+            "E       + ",
+            "E         ",
+            "E       Differing items:",
+            "E       Right contains",
+            "E       Left contains",
+            "E       Full diff:",
+        )
     )

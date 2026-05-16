@@ -30,6 +30,7 @@ class PatchActionKind(str, Enum):
     CHANGE_RETURN_VALUE = "change_return_value"
     RENAME_SYMBOL = "rename_symbol"
     MODIFY_CONDITION = "modify_condition"
+    PROPAGATE_SIGNATURE = "propagate_signature"
 
 
 @dataclass(frozen=True, slots=True)

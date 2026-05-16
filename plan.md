@@ -76,6 +76,9 @@ ranked, legacy diagnostics candidate ranker:
 
 ranked, outcome-trained candidate ranker with v2 generalized features:
   solved=8/8 pass@1=6/8 avg_candidates=1.25
+
+ranked, outcome-trained candidate ranker with v3 hint context/locality features:
+  solved=8/8 pass@1=8/8 avg_candidates=1.00
 ```
 
 Current interpretation:
@@ -93,10 +96,15 @@ Current interpretation:
   symbols, and arbitrary exact param values from the learned feature set. This
   fixes the prior `quote_total_helper_discount` ranker miss without adding a
   task-specific rule.
-- The outcome-trained ranker improves pass@1 on GreenShot-5, but this is
-  in-sample signal from a tiny benchmark. Treat the remaining
-  `visible_balance_attribute_decoys` and nested-import max-candidate-1 misses as
-  ranking/context failures, not missing actions.
+- Candidate-ranker v3 outcome rows carry compact failure hints, and the ranker
+  has generalized hint-context/locality features for candidate token overlap,
+  TypeError name direction, import package locality, and whether a candidate has
+  any structured hint support. This closes the current GreenShot-5 pass@1 misses
+  in-sample.
+- The outcome-trained ranker now reaches 8/8 pass@1 on GreenShot-5, but this is
+  still in-sample signal from a tiny benchmark. Treat it as a sign that the
+  remaining failures were ranking/context failures, not evidence of broad
+  Python-editing competence.
 - The benchmark is still tiny. It is good for tight iteration, not evidence of
   broad Python-editing competence.
 
@@ -200,7 +208,7 @@ has enough coverage and data to make neural regressions visible.
 - [x] Teach `train-ranker` to consume `--candidate-outcomes PATH` directly.
 - [ ] Include before/after AST delta features in outcome rows.
 - [ ] Include compact target context in outcome rows.
-- [ ] Include failing observation features in outcome rows.
+- [x] Include failing observation features in outcome rows.
 - [ ] Include candidate diff size and edit locality.
 - [ ] Include whether candidates are equivalent or overlapping.
 - [ ] Include multiple-passing-candidate groups.
@@ -420,28 +428,25 @@ pytest -q
 
 ## Immediate Next Tasks
 
-1. Improve ranker calibration.
-   - The legacy diagnostics ranker solves 8/8 full-budget and 5/8 pass@1.
-   - The outcome-trained ranker with v2 generalized features solves 8/8
-     full-budget and 6/8 pass@1 in-sample.
-   - The prior `quote_total_helper_discount` miss is fixed by removing raw
-     reason strings, exact target symbols, and arbitrary exact param values from
-     ranker features.
-   - Continue with better locality/context features for
-     `visible_balance_attribute_decoys` and the nested import decoy.
-
-2. Add a compact diagnostics comparison command.
+1. Add a compact diagnostics comparison command.
    - Compare two diagnostics files.
    - Show per-task rank movement, pass@1 changes, bad-ranking changes, and top
      failed candidate reasons.
 
-3. Add the next GreenShot-5 ladder task.
+2. Add the next GreenShot-5 ladder task.
    - Nested-module missing import with a decoy import is done.
    - Exception handling through a wrapper API is done.
-   - Remaining problem: bad ranking/locality signal. The correct import is
-     generated and passes, but it is ranked second behind a decoy import.
    - Next ladder options: swapped arguments across modules or rename propagated
      through helper and public API.
+
+3. Validate ranker calibration beyond in-sample GreenShot-5.
+   - The legacy diagnostics ranker solves 8/8 full-budget and 5/8 pass@1.
+   - The outcome-trained ranker with v2 generalized features solves 8/8
+     full-budget and 6/8 pass@1 in-sample.
+   - The outcome-trained ranker with v3 hint context/locality features solves
+     8/8 full-budget and 8/8 pass@1 in-sample.
+   - Next ranker work should use held-out or newly added tasks so improvements
+     do not only reflect GreenShot-5 memorization.
 
 ## Stop Conditions
 

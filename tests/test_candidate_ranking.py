@@ -134,6 +134,67 @@ def test_train_candidate_ranker_from_candidate_outcomes_jsonl(tmp_path) -> None:
     assert result.training_pairs == 2
 
 
+def test_train_candidate_ranker_from_outcomes_uses_failure_hint_context(tmp_path) -> None:
+    outcomes = tmp_path / "candidate-outcomes.jsonl"
+    rows = [
+        {
+            "task": "visible_balance",
+            "phase": "ranked",
+            **_attribute_candidate_record(to="available_cents", passed=False),
+            "rank_index": 1,
+            "first_passing_index": 2,
+            "is_first_pass": False,
+            "failure_hints": [
+                {
+                    "nodeid": "tests/test_shop.py::test_visible_balance_uses_balance_cents",
+                    "function_names": ["visible_balance", "account_balance"],
+                    "missing_attributes": ["amount_cents"],
+                    "source_files": ["shop/accounts.py"],
+                }
+            ],
+        },
+        {
+            "task": "visible_balance",
+            "phase": "ranked",
+            **_attribute_candidate_record(to="balance_cents", passed=True),
+            "rank_index": 2,
+            "first_passing_index": 2,
+            "is_first_pass": True,
+            "failure_hints": [
+                {
+                    "nodeid": "tests/test_shop.py::test_visible_balance_uses_balance_cents",
+                    "function_names": ["visible_balance", "account_balance"],
+                    "missing_attributes": ["amount_cents"],
+                    "source_files": ["shop/accounts.py"],
+                }
+            ],
+        },
+    ]
+    outcomes.write_text(
+        "\n".join(json.dumps(row) for row in rows) + "\n",
+        encoding="utf-8",
+    )
+
+    result = train_candidate_ranker(candidate_outcome_paths=[outcomes], out_dir=tmp_path / "run")
+    ranker = CandidateRankerModel.load(result.ranker_path)
+    hint = PytestFailureHint(
+        nodeid="tests/test_shop.py::test_visible_balance_uses_balance_cents",
+        function_names={"visible_balance", "account_balance"},
+        missing_attributes={"amount_cents"},
+    )
+    ranked = rank_with_candidate_ranker(
+        [
+            _attribute_candidate(to="available_cents"),
+            _attribute_candidate(to="balance_cents"),
+        ],
+        ranker,
+        hints=[hint],
+    )
+
+    assert result.training_pairs == 1
+    assert ranked[0].action.params["to"] == "balance_cents"
+
+
 def test_ranker_overrides_higher_failure_hint_score(tmp_path) -> None:
     ranker = CandidateRankerModel(
         path=tmp_path / "ranker.json",
@@ -187,7 +248,91 @@ def test_candidate_features_avoid_exact_task_specific_identity() -> None:
     assert "reason:try comparison operator >=" not in features
     assert "symbol:meets_minimum" not in features
     assert "param:to=>=" not in features
+    assert features["has_failure_hint_score"] == 1.0
+    assert features["action_has_failure_hint_score:change_operator"] == 1.0
     assert features["param_symbol:to=>="] == 1.0
+
+
+def test_candidate_features_include_type_error_name_matches() -> None:
+    candidate = CandidatePatch(
+        file_path="shop/profiles.py",
+        action=PatchAction(
+            kind=PatchActionKind.PROPAGATE_SIGNATURE,
+            target=PatchTarget(
+                file_path="shop/profiles.py",
+                start_line=1,
+                end_line=2,
+                symbol="render_profile",
+                node_kind="FunctionDef",
+            ),
+            params={"from": "name", "to": "username"},
+        ),
+        edit=SourceEdit(start_line=1, start_col=0, end_line=1, end_col=0, replacement=""),
+        original_source="",
+        patched_source="",
+        reason="propagate signature name name to username",
+    )
+
+    features = candidate_features(candidate, hints=[PytestFailureHint(type_error_names={"username"})])
+
+    assert features["hint_has_type_error_name"] == 1.0
+    assert features["hint_type_error_name_matches_to"] == 1.0
+    assert features["action_hint_type_error_name_matches_to:propagate_signature"] == 1.0
+
+
+def test_candidate_features_include_hint_token_overlap_without_exact_identity() -> None:
+    candidate = _attribute_candidate(to="balance_cents")
+
+    features = candidate_features(
+        candidate,
+        hints=[
+            PytestFailureHint(
+                nodeid="tests/test_shop.py::test_visible_balance_uses_balance_cents",
+                function_names={"visible_balance", "account_balance"},
+            )
+        ],
+    )
+
+    assert "param:to=balance_cents" not in features
+    assert features["hint_param_to_token_overlap"] > 0.0
+    assert features["action_hint_param_to_token_overlap:change_attribute"] > 0.0
+
+
+def test_candidate_features_include_import_locality() -> None:
+    source = "def receipt_total_label(cents):\n    return format_receipt_total(cents)\n"
+    candidate = CandidatePatch(
+        file_path="shop/reports/summary.py",
+        action=PatchAction(
+            kind=PatchActionKind.ADD_IMPORT,
+            target=PatchTarget(
+                file_path="shop/reports/summary.py",
+                start_line=1,
+                end_line=1,
+                symbol="format_receipt_total",
+                node_kind="Import",
+            ),
+            params={
+                "name": "format_receipt_total",
+                "module": "shop.reports.money",
+                "import": "from shop.reports.money import format_receipt_total",
+            },
+        ),
+        edit=SourceEdit(
+            start_line=1,
+            start_col=0,
+            end_line=1,
+            end_col=0,
+            replacement="from shop.reports.money import format_receipt_total\n",
+        ),
+        original_source=source,
+        patched_source="from shop.reports.money import format_receipt_total\n" + source,
+        reason="add missing import for format_receipt_total",
+    )
+
+    features = candidate_features(candidate)
+
+    assert features["import_module_same_target_package"] == 1.0
+    assert features["action_import_module_same_target_package:add_import"] == 1.0
 
 
 def _candidate_record(*, to: str, passed: bool) -> dict[str, object]:
@@ -218,6 +363,23 @@ def _subscript_key_candidate_record(*, passed: bool) -> dict[str, object]:
         "reason": "try subscript key 'customer_name'",
         "model_score": 0.0,
         "failure_hint_score": 142.0,
+        "ranker_score": None,
+        "passed": passed,
+    }
+
+
+def _attribute_candidate_record(*, to: str, passed: bool) -> dict[str, object]:
+    return {
+        "file_path": "shop/accounts.py",
+        "action": "change_attribute",
+        "symbol": "account_balance",
+        "start_line": 12,
+        "end_line": 12,
+        "node_kind": "Attribute",
+        "params": {"from": "amount_cents", "to": to},
+        "reason": f"try attribute {to}",
+        "model_score": 0.0,
+        "failure_hint_score": 122.0,
         "ranker_score": None,
         "passed": passed,
     }
@@ -275,5 +437,30 @@ def _subscript_key_candidate() -> CandidatePatch:
         patched_source=patched,
         reason="try subscript key 'customer_name'",
         model_score=0.5,
+        failure_hint_score=122.0,
+    )
+
+
+def _attribute_candidate(*, to: str) -> CandidatePatch:
+    source = "def account_balance(account):\n    return account.amount_cents\n"
+    patched = source.replace("amount_cents", to)
+    return CandidatePatch(
+        file_path="shop/accounts.py",
+        action=PatchAction(
+            kind=PatchActionKind.CHANGE_ATTRIBUTE,
+            target=PatchTarget(
+                file_path="shop/accounts.py",
+                start_line=2,
+                end_line=2,
+                symbol="account_balance",
+                node_kind="Attribute",
+            ),
+            params={"from": "amount_cents", "to": to},
+        ),
+        edit=SourceEdit(start_line=2, start_col=19, end_line=2, end_col=31, replacement=to),
+        original_source=source,
+        patched_source=patched,
+        reason=f"try attribute {to}",
+        model_score=0.0,
         failure_hint_score=122.0,
     )

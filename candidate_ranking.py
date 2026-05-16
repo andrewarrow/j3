@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -12,7 +13,8 @@ from actions import PatchAction
 
 
 RANKER_FORMAT = "j3.candidate-ranker.v1"
-RANKER_FEATURE_VERSION = "candidate-diagnostics-v2"
+RANKER_FEATURE_VERSION = "candidate-diagnostics-v3"
+TOKEN_RE = re.compile(r"[A-Za-z][A-Za-z0-9]*")
 
 _SYMBOLIC_PARAM_VALUES = {
     "!=",
@@ -256,6 +258,9 @@ def candidate_features(
         f"action:{action}": 1.0,
         "failure_hint_score": candidate.failure_hint_score / 100.0,
     }
+    if candidate.failure_hint_score > 0:
+        features["has_failure_hint_score"] = 1.0
+        features[f"action_has_failure_hint_score:{action}"] = 1.0
     if candidate.model_score is not None:
         features["has_model_score"] = 1.0
         features["model_score"] = candidate.model_score
@@ -265,9 +270,22 @@ def candidate_features(
         features[f"node_kind:{candidate.action.target.node_kind}"] = 1.0
 
     _add_param_features(features, action, params)
+    _add_import_locality_features(features, action, candidate.file_path, params)
 
     for hint in hints:
         _merge_hint_features(features, candidate, action, hint)
+    if hints:
+        _add_hint_token_overlap_features(
+            features,
+            action=action,
+            candidate_tokens=_candidate_tokens(
+                candidate.file_path,
+                candidate.action.target.symbol,
+                params,
+            ),
+            params=params,
+            hint_tokens=_hint_tokens(hints),
+        )
 
     return features
 
@@ -304,9 +322,10 @@ def _training_pairs_from_outcome_rows(
     if positive is None:
         return []
 
-    positive_features = _candidate_record_features(positive, [])
+    hints = _outcome_row_hints(ordered_rows)
+    positive_features = _candidate_record_features(positive, hints)
     return [
-        (positive_features, _candidate_record_features(candidate, []))
+        (positive_features, _candidate_record_features(candidate, hints))
         for candidate in ordered_rows
         if candidate is not positive and candidate.get("passed") is not True
     ]
@@ -337,6 +356,9 @@ def _candidate_record_features(candidate: dict[str, object], hints: object) -> d
         f"action:{action}": 1.0,
         "failure_hint_score": _float_value(candidate.get("failure_hint_score")) / 100.0,
     }
+    if _float_value(candidate.get("failure_hint_score")) > 0:
+        features["has_failure_hint_score"] = 1.0
+        features[f"action_has_failure_hint_score:{action}"] = 1.0
     model_score = candidate.get("model_score")
     if model_score is not None:
         features["has_model_score"] = 1.0
@@ -349,11 +371,29 @@ def _candidate_record_features(candidate: dict[str, object], hints: object) -> d
         features[f"node_kind:{node_kind}"] = 1.0
     if isinstance(params, dict):
         _add_param_features(features, action, params)
+        _add_import_locality_features(
+            features,
+            action,
+            str(candidate.get("file_path", "")),
+            params,
+        )
 
     if isinstance(hints, list):
         for hint in hints:
             if isinstance(hint, dict):
                 _merge_hint_record_features(features, candidate, action, hint)
+        if hints and isinstance(params, dict):
+            _add_hint_token_overlap_features(
+                features,
+                action=action,
+                candidate_tokens=_candidate_tokens(
+                    str(candidate.get("file_path", "")),
+                    candidate.get("symbol"),
+                    params,
+                ),
+                params=params,
+                hint_tokens=_hint_record_tokens(hints),
+            )
     return features
 
 
@@ -378,6 +418,59 @@ def _add_param_features(features: dict[str, float], action: str, params: Mapping
         else:
             features["numeric_param_delta:same"] = 1.0
         features[f"action_numeric_param_delta:{action}"] = 1.0
+
+
+def _add_import_locality_features(
+    features: dict[str, float],
+    action: str,
+    file_path: str,
+    params: Mapping[str, object],
+) -> None:
+    if action != "add_import":
+        return
+    module = params.get("module")
+    if not isinstance(module, str) or not module:
+        return
+
+    file_module_parts = _module_parts_from_file_path(file_path)
+    import_parts = tuple(part for part in module.split(".") if part)
+    if not file_module_parts or not import_parts:
+        return
+
+    target_package = file_module_parts[:-1]
+    import_package = import_parts[:-1]
+    if not target_package:
+        return
+
+    prefix = _common_prefix_len(target_package, import_package)
+    if prefix:
+        features["import_module_target_package_overlap"] = prefix / len(target_package)
+        features["action_import_module_target_package_overlap:add_import"] = features[
+            "import_module_target_package_overlap"
+        ]
+    if target_package == import_package:
+        features["import_module_same_target_package"] = 1.0
+        features["action_import_module_same_target_package:add_import"] = 1.0
+    elif prefix:
+        features["import_module_shares_target_package_prefix"] = 1.0
+        features["action_import_module_shares_target_package_prefix:add_import"] = 1.0
+
+
+def _module_parts_from_file_path(file_path: str) -> tuple[str, ...]:
+    path = Path(file_path)
+    parts = list(path.with_suffix("").parts)
+    if parts and parts[-1] == "__init__":
+        parts = parts[:-1]
+    return tuple(parts)
+
+
+def _common_prefix_len(left: tuple[str, ...], right: tuple[str, ...]) -> int:
+    count = 0
+    for left_part, right_part in zip(left, right, strict=False):
+        if left_part != right_part:
+            break
+        count += 1
+    return count
 
 
 def _is_plain_number(value: object) -> bool:
@@ -407,6 +500,27 @@ def _merge_hint_features(
     if candidate.file_path in getattr(hint, "source_files", set()):
         features["hint_file_match"] = 1.0
         features[f"action_hint_file_match:{action}"] = 1.0
+    _merge_name_set_features(
+        features,
+        action,
+        dict(candidate.action.params),
+        name_set=getattr(hint, "missing_names", set()),
+        prefix="missing_name",
+    )
+    _merge_name_set_features(
+        features,
+        action,
+        dict(candidate.action.params),
+        name_set=getattr(hint, "missing_attributes", set()),
+        prefix="missing_attribute",
+    )
+    _merge_name_set_features(
+        features,
+        action,
+        dict(candidate.action.params),
+        name_set=getattr(hint, "type_error_names", set()),
+        prefix="type_error_name",
+    )
     missing_keys = getattr(hint, "missing_keys", set())
     if missing_keys:
         features["hint_has_missing_key"] = 1.0
@@ -447,6 +561,29 @@ def _merge_hint_record_features(
     if candidate.get("file_path") in set(hint.get("source_files", [])):
         features["hint_file_match"] = 1.0
         features[f"action_hint_file_match:{action}"] = 1.0
+    params = candidate.get("params", {})
+    if isinstance(params, dict):
+        _merge_name_set_features(
+            features,
+            action,
+            params,
+            name_set=set(hint.get("missing_names", [])),
+            prefix="missing_name",
+        )
+        _merge_name_set_features(
+            features,
+            action,
+            params,
+            name_set=set(hint.get("missing_attributes", [])),
+            prefix="missing_attribute",
+        )
+        _merge_name_set_features(
+            features,
+            action,
+            params,
+            name_set=set(hint.get("type_error_names", [])),
+            prefix="type_error_name",
+        )
     missing_keys = set(hint.get("missing_keys", []))
     if missing_keys:
         features["hint_has_missing_key"] = 1.0
@@ -463,6 +600,162 @@ def _merge_hint_record_features(
             if isinstance(replacement, str) and any(key in replacement for key in missing_keys):
                 features["hint_missing_key_in_to"] = 1.0
                 features[f"action_hint_missing_key_in_to:{action}"] = 1.0
+
+
+def _merge_name_set_features(
+    features: dict[str, float],
+    action: str,
+    params: Mapping[str, object],
+    *,
+    name_set: set[str],
+    prefix: str,
+) -> None:
+    if not name_set:
+        return
+    features[f"hint_has_{prefix}"] = 1.0
+    original = params.get("from")
+    replacement = params.get("to")
+    name = params.get("name")
+    module = params.get("module")
+    if isinstance(original, str) and original in name_set:
+        features[f"hint_{prefix}_matches_from"] = 1.0
+        features[f"action_hint_{prefix}_matches_from:{action}"] = 1.0
+    if isinstance(replacement, str) and replacement in name_set:
+        features[f"hint_{prefix}_matches_to"] = 1.0
+        features[f"action_hint_{prefix}_matches_to:{action}"] = 1.0
+    if isinstance(name, str) and name in name_set:
+        features[f"hint_{prefix}_matches_import_name"] = 1.0
+        features[f"action_hint_{prefix}_matches_import_name:{action}"] = 1.0
+    if isinstance(module, str) and any(module == item or module.endswith(f".{item}") for item in name_set):
+        features[f"hint_{prefix}_matches_module"] = 1.0
+        features[f"action_hint_{prefix}_matches_module:{action}"] = 1.0
+
+
+def _add_hint_token_overlap_features(
+    features: dict[str, float],
+    *,
+    action: str,
+    candidate_tokens: set[str],
+    params: Mapping[str, object],
+    hint_tokens: set[str],
+) -> None:
+    if not candidate_tokens or not hint_tokens:
+        return
+    overlap = candidate_tokens & hint_tokens
+    if overlap:
+        value = min(len(overlap), 8) / 8.0
+        features["hint_candidate_token_overlap"] = value
+        features[f"action_hint_candidate_token_overlap:{action}"] = value
+
+    for key in ("from", "to", "name", "module"):
+        value = params.get(key)
+        if not isinstance(value, str):
+            continue
+        param_tokens = _tokens(value)
+        param_overlap = param_tokens & hint_tokens
+        if param_overlap:
+            feature_value = min(len(param_overlap), 6) / 6.0
+            features[f"hint_param_{key}_token_overlap"] = feature_value
+            features[f"action_hint_param_{key}_token_overlap:{action}"] = feature_value
+
+
+def _candidate_tokens(
+    file_path: str,
+    symbol: object,
+    params: Mapping[str, object],
+) -> set[str]:
+    tokens = _tokens(file_path)
+    if isinstance(symbol, str):
+        tokens |= _tokens(symbol)
+    for key in ("from", "to", "name", "module", "import", "replacement"):
+        value = params.get(key)
+        if isinstance(value, str):
+            tokens |= _tokens(value)
+    return tokens
+
+
+def _hint_tokens(hints: list[object] | tuple[object, ...]) -> set[str]:
+    tokens: set[str] = set()
+    for hint in hints:
+        for attr in (
+            "nodeid",
+            "summary",
+            "exception_type",
+            "function_names",
+            "missing_names",
+            "missing_attributes",
+            "missing_modules",
+            "missing_keys",
+            "type_error_names",
+            "assertion_diff_lines",
+            "source_files",
+        ):
+            tokens |= _tokens_from_hint_value(getattr(hint, attr, None))
+        for location in getattr(hint, "traceback_locations", []):
+            tokens |= _tokens(getattr(location, "file_path", ""))
+        for diagnostic in getattr(hint, "tool_diagnostics", []):
+            tokens |= _tokens(getattr(diagnostic, "file_path", ""))
+            tokens |= _tokens(getattr(diagnostic, "message", ""))
+    return tokens
+
+
+def _hint_record_tokens(hints: list[dict[str, object]]) -> set[str]:
+    tokens: set[str] = set()
+    for hint in hints:
+        for key in (
+            "nodeid",
+            "summary",
+            "exception_type",
+            "function_names",
+            "missing_names",
+            "missing_attributes",
+            "missing_modules",
+            "missing_keys",
+            "type_error_names",
+            "assertion_diff_lines",
+            "source_files",
+        ):
+            tokens |= _tokens_from_hint_value(hint.get(key))
+        for location in hint.get("traceback_locations", []):
+            if isinstance(location, dict):
+                tokens |= _tokens(location.get("file_path"))
+        for diagnostic in hint.get("tool_diagnostics", []):
+            if isinstance(diagnostic, dict):
+                tokens |= _tokens(diagnostic.get("file_path"))
+                tokens |= _tokens(diagnostic.get("message"))
+    return tokens
+
+
+def _tokens_from_hint_value(value: object) -> set[str]:
+    if isinstance(value, str):
+        return _tokens(value)
+    if isinstance(value, (set, list, tuple)):
+        tokens: set[str] = set()
+        for item in value:
+            tokens |= _tokens_from_hint_value(item)
+        return tokens
+    return set()
+
+
+def _tokens(value: object) -> set[str]:
+    if not isinstance(value, str):
+        return set()
+    tokens: set[str] = set()
+    for match in TOKEN_RE.finditer(value):
+        token = match.group(0)
+        for part in re.sub(r"([a-z0-9])([A-Z])", r"\1 \2", token).replace("_", " ").split():
+            normalized = part.lower()
+            if len(normalized) >= 3:
+                tokens.add(normalized)
+    return tokens
+
+
+def _outcome_row_hints(rows: list[dict[str, object]]) -> list[dict[str, object]]:
+    for row in rows:
+        hints = row.get("failure_hints")
+        if isinstance(hints, list):
+            return [hint for hint in hints if isinstance(hint, dict)]
+    return []
 
 
 def _update_weights(weights: dict[str, float], features: Mapping[str, float], scale: float) -> None:

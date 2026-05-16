@@ -237,6 +237,8 @@ def test_write_candidate_outcomes_jsonl_records_one_row_per_tested_candidate(tmp
     assert all(row["first_passing_index"] == 1 for row in rows)
     assert all(row["passing_candidates"] == 2 for row in rows)
     assert all(row["other_candidates_also_passed"] is True for row in rows)
+    assert all("failure_hints" in row for row in rows)
+    assert all(isinstance(row["failure_hints"], list) for row in rows)
     assert {
         "file_path",
         "action",

@@ -351,6 +351,7 @@ def _candidate_outcome_rows(summary: EvalSummary) -> Iterable[dict[str, object]]
             first_passing_index = _first_passing_index(plan)
             passing_candidates = _passing_candidates(plan)
             passing_count = len(passing_candidates)
+            failure_hints = [_failure_hint_diagnostics(hint) for hint in plan.failure_hints]
             for rank_index, candidate in enumerate(plan.tested_candidates, start=1):
                 passed = _candidate_passed(candidate, plan)
                 yield {
@@ -373,6 +374,7 @@ def _candidate_outcome_rows(summary: EvalSummary) -> Iterable[dict[str, object]]
                     "is_first_pass": passed and rank_index == first_passing_index,
                     "passing_candidates": passing_count,
                     "other_candidates_also_passed": passing_count > 1,
+                    "failure_hints": failure_hints,
                 }
 
 

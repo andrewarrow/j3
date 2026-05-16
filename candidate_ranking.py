@@ -4,16 +4,17 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Mapping, Protocol
+from typing import Protocol
 
 from actions import PatchAction
 
 
 RANKER_FORMAT = "j3.candidate-ranker.v1"
-RANKER_FEATURE_VERSION = "candidate-diagnostics-v3"
+RANKER_FEATURE_VERSION = "candidate-diagnostics-v4"
 TOKEN_RE = re.compile(r"[A-Za-z][A-Za-z0-9]*")
 
 _SYMBOLIC_PARAM_VALUES = {
@@ -286,6 +287,13 @@ def candidate_features(
             params=params,
             hint_tokens=_hint_tokens(hints),
         )
+    _add_target_context_features(
+        features,
+        action=action,
+        target_context=getattr(candidate, "target_context", {}),
+        hints=hints,
+        symbol=candidate.action.target.symbol,
+    )
 
     return features
 
@@ -318,20 +326,28 @@ def _training_pairs_from_outcome_rows(
     rows: list[dict[str, object]],
 ) -> list[tuple[dict[str, float], dict[str, float]]]:
     ordered_rows = sorted(rows, key=lambda row: _int_value(row.get("rank_index"), default=0))
-    positive = _first_passing_outcome_row(ordered_rows)
+    positive = _positive_outcome_row(ordered_rows)
     if positive is None:
         return []
 
     hints = _outcome_row_hints(ordered_rows)
     positive_features = _candidate_record_features(positive, hints)
-    return [
-        (positive_features, _candidate_record_features(candidate, hints))
-        for candidate in ordered_rows
-        if candidate is not positive and candidate.get("passed") is not True
-    ]
+    preferred_positive = positive.get("preferred") is True
+    pairs: list[tuple[dict[str, float], dict[str, float]]] = []
+    for candidate in ordered_rows:
+        if candidate is positive:
+            continue
+        if candidate.get("passed") is not True or (
+            preferred_positive and candidate.get("preferred") is not True
+        ):
+            pairs.append((positive_features, _candidate_record_features(candidate, hints)))
+    return pairs
 
 
-def _first_passing_outcome_row(rows: list[dict[str, object]]) -> dict[str, object] | None:
+def _positive_outcome_row(rows: list[dict[str, object]]) -> dict[str, object] | None:
+    for candidate in rows:
+        if candidate.get("passed") is True and candidate.get("preferred") is True:
+            return candidate
     for candidate in rows:
         if candidate.get("is_first_pass") is True:
             return candidate
@@ -394,6 +410,13 @@ def _candidate_record_features(candidate: dict[str, object], hints: object) -> d
                 params=params,
                 hint_tokens=_hint_record_tokens(hints),
             )
+    _add_target_context_features(
+        features,
+        action=action,
+        target_context=candidate.get("target_context", {}),
+        hints=hints if isinstance(hints, list) else [],
+        symbol=candidate.get("symbol"),
+    )
     return features
 
 
@@ -454,6 +477,123 @@ def _add_import_locality_features(
     elif prefix:
         features["import_module_shares_target_package_prefix"] = 1.0
         features["action_import_module_shares_target_package_prefix:add_import"] = 1.0
+
+
+def _add_target_context_features(
+    features: dict[str, float],
+    *,
+    action: str,
+    target_context: object,
+    hints: list[object] | tuple[object, ...],
+    symbol: object,
+) -> None:
+    if not isinstance(target_context, Mapping):
+        return
+
+    role = target_context.get("role")
+    if isinstance(role, str) and role:
+        features[f"target_role:{role}"] = 1.0
+        features[f"action_target_role:{action}:{role}"] = 1.0
+
+    caller_count = _int_value(target_context.get("caller_count"), default=0)
+    if caller_count > 0:
+        bucket = _count_bucket(caller_count)
+        features[f"target_caller_count:{bucket}"] = 1.0
+        features[f"action_target_caller_count:{action}:{bucket}"] = 1.0
+
+    callee_count = _int_value(target_context.get("callee_count"), default=0)
+    if callee_count > 0:
+        bucket = _count_bucket(callee_count)
+        features[f"target_callee_count:{bucket}"] = 1.0
+        features[f"action_target_callee_count:{action}:{bucket}"] = 1.0
+
+    hint_names = _hint_function_name_set(hints)
+    distance = _hint_target_distance(
+        symbol=symbol,
+        target_context=target_context,
+        hint_names=hint_names,
+    )
+    if distance is None:
+        return
+
+    bucket = _distance_bucket(distance)
+    features["hint_call_graph_reaches_target"] = 1.0
+    features[f"hint_call_graph_distance:{bucket}"] = 1.0
+    features[f"action_hint_call_graph_distance:{action}:{bucket}"] = 1.0
+    features["hint_call_graph_closeness"] = 1.0 / (1.0 + distance)
+    features[f"action_hint_call_graph_closeness:{action}"] = features[
+        "hint_call_graph_closeness"
+    ]
+    if distance == 0:
+        features["target_is_hinted_symbol"] = 1.0
+        features[f"action_target_is_hinted_symbol:{action}"] = 1.0
+    else:
+        features["target_is_downstream_of_hint"] = 1.0
+        features[f"action_target_is_downstream_of_hint:{action}"] = 1.0
+
+
+def _hint_target_distance(
+    *,
+    symbol: object,
+    target_context: Mapping[str, object],
+    hint_names: set[str],
+) -> int | None:
+    if not hint_names:
+        return None
+
+    distances: list[int] = []
+    if isinstance(symbol, str) and symbol in hint_names:
+        distances.append(0)
+
+    qualified = target_context.get("qualified_symbol")
+    if isinstance(qualified, str) and qualified.rsplit(".", maxsplit=1)[-1] in hint_names:
+        distances.append(0)
+
+    upstream_callers = target_context.get("upstream_callers", [])
+    if isinstance(upstream_callers, list):
+        for caller in upstream_callers:
+            if not isinstance(caller, Mapping):
+                continue
+            caller_symbol = caller.get("symbol")
+            distance = _int_value(caller.get("distance"), default=0)
+            if isinstance(caller_symbol, str) and caller_symbol in hint_names and distance > 0:
+                distances.append(distance)
+
+    if not distances:
+        return None
+    return min(distances)
+
+
+def _hint_function_name_set(hints: list[object] | tuple[object, ...]) -> set[str]:
+    names: set[str] = set()
+    for hint in hints:
+        if isinstance(hint, Mapping):
+            raw_names = hint.get("function_names", [])
+        else:
+            raw_names = getattr(hint, "function_names", set())
+        if isinstance(raw_names, str):
+            names.add(raw_names)
+        elif isinstance(raw_names, (set, list, tuple)):
+            names.update(name for name in raw_names if isinstance(name, str))
+    return names
+
+
+def _count_bucket(count: int) -> str:
+    if count <= 1:
+        return "1"
+    if count <= 3:
+        return "2_3"
+    return "4_plus"
+
+
+def _distance_bucket(distance: int) -> str:
+    if distance <= 0:
+        return "0"
+    if distance == 1:
+        return "1"
+    if distance == 2:
+        return "2"
+    return "3_plus"
 
 
 def _module_parts_from_file_path(file_path: str) -> tuple[str, ...]:

@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import difflib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Mapping
 
 from actions import PatchAction
 from failure_hints import PytestFailureHint
@@ -22,6 +23,7 @@ class CandidatePatch:
     model_score: float | None = None
     failure_hint_score: float = 0.0
     ranker_score: float | None = None
+    target_context: Mapping[str, object] = field(default_factory=dict)
 
     def diff(self) -> str:
         return "".join(
@@ -50,5 +52,4 @@ class PatchPlanResult:
     failure_hints: tuple[PytestFailureHint, ...] = ()
     first_passing_index: int | None = None
     passing_candidates: tuple[CandidatePatch, ...] = ()
-
 

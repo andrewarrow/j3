@@ -40,6 +40,20 @@
     "test": "python -m pytest tests/test_shop.py::test_return_window_uses_policy_default"
   },
   {
+    "name": "express_shipping_boundary_preferred_helper",
+    "repo": ".",
+    "test": "python -m pytest tests/test_shop.py::test_express_shipping_boundary_prefers_helper_condition",
+    "preferred": {
+      "file_path": "shop/policies.py",
+      "action": "change_operator",
+      "symbol": "express_shipping_eligible",
+      "params": {
+        "from": ">",
+        "to": ">="
+      }
+    }
+  },
+  {
     "name": "receipt_label_nested_module_import_decoy",
     "repo": ".",
     "test": "python -m pytest tests/test_shop.py::test_receipt_label_imports_nested_report_formatter"

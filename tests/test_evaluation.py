@@ -37,9 +37,15 @@ def test_load_greenshot_4_tasks() -> None:
 def test_load_greenshot_5_tasks() -> None:
     tasks = load_tasks(Path("examples/greenshot_5"))
 
-    assert len(tasks) == 9
+    assert len(tasks) == 11
     assert tasks[0].name == "quote_total_helper_discount"
     assert tasks[-1].name == "loyalty_points_wrapper_exception_handler"
+    assert tasks[8].preferred_patch == {
+        "file_path": "shop/policies.py",
+        "action": "change_operator",
+        "symbol": "express_shipping_eligible",
+        "params": {"from": ">", "to": ">="},
+    }
 
 
 def test_evaluate_greenshot_bugs(tmp_path) -> None:
@@ -104,6 +110,7 @@ def test_write_eval_diagnostics(tmp_path) -> None:
     assert "tested_candidates" in payload["tasks"][0]["ranked"]
     assert "params" in payload["tasks"][0]["ranked"]["tested_candidates"][0]
     assert "ranker_score" in payload["tasks"][0]["ranked"]["tested_candidates"][0]
+    assert "target_context" in payload["tasks"][0]["ranked"]["tested_candidates"][0]
 
 
 def test_write_eval_diagnostics_records_ranker_scores(tmp_path) -> None:
@@ -234,11 +241,13 @@ def test_write_candidate_outcomes_jsonl_records_one_row_per_tested_candidate(tmp
     assert [row["rank_index"] for row in rows] == [1, 2, 3]
     assert [row["passed"] for row in rows] == [True, True, False]
     assert [row["is_first_pass"] for row in rows] == [True, False, False]
+    assert [row["preferred"] for row in rows] == [False, False, False]
     assert all(row["first_passing_index"] == 1 for row in rows)
     assert all(row["passing_candidates"] == 2 for row in rows)
     assert all(row["other_candidates_also_passed"] is True for row in rows)
     assert all("failure_hints" in row for row in rows)
     assert all(isinstance(row["failure_hints"], list) for row in rows)
+    assert all("target_context" in row for row in rows)
     assert {
         "file_path",
         "action",
@@ -247,6 +256,8 @@ def test_write_candidate_outcomes_jsonl_records_one_row_per_tested_candidate(tmp
         "model_score",
         "failure_hint_score",
         "ranker_score",
+        "target_context",
+        "preferred",
     }.issubset(rows[0])
 
 

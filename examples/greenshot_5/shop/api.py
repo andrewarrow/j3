@@ -1,7 +1,7 @@
 from .accounts import Account, account_balance
 from .orders import customer_display_name
 from .paths import attachment_extension
-from .policies import default_return_window_days
+from .policies import default_return_window_days, express_shipping_eligible
 from .pricing import discounted_subtotal, total_after_store_credit
 from .profiles import display_profile, render_profile, user_badge_label
 from .reports.summary import receipt_total_label
@@ -42,6 +42,10 @@ def order_customer_label(order: dict[str, str]) -> str:
 
 def return_window_days() -> int:
     return default_return_window_days()
+
+
+def express_shipping_label(subtotal_cents: int, minimum_cents: int = 5000) -> str:
+    return "free" if express_shipping_eligible(subtotal_cents, minimum_cents) else "paid"
 
 
 def receipt_label(total_cents: int) -> str:

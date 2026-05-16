@@ -66,12 +66,16 @@ Recent completed work:
 - [x] GreenShot-5 includes exception handling through a wrapper API.
 - [x] GreenShot-5 includes swapped arguments across modules.
 - [x] GreenShot-5 includes rename propagated through a helper and public API.
+- [x] GreenShot-5 includes a multi-pass boundary task where the preferred edit
+  is in a helper rather than a narrow public API default.
+- [x] Candidate outcome rows carry compact target context and preferred-patch
+  labels for tasks that define them.
 
 Current GreenShot-5 signal:
 
 ```text
 ranked, no candidate ranker:
-  solved=10/10 pass@1=6/10 avg_candidates=1.60
+  solved=11/11 pass@1=7/11 avg_candidates=1.64
 
 ranked, legacy diagnostics candidate ranker:
   solved=9/9 pass@1=5/9 avg_candidates=1.56
@@ -81,6 +85,13 @@ ranked, stale outcome-trained candidate ranker artifact:
 
 ranked, fresh outcome-trained candidate ranker with v3 hint context/locality features:
   solved=9/9 pass@1=8/9 avg_candidates=1.11
+
+ranked, 10-task v4 target-context ranker evaluated after adding the held-out
+express-shipping task:
+  solved=11/11 pass@1=10/11 avg_candidates=1.09
+
+ranked, fresh 11-task preferred-aware v4 outcome ranker:
+  solved=11/11 pass@1=11/11 avg_candidates=1.00
 ```
 
 Current interpretation:
@@ -110,10 +121,13 @@ Current interpretation:
   TypeError name direction, import package locality, and whether a candidate has
   any structured hint support. Fresh 9-task outcome data gets to 8/9 pass@1
   in-sample.
-- The remaining fresh-ranker miss is `quote_total_helper_discount`: the passing
-  helper edit is ranked behind a public API swapped-argument decoy because the
-  assertion hint names only `quote_total`. This is target-context/call-graph
-  signal, not a missing action.
+- Candidate-ranker v4 adds compact target context and generic call-graph
+  distance features. A 10-task v4 ranker moves the new held-out express-shipping
+  task's preferred helper edit ahead of public API default edits, but still ranks
+  one wrong helper operator before the preferred `>=` edit.
+- Preferred-patch metadata is now available in task manifests and outcome rows,
+  and outcome-ranker training uses a marked preferred passing patch as the
+  positive example when one exists.
 - The outcome-trained ranker signal is still tiny and partly in-sample. Treat it
   as a sign that current misses are ranking/context failures, not evidence of
   broad Python-editing competence.
@@ -145,9 +159,9 @@ has enough coverage and data to make neural regressions visible.
 - [x] Add exception handling through a wrapper API.
 - [x] Add swapped arguments across modules.
 - [x] Add rename propagated through helper and public API.
-- [ ] Add a task with two passing patches where one is semantically preferable.
+- [x] Add a task with two passing patches where one is semantically preferable.
 - [ ] Add a task where the correct edit is in a caller, not the failing frame.
-- [ ] Add a task where the correct edit is in a callee, not the public API.
+- [x] Add a task where the correct edit is in a callee, not the public API.
 - [ ] Add a task where tests expose an error only after one repair is applied.
 - [ ] Grow GreenShot-5 to at least 20 tasks before neural ranker work.
 - [ ] Create GreenShot-6 for small real packages, not only toy fixtures.
@@ -219,12 +233,12 @@ has enough coverage and data to make neural regressions visible.
 - [x] Diagnostics ranker can learn from post-pass failed candidates.
 - [x] Teach `train-ranker` to consume `--candidate-outcomes PATH` directly.
 - [ ] Include before/after AST delta features in outcome rows.
-- [ ] Include compact target context in outcome rows.
+- [x] Include compact target context in outcome rows.
 - [x] Include failing observation features in outcome rows.
 - [ ] Include candidate diff size and edit locality.
 - [ ] Include whether candidates are equivalent or overlapping.
-- [ ] Include multiple-passing-candidate groups.
-- [ ] Mark preferred patch when multiple patches pass.
+- [x] Include multiple-passing-candidate groups.
+- [x] Mark preferred patch when multiple patches pass.
 - [ ] Export datasets with stable split metadata.
 - [ ] Add a command to summarize outcome datasets.
 - [ ] Add a command to compare ranker behavior across two diagnostics files.
@@ -458,9 +472,16 @@ pytest -q
      full-budget and 8/9 pass@1 in-sample.
    - A v3 ranker trained from old pre-hint outcome rows solves 9/9 full-budget
      but only 6/9 pass@1 and ranks the new swapped-argument task 16th.
-   - Next ranker work should use held-out or newly added tasks so improvements
-     do not only reflect GreenShot-5 memorization. The current concrete target
-     is target-context/call-graph features for helper-vs-public-API ranking.
+   - Target-context/call-graph features now distinguish helper edits that are
+     downstream of hinted public API functions from direct public API edits.
+   - A v4 ranker trained before the express-shipping task was added solves the
+     expanded 11-task set at 10/11 pass@1; the held-out express task is solved
+     at rank 2 by the preferred helper operator edit.
+   - Fresh preferred-aware 11-task outcome data solves 11/11 at pass@1
+     in-sample.
+   - Next ranker work should focus on held-out calibration and operator/value
+     preference, because the remaining held-out miss is a wrong helper operator
+     ranked just ahead of the preferred `>=` edit.
 
 ## Stop Conditions
 

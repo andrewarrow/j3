@@ -21,6 +21,7 @@ class RepairTask:
     name: str
     repo: Path
     test_command: str
+    preferred_patch: dict[str, object] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -122,6 +123,11 @@ def load_tasks(path: Path) -> list[RepairTask]:
                 name=str(item["name"]),
                 repo=(base_dir / str(item.get("repo", "."))).resolve(),
                 test_command=str(item["test"]),
+                preferred_patch=(
+                    dict(item["preferred"])
+                    if isinstance(item.get("preferred"), dict)
+                    else None
+                ),
             )
         )
     return tasks
@@ -336,6 +342,7 @@ def _candidate_diagnostics(
         "model_score": candidate.model_score,
         "failure_hint_score": candidate.failure_hint_score,
         "ranker_score": candidate.ranker_score,
+        "target_context": dict(candidate.target_context),
         "passed": passed,
     }
     if rank_index is not None:
@@ -368,7 +375,9 @@ def _candidate_outcome_rows(summary: EvalSummary) -> Iterable[dict[str, object]]
                     "model_score": candidate.model_score,
                     "failure_hint_score": candidate.failure_hint_score,
                     "ranker_score": candidate.ranker_score,
+                    "target_context": dict(candidate.target_context),
                     "passed": passed,
+                    "preferred": _candidate_matches_preferred(candidate, result.task.preferred_patch),
                     "rank_index": rank_index,
                     "first_passing_index": first_passing_index,
                     "is_first_pass": passed and rank_index == first_passing_index,
@@ -528,6 +537,27 @@ def _passing_candidates(plan: PatchPlanResult) -> tuple[CandidatePatch, ...]:
 
 def _candidate_passed(candidate: CandidatePatch, plan: PatchPlanResult) -> bool:
     return any(candidate == passing for passing in _passing_candidates(plan))
+
+
+def _candidate_matches_preferred(
+    candidate: CandidatePatch,
+    preferred_patch: dict[str, object] | None,
+) -> bool:
+    if preferred_patch is None:
+        return False
+    if preferred_patch.get("file_path") not in (None, candidate.file_path):
+        return False
+    if preferred_patch.get("action") not in (None, candidate.action.kind.value):
+        return False
+    if preferred_patch.get("symbol") not in (None, candidate.action.target.symbol):
+        return False
+
+    preferred_params = preferred_patch.get("params")
+    if isinstance(preferred_params, dict):
+        for key, value in preferred_params.items():
+            if candidate.action.params.get(key) != value:
+                return False
+    return True
 
 
 def _candidates_tested_before_pass(plan: PatchPlanResult) -> int | None:

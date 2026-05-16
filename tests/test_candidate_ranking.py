@@ -134,6 +134,57 @@ def test_train_candidate_ranker_from_candidate_outcomes_jsonl(tmp_path) -> None:
     assert result.training_pairs == 2
 
 
+def test_train_candidate_ranker_prefers_marked_passing_outcome(tmp_path) -> None:
+    outcomes = tmp_path / "candidate-outcomes.jsonl"
+    rows = [
+        {
+            "task": "boundary",
+            "phase": "ranked",
+            **_candidate_record(to="<", passed=True),
+            "rank_index": 1,
+            "first_passing_index": 1,
+            "is_first_pass": True,
+            "preferred": False,
+        },
+        {
+            "task": "boundary",
+            "phase": "ranked",
+            **_candidate_record(to=">=", passed=True),
+            "rank_index": 2,
+            "first_passing_index": 1,
+            "is_first_pass": False,
+            "preferred": True,
+        },
+        {
+            "task": "boundary",
+            "phase": "ranked",
+            **_candidate_record(to="!=", passed=False),
+            "rank_index": 3,
+            "first_passing_index": 1,
+            "is_first_pass": False,
+            "preferred": False,
+        },
+    ]
+    outcomes.write_text(
+        "\n".join(json.dumps(row) for row in rows) + "\n",
+        encoding="utf-8",
+    )
+
+    result = train_candidate_ranker(candidate_outcome_paths=[outcomes], out_dir=tmp_path / "run")
+    ranker = CandidateRankerModel.load(result.ranker_path)
+    ranked = rank_with_candidate_ranker(
+        [
+            _candidate(to="<", failure_hint_score=50.0),
+            _candidate(to=">=", failure_hint_score=50.0),
+        ],
+        ranker,
+        hints=[],
+    )
+
+    assert result.training_pairs == 2
+    assert ranked[0].action.params["to"] == ">="
+
+
 def test_train_candidate_ranker_from_outcomes_uses_failure_hint_context(tmp_path) -> None:
     outcomes = tmp_path / "candidate-outcomes.jsonl"
     rows = [
@@ -335,6 +386,72 @@ def test_candidate_features_include_import_locality() -> None:
     assert features["action_import_module_same_target_package:add_import"] == 1.0
 
 
+def test_candidate_features_include_target_context_call_graph() -> None:
+    candidate = _discounted_subtotal_candidate()
+
+    features = candidate_features(
+        candidate,
+        hints=[PytestFailureHint(function_names={"quote_total"})],
+    )
+
+    assert features["target_role:helper"] == 1.0
+    assert features["hint_call_graph_distance:1"] == 1.0
+    assert features["hint_call_graph_closeness"] == 0.5
+    assert features["target_is_downstream_of_hint"] == 1.0
+
+
+def test_train_candidate_ranker_uses_target_context_from_outcomes(tmp_path) -> None:
+    outcomes = tmp_path / "candidate-outcomes.jsonl"
+    rows = [
+        {
+            "task": "quote_total",
+            "phase": "ranked",
+            **_quote_total_public_api_candidate_record(passed=False),
+            "rank_index": 1,
+            "first_passing_index": 2,
+            "is_first_pass": False,
+            "failure_hints": [
+                {
+                    "function_names": ["quote_total"],
+                    "assertions": [{"operator": "==", "actual": 20.0, "expected": 80}],
+                }
+            ],
+        },
+        {
+            "task": "quote_total",
+            "phase": "ranked",
+            **_discounted_subtotal_candidate_record(passed=True),
+            "rank_index": 2,
+            "first_passing_index": 2,
+            "is_first_pass": True,
+            "failure_hints": [
+                {
+                    "function_names": ["quote_total"],
+                    "assertions": [{"operator": "==", "actual": 20.0, "expected": 80}],
+                }
+            ],
+        },
+    ]
+    outcomes.write_text(
+        "\n".join(json.dumps(row) for row in rows) + "\n",
+        encoding="utf-8",
+    )
+
+    result = train_candidate_ranker(candidate_outcome_paths=[outcomes], out_dir=tmp_path / "run")
+    ranker = CandidateRankerModel.load(result.ranker_path)
+    ranked = rank_with_candidate_ranker(
+        [
+            _quote_total_public_api_candidate(),
+            _discounted_subtotal_candidate(),
+        ],
+        ranker,
+        hints=[PytestFailureHint(function_names={"quote_total"}, assertions=[])],
+    )
+
+    assert result.training_pairs == 1
+    assert ranked[0].action.target.symbol == "discounted_subtotal"
+
+
 def _candidate_record(*, to: str, passed: bool) -> dict[str, object]:
     return {
         "file_path": "bugs.py",
@@ -463,4 +580,142 @@ def _attribute_candidate(*, to: str) -> CandidatePatch:
         reason=f"try attribute {to}",
         model_score=0.0,
         failure_hint_score=122.0,
+    )
+
+
+def _quote_total_public_api_candidate_record(*, passed: bool) -> dict[str, object]:
+    return {
+        "file_path": "shop/api.py",
+        "action": "swap_call_arg",
+        "symbol": "quote_total",
+        "start_line": 10,
+        "end_line": 10,
+        "node_kind": "Call",
+        "params": {"left": 0, "right": 1},
+        "reason": "swap call arguments 0 and 1",
+        "model_score": 0.0,
+        "failure_hint_score": 50.0,
+        "ranker_score": None,
+        "passed": passed,
+        "target_context": {
+            "role": "public_api",
+            "qualified_symbol": "shop.api.quote_total",
+            "caller_count": 0,
+            "callee_count": 1,
+        },
+    }
+
+
+def _discounted_subtotal_candidate_record(*, passed: bool) -> dict[str, object]:
+    return {
+        "file_path": "shop/pricing.py",
+        "action": "replace_expr",
+        "symbol": "discounted_subtotal",
+        "start_line": 2,
+        "end_line": 2,
+        "node_kind": "BinOp",
+        "params": {"replacement": "subtotal - (subtotal * discount_percent / 100)"},
+        "reason": "convert multiplier into subtraction from base value",
+        "model_score": 0.4,
+        "failure_hint_score": 5.0,
+        "ranker_score": None,
+        "passed": passed,
+        "target_context": {
+            "role": "helper",
+            "qualified_symbol": "shop.pricing.discounted_subtotal",
+            "caller_count": 1,
+            "callee_count": 0,
+            "upstream_callers": [
+                {"symbol": "quote_total", "distance": 1},
+            ],
+        },
+    }
+
+
+def _quote_total_public_api_candidate() -> CandidatePatch:
+    source = (
+        "from .pricing import discounted_subtotal\n\n"
+        "def quote_total(subtotal, discount_percent):\n"
+        "    return discounted_subtotal(subtotal, discount_percent)\n"
+    )
+    patched = source.replace(
+        "discounted_subtotal(subtotal, discount_percent)",
+        "discounted_subtotal(discount_percent, subtotal)",
+    )
+    return CandidatePatch(
+        file_path="shop/api.py",
+        action=PatchAction(
+            kind=PatchActionKind.SWAP_CALL_ARG,
+            target=PatchTarget(
+                file_path="shop/api.py",
+                start_line=4,
+                end_line=4,
+                symbol="quote_total",
+                node_kind="Call",
+            ),
+            params={"left": 0, "right": 1},
+        ),
+        edit=SourceEdit(
+            start_line=4,
+            start_col=11,
+            end_line=4,
+            end_col=57,
+            replacement="discounted_subtotal(discount_percent, subtotal)",
+        ),
+        original_source=source,
+        patched_source=patched,
+        reason="swap call arguments 0 and 1",
+        failure_hint_score=50.0,
+        target_context={
+            "role": "public_api",
+            "qualified_symbol": "shop.api.quote_total",
+            "caller_count": 0,
+            "callee_count": 1,
+        },
+    )
+
+
+def _discounted_subtotal_candidate() -> CandidatePatch:
+    source = (
+        "def discounted_subtotal(subtotal, discount_percent):\n"
+        "    return subtotal * (discount_percent / 100)\n"
+    )
+    patched = (
+        "def discounted_subtotal(subtotal, discount_percent):\n"
+        "    return subtotal - (subtotal * discount_percent / 100)\n"
+    )
+    return CandidatePatch(
+        file_path="shop/pricing.py",
+        action=PatchAction(
+            kind=PatchActionKind.REPLACE_EXPR,
+            target=PatchTarget(
+                file_path="shop/pricing.py",
+                start_line=2,
+                end_line=2,
+                symbol="discounted_subtotal",
+                node_kind="BinOp",
+            ),
+            params={"replacement": "subtotal - (subtotal * discount_percent / 100)"},
+        ),
+        edit=SourceEdit(
+            start_line=2,
+            start_col=11,
+            end_line=2,
+            end_col=46,
+            replacement="subtotal - (subtotal * discount_percent / 100)",
+        ),
+        original_source=source,
+        patched_source=patched,
+        reason="convert multiplier into subtraction from base value",
+        model_score=0.4,
+        failure_hint_score=5.0,
+        target_context={
+            "role": "helper",
+            "qualified_symbol": "shop.pricing.discounted_subtotal",
+            "caller_count": 1,
+            "callee_count": 0,
+            "upstream_callers": [
+                {"symbol": "quote_total", "distance": 1},
+            ],
+        },
     )

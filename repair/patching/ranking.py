@@ -29,6 +29,7 @@ def rank_candidate_patches(
             model_score=model.score(candidate),
             failure_hint_score=candidate.failure_hint_score,
             ranker_score=candidate.ranker_score,
+            target_context=candidate.target_context,
         )
         for candidate in candidates
     ]
@@ -94,6 +95,7 @@ def rank_with_candidate_ranker(
             model_score=candidate.model_score,
             failure_hint_score=candidate.failure_hint_score,
             ranker_score=ranker.score(candidate, hints),
+            target_context=candidate.target_context,
         )
         for candidate in candidates
     ]
@@ -205,5 +207,4 @@ def _literal_delta_score(candidate: CandidatePatch, hint: PytestFailureHint) -> 
         if replacement == assertion.expected:
             score += 10.0
     return score
-
 

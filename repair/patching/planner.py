@@ -13,6 +13,7 @@ from candidate_ranking import CandidateRankerModel
 from failure_hints import parse_pytest_failure_hints
 from repo import DEFAULT_EXCLUDE_DIRS
 
+from .context import attach_target_context
 from .generation import generate_candidate_patches
 from .model import PatchRankingModel
 from .ranking import (
@@ -75,6 +76,7 @@ def plan_and_maybe_apply_patch(
     _emit_progress(progress, "candidates: generating structured patches")
     started = time.perf_counter()
     candidates = generate_candidate_patches(root)
+    candidates = attach_target_context(root, candidates)
     _emit_progress(
         progress,
         f"candidates: generated={len(candidates)} elapsed={time.perf_counter() - started:.2f}s",
@@ -222,5 +224,4 @@ def _load_candidate_ranker_if_available(ranker_path: Path | None) -> CandidateRa
     if not resolved.exists():
         return None
     return CandidateRankerModel.load(resolved)
-
 

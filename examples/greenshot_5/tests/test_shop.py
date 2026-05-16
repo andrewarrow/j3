@@ -1,6 +1,7 @@
 from shop.accounts import Account
 from shop.api import (
     balance_after_store_credit,
+    express_shipping_label,
     loyalty_points,
     order_customer_label,
     profile_badge,
@@ -47,6 +48,10 @@ def test_order_customer_label_uses_customer_name_key() -> None:
 
 def test_return_window_uses_policy_default() -> None:
     assert return_window_days() == 14
+
+
+def test_express_shipping_boundary_prefers_helper_condition() -> None:
+    assert express_shipping_label(5000) == "free"
 
 
 def test_receipt_label_imports_nested_report_formatter() -> None:

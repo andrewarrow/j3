@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Sequence
 
 from actions import PatchActionKind
+from training import train_from_path
 
 
 DESCRIPTION = (
@@ -70,7 +71,10 @@ def build_parser() -> argparse.ArgumentParser:
     train_parser = subparsers.add_parser(
         "train",
         help="train a local JEPA predictor from transition records",
-        description="Placeholder for local Code-JEPA training over break/fix transitions.",
+        description=(
+            "Train the first local prototype over synthetic break/fix transitions "
+            "generated from a Python repository."
+        ),
     )
     train_parser.add_argument(
         "--data",
@@ -83,6 +87,18 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         default=Path("runs/greenshot-1"),
         help="directory for checkpoints and metrics",
+    )
+    train_parser.add_argument(
+        "--embedding-dim",
+        type=int,
+        default=256,
+        help="hashed latent vector dimension (default: 256)",
+    )
+    train_parser.add_argument(
+        "--max-examples",
+        type=int,
+        default=500,
+        help="maximum synthetic transitions to generate (default: 500)",
     )
     train_parser.set_defaults(handler=handle_train)
 
@@ -134,8 +150,23 @@ def handle_patch(args: argparse.Namespace) -> int:
 
 
 def handle_train(args: argparse.Namespace) -> int:
-    print(f"training scaffold: data={args.data} out={args.out}")
-    print("status: local JEPA training is not implemented yet")
+    result = train_from_path(
+        data_path=args.data,
+        out_dir=args.out,
+        embedding_dim=args.embedding_dim,
+        max_examples=args.max_examples,
+    )
+    print("j3 train complete")
+    print(f"data: {args.data.expanduser().resolve()}")
+    print(f"out: {result.out_dir}")
+    print(f"source files: {result.source_files}")
+    print(f"synthetic transitions: {result.parsed_examples}")
+    print("actions:")
+    for action, count in result.action_counts.items():
+        print(f"  {action}: {count}")
+    print(f"model: {result.model_path}")
+    print(f"metrics: {result.metrics_path}")
+    print(f"examples: {result.examples_path}")
     return 0
 
 

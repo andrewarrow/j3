@@ -93,6 +93,7 @@ Useful starter commands:
 ```bash
 j3 actions
 j3 actions --json
+j3 train --data ../Decepticon
 j3 patch --repo . --test "pytest" --dry-run
 pytest
 ```
@@ -103,10 +104,42 @@ pytest
 .
 ├── actions.py        # structured patch actions and targets
 ├── cli.py            # command line interface
+├── features.py       # deterministic AST hashing encoder
+├── repo.py           # repository discovery helpers
+├── synth.py          # synthetic break/fix transition generation
+├── training.py       # prototype local trainer
 ├── tests/            # pytest suite
 ├── pyproject.toml    # packaging, CLI entry point, test config
 └── README.md
 ```
+
+## Current Training Output
+
+The first `train` implementation is a pure-Python prototype. It does not yet
+train a neural network. It creates a small JEPA-shaped baseline that proves the
+local data loop:
+
+1. scan a Python repository
+2. generate synthetic broken versions with AST-level mutations
+3. embed the broken and repaired source states
+4. learn action-specific latent delta prototypes
+5. write reproducible artifacts under `runs/`
+
+```bash
+j3 train --data ../Decepticon
+```
+
+Artifacts:
+
+```text
+runs/greenshot-1/
+├── examples.jsonl    # synthetic break/fix transition records
+├── metrics.json      # counts, dimensions, and action distribution
+└── model.json        # prototype latent action model
+```
+
+This gives the next step something concrete to consume: `patch` can load
+`model.json`, score candidate structured edits, and make the first patch attempt.
 
 ## Initial Patch Action Space
 

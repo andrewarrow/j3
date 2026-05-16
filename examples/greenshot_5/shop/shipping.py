@@ -1,3 +1,5 @@
+FREE_SHIPPING_MINIMUM_CENTS = 4999
+
 SERVICE_LABELS = {
     "standard": "ground",
     "priority": "air",
@@ -14,6 +16,10 @@ def shipping_service_label(method: str) -> str:
 
 def delivery_speed_label(method: str) -> str:
     return SPEED_LABELS[method]
+
+
+def free_shipping_minimum_cents() -> int:
+    return FREE_SHIPPING_MINIMUM_CENTS
 
 
 def shipping_timeout_label(timeout_seconds: int = 5) -> str:

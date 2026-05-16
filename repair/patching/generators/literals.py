@@ -50,6 +50,74 @@ def _literal_candidates(
     return candidates
 
 
+def _module_constant_candidates(
+    file_path: str,
+    source: str,
+    tree: ast.Module,
+    repo_string_literals: set[str],
+) -> list[CandidatePatch]:
+    candidates: list[CandidatePatch] = []
+    for statement in tree.body:
+        constant = _module_constant_assignment(statement)
+        if constant is None:
+            continue
+        name, value = constant
+        replacements = _module_constant_replacements(value, repo_string_literals)
+        for replacement in replacements:
+            candidates.append(
+                _candidate(
+                    file_path=file_path,
+                    source=source,
+                    node=value,
+                    kind=PatchActionKind.CHANGE_MODULE_CONSTANT,
+                    replacement=repr(replacement),
+                    reason=f"try module constant {name}={replacement!r}",
+                    params={"name": name, "from": value.value, "to": replacement},
+                    symbol=name,
+                )
+            )
+    return candidates
+
+
+def _module_constant_assignment(statement: ast.stmt) -> tuple[str, ast.Constant] | None:
+    target: ast.expr | None
+    value: ast.expr | None
+    if isinstance(statement, ast.Assign) and len(statement.targets) == 1:
+        target = statement.targets[0]
+        value = statement.value
+    elif isinstance(statement, ast.AnnAssign):
+        target = statement.target
+        value = statement.value
+    else:
+        return None
+
+    if (
+        not isinstance(target, ast.Name)
+        or not _looks_like_config_constant(target.id)
+        or not isinstance(value, ast.Constant)
+    ):
+        return None
+    return target.id, value
+
+
+def _looks_like_config_constant(name: str) -> bool:
+    return name.isupper() and not name.startswith("__")
+
+
+def _module_constant_replacements(
+    node: ast.Constant,
+    repo_string_literals: set[str],
+) -> list[object]:
+    value = node.value
+    if isinstance(value, bool):
+        return []
+    if isinstance(value, int | float):
+        return list(_nearby_literals(value))
+    if isinstance(value, str):
+        return list(_string_literal_alternatives(value, repo_string_literals))
+    return []
+
+
 def _compare_candidates(
     file_path: str,
     source: str,

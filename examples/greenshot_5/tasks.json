@@ -63,6 +63,22 @@
     }
   },
   {
+    "name": "free_shipping_threshold_module_constant",
+    "family": "module_constant",
+    "repo": ".",
+    "test": "python -m pytest tests/test_shop.py::test_free_shipping_threshold_uses_module_constant",
+    "preferred": {
+      "file_path": "shop/shipping.py",
+      "action": "change_module_constant",
+      "symbol": "FREE_SHIPPING_MINIMUM_CENTS",
+      "params": {
+        "name": "FREE_SHIPPING_MINIMUM_CENTS",
+        "from": 4999,
+        "to": 5000
+      }
+    }
+  },
+  {
     "name": "receipt_label_nested_module_import_decoy",
     "family": "missing_import",
     "repo": ".",

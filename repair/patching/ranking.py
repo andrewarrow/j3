@@ -253,7 +253,10 @@ def _hinted_upstream_distance(candidate: CandidatePatch, hint: PytestFailureHint
 
 
 def _literal_hint_score(candidate: CandidatePatch, hint: PytestFailureHint) -> float:
-    if candidate.action.kind != PatchActionKind.CHANGE_LITERAL:
+    if candidate.action.kind not in {
+        PatchActionKind.CHANGE_LITERAL,
+        PatchActionKind.CHANGE_MODULE_CONSTANT,
+    }:
         return 0.0
     original = candidate.action.params.get("from")
     replacement = candidate.action.params.get("to")

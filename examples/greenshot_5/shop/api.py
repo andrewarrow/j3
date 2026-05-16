@@ -10,7 +10,11 @@ from .pricing import discounted_subtotal, total_after_store_credit
 from .profiles import display_profile, render_profile, user_badge_label
 from .reports.summary import receipt_total_label
 from .rewards import parse_loyalty_points
-from .shipping import shipping_service_label, shipping_timeout_label
+from .shipping import (
+    free_shipping_minimum_cents,
+    shipping_service_label,
+    shipping_timeout_label,
+)
 from .widgets import checkout_widget_payload
 from .startup import checkout_start_events, start_checkout_hooks
 
@@ -53,6 +57,10 @@ def return_window_days() -> int:
 
 def express_shipping_label(subtotal_cents: int, minimum_cents: int = 5000) -> str:
     return "free" if express_shipping_eligible(subtotal_cents, minimum_cents) else "paid"
+
+
+def free_shipping_threshold() -> int:
+    return free_shipping_minimum_cents()
 
 
 def receipt_label(total_cents: int) -> str:

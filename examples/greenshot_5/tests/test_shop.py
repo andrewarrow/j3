@@ -9,6 +9,7 @@ from shop.api import (
     checkout_startup_events,
     delivery_summary_service,
     express_shipping_label,
+    free_shipping_threshold,
     loyalty_points,
     order_customer_label,
     profile_badge,
@@ -61,6 +62,10 @@ def test_return_window_uses_policy_default() -> None:
 
 def test_express_shipping_boundary_prefers_helper_condition() -> None:
     assert express_shipping_label(5000) == "free"
+
+
+def test_free_shipping_threshold_uses_module_constant() -> None:
+    assert free_shipping_threshold() == 5000
 
 
 def test_receipt_label_imports_nested_report_formatter() -> None:

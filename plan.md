@@ -92,6 +92,10 @@ Recent completed work:
   where a new module path falls back to a legacy module path.
 - [x] The import compatibility loop is covered with `add_import_fallback`, and
   `ModuleNotFoundError` hints rank the fallback edit at rank 1.
+- [x] GreenShot-5 includes an Apache-mined module-level config constant task.
+- [x] The module-level config constant loop is covered with
+  `change_module_constant`, and assertion delta hints rank the constant edit at
+  rank 1.
 
 Current GreenShot-5 signal:
 
@@ -133,6 +137,9 @@ guard task:
 
 ranked, Apache checkpoint after adding the import compatibility fallback task:
   solved=18/18 pass@1=13/18 avg_candidates=1.28
+
+ranked, Apache checkpoint after adding the module-level config constant task:
+  solved=19/19 pass@1=14/19 avg_candidates=1.26
 ```
 
 Current interpretation:
@@ -157,6 +164,9 @@ Current interpretation:
 - The import compatibility task is action-covered by `add_import_fallback`;
   missing-module hints rank the fallback from the absent new package path to the
   legacy local module at rank 1.
+- The module-level config constant task is action-covered by
+  `change_module_constant`; assertion numeric-delta hints rank the preferred
+  helper-module constant edit at rank 1.
 - The swapped-arguments-across-modules task is action-covered by
   `swap_call_arg`; hint-only ranking solves it at rank 1. A ranker trained from
   old pre-hint outcome rows buries it, which confirms that current outcome data
@@ -232,7 +242,7 @@ has enough coverage and data to make neural regressions visible.
   effects with a state flag.
 - [x] Add Apache-mined GreenShot-5 task: import compatibility fallback from a
   new package path to an old package path.
-- [ ] Add Apache-mined GreenShot-5 task: module-level config constant repair.
+- [x] Add Apache-mined GreenShot-5 task: module-level config constant repair.
 - [ ] Create GreenShot-6 for small real packages, not only toy fixtures.
 - [ ] Add mutation-generated held-out tasks from real repos.
 - [ ] Add git-history-derived held-out repair tasks.
@@ -257,7 +267,7 @@ has enough coverage and data to make neural regressions visible.
 - [ ] Change dictionary literal value.
 - [x] Add missing dictionary key/default.
 - [x] Change function default parameter value.
-- [ ] Change module-level config constant.
+- [x] Change module-level config constant.
 - [x] Add missing keyword argument.
 - [ ] Remove wrong keyword argument.
 - [ ] Change call target to nearby helper.
@@ -549,6 +559,8 @@ pytest -q
    - Exception handling through a wrapper API is done.
    - Swapped arguments across modules is done.
    - Rename propagated through helper and public API is done.
+   - Import compatibility fallback is done.
+   - Module-level config constant repair is done.
 
 3. Validate ranker calibration beyond in-sample GreenShot-5.
    - The legacy diagnostics ranker solves 9/9 full-budget and 5/9 pass@1.

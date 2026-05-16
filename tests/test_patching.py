@@ -446,6 +446,30 @@ def test_generate_string_literal_candidate_from_repo_string_literals(tmp_path) -
     )
 
 
+def test_generate_module_constant_candidate(tmp_path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "settings.py").write_text(
+        "DEFAULT_BATCH_SIZE = 99\n\n"
+        "def batch_size() -> int:\n"
+        "    return DEFAULT_BATCH_SIZE\n",
+        encoding="utf-8",
+    )
+
+    candidates = generate_candidate_patches(repo)
+
+    assert any(
+        candidate.action.kind.value == "change_module_constant"
+        and candidate.action.params == {
+            "name": "DEFAULT_BATCH_SIZE",
+            "from": 99,
+            "to": 100,
+        }
+        and "DEFAULT_BATCH_SIZE = 100" in candidate.patched_source
+        for candidate in candidates
+    )
+
+
 def test_generate_local_import_candidates_with_decoy(tmp_path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()
@@ -570,6 +594,28 @@ def test_patch_solves_helper_module_default_value(tmp_path) -> None:
     assert result.selected.file_path == "shop/policies.py"
     assert result.selected.action.kind.value == "change_literal"
     assert result.selected.action.params == {"from": 13, "to": 14}
+
+
+def test_patch_solves_module_level_config_constant(tmp_path) -> None:
+    repo = tmp_path / "greenshot_5"
+    shutil.copytree("examples/greenshot_5", repo)
+
+    result = plan_and_maybe_apply_patch(
+        repo=repo,
+        test_command="python -m pytest tests/test_shop.py::test_free_shipping_threshold_uses_module_constant",
+        dry_run=True,
+        timeout_seconds=10,
+    )
+
+    assert result.selected is not None
+    assert result.candidates_tested == 1
+    assert result.selected.file_path == "shop/shipping.py"
+    assert result.selected.action.kind.value == "change_module_constant"
+    assert result.selected.action.params == {
+        "name": "FREE_SHIPPING_MINIMUM_CENTS",
+        "from": 4999,
+        "to": 5000,
+    }
 
 
 def test_patch_solves_public_api_signature_propagation(tmp_path) -> None:

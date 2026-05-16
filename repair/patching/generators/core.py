@@ -34,7 +34,11 @@ from .data_access import (
     _subscript_key_candidates,
 )
 from .imports import _add_import_candidates, _local_import_index
-from .literals import _compare_candidates, _literal_candidates
+from .literals import (
+    _compare_candidates,
+    _literal_candidates,
+    _module_constant_candidates,
+)
 from .signatures import _external_signature_keyword_index, _signature_propagation_candidates
 from .symbols import _rename_symbol_candidates
 
@@ -72,6 +76,14 @@ def generate_candidate_patches(repo: Path) -> list[CandidatePatch]:
                 source.text,
                 tree,
                 external_keywords=external_signature_keywords.get(source.relative_path, {}),
+            )
+        )
+        candidates.extend(
+            _module_constant_candidates(
+                source.relative_path,
+                source.text,
+                tree,
+                repo_string_literals,
             )
         )
         for function in [node for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)]:

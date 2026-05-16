@@ -12,8 +12,13 @@ Project direction:
 - Next priority after mining/scorer plumbing: build a stronger eval ladder, parse pytest/error logs into structured hints, expand the structured action space, then add a trainable encoder/ranker.
 
 Verification cadence:
-- Run focused tests for the modules touched by the change first.
-- Run full `pytest` once before final when the change affects behavior, ranking, diagnostics, candidate generation, parsing, CLI flows, or shared code.
-- Do not repeatedly rerun full `pytest` after tiny follow-up edits when a focused test covers the edit.
-- Run the GreenShot-4 checkpoint eval only when diagnostics/ranking behavior changed or when benchmark numbers are explicitly requested.
+- Default to the smallest focused test that proves the touched behavior. Good examples:
+  - `pytest tests/test_candidate_ranking.py -q`
+  - `pytest tests/test_evaluation.py -q`
+  - `pytest tests/test_patching.py -q`
+  - `pytest tests/test_failure_hints.py -q`
+- For small follow-up edits, run only the focused test that covers the edit. Do not reflexively run full `pytest`.
+- Run full `pytest` as an intentional integration gate: before merging broad behavior changes, after touching multiple shared paths in a way focused tests do not cover, or when the user asks for a full verification pass.
+- Run quick eval smoke checks with tight budgets when useful, for example `python3 cli.py eval --tasks examples/greenshot_3 --checkpoint runs/mit-python-git/model.json --timeout 10 --max-candidates 1`.
+- Run the full GreenShot-4 checkpoint eval only when intentionally refreshing benchmark numbers, investigating ranking/diagnostics behavior, or when explicitly requested.
 - When running GreenShot-4 for the ranking-miss path, use `runs/mit-python-git/model.json` if it exists and report baseline vs model-ranked solved, pass@1, average candidates, plus any bad-ranking/missing-action summary.

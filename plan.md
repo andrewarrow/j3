@@ -214,16 +214,47 @@ Done:
    - targeted verification: `pytest tests/test_candidate_ranking.py -q`
 - Added stdout eval progress logging with `--quiet` for silent runs.
 
-Next task:
+Next 10 small tasks:
 
-1. Train the new ranker on the current GreenShot-4 diagnostics and compare:
-   - checkpoint-only model+hints
-   - checkpoint + candidate ranker
-   - first target: fix the `meets_minimum_boundary` bad ranking without
-     regressing pass@1
-   - targeted pre-check: `pytest tests/test_candidate_ranking.py -q`
-   - full GreenShot-4 eval only when intentionally refreshing benchmark
-     numbers
+1. Train the new ranker on current GreenShot-4 diagnostics and inspect
+   `candidate-ranker-metrics.json`.
+   Focused check: `pytest tests/test_candidate_ranking.py -q`.
+
+2. Add a tiny CLI regression test for `train-ranker` stdout fields:
+   training pairs, training accuracy, margin violations, ranker path.
+   Focused check: `pytest tests/test_cli.py -q`.
+
+3. Add `--plan baseline|ranked` to `train-ranker` so diagnostics can train
+   from either eval phase.
+   Focused check: `pytest tests/test_candidate_ranking.py -q`.
+
+4. Add a diagnostics utility that reports the first bad-ranking task and the
+   failed candidates before the passing candidate.
+   Focused check: `pytest tests/test_evaluation.py -q`.
+
+5. Add a small test for eval progress logging shape without running a large
+   benchmark.
+   Focused check: `pytest tests/test_cli.py -q`.
+
+6. Teach candidate-ranker metrics to report top positive and negative feature
+   weights for inspection.
+   Focused check: `pytest tests/test_candidate_ranking.py -q`.
+
+7. Add one narrow GreenShot task for operator tie-breaking around inclusive
+   boundaries.
+   Focused check: run that one pytest node in `examples/greenshot_4`.
+
+8. Add ranker-aware diagnostics summary fields: ranker path, ranker score
+   presence, and selected candidate ranker score.
+   Focused check: `pytest tests/test_evaluation.py -q`.
+
+9. Add a quick eval smoke command to docs that uses GreenShot-3 with
+   `--max-candidates 1`, matching the new verification cadence.
+   Docs-only check unless command text changes CLI behavior.
+
+10. Add a guardrail test that `patch` behaves the same when a missing ranker
+    path is provided.
+    Focused check: `pytest tests/test_patching.py -q`.
 
 ### Later Tasks
 

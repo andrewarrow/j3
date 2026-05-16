@@ -22,17 +22,23 @@ Done:
   candidate-level planning/testing chatter unless verbose mode is enabled.
 - Added CLI coverage for default eval output, verbose eval output, and quiet
   eval output.
+- Completed Immediate Change 2. `j3 eval` now supports
+  `--phase ranked|both|baseline`, defaults to ranked-only CLI evals, and records
+  skipped phases explicitly in summaries and diagnostics.
+- Added coverage for ranked-only baseline skipping, both-phase summary output,
+  and diagnostics for skipped phases.
 
 Verified:
 
 ```bash
 pytest tests/test_cli.py -q
+pytest tests/test_evaluation.py -q
 ```
 
 Next:
 
-- Start Immediate Change 2: add `j3 eval --phase ranked|both|baseline`, with
-  skipped phases represented explicitly in summaries and diagnostics.
+- Start Immediate Change 3: fix failure hint exception parsing so traceback
+  frame text such as `in` is not recorded as an exception type.
 
 ## Current Diagnosis
 
@@ -127,6 +133,10 @@ Keep these tests small. Use `examples/greenshot_bug` or `examples/greenshot_3`
 with `--max-candidates 1`, not GreenShot-4.
 
 ### 2. Add a Ranked-Only Eval Mode
+
+Status: done. Implemented in `cli.py` and `evaluation.py`; skipped phases are
+represented as `skipped` in CLI summaries and as `"skipped": true` in
+diagnostics. Covered by focused CLI and evaluation tests.
 
 The unhinted baseline is useful, but it should not run every time.
 

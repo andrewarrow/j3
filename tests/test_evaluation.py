@@ -144,6 +144,26 @@ def test_write_eval_diagnostics_records_ranker_scores(tmp_path) -> None:
     assert payload["tasks"][0]["ranked"]["summary"]["selected_ranker_score"] == 1.25
 
 
+def test_diagnostics_records_skipped_phase(tmp_path) -> None:
+    summary = evaluate_tasks(
+        tasks_path=Path("examples/greenshot_3"),
+        model_path=None,
+        timeout_seconds=10,
+        max_candidates=1,
+        phase="ranked",
+    )
+
+    diagnostics = write_eval_diagnostics(summary, tmp_path / "diagnostics.json")
+    payload = json.loads(diagnostics.read_text(encoding="utf-8"))
+
+    assert payload["summary"]["baseline"]["skipped"] is True
+    assert payload["summary"]["baseline"]["tasks"] == 0
+    assert payload["summary"]["baseline"]["skipped_tasks"] == 4
+    assert payload["summary"]["ranked"]["skipped"] is False
+    assert payload["tasks"][0]["baseline"] == {"skipped": True}
+    assert payload["tasks"][0]["ranked"]["skipped"] is False
+
+
 def _candidate_patch(*, ranker_score: float | None) -> CandidatePatch:
     source = "def answer() -> int:\n    return 1\n"
     patched = "def answer() -> int:\n    return 2\n"

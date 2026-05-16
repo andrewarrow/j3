@@ -190,3 +190,57 @@ def test_eval_quiet_suppresses_progress_lines(capsys) -> None:
     output = capsys.readouterr().out
     assert "[eval]" not in output
     assert "j3 eval complete" in output
+
+
+def test_eval_ranked_phase_skips_baseline_candidate_testing(capsys) -> None:
+    assert (
+        main(
+            [
+                "eval",
+                "--tasks",
+                "examples/greenshot_3",
+                "--checkpoint",
+                "runs/greenshot-1/model.json",
+                "--timeout",
+                "10",
+                "--max-candidates",
+                "1",
+                "--phase",
+                "ranked",
+                "--verbose",
+            ]
+        )
+        == 0
+    )
+
+    output = capsys.readouterr().out
+    assert "baseline skipped" in output
+    assert "baseline: skipped" in output
+    assert "/baseline: test: candidate=" not in output
+    assert "/model: test: candidate=" in output
+
+
+def test_eval_both_phase_preserves_existing_summary_numbers(capsys) -> None:
+    assert (
+        main(
+            [
+                "eval",
+                "--tasks",
+                "examples/greenshot_3",
+                "--checkpoint",
+                "runs/greenshot-1/model.json",
+                "--timeout",
+                "10",
+                "--max-candidates",
+                "1",
+                "--phase",
+                "both",
+            ]
+        )
+        == 0
+    )
+
+    output = capsys.readouterr().out
+    assert "baseline: solved=1/4 pass@1=1/4 avg_candidates=1.00" in output
+    assert "model-ranked: solved=4/4 pass@1=4/4 avg_candidates=1.00" in output
+    assert "baseline: skipped" not in output

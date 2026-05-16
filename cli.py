@@ -9,7 +9,7 @@ from typing import Sequence
 
 from actions import PatchActionKind
 from candidate_ranking import train_candidate_ranker
-from evaluation import evaluate_tasks, write_eval_diagnostics
+from evaluation import EvalSummary, evaluate_tasks, write_eval_diagnostics
 from fixing import run_fix_workflow
 from mining import mine_git_transitions
 from patching import plan_and_maybe_apply_patch
@@ -294,6 +294,15 @@ def build_parser() -> argparse.ArgumentParser:
         help="maximum candidate patches to test per task (default: 80)",
     )
     eval_parser.add_argument(
+        "--phase",
+        choices=("ranked", "both", "baseline"),
+        default="ranked",
+        help=(
+            "eval phase to run: ranked for day-to-day work, "
+            "both for benchmark refreshes (default: ranked)"
+        ),
+    )
+    eval_parser.add_argument(
         "--diagnostics",
         type=Path,
         help="optional JSON file for per-task candidate ranking diagnostics",
@@ -512,12 +521,14 @@ def handle_eval(args: argparse.Namespace) -> int:
         progress(f"checkpoint: {args.checkpoint.expanduser().resolve()}")
         progress(f"timeout per test run: {args.timeout}s")
         progress(f"max candidates per phase: {args.max_candidates}")
+        progress(f"phase: {args.phase}")
     summary = evaluate_tasks(
         tasks_path=args.tasks,
         model_path=args.checkpoint,
         ranker_path=args.ranker,
         timeout_seconds=args.timeout,
         max_candidates=args.max_candidates,
+        phase=args.phase,
         progress=progress,
     )
     diagnostics_path = write_eval_diagnostics(summary, args.diagnostics) if args.diagnostics else None
@@ -528,31 +539,51 @@ def handle_eval(args: argparse.Namespace) -> int:
     if args.ranker:
         print(f"ranker: {args.ranker.expanduser().resolve()}")
     print(
-        "baseline: "
-        f"solved={summary.baseline_solved}/{summary.total} "
-        f"pass@1={summary.baseline_pass_at_1}/{summary.total} "
-        f"avg_candidates={summary.baseline_avg_candidates_tested:.2f}"
+        _phase_summary_line(
+            "baseline",
+            summary.baseline_skipped,
+            summary.baseline_solved,
+            summary.baseline_pass_at_1,
+            summary.baseline_avg_candidates_tested,
+            summary.total,
+        )
     )
     print(
-        "model-ranked: "
-        f"solved={summary.ranked_solved}/{summary.total} "
-        f"pass@1={summary.ranked_pass_at_1}/{summary.total} "
-        f"avg_candidates={summary.ranked_avg_candidates_tested:.2f}"
+        _phase_summary_line(
+            "model-ranked",
+            summary.ranked_skipped,
+            summary.ranked_solved,
+            summary.ranked_pass_at_1,
+            summary.ranked_avg_candidates_tested,
+            summary.total,
+        )
     )
     print("tasks:")
     for task in summary.tasks:
-        baseline_status = "solved" if task.baseline_solved else "failed"
-        ranked_status = "solved" if task.ranked_solved else "failed"
-        ranked_action = task.ranked.selected.action.kind.value if task.ranked.selected else "-"
+        baseline_status = _task_phase_status(
+            skipped=task.baseline_skipped,
+            solved=task.baseline_solved,
+        )
+        ranked_status = _task_phase_status(
+            skipped=task.ranked_skipped,
+            solved=task.ranked_solved,
+        )
+        baseline_tested = task.baseline.candidates_tested if task.baseline is not None else "-"
+        ranked_tested = task.ranked.candidates_tested if task.ranked is not None else "-"
+        ranked_action = (
+            task.ranked.selected.action.kind.value
+            if task.ranked is not None and task.ranked.selected
+            else "-"
+        )
         print(
             f"  {task.task.name}: "
-            f"baseline={baseline_status}/{task.baseline.candidates_tested} "
-            f"model={ranked_status}/{task.ranked.candidates_tested} "
+            f"baseline={baseline_status}/{baseline_tested} "
+            f"model={ranked_status}/{ranked_tested} "
             f"action={ranked_action}"
         )
     if diagnostics_path:
         print(f"diagnostics: {diagnostics_path}")
-    return 0 if summary.ranked_solved == summary.total else 1
+    return 0 if _eval_phase_solved(summary=summary, phase=args.phase) else 1
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -584,6 +615,36 @@ def _summary_progress(message: str) -> None:
 
 def _verbose_progress(message: str) -> None:
     _progress(message)
+
+
+def _phase_summary_line(
+    label: str,
+    skipped: bool,
+    solved: int,
+    pass_at_1: int,
+    avg_candidates: float,
+    total: int,
+) -> str:
+    if skipped:
+        return f"{label}: skipped"
+    return (
+        f"{label}: "
+        f"solved={solved}/{total} "
+        f"pass@1={pass_at_1}/{total} "
+        f"avg_candidates={avg_candidates:.2f}"
+    )
+
+
+def _task_phase_status(*, skipped: bool, solved: bool) -> str:
+    if skipped:
+        return "skipped"
+    return "solved" if solved else "failed"
+
+
+def _eval_phase_solved(*, summary: EvalSummary, phase: str) -> bool:
+    if phase == "baseline":
+        return summary.baseline_solved == summary.total
+    return summary.ranked_solved == summary.total
 
 
 _CANDIDATE_LEVEL_PROGRESS_PREFIXES = (

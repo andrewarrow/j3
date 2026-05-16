@@ -9,9 +9,11 @@ import time
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, Iterable
+from typing import Callable, Iterable, Literal
 
 from patching import CandidatePatch, PatchPlanResult, plan_and_maybe_apply_patch
+
+EvalPhase = Literal["baseline", "ranked", "both"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -24,16 +26,24 @@ class RepairTask:
 @dataclass(frozen=True, slots=True)
 class TaskEvalResult:
     task: RepairTask
-    baseline: PatchPlanResult
-    ranked: PatchPlanResult
+    baseline: PatchPlanResult | None
+    ranked: PatchPlanResult | None
 
     @property
     def baseline_solved(self) -> bool:
-        return self.baseline.selected is not None
+        return self.baseline is not None and self.baseline.selected is not None
 
     @property
     def ranked_solved(self) -> bool:
-        return self.ranked.selected is not None
+        return self.ranked is not None and self.ranked.selected is not None
+
+    @property
+    def baseline_skipped(self) -> bool:
+        return self.baseline is None
+
+    @property
+    def ranked_skipped(self) -> bool:
+        return self.ranked is None
 
 
 @dataclass(frozen=True, slots=True)
@@ -57,7 +67,11 @@ class EvalSummary:
         return sum(
             1
             for task in self.tasks
-            if task.baseline_solved and task.baseline.candidates_tested == 1
+            if (
+                task.baseline_solved
+                and task.baseline is not None
+                and task.baseline.candidates_tested == 1
+            )
         )
 
     @property
@@ -65,16 +79,32 @@ class EvalSummary:
         return sum(
             1
             for task in self.tasks
-            if task.ranked_solved and task.ranked.candidates_tested == 1
+            if (
+                task.ranked_solved
+                and task.ranked is not None
+                and task.ranked.candidates_tested == 1
+            )
         )
 
     @property
     def baseline_avg_candidates_tested(self) -> float:
-        return _average([task.baseline.candidates_tested for task in self.tasks])
+        return _average(
+            [task.baseline.candidates_tested for task in self.tasks if task.baseline is not None]
+        )
 
     @property
     def ranked_avg_candidates_tested(self) -> float:
-        return _average([task.ranked.candidates_tested for task in self.tasks])
+        return _average(
+            [task.ranked.candidates_tested for task in self.tasks if task.ranked is not None]
+        )
+
+    @property
+    def baseline_skipped(self) -> bool:
+        return all(task.baseline_skipped for task in self.tasks)
+
+    @property
+    def ranked_skipped(self) -> bool:
+        return all(task.ranked_skipped for task in self.tasks)
 
 
 def load_tasks(path: Path) -> list[RepairTask]:
@@ -104,47 +134,64 @@ def evaluate_tasks(
     ranker_path: Path | None = None,
     timeout_seconds: int = 30,
     max_candidates: int = 80,
+    phase: EvalPhase = "both",
     progress: Callable[[str], None] | None = None,
 ) -> EvalSummary:
+    if phase not in {"baseline", "ranked", "both"}:
+        raise ValueError(f"unsupported eval phase: {phase}")
     tasks = load_tasks(tasks_path)
     _emit_progress(progress, f"eval: loaded {len(tasks)} task(s) from {tasks_path}")
     results: list[TaskEvalResult] = []
     for index, task in enumerate(tasks, start=1):
         task_started = time.perf_counter()
         _emit_progress(progress, f"task {index}/{len(tasks)} {task.name}: start")
-        baseline = _run_task(
-            task=task,
-            phase="baseline",
-            model_path=None,
-            ranker_path=None,
-            use_failure_hints=False,
-            timeout_seconds=timeout_seconds,
-            max_candidates=max_candidates,
-            progress=progress,
-        )
-        _emit_progress(
-            progress,
-            "task "
-            f"{index}/{len(tasks)} {task.name}: baseline "
-            f"solved={baseline.selected is not None} tested={baseline.candidates_tested}",
-        )
-        ranked = _run_task(
-            task=task,
-            phase="model",
-            model_path=model_path,
-            ranker_path=ranker_path,
-            use_failure_hints=True,
-            timeout_seconds=timeout_seconds,
-            max_candidates=max_candidates,
-            progress=progress,
-        )
-        _emit_progress(
-            progress,
-            "task "
-            f"{index}/{len(tasks)} {task.name}: model "
-            f"solved={ranked.selected is not None} tested={ranked.candidates_tested} "
-            f"elapsed={time.perf_counter() - task_started:.2f}s",
-        )
+        baseline: PatchPlanResult | None = None
+        if phase in {"baseline", "both"}:
+            baseline = _run_task(
+                task=task,
+                phase="baseline",
+                model_path=None,
+                ranker_path=None,
+                use_failure_hints=False,
+                timeout_seconds=timeout_seconds,
+                max_candidates=max_candidates,
+                progress=progress,
+            )
+            _emit_progress(
+                progress,
+                "task "
+                f"{index}/{len(tasks)} {task.name}: baseline "
+                f"solved={baseline.selected is not None} tested={baseline.candidates_tested}",
+            )
+        else:
+            _emit_progress(progress, f"task {index}/{len(tasks)} {task.name}: baseline skipped")
+
+        ranked: PatchPlanResult | None = None
+        if phase in {"ranked", "both"}:
+            ranked = _run_task(
+                task=task,
+                phase="model",
+                model_path=model_path,
+                ranker_path=ranker_path,
+                use_failure_hints=True,
+                timeout_seconds=timeout_seconds,
+                max_candidates=max_candidates,
+                progress=progress,
+            )
+            _emit_progress(
+                progress,
+                "task "
+                f"{index}/{len(tasks)} {task.name}: model "
+                f"solved={ranked.selected is not None} tested={ranked.candidates_tested} "
+                f"elapsed={time.perf_counter() - task_started:.2f}s",
+            )
+        else:
+            _emit_progress(
+                progress,
+                "task "
+                f"{index}/{len(tasks)} {task.name}: model skipped "
+                f"elapsed={time.perf_counter() - task_started:.2f}s",
+            )
         results.append(TaskEvalResult(task=task, baseline=baseline, ranked=ranked))
     return EvalSummary(tasks=results)
 
@@ -156,8 +203,14 @@ def write_eval_diagnostics(summary: EvalSummary, path: Path) -> Path:
     resolved.parent.mkdir(parents=True, exist_ok=True)
     payload = {
         "summary": {
-            "baseline": _aggregate_plan_summaries(result.baseline for result in summary.tasks),
-            "ranked": _aggregate_plan_summaries(result.ranked for result in summary.tasks),
+            "baseline": _aggregate_plan_summaries(
+                (result.baseline for result in summary.tasks),
+                total_tasks=summary.total,
+            ),
+            "ranked": _aggregate_plan_summaries(
+                (result.ranked for result in summary.tasks),
+                total_tasks=summary.total,
+            ),
         },
         "tasks": [
             {
@@ -217,8 +270,11 @@ def _emit_progress(progress: Callable[[str], None] | None, message: str) -> None
         progress(message)
 
 
-def _plan_diagnostics(plan: PatchPlanResult) -> dict[str, object]:
+def _plan_diagnostics(plan: PatchPlanResult | None) -> dict[str, object]:
+    if plan is None:
+        return {"skipped": True}
     return {
+        "skipped": False,
         "baseline_exit_code": plan.baseline_exit_code,
         "candidates_generated": plan.candidates_generated,
         "candidates_tested": plan.candidates_tested,
@@ -294,8 +350,12 @@ def _failure_hint_diagnostics(hint: object) -> dict[str, object]:
     }
 
 
-def _aggregate_plan_summaries(plans: Iterable[PatchPlanResult]) -> dict[str, object]:
-    plan_list = list(plans)
+def _aggregate_plan_summaries(
+    plans: Iterable[PatchPlanResult | None],
+    *,
+    total_tasks: int,
+) -> dict[str, object]:
+    plan_list = [plan for plan in plans if plan is not None]
     action_stats: defaultdict[str, _ActionSummaryAccumulator] = defaultdict(_ActionSummaryAccumulator)
     failed_reasons: Counter[str] = Counter()
     failure_modes: Counter[str] = Counter()
@@ -319,7 +379,10 @@ def _aggregate_plan_summaries(plans: Iterable[PatchPlanResult]) -> dict[str, obj
         failure_modes[_failure_mode(plan)] += 1
 
     return {
+        "skipped": len(plan_list) == 0,
         "tasks": len(plan_list),
+        "total_tasks": total_tasks,
+        "skipped_tasks": total_tasks - len(plan_list),
         "ranker_paths": ranker_paths,
         "ranker_scores_present": any(_plan_has_ranker_scores(plan) for plan in plan_list),
         "per_action": {

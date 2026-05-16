@@ -11,8 +11,9 @@ Project direction:
 - The prototype model is still non-neural: hashed AST embeddings, action-delta prototypes, and bounded exemplar deltas. Mined git exemplars should influence ordinary candidate actions during ranking.
 - Keep GreenShot-4 as a periodic regression gate, and use GreenShot-5 as the short-term development ladder for multi-file call chains, decoy candidates, helper-level repairs, signature propagation, and nested imports.
 - When reporting benchmark-style evals, include baseline vs model-ranked solved, pass@1, and average candidates. For day-to-day work, prefer the fastest focused eval mode that exercises the changed behavior.
-- Eval output should be task-level by default. Candidate-level progress belongs behind `--verbose`; `--quiet` should suppress progress logging.
-- Next priority after mining/scorer plumbing: build a stronger eval ladder, parse pytest/error logs into structured hints, expand the structured action space, improve ranker authority and diagnostic exploration, then add a trainable encoder/ranker.
+- `j3 eval` defaults to ranked-only, task-level progress. Use `--phase both` for benchmark refreshes, `--verbose` for candidate-level progress, and `--quiet` to suppress progress logging.
+- Use `j3 eval --explore-after-pass N --candidate-outcomes PATH` when collecting ranker data. Candidate outcome JSONL should be one row per tested candidate and include rank index, pass label, first-pass index, scores, action, target, params, and multiple-pass context.
+- For the current next task and commit sequence, follow `new_plan.md` instead of duplicating the live queue here.
 
 Verification cadence:
 - Default to the smallest focused test that proves the touched behavior. Good examples:

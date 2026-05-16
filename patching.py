@@ -11,11 +11,14 @@ import math
 import shutil
 import subprocess
 import tempfile
+import time
 import tokenize
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Callable
 
 from actions import PatchAction, PatchActionKind, PatchTarget
+from candidate_ranking import CandidateRankerModel
 from failure_hints import PytestFailureHint, parse_pytest_failure_hints
 from features import embed_python_source, vector_delta
 from repo import DEFAULT_EXCLUDE_DIRS, iter_python_sources
@@ -42,6 +45,7 @@ class CandidatePatch:
     reason: str
     model_score: float | None = None
     failure_hint_score: float = 0.0
+    ranker_score: float | None = None
 
     def diff(self) -> str:
         return "".join(
@@ -65,7 +69,9 @@ class PatchPlanResult:
     applied: bool
     test_output: str
     model_path: Path | None = None
+    ranker_path: Path | None = None
     tested_candidates: tuple[CandidatePatch, ...] = ()
+    failure_hints: tuple[PytestFailureHint, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -137,7 +143,9 @@ def plan_and_maybe_apply_patch(
     timeout_seconds: int = DEFAULT_PATCH_TIMEOUT_SECONDS,
     max_candidates: int = 80,
     model_path: Path | None = None,
+    ranker_path: Path | None = None,
     use_failure_hints: bool = True,
+    progress: Callable[[str], None] | None = None,
 ) -> PatchPlanResult:
     """Find the first candidate patch that makes the requested test pass."""
 
@@ -147,7 +155,13 @@ def plan_and_maybe_apply_patch(
     if not root.is_dir():
         raise NotADirectoryError(f"repo is not a directory: {root}")
 
+    _emit_progress(progress, f"baseline: running `{test_command}`")
+    started = time.perf_counter()
     baseline = _run_test(root, test_command, timeout_seconds)
+    _emit_progress(
+        progress,
+        f"baseline: exit={baseline.returncode} elapsed={time.perf_counter() - started:.2f}s",
+    )
     baseline_output = _combined_output(baseline)
     if baseline.returncode == 0:
         return PatchPlanResult(
@@ -160,26 +174,55 @@ def plan_and_maybe_apply_patch(
             applied=False,
             test_output=baseline_output,
             model_path=None,
+            ranker_path=None,
         )
 
+    _emit_progress(progress, "candidates: generating structured patches")
+    started = time.perf_counter()
     candidates = generate_candidate_patches(root)
+    _emit_progress(
+        progress,
+        f"candidates: generated={len(candidates)} elapsed={time.perf_counter() - started:.2f}s",
+    )
     model = _load_model_if_available(model_path)
     if model is not None:
+        _emit_progress(progress, f"rank: scoring with model {model.path}")
         candidates = rank_candidate_patches(candidates, model)
-    hints = parse_pytest_failure_hints(baseline_output) if use_failure_hints else []
+    baseline_hints = parse_pytest_failure_hints(baseline_output)
+    hints = baseline_hints if use_failure_hints else []
+    ranker = _load_candidate_ranker_if_available(ranker_path)
     if hints:
-        candidates = prioritize_candidate_patches(candidates, hints)
+        _emit_progress(progress, f"hints: parsed={len(hints)}; prioritizing candidates")
+        candidates = prioritize_candidate_patches(candidates, hints, ranker=ranker)
+    elif ranker is not None:
+        _emit_progress(progress, f"rank: scoring with candidate ranker {ranker.path}")
+        candidates = rank_with_candidate_ranker(candidates, ranker, hints=[])
     candidates_tested = 0
     tested_candidates: list[CandidatePatch] = []
     for candidate in candidates[:max_candidates]:
         candidates_tested += 1
+        _emit_progress(
+            progress,
+            "test: "
+            f"candidate={candidates_tested}/{min(max_candidates, len(candidates))} "
+            f"action={candidate.action.kind.value} "
+            f"symbol={candidate.action.target.symbol or '-'} "
+            f"reason={candidate.reason}",
+        )
         with tempfile.TemporaryDirectory(prefix="j3-patch-") as tmp:
             tmp_repo = Path(tmp) / root.name
             _copy_repo(root, tmp_repo)
             _write_candidate(tmp_repo, candidate)
+            started = time.perf_counter()
             attempt = _run_test(tmp_repo, test_command, timeout_seconds)
+            elapsed = time.perf_counter() - started
             tested_candidates.append(candidate)
+            _emit_progress(
+                progress,
+                f"test: candidate={candidates_tested} exit={attempt.returncode} elapsed={elapsed:.2f}s",
+            )
             if attempt.returncode == 0:
+                _emit_progress(progress, f"selected: candidate={candidates_tested} passed")
                 if not dry_run:
                     _write_candidate(root, candidate)
                 return PatchPlanResult(
@@ -192,9 +235,12 @@ def plan_and_maybe_apply_patch(
                     applied=not dry_run,
                     test_output=_combined_output(attempt),
                     model_path=model.path if model else None,
+                    ranker_path=ranker.path if ranker else None,
                     tested_candidates=tuple(tested_candidates),
+                    failure_hints=tuple(baseline_hints),
                 )
 
+    _emit_progress(progress, f"status: no passing candidate within tested={candidates_tested}")
     return PatchPlanResult(
         repo=root,
         test_command=test_command,
@@ -205,7 +251,9 @@ def plan_and_maybe_apply_patch(
         applied=False,
         test_output=baseline_output,
         model_path=model.path if model else None,
+        ranker_path=ranker.path if ranker else None,
         tested_candidates=tuple(tested_candidates),
+        failure_hints=tuple(baseline_hints),
     )
 
 
@@ -225,6 +273,7 @@ def rank_candidate_patches(
             reason=candidate.reason,
             model_score=model.score(candidate),
             failure_hint_score=candidate.failure_hint_score,
+            ranker_score=candidate.ranker_score,
         )
         for candidate in candidates
     ]
@@ -234,6 +283,7 @@ def rank_candidate_patches(
 def prioritize_candidate_patches(
     candidates: list[CandidatePatch],
     hints: list[PytestFailureHint],
+    ranker: CandidateRankerModel | None = None,
 ) -> list[CandidatePatch]:
     """Sort candidates by structured evidence from the failing test output."""
 
@@ -247,6 +297,7 @@ def prioritize_candidate_patches(
             reason=candidate.reason,
             model_score=candidate.model_score,
             failure_hint_score=_failure_hint_score(candidate, hints),
+            ranker_score=ranker.score(candidate, hints) if ranker is not None else candidate.ranker_score,
         )
         for candidate in candidates
     ]
@@ -254,6 +305,37 @@ def prioritize_candidate_patches(
         scored,
         key=lambda candidate: (
             candidate.failure_hint_score,
+            candidate.ranker_score if candidate.ranker_score is not None else 0.0,
+            candidate.model_score if candidate.model_score is not None else 0.0,
+        ),
+        reverse=True,
+    )
+
+
+def rank_with_candidate_ranker(
+    candidates: list[CandidatePatch],
+    ranker: CandidateRankerModel,
+    *,
+    hints: list[PytestFailureHint],
+) -> list[CandidatePatch]:
+    scored = [
+        CandidatePatch(
+            file_path=candidate.file_path,
+            action=candidate.action,
+            edit=candidate.edit,
+            original_source=candidate.original_source,
+            patched_source=candidate.patched_source,
+            reason=candidate.reason,
+            model_score=candidate.model_score,
+            failure_hint_score=candidate.failure_hint_score,
+            ranker_score=ranker.score(candidate, hints),
+        )
+        for candidate in candidates
+    ]
+    return sorted(
+        scored,
+        key=lambda candidate: (
+            candidate.ranker_score if candidate.ranker_score is not None else 0.0,
             candidate.model_score if candidate.model_score is not None else 0.0,
         ),
         reverse=True,
@@ -1009,6 +1091,11 @@ def _combined_output(result: subprocess.CompletedProcess[str]) -> str:
     return (result.stdout + result.stderr).strip()
 
 
+def _emit_progress(progress: Callable[[str], None] | None, message: str) -> None:
+    if progress is not None:
+        progress(message)
+
+
 def _load_model_if_available(model_path: Path | None) -> PatchRankingModel | None:
     if model_path is None:
         return None
@@ -1016,6 +1103,15 @@ def _load_model_if_available(model_path: Path | None) -> PatchRankingModel | Non
     if not resolved.exists():
         return None
     return PatchRankingModel.load(resolved)
+
+
+def _load_candidate_ranker_if_available(ranker_path: Path | None) -> CandidateRankerModel | None:
+    if ranker_path is None:
+        return None
+    resolved = ranker_path.expanduser().resolve()
+    if not resolved.exists():
+        return None
+    return CandidateRankerModel.load(resolved)
 
 
 def _failure_hint_score(candidate: CandidatePatch, hints: list[PytestFailureHint]) -> float:

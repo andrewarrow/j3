@@ -5,10 +5,11 @@ from __future__ import annotations
 import json
 import shutil
 import tempfile
+import time
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterable
+from typing import Callable, Iterable
 
 from patching import CandidatePatch, PatchPlanResult, plan_and_maybe_apply_patch
 
@@ -100,30 +101,51 @@ def evaluate_tasks(
     *,
     tasks_path: Path,
     model_path: Path | None,
+    ranker_path: Path | None = None,
     timeout_seconds: int = 30,
     max_candidates: int = 80,
+    progress: Callable[[str], None] | None = None,
 ) -> EvalSummary:
     tasks = load_tasks(tasks_path)
-    results = [
-        TaskEvalResult(
+    _emit_progress(progress, f"eval: loaded {len(tasks)} task(s) from {tasks_path}")
+    results: list[TaskEvalResult] = []
+    for index, task in enumerate(tasks, start=1):
+        task_started = time.perf_counter()
+        _emit_progress(progress, f"task {index}/{len(tasks)} {task.name}: start")
+        baseline = _run_task(
             task=task,
-            baseline=_run_task(
-                task=task,
-                model_path=None,
-                use_failure_hints=False,
-                timeout_seconds=timeout_seconds,
-                max_candidates=max_candidates,
-            ),
-            ranked=_run_task(
-                task=task,
-                model_path=model_path,
-                use_failure_hints=True,
-                timeout_seconds=timeout_seconds,
-                max_candidates=max_candidates,
-            ),
+            phase="baseline",
+            model_path=None,
+            ranker_path=None,
+            use_failure_hints=False,
+            timeout_seconds=timeout_seconds,
+            max_candidates=max_candidates,
+            progress=progress,
         )
-        for task in tasks
-    ]
+        _emit_progress(
+            progress,
+            "task "
+            f"{index}/{len(tasks)} {task.name}: baseline "
+            f"solved={baseline.selected is not None} tested={baseline.candidates_tested}",
+        )
+        ranked = _run_task(
+            task=task,
+            phase="model",
+            model_path=model_path,
+            ranker_path=ranker_path,
+            use_failure_hints=True,
+            timeout_seconds=timeout_seconds,
+            max_candidates=max_candidates,
+            progress=progress,
+        )
+        _emit_progress(
+            progress,
+            "task "
+            f"{index}/{len(tasks)} {task.name}: model "
+            f"solved={ranked.selected is not None} tested={ranked.candidates_tested} "
+            f"elapsed={time.perf_counter() - task_started:.2f}s",
+        )
+        results.append(TaskEvalResult(task=task, baseline=baseline, ranked=ranked))
     return EvalSummary(tasks=results)
 
 
@@ -155,14 +177,18 @@ def write_eval_diagnostics(summary: EvalSummary, path: Path) -> Path:
 def _run_task(
     *,
     task: RepairTask,
+    phase: str,
     model_path: Path | None,
+    ranker_path: Path | None,
     use_failure_hints: bool,
     timeout_seconds: int,
     max_candidates: int,
+    progress: Callable[[str], None] | None,
 ) -> PatchPlanResult:
     with tempfile.TemporaryDirectory(prefix="j3-eval-") as tmp:
         tmp_repo = Path(tmp) / task.repo.name
         shutil.copytree(task.repo, tmp_repo)
+        prefix = f"{task.name}/{phase}"
         return plan_and_maybe_apply_patch(
             repo=tmp_repo,
             test_command=task.test_command,
@@ -170,7 +196,13 @@ def _run_task(
             timeout_seconds=timeout_seconds,
             max_candidates=max_candidates,
             model_path=model_path,
+            ranker_path=ranker_path,
             use_failure_hints=use_failure_hints,
+            progress=(
+                (lambda message: progress(f"{prefix}: {message}"))
+                if progress is not None
+                else None
+            ),
         )
 
 
@@ -180,6 +212,11 @@ def _average(values: list[int]) -> float:
     return sum(values) / len(values)
 
 
+def _emit_progress(progress: Callable[[str], None] | None, message: str) -> None:
+    if progress is not None:
+        progress(message)
+
+
 def _plan_diagnostics(plan: PatchPlanResult) -> dict[str, object]:
     return {
         "baseline_exit_code": plan.baseline_exit_code,
@@ -187,6 +224,7 @@ def _plan_diagnostics(plan: PatchPlanResult) -> dict[str, object]:
         "candidates_tested": plan.candidates_tested,
         "applied": plan.applied,
         "summary": _single_plan_summary(plan),
+        "failure_hints": [_failure_hint_diagnostics(hint) for hint in plan.failure_hints],
         "selected": _candidate_diagnostics(plan.selected, passed=True) if plan.selected else None,
         "tested_candidates": [
             _candidate_diagnostics(candidate, passed=candidate == plan.selected)
@@ -206,7 +244,53 @@ def _candidate_diagnostics(candidate: CandidatePatch, *, passed: bool) -> dict[s
         "reason": candidate.reason,
         "model_score": candidate.model_score,
         "failure_hint_score": candidate.failure_hint_score,
+        "ranker_score": candidate.ranker_score,
         "passed": passed,
+    }
+
+
+def _failure_hint_diagnostics(hint: object) -> dict[str, object]:
+    return {
+        "nodeid": getattr(hint, "nodeid", None),
+        "summary": getattr(hint, "summary", None),
+        "exception_type": getattr(hint, "exception_type", None),
+        "source_files": sorted(getattr(hint, "source_files", set())),
+        "function_names": sorted(getattr(hint, "function_names", set())),
+        "missing_names": sorted(getattr(hint, "missing_names", set())),
+        "missing_attributes": sorted(getattr(hint, "missing_attributes", set())),
+        "missing_modules": sorted(getattr(hint, "missing_modules", set())),
+        "missing_keys": sorted(getattr(hint, "missing_keys", set())),
+        "type_error_names": sorted(getattr(hint, "type_error_names", set())),
+        "assertion_diff_lines": list(getattr(hint, "assertion_diff_lines", [])),
+        "assertions": [
+            {
+                "actual": assertion.actual,
+                "operator": assertion.operator,
+                "expected": assertion.expected,
+                "numeric_delta": assertion.numeric_delta,
+            }
+            for assertion in getattr(hint, "assertions", [])
+        ],
+        "traceback_locations": [
+            {
+                "file_path": location.file_path,
+                "line": location.line,
+                "exception_type": location.exception_type,
+            }
+            for location in getattr(hint, "traceback_locations", [])
+        ],
+        "tool_diagnostics": [
+            {
+                "tool": diagnostic.tool,
+                "file_path": diagnostic.file_path,
+                "line": diagnostic.line,
+                "message": diagnostic.message,
+                "severity": diagnostic.severity,
+                "code": diagnostic.code,
+                "column": diagnostic.column,
+            }
+            for diagnostic in getattr(hint, "tool_diagnostics", [])
+        ],
     }
 
 

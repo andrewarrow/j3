@@ -45,11 +45,13 @@ def run_fix_workflow(
     repo: Path,
     test_command: str,
     model_path: Path | None,
+    ranker_path: Path | None = None,
     yes: bool,
     dry_run: bool,
     timeout_seconds: int = 30,
     max_candidates: int = 80,
     confirm: Callable[[str], bool] | None = None,
+    progress: Callable[[str], None] | None = None,
 ) -> FixWorkflowResult:
     """Run tests, identify failing pytest targets, and patch them one by one."""
 
@@ -80,6 +82,8 @@ def run_fix_workflow(
             timeout_seconds=timeout_seconds,
             max_candidates=max_candidates,
             model_path=model_path,
+            ranker_path=ranker_path,
+            progress=progress,
         )
 
         should_apply = False
@@ -94,6 +98,8 @@ def run_fix_workflow(
                     timeout_seconds=timeout_seconds,
                     max_candidates=max_candidates,
                     model_path=model_path,
+                    ranker_path=ranker_path,
+                    progress=progress,
                 )
 
         attempts.append(

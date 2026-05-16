@@ -76,5 +76,7 @@ def test_write_eval_diagnostics(tmp_path) -> None:
     assert "top_failed_candidate_reasons" in payload["summary"]["ranked"]
     assert "failure_modes" in payload["summary"]["ranked"]
     assert "summary" in payload["tasks"][0]["ranked"]
+    assert "failure_hints" in payload["tasks"][0]["ranked"]
     assert "tested_candidates" in payload["tasks"][0]["ranked"]
     assert "params" in payload["tasks"][0]["ranked"]["tested_candidates"][0]
+    assert "ranker_score" in payload["tasks"][0]["ranked"]["tested_candidates"][0]

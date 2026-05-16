@@ -277,6 +277,37 @@ search cost and restores one pass@1 result, but one task still regresses versus
 baseline. The next modeling step remains a trainable encoder/ranker with
 explicit positive and negative candidate pairs.
 
+## Train A Candidate Ranker
+
+Eval diagnostics can now train a small candidate-level tie-breaker. Generate
+diagnostics first:
+
+```bash
+python3 cli.py eval \
+  --tasks examples/greenshot_4 \
+  --checkpoint runs/mit-python-git/model.json \
+  --diagnostics runs/mit-python-git/greenshot-4-diagnostics.json \
+  --timeout 10
+```
+
+Train the ranker from failed candidates tested before the passing candidate:
+
+```bash
+python3 cli.py train-ranker \
+  --diagnostics runs/mit-python-git/greenshot-4-diagnostics.json \
+  --out runs/mit-python-git
+```
+
+Use it as an optional ranker after failure-hint scoring:
+
+```bash
+python3 cli.py eval \
+  --tasks examples/greenshot_4 \
+  --checkpoint runs/mit-python-git/model.json \
+  --ranker runs/mit-python-git/candidate-ranker.json \
+  --timeout 10
+```
+
 ## Full Repository URLs
 
 - https://github.com/psf/black

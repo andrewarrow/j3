@@ -1,0 +1,18 @@
+[
+  {
+    "name": "core_metadata_version_dict_value",
+    "family": "mapping_value",
+    "repo": ".",
+    "test": "python -m pytest tests/test_pkgmeta.py::test_core_metadata_uses_current_metadata_version",
+    "preferred": {
+      "file_path": "pkgmeta/metadata.py",
+      "action": "change_dict_value",
+      "symbol": "default_project_metadata",
+      "params": {
+        "key": "metadata_version",
+        "from": "2.2",
+        "to": "2.3"
+      }
+    }
+  }
+]

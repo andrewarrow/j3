@@ -195,6 +195,9 @@ def _score_against_hint(candidate: CandidatePatch, hint: PytestFailureHint) -> f
         if hint.assertions:
             score += 10.0
 
+    if candidate.action.kind == PatchActionKind.CHANGE_DICT_VALUE and hint.assertions:
+        score += 12.0
+
     if candidate.action.kind == PatchActionKind.WRAP_TRY_EXCEPT:
         exception = str(candidate.action.params.get("exception", ""))
         if exception and exception == hint.exception_type:
@@ -265,6 +268,7 @@ def _hinted_upstream_distance(candidate: CandidatePatch, hint: PytestFailureHint
 def _literal_hint_score(candidate: CandidatePatch, hint: PytestFailureHint) -> float:
     if candidate.action.kind not in {
         PatchActionKind.CHANGE_LITERAL,
+        PatchActionKind.CHANGE_DICT_VALUE,
         PatchActionKind.CHANGE_MODULE_CONSTANT,
     }:
         return 0.0
@@ -276,6 +280,11 @@ def _literal_hint_score(candidate: CandidatePatch, hint: PytestFailureHint) -> f
             score += 35.0
         if any(key in replacement for key in hint.missing_keys):
             score += 8.0
+        for assertion in hint.assertions:
+            if assertion.actual == original:
+                score += 10.0
+            if assertion.expected == replacement:
+                score += 35.0
         return score
 
     if not isinstance(original, (int, float)) or isinstance(original, bool):

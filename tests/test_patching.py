@@ -455,6 +455,41 @@ def test_generate_change_dict_key_candidate_from_repo_string_literals(tmp_path) 
     )
 
 
+def test_generate_change_dict_value_candidate_from_repo_string_literals(tmp_path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "metadata.py").write_text(
+        "def default_project_metadata() -> dict[str, str]:\n"
+        "    return {\n"
+        "        'metadata_version': '2.2',\n"
+        "        'name': 'demo',\n"
+        "    }\n",
+        encoding="utf-8",
+    )
+    tests = repo / "tests"
+    tests.mkdir()
+    (tests / "test_metadata.py").write_text(
+        "from metadata import default_project_metadata\n\n"
+        "def test_metadata_version() -> None:\n"
+        "    expected_metadata_version = '2.3'\n"
+        "    assert default_project_metadata()['metadata_version'] == expected_metadata_version\n",
+        encoding="utf-8",
+    )
+
+    candidates = generate_candidate_patches(repo)
+
+    assert any(
+        candidate.action.kind.value == "change_dict_value"
+        and candidate.action.params == {
+            "key": "metadata_version",
+            "from": "2.2",
+            "to": "2.3",
+        }
+        and "'metadata_version': '2.3'" in candidate.patched_source
+        for candidate in candidates
+    )
+
+
 def test_generate_string_literal_candidate_from_repo_string_literals(tmp_path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()
@@ -872,3 +907,26 @@ def test_patch_solves_import_compatibility_fallback(tmp_path) -> None:
     assert result.selected.action.params["primary_module"] == "shop.cache_v2"
     assert result.selected.action.params["fallback_module"] == "shop.cache_legacy"
     assert "except ImportError:" in result.selected.patched_source
+
+
+def test_patch_solves_greenshot_6_dictionary_literal_value(tmp_path) -> None:
+    repo = tmp_path / "greenshot_6"
+    shutil.copytree("examples/greenshot_6", repo)
+
+    result = plan_and_maybe_apply_patch(
+        repo=repo,
+        test_command="python -m pytest tests/test_pkgmeta.py::test_core_metadata_uses_current_metadata_version",
+        dry_run=True,
+        timeout_seconds=10,
+    )
+
+    assert result.selected is not None
+    assert result.candidates_tested == 1
+    assert result.selected.file_path == "pkgmeta/metadata.py"
+    assert result.selected.action.kind.value == "change_dict_value"
+    assert result.selected.action.params == {
+        "key": "metadata_version",
+        "from": "2.2",
+        "to": "2.3",
+    }
+    assert '"metadata_version": "2.3"' in result.selected.patched_source

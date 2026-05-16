@@ -7,7 +7,7 @@ import subprocess
 import tempfile
 import time
 from pathlib import Path
-from typing import Callable
+from typing import Any, Callable
 
 from candidate_ranking import CandidateRankerModel
 from failure_hints import PytestFailureHint, parse_pytest_failure_hints
@@ -313,10 +313,31 @@ def _failure_signature(output: str) -> tuple[object, ...]:
                 tuple(sorted(hint.missing_keys)),
                 tuple(sorted(hint.type_error_names)),
                 tuple(
-                    (assertion.operator, assertion.actual, assertion.expected)
+                    (
+                        assertion.operator,
+                        _hashable_hint_value(assertion.actual),
+                        _hashable_hint_value(assertion.expected),
+                    )
                     for assertion in hint.assertions
                 ),
             )
             for hint in hints
         )
     return (output[-500:],)
+
+
+def _hashable_hint_value(value: Any) -> object:
+    if isinstance(value, dict):
+        items = (
+            (
+                _hashable_hint_value(key),
+                _hashable_hint_value(item),
+            )
+            for key, item in value.items()
+        )
+        return tuple(sorted(items, key=repr))
+    if isinstance(value, list):
+        return tuple(_hashable_hint_value(item) for item in value)
+    if isinstance(value, set):
+        return tuple(sorted((_hashable_hint_value(item) for item in value), key=repr))
+    return value

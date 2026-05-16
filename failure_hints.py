@@ -12,7 +12,7 @@ from typing import Any
 FAILED_TARGET_RE = re.compile(r"^FAILED\s+([^\s]+::[^\s]+)(?:\s+-\s+(.*))?")
 TRACEBACK_LOCATION_RE = re.compile(r"^(?P<file>[^\s:][^:]*\.py):(?P<line>\d+):(?:\s+(?P<context>.*))?$")
 TRACEBACK_CONTEXT_RE = re.compile(r"^in\s+([A-Za-z_]\w*)$")
-ASSERT_OP_RE = re.compile(r"^E\s+assert\s+(.+?)\s+(==|is|in|not in)\s+(.+)$")
+ASSERT_OP_RE = re.compile(r"^E\s+(?:AssertionError:\s+)?assert\s+(.+?)\s+(==|is|in|not in)\s+(.+)$")
 WHERE_CALL_RE = re.compile(r"where\s+(.+?)\s+=\s+([A-Za-z_]\w*)\(")
 CALL_RE = re.compile(r"\b([A-Za-z_]\w*)\s*\(")
 DEF_RE = re.compile(r"^\s*def\s+([A-Za-z_]\w*)\(")

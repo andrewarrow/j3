@@ -32,6 +32,7 @@ from .data_access import (
     _add_dict_key_candidates,
     _attribute_candidates,
     _change_dict_key_candidates,
+    _change_dict_value_candidates,
     _subscript_key_candidates,
 )
 from .imports import _add_import_candidates, _local_import_index
@@ -123,6 +124,15 @@ def generate_candidate_patches(repo: Path) -> list[CandidatePatch]:
                     )
                     candidates.extend(
                         _add_dict_key_candidates(
+                            source.relative_path,
+                            source.text,
+                            function,
+                            node,
+                            repo_string_literals,
+                        )
+                    )
+                    candidates.extend(
+                        _change_dict_value_candidates(
                             source.relative_path,
                             source.text,
                             function,

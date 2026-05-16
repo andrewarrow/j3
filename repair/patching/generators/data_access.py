@@ -10,7 +10,9 @@ from synth import apply_edit
 from ..ast_utils import (
     _key_similarity,
     _keys_look_related,
+    _nearby_literals,
     _node_edit,
+    _string_literal_alternatives,
     _subscript_key_alternatives,
 )
 from ..types import CandidatePatch
@@ -196,12 +198,84 @@ def _change_dict_key_candidates(
     return candidates
 
 
+def _change_dict_value_candidates(
+    file_path: str,
+    source: str,
+    function: ast.FunctionDef,
+    node: ast.Dict,
+    repo_string_literals: set[str],
+) -> list[CandidatePatch]:
+    candidates: list[CandidatePatch] = []
+    for key_node, value_node in zip(node.keys, node.values, strict=True):
+        if value_node is None or not isinstance(value_node, ast.Constant):
+            continue
+
+        key = _dict_key_label(source, key_node)
+        if key is None:
+            continue
+
+        for replacement in _dict_value_replacements(value_node, repo_string_literals):
+            rendered_value = _render_dict_value(source, value_node, replacement)
+            edit = _node_edit(value_node, rendered_value)
+            patched = apply_edit(source, edit)
+            action = PatchAction(
+                kind=PatchActionKind.CHANGE_DICT_VALUE,
+                target=PatchTarget(
+                    file_path=file_path,
+                    start_line=value_node.lineno,
+                    end_line=value_node.end_lineno,
+                    symbol=function.name,
+                    node_kind="Dict",
+                ),
+                params={"key": key, "from": value_node.value, "to": replacement},
+            )
+            candidates.append(
+                CandidatePatch(
+                    file_path=file_path,
+                    action=action,
+                    edit=edit,
+                    original_source=source,
+                    patched_source=patched,
+                    reason=f"try dictionary value {key!r}={replacement!r}",
+                )
+            )
+    return candidates
+
+
 def _dict_string_keys(node: ast.Dict) -> set[str]:
     keys: set[str] = set()
     for key in node.keys:
         if isinstance(key, ast.Constant) and isinstance(key.value, str):
             keys.add(key.value)
     return keys
+
+
+def _dict_key_label(source: str, node: ast.expr | None) -> str | None:
+    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        return node.value
+    if node is None:
+        return None
+    return ast.get_source_segment(source, node)
+
+
+def _dict_value_replacements(
+    node: ast.Constant,
+    repo_string_literals: set[str],
+) -> list[object]:
+    value = node.value
+    if isinstance(value, bool):
+        return [not value]
+    if isinstance(value, int | float):
+        return list(_nearby_literals(value))
+    if isinstance(value, str):
+        return list(_string_literal_alternatives(value, repo_string_literals))
+    return []
+
+
+def _render_dict_value(source: str, node: ast.Constant, value: object) -> str:
+    if isinstance(value, str):
+        return _render_string_key(source, node, value)
+    return repr(value)
 
 
 def _dict_key_alternatives(existing_keys: set[str], repo_string_literals: set[str]) -> list[str]:

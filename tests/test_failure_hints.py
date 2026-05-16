@@ -144,6 +144,24 @@ E       assert 'ready' in 'not yet'
     assert hint.assertions[0].expected == "not yet"
 
 
+def test_parse_assertion_error_prefix_assertion() -> None:
+    output = """
+    def test_metadata_version() -> None:
+>       assert metadata["Metadata-Version"] == expected_metadata_version
+E       AssertionError: assert '2.2' == '2.3'
+E
+E         - 2.3
+E         + 2.2
+"""
+
+    [hint] = parse_pytest_failure_hints(output)
+
+    assert hint.exception_type == "AssertionError"
+    assert hint.assertions[0].actual == "2.2"
+    assert hint.assertions[0].expected == "2.3"
+    assert hint.assertion_diff_lines == ["- 2.3", "+ 2.2"]
+
+
 def test_parse_mypy_and_ruff_output() -> None:
     output = """
 bugs.py:12: error: Name "subtotal" is not defined  [name-defined]

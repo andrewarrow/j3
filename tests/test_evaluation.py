@@ -91,6 +91,24 @@ def test_load_greenshot_5_tasks() -> None:
     }
 
 
+def test_load_greenshot_6_tasks() -> None:
+    tasks = load_tasks(Path("examples/greenshot_6"))
+
+    assert len(tasks) == 1
+    assert tasks[0].name == "core_metadata_version_dict_value"
+    assert tasks[0].family == "mapping_value"
+    assert tasks[0].preferred_patch == {
+        "file_path": "pkgmeta/metadata.py",
+        "action": "change_dict_value",
+        "symbol": "default_project_metadata",
+        "params": {
+            "key": "metadata_version",
+            "from": "2.2",
+            "to": "2.3",
+        },
+    }
+
+
 def test_evaluate_greenshot_bugs(tmp_path) -> None:
     training = train_from_path(
         data_path=Path("examples/greenshot_bugs"),

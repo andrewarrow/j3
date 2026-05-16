@@ -103,8 +103,12 @@ Recent completed work:
 - [x] The dictionary literal key loop is covered with `change_dict_key`, and
   `KeyError` hints distinguish value-preserving key renames from add-key
   candidates with unknown defaults.
+- [x] GreenShot-6 has started with a small package-style metadata fixture.
+- [x] The dictionary literal value loop is covered with `change_dict_value`, and
+  pytest `AssertionError: assert ... == ...` value comparisons rank the
+  preferred dictionary-value edit at rank 1.
 
-Current GreenShot-5 signal:
+Current GreenShot signal:
 
 ```text
 ranked, no candidate ranker after adding the caller-side string/mode literal task:
@@ -150,6 +154,9 @@ ranked, Apache checkpoint after adding the module-level config constant task:
 
 ranked, Apache checkpoint after adding the dictionary literal key task:
   solved=20/20 pass@1=15/20 avg_candidates=1.25
+
+ranked, no candidate ranker on the first GreenShot-6 package metadata task:
+  solved=1/1 pass@1=1/1 avg_candidates=1.00
 ```
 
 Current interpretation:
@@ -181,6 +188,9 @@ Current interpretation:
   `change_dict_key`; missing-key hints rank the value-preserving key rename at
   rank 1 while preserving the existing add-key behavior for inferred defaults
   like `disabled=False`.
+- The first GreenShot-6 task is action-covered by `change_dict_value`; parsed
+  string assertion comparisons distinguish the intended dictionary value change
+  from generic literal and key-rewrite candidates.
 - The swapped-arguments-across-modules task is action-covered by
   `swap_call_arg`; hint-only ranking solves it at rank 1. A ranker trained from
   old pre-hint outcome rows buries it, which confirms that current outcome data
@@ -257,7 +267,7 @@ has enough coverage and data to make neural regressions visible.
 - [x] Add Apache-mined GreenShot-5 task: import compatibility fallback from a
   new package path to an old package path.
 - [x] Add Apache-mined GreenShot-5 task: module-level config constant repair.
-- [ ] Create GreenShot-6 for small real packages, not only toy fixtures.
+- [x] Create GreenShot-6 for small real packages, not only toy fixtures.
 - [ ] Add mutation-generated held-out tasks from real repos.
 - [ ] Add git-history-derived held-out repair tasks.
 - [ ] Track benchmark task families so train/test leakage is visible.
@@ -278,7 +288,7 @@ has enough coverage and data to make neural regressions visible.
 - [x] `modify_condition`
 - [x] `propagate_signature`
 - [x] Change dictionary literal key.
-- [ ] Change dictionary literal value.
+- [x] Change dictionary literal value.
 - [x] Add missing dictionary key/default.
 - [x] Change function default parameter value.
 - [x] Change module-level config constant.

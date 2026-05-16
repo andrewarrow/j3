@@ -50,6 +50,7 @@ class PatchPlanResult:
     ranker_path: Path | None = None
     tested_candidates: tuple[CandidatePatch, ...] = ()
     failure_hints: tuple[PytestFailureHint, ...] = ()
+    tested_candidate_hints: tuple[tuple[PytestFailureHint, ...], ...] = ()
     first_passing_index: int | None = None
     passing_candidates: tuple[CandidatePatch, ...] = ()
-
+    selected_candidates: tuple[CandidatePatch, ...] = ()

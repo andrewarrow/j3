@@ -79,5 +79,12 @@
     "family": "mode_literal",
     "repo": ".",
     "test": "python -m pytest tests/test_shop.py::test_priority_shipping_mode_literal_is_fixed_in_caller"
+  },
+  {
+    "name": "delivery_summary_multi_step_import_then_literal",
+    "family": "multi_step_revealed_failure",
+    "repo": ".",
+    "test": "python -m pytest tests/test_shop.py::test_multi_step_delivery_summary_reveals_literal_after_import",
+    "max_steps": 2
   }
 ]

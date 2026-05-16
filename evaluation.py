@@ -23,6 +23,7 @@ class RepairTask:
     test_command: str
     family: str = "unclassified"
     preferred_patch: dict[str, object] | None = None
+    max_steps: int = 1
 
 
 @dataclass(frozen=True, slots=True)
@@ -130,6 +131,7 @@ def load_tasks(path: Path) -> list[RepairTask]:
                     if isinstance(item.get("preferred"), dict)
                     else None
                 ),
+                max_steps=int(item.get("max_steps", 1)),
             )
         )
     return tasks
@@ -142,6 +144,7 @@ def evaluate_tasks(
     ranker_path: Path | None = None,
     timeout_seconds: int = 30,
     max_candidates: int = 80,
+    max_steps: int = 1,
     phase: EvalPhase = "both",
     explore_after_pass: int = 0,
     progress: Callable[[str], None] | None = None,
@@ -166,6 +169,7 @@ def evaluate_tasks(
                 use_failure_hints=False,
                 timeout_seconds=timeout_seconds,
                 max_candidates=max_candidates,
+                max_steps=task.max_steps if task.max_steps != 1 else max_steps,
                 explore_after_pass=explore_after_pass,
                 progress=progress,
             )
@@ -188,6 +192,7 @@ def evaluate_tasks(
                 use_failure_hints=True,
                 timeout_seconds=timeout_seconds,
                 max_candidates=max_candidates,
+                max_steps=task.max_steps if task.max_steps != 1 else max_steps,
                 explore_after_pass=explore_after_pass,
                 progress=progress,
             )
@@ -231,6 +236,7 @@ def write_eval_diagnostics(summary: EvalSummary, path: Path) -> Path:
                 "family": result.task.family,
                 "repo": str(result.task.repo),
                 "test_command": result.task.test_command,
+                "max_steps": result.task.max_steps,
                 "baseline": _plan_diagnostics(result.baseline),
                 "ranked": _plan_diagnostics(result.ranked),
             }
@@ -261,6 +267,7 @@ def _run_task(
     use_failure_hints: bool,
     timeout_seconds: int,
     max_candidates: int,
+    max_steps: int,
     explore_after_pass: int,
     progress: Callable[[str], None] | None,
 ) -> PatchPlanResult:
@@ -274,6 +281,7 @@ def _run_task(
             dry_run=False,
             timeout_seconds=timeout_seconds,
             max_candidates=max_candidates,
+            max_steps=max_steps,
             model_path=model_path,
             ranker_path=ranker_path,
             use_failure_hints=use_failure_hints,
@@ -300,6 +308,7 @@ def _emit_progress(progress: Callable[[str], None] | None, message: str) -> None
 def _plan_diagnostics(plan: PatchPlanResult | None) -> dict[str, object]:
     if plan is None:
         return {"skipped": True}
+    candidate_hints = _candidate_hints_by_rank(plan)
     return {
         "skipped": False,
         "baseline_exit_code": plan.baseline_exit_code,
@@ -316,11 +325,19 @@ def _plan_diagnostics(plan: PatchPlanResult | None) -> dict[str, object]:
         "summary": _single_plan_summary(plan),
         "failure_hints": [_failure_hint_diagnostics(hint) for hint in plan.failure_hints],
         "selected": _candidate_diagnostics(plan.selected, passed=True) if plan.selected else None,
+        "selected_candidates": [
+            _candidate_diagnostics(
+                candidate,
+                passed=_candidate_passed(candidate, plan),
+            )
+            for candidate in plan.selected_candidates
+        ],
         "tested_candidates": [
             _candidate_diagnostics(
                 candidate,
                 passed=_candidate_passed(candidate, plan),
                 rank_index=rank_index,
+                failure_hints=candidate_hints[rank_index - 1],
             )
             for rank_index, candidate in enumerate(plan.tested_candidates, start=1)
         ],
@@ -332,6 +349,7 @@ def _candidate_diagnostics(
     *,
     passed: bool,
     rank_index: int | None = None,
+    failure_hints: tuple[object, ...] | None = None,
 ) -> dict[str, object]:
     diagnostics: dict[str, object] = {
         "file_path": candidate.file_path,
@@ -350,6 +368,10 @@ def _candidate_diagnostics(
     }
     if rank_index is not None:
         diagnostics["rank_index"] = rank_index
+    if failure_hints is not None:
+        diagnostics["failure_hints"] = [
+            _failure_hint_diagnostics(hint) for hint in failure_hints
+        ]
     return diagnostics
 
 
@@ -361,9 +383,13 @@ def _candidate_outcome_rows(summary: EvalSummary) -> Iterable[dict[str, object]]
             first_passing_index = _first_passing_index(plan)
             passing_candidates = _passing_candidates(plan)
             passing_count = len(passing_candidates)
-            failure_hints = [_failure_hint_diagnostics(hint) for hint in plan.failure_hints]
+            candidate_hints = _candidate_hints_by_rank(plan)
             for rank_index, candidate in enumerate(plan.tested_candidates, start=1):
                 passed = _candidate_passed(candidate, plan)
+                failure_hints = [
+                    _failure_hint_diagnostics(hint)
+                    for hint in candidate_hints[rank_index - 1]
+                ]
                 yield {
                     "task": result.task.name,
                     "task_family": result.task.family,
@@ -434,6 +460,12 @@ def _failure_hint_diagnostics(hint: object) -> dict[str, object]:
             for diagnostic in getattr(hint, "tool_diagnostics", [])
         ],
     }
+
+
+def _candidate_hints_by_rank(plan: PatchPlanResult) -> tuple[tuple[object, ...], ...]:
+    if len(plan.tested_candidate_hints) == len(plan.tested_candidates):
+        return tuple(plan.tested_candidate_hints)
+    return tuple(plan.failure_hints for _candidate in plan.tested_candidates)
 
 
 def _aggregate_plan_summaries(

@@ -100,6 +100,12 @@ def build_parser() -> argparse.ArgumentParser:
         default=80,
         help="maximum candidate patches to test (default: 80)",
     )
+    patch_parser.add_argument(
+        "--max-steps",
+        type=int,
+        default=1,
+        help="maximum sequential repair steps to plan (default: 1)",
+    )
     patch_parser.set_defaults(handler=handle_patch)
 
     fix_parser = subparsers.add_parser(
@@ -339,6 +345,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="maximum candidate patches to test per task (default: 80)",
     )
     eval_parser.add_argument(
+        "--max-steps",
+        type=int,
+        default=1,
+        help="maximum sequential repair steps per task unless a task overrides it (default: 1)",
+    )
+    eval_parser.add_argument(
         "--explore-after-pass",
         type=int,
         default=0,
@@ -404,6 +416,7 @@ def handle_patch(args: argparse.Namespace) -> int:
         dry_run=args.dry_run,
         timeout_seconds=args.timeout,
         max_candidates=args.max_candidates,
+        max_steps=args.max_steps,
         model_path=args.model,
         ranker_path=args.ranker,
     )
@@ -430,6 +443,13 @@ def handle_patch(args: argparse.Namespace) -> int:
         return 1
 
     print(f"status: {'applied' if result.applied else 'found'} passing patch")
+    if len(result.selected_candidates) > 1:
+        print(f"repair steps: {len(result.selected_candidates)}")
+        for index, candidate in enumerate(result.selected_candidates, start=1):
+            print(
+                f"  {index}. {candidate.action.kind.value} "
+                f"{candidate.file_path} ({candidate.reason})"
+            )
     print(f"action: {result.selected.action.kind.value}")
     print(f"file: {result.selected.file_path}")
     print(f"reason: {result.selected.reason}")
@@ -604,6 +624,7 @@ def handle_eval(args: argparse.Namespace) -> int:
         progress(f"checkpoint: {args.checkpoint.expanduser().resolve()}")
         progress(f"timeout per test run: {args.timeout}s")
         progress(f"max candidates per phase: {args.max_candidates}")
+        progress(f"max steps per task: {args.max_steps}")
         if args.explore_after_pass:
             progress(f"explore after pass: {args.explore_after_pass}")
         progress(f"phase: {args.phase}")
@@ -613,6 +634,7 @@ def handle_eval(args: argparse.Namespace) -> int:
         ranker_path=args.ranker,
         timeout_seconds=args.timeout,
         max_candidates=args.max_candidates,
+        max_steps=args.max_steps,
         phase=args.phase,
         explore_after_pass=args.explore_after_pass,
         progress=progress,

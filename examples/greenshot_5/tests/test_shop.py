@@ -1,6 +1,7 @@
 from shop.accounts import Account
 from shop.api import (
     balance_after_store_credit,
+    delivery_summary_service,
     express_shipping_label,
     loyalty_points,
     order_customer_label,
@@ -65,3 +66,7 @@ def test_loyalty_points_wrapper_handles_pending_value() -> None:
 
 def test_priority_shipping_mode_literal_is_fixed_in_caller() -> None:
     assert priority_shipping_service() == "air"
+
+
+def test_multi_step_delivery_summary_reveals_literal_after_import() -> None:
+    assert delivery_summary_service() == "air"

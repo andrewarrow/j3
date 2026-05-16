@@ -37,11 +37,12 @@ def test_load_greenshot_4_tasks() -> None:
 def test_load_greenshot_5_tasks() -> None:
     tasks = load_tasks(Path("examples/greenshot_5"))
 
-    assert len(tasks) == 12
+    assert len(tasks) == 13
     assert tasks[0].name == "quote_total_helper_discount"
     assert tasks[0].family == "expression_helper"
-    assert tasks[-1].name == "priority_shipping_mode_literal_caller"
-    assert tasks[-1].family == "mode_literal"
+    assert tasks[-1].name == "delivery_summary_multi_step_import_then_literal"
+    assert tasks[-1].family == "multi_step_revealed_failure"
+    assert tasks[-1].max_steps == 2
     assert tasks[8].preferred_patch == {
         "file_path": "shop/policies.py",
         "action": "change_operator",
@@ -196,6 +197,35 @@ def test_eval_explores_after_first_passing_candidate(tmp_path) -> None:
     assert len(plan.passing_candidates) == 2
     assert summary.ranked_solved == 1
     assert summary.ranked_pass_at_1 == 1
+
+
+def test_eval_uses_task_level_max_steps(tmp_path) -> None:
+    summary = evaluate_tasks(
+        tasks_path=Path("examples/greenshot_5/tasks.json"),
+        model_path=None,
+        timeout_seconds=10,
+        max_candidates=80,
+        phase="ranked",
+    )
+
+    task = next(
+        result
+        for result in summary.tasks
+        if result.task.name == "delivery_summary_multi_step_import_then_literal"
+    )
+
+    assert task.ranked is not None
+    assert task.ranked.selected is not None
+    assert len(task.ranked.selected_candidates) == 2
+
+    outcomes = write_candidate_outcomes(summary, tmp_path / "outcomes.jsonl")
+    rows = [
+        json.loads(line)
+        for line in outcomes.read_text(encoding="utf-8").splitlines()
+        if '"delivery_summary_multi_step_import_then_literal"' in line
+    ]
+    assert rows[0]["failure_hints"][0]["missing_names"] == ["delivery_speed_label"]
+    assert rows[-1]["failure_hints"][0]["missing_keys"] == ["expres"]
 
 
 def test_diagnostics_records_exploration_after_pass(tmp_path) -> None:

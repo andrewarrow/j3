@@ -470,3 +470,35 @@ def test_patch_solves_string_mode_literal_in_caller_not_helper(tmp_path) -> None
     assert result.selected.file_path == "shop/api.py"
     assert result.selected.action.kind.value == "change_literal"
     assert result.selected.action.params == {"from": "priorty", "to": "priority"}
+
+
+def test_patch_solves_revealed_failure_with_bounded_second_step(tmp_path) -> None:
+    repo = tmp_path / "greenshot_5"
+    shutil.copytree("examples/greenshot_5", repo)
+
+    result = plan_and_maybe_apply_patch(
+        repo=repo,
+        test_command="python -m pytest tests/test_shop.py::test_multi_step_delivery_summary_reveals_literal_after_import",
+        dry_run=False,
+        timeout_seconds=10,
+        max_steps=2,
+    )
+
+    assert result.selected is not None
+    assert result.applied is True
+    assert len(result.selected_candidates) == 2
+    assert [candidate.action.kind.value for candidate in result.selected_candidates] == [
+        "add_import",
+        "change_literal",
+    ]
+    assert result.selected_candidates[0].file_path == "shop/api.py"
+    assert result.selected_candidates[0].action.params == {
+        "name": "delivery_speed_label",
+        "module": "shop.shipping",
+        "import": "from shop.shipping import delivery_speed_label",
+    }
+    assert result.selected.file_path == "shop/api.py"
+    assert result.selected.action.params == {"from": "expres", "to": "express"}
+    patched_api = (repo / "shop/api.py").read_text(encoding="utf-8")
+    assert "from shop.shipping import delivery_speed_label" in patched_api
+    assert "return delivery_speed_label('express')" in patched_api

@@ -59,3 +59,7 @@ def loyalty_points(raw_points: str) -> int:
 
 def priority_shipping_service() -> str:
     return shipping_service_label("priorty")
+
+
+def delivery_summary_service() -> str:
+    return delivery_speed_label("expres")

@@ -342,7 +342,7 @@ def _training_pairs_from_plan(plan: dict[str, object]) -> list[tuple[dict[str, f
     if not isinstance(tested, list) or not isinstance(selected, dict):
         return []
 
-    hints = plan.get("failure_hints", [])
+    plan_hints = plan.get("failure_hints", [])
     positive_index = _first_passing_index(tested)
     if positive_index is None:
         return []
@@ -350,13 +350,17 @@ def _training_pairs_from_plan(plan: dict[str, object]) -> list[tuple[dict[str, f
     if not isinstance(positive, dict):
         return []
 
-    positive_features = _candidate_record_features(positive, hints)
+    positive_hints = _record_hints(positive, plan_hints)
+    positive_features = _candidate_record_features(positive, positive_hints)
     pairs: list[tuple[dict[str, float], dict[str, float]]] = []
     for index, candidate in enumerate(tested):
         if index == positive_index:
             continue
         if isinstance(candidate, dict) and candidate.get("passed") is not True:
-            pairs.append((positive_features, _candidate_record_features(candidate, hints)))
+            candidate_hints = _record_hints(candidate, plan_hints)
+            pairs.append(
+                (positive_features, _candidate_record_features(candidate, candidate_hints))
+            )
     return pairs
 
 
@@ -368,8 +372,7 @@ def _training_pairs_from_outcome_rows(
     if positive is None:
         return []
 
-    hints = _outcome_row_hints(ordered_rows)
-    positive_features = _candidate_record_features(positive, hints)
+    positive_features = _candidate_record_features(positive, _record_hints(positive, []))
     preferred_positive = positive.get("preferred") is True
     pairs: list[tuple[dict[str, float], dict[str, float]]] = []
     for candidate in ordered_rows:
@@ -378,7 +381,12 @@ def _training_pairs_from_outcome_rows(
         if candidate.get("passed") is not True or (
             preferred_positive and candidate.get("preferred") is not True
         ):
-            pairs.append((positive_features, _candidate_record_features(candidate, hints)))
+            pairs.append(
+                (
+                    positive_features,
+                    _candidate_record_features(candidate, _record_hints(candidate, [])),
+                )
+            )
     return pairs
 
 
@@ -1028,11 +1036,15 @@ def _tokens(value: object) -> set[str]:
     return tokens
 
 
-def _outcome_row_hints(rows: list[dict[str, object]]) -> list[dict[str, object]]:
-    for row in rows:
-        hints = row.get("failure_hints")
-        if isinstance(hints, list):
-            return [hint for hint in hints if isinstance(hint, dict)]
+def _record_hints(
+    record: dict[str, object],
+    fallback: object,
+) -> list[dict[str, object]]:
+    hints = record.get("failure_hints")
+    if isinstance(hints, list):
+        return [hint for hint in hints if isinstance(hint, dict)]
+    if isinstance(fallback, list):
+        return [hint for hint in fallback if isinstance(hint, dict)]
     return []
 
 

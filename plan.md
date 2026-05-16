@@ -74,12 +74,17 @@ Recent completed work:
   labels for tasks that define them.
 - [x] GreenShot-5 task manifests carry task-family labels, and diagnostics,
   candidate outcome rows, and ranker metrics report per-task-family signal.
+- [x] GreenShot-5 includes a bounded multi-step task where the first repair
+  changes the observed failure and exposes the second repair.
 
 Current GreenShot-5 signal:
 
 ```text
 ranked, no candidate ranker after adding the caller-side string/mode literal task:
   solved=12/12 pass@1=8/12 avg_candidates=1.58
+
+ranked, no candidate ranker after adding the multi-step revealed-failure task:
+  solved=13/13 pass@1=8/13 avg_candidates=1.62
 
 ranked, legacy diagnostics candidate ranker:
   solved=9/9 pass@1=5/9 avg_candidates=1.56
@@ -103,6 +108,9 @@ Current interpretation:
 - The action-generation loop is improving: the latest wrapper-exception ladder
   task was added, the right candidate was generated, and full-budget eval solves
   it at rank 1.
+- The repair loop now supports task-level bounded multi-step planning. The first
+  GreenShot-5 multi-step task is solved by applying a missing import, reparsing
+  the new failure, then changing the caller-side mode literal.
 - The swapped-arguments-across-modules task is action-covered by
   `swap_call_arg`; hint-only ranking solves it at rank 1. A ranker trained from
   old pre-hint outcome rows buries it, which confirms that current outcome data
@@ -166,7 +174,7 @@ has enough coverage and data to make neural regressions visible.
 - [x] Add a task with two passing patches where one is semantically preferable.
 - [x] Add a task where the correct edit is in a caller, not the failing frame.
 - [x] Add a task where the correct edit is in a callee, not the public API.
-- [ ] Add a task where tests expose an error only after one repair is applied.
+- [x] Add a task where tests expose an error only after one repair is applied.
 - [ ] Grow GreenShot-5 to at least 20 tasks before neural ranker work.
 - [ ] Create GreenShot-6 for small real packages, not only toy fixtures.
 - [ ] Add mutation-generated held-out tasks from real repos.

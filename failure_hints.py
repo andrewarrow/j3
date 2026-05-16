@@ -10,7 +10,8 @@ from typing import Any
 
 
 FAILED_TARGET_RE = re.compile(r"^FAILED\s+([^\s]+::[^\s]+)(?:\s+-\s+(.*))?")
-TRACEBACK_LOCATION_RE = re.compile(r"^([^\s:][^:]*\.py):(\d+):(?:\s+([A-Za-z_][\w.]*))?")
+TRACEBACK_LOCATION_RE = re.compile(r"^(?P<file>[^\s:][^:]*\.py):(?P<line>\d+):(?:\s+(?P<context>.*))?$")
+TRACEBACK_CONTEXT_RE = re.compile(r"^in\s+([A-Za-z_]\w*)$")
 ASSERT_OP_RE = re.compile(r"^E\s+assert\s+(.+?)\s+(==|is|in|not in)\s+(.+)$")
 WHERE_CALL_RE = re.compile(r"where\s+(.+?)\s+=\s+([A-Za-z_]\w*)\(")
 CALL_RE = re.compile(r"\b([A-Za-z_]\w*)\s*\(")
@@ -159,13 +160,18 @@ def _merge_line(hint: PytestFailureHint, line: str) -> None:
 
     location = TRACEBACK_LOCATION_RE.match(stripped)
     if location:
-        exception_type = location.group(3)
+        context = location.group("context")
+        frame_context = TRACEBACK_CONTEXT_RE.match(context or "")
+        if frame_context and not frame_context.group(1).startswith("test_"):
+            hint.function_names.add(frame_context.group(1))
+        exception = EXCEPTION_RE.fullmatch(context or "")
+        exception_type = exception.group(1) if exception else None
         if exception_type and hint.exception_type is None:
             hint.exception_type = exception_type
         hint.traceback_locations.append(
             TracebackLocation(
-                file_path=_normalize_path(location.group(1)),
-                line=int(location.group(2)),
+                file_path=_normalize_path(location.group("file")),
+                line=int(location.group("line")),
                 exception_type=exception_type,
             )
         )

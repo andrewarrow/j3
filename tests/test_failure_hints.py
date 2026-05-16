@@ -57,6 +57,37 @@ FAILED tests/test_bugs.py::test_average_empty_values_returns_zero - ZeroDivis...
     assert hint.source_files == {"bugs.py"}
 
 
+def test_traceback_frame_context_does_not_become_exception_type() -> None:
+    output = """
+    def test_profile_heading_uses_name() -> None:
+>       assert profile_heading({"name": None}) == "Ada"
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_shop.py:17:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+profile = {'name': None}
+
+    def profile_heading(profile: dict[str, str]) -> str:
+>       return profile["name"].upper()
+               ^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: 'NoneType' object is not subscriptable
+
+shop/api.py:20: in profile_heading
+shop/api.py:20: TypeError
+=========================== short test summary info ============================
+FAILED tests/test_shop.py::test_profile_heading_uses_name - TypeError: 'None...
+"""
+
+    [hint] = parse_pytest_failure_hints(output)
+
+    assert hint.exception_type == "TypeError"
+    assert {location.exception_type for location in hint.traceback_locations} == {None, "TypeError"}
+    assert "in" not in {location.exception_type for location in hint.traceback_locations}
+    assert "profile_heading" in hint.function_names
+    assert hint.source_files == {"shop/api.py"}
+
+
 def test_parse_name_and_attribute_error_details() -> None:
     output = """
     def file_extension(name: str) -> str:

@@ -27,18 +27,22 @@ Done:
   skipped phases explicitly in summaries and diagnostics.
 - Added coverage for ranked-only baseline skipping, both-phase summary output,
   and diagnostics for skipped phases.
+- Completed Immediate Change 3. Failure hint parsing now treats traceback
+  `: in function_name` frame context as a function name, not an exception type,
+  and only records exception-looking traceback context as `exception_type`.
+- Added coverage for traceback frame context plus later `TypeError` output.
 
 Verified:
 
 ```bash
 pytest tests/test_cli.py -q
 pytest tests/test_evaluation.py -q
+pytest tests/test_failure_hints.py -q
 ```
 
 Next:
 
-- Start Immediate Change 3: fix failure hint exception parsing so traceback
-  frame text such as `in` is not recorded as an exception type.
+- Start Immediate Change 4: let the ranker override bad hint ordering.
 
 ## Current Diagnosis
 

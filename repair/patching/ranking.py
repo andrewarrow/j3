@@ -123,6 +123,10 @@ def _score_against_hint(candidate: CandidatePatch, hint: PytestFailureHint) -> f
     if symbol and symbol in hint.function_names:
         score += 40.0
 
+    upstream_distance = _hinted_upstream_distance(candidate, hint)
+    if upstream_distance is not None:
+        score += max(30.0 - (upstream_distance - 1) * 8.0, 10.0)
+
     if candidate.file_path in hint.source_files:
         score += 20.0
 
@@ -211,6 +215,27 @@ def _score_against_hint(candidate: CandidatePatch, hint: PytestFailureHint) -> f
         score += 5.0
 
     return score
+
+
+def _hinted_upstream_distance(candidate: CandidatePatch, hint: PytestFailureHint) -> int | None:
+    upstream_callers = candidate.target_context.get("upstream_callers", [])
+    if not isinstance(upstream_callers, list):
+        return None
+
+    distances: list[int] = []
+    for caller in upstream_callers:
+        if not isinstance(caller, dict):
+            continue
+        symbol = caller.get("symbol")
+        distance = caller.get("distance")
+        if (
+            isinstance(symbol, str)
+            and symbol in hint.function_names
+            and isinstance(distance, int)
+            and distance > 0
+        ):
+            distances.append(distance)
+    return min(distances) if distances else None
 
 
 def _literal_hint_score(candidate: CandidatePatch, hint: PytestFailureHint) -> float:

@@ -11,6 +11,7 @@ from .reports.summary import receipt_total_label
 from .rewards import parse_loyalty_points
 from .shipping import shipping_service_label, shipping_timeout_label
 from .widgets import checkout_widget_payload
+from .startup import checkout_start_events, start_checkout_hooks
 
 
 def quote_total(subtotal: float, discount_percent: float) -> float:
@@ -79,3 +80,9 @@ def carrier_timeout_label(timeout_seconds: int = 30) -> str:
 
 def training_data_config(data_path: Path) -> TrainingDataConfig:
     return TrainingDataConfig(data_path)
+
+
+def checkout_startup_events() -> list[str]:
+    start_checkout_hooks()
+    start_checkout_hooks()
+    return checkout_start_events

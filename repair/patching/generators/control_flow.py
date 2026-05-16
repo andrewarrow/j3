@@ -67,6 +67,97 @@ def _guard_candidates(
     return candidates
 
 
+def _state_flag_guard_candidates(
+    file_path: str,
+    source: str,
+    tree: ast.Module,
+    function: ast.FunctionDef,
+) -> list[CandidatePatch]:
+    side_effect_lists = _module_list_appends(function, _module_list_names(tree))
+    if not side_effect_lists:
+        return []
+
+    return_expr = _last_return_expr(source, function)
+    candidates: list[CandidatePatch] = []
+    for flag_name in _module_false_flags(tree):
+        if _function_references_name(function, flag_name):
+            continue
+        related_lists = [
+            name
+            for name in side_effect_lists
+            if _names_look_related(flag_name, name, function.name)
+        ]
+        if not related_lists:
+            continue
+        return_value = return_expr or related_lists[0]
+        candidate = _state_flag_guard_candidate(
+            file_path=file_path,
+            source=source,
+            function=function,
+            flag_name=flag_name,
+            return_value=return_value,
+        )
+        if candidate is not None:
+            candidates.append(candidate)
+    return candidates
+
+
+def _state_flag_guard_candidate(
+    *,
+    file_path: str,
+    source: str,
+    function: ast.FunctionDef,
+    flag_name: str,
+    return_value: str,
+) -> CandidatePatch | None:
+    insertion = _guard_insertion_statement(function)
+    if insertion is None:
+        return None
+
+    indent = " " * insertion.col_offset
+    guard = (
+        f"global {flag_name}\n"
+        f"{indent}if {flag_name}:\n"
+        f"{indent}    return {return_value}\n"
+        f"{indent}{flag_name} = True\n"
+        f"{indent}"
+    )
+    edit = SourceEdit(
+        start_line=insertion.lineno,
+        start_col=insertion.col_offset,
+        end_line=insertion.lineno,
+        end_col=insertion.col_offset,
+        replacement=guard,
+    )
+    patched = apply_edit(source, edit)
+    if patched == source or not _is_valid_python(patched):
+        return None
+
+    action = PatchAction(
+        kind=PatchActionKind.INSERT_GUARD,
+        target=PatchTarget(
+            file_path=file_path,
+            start_line=insertion.lineno,
+            end_line=insertion.lineno,
+            symbol=function.name,
+            node_kind=type(insertion).__name__,
+        ),
+        params={
+            "condition": flag_name,
+            "state_flag": flag_name,
+            "return": return_value,
+        },
+    )
+    return CandidatePatch(
+        file_path=file_path,
+        action=action,
+        edit=edit,
+        original_source=source,
+        patched_source=patched,
+        reason=f"insert idempotence guard for {flag_name}",
+    )
+
+
 def _return_candidates(
     file_path: str,
     source: str,
@@ -339,3 +430,101 @@ def _has_warnings_import(tree: ast.Module) -> bool:
         elif isinstance(statement, ast.ImportFrom) and statement.module == "warnings":
             return True
     return False
+
+
+def _module_false_flags(tree: ast.Module) -> list[str]:
+    flags: list[str] = []
+    for statement in tree.body:
+        if isinstance(statement, ast.Assign):
+            if not isinstance(statement.value, ast.Constant) or statement.value.value is not False:
+                continue
+            for target in statement.targets:
+                if isinstance(target, ast.Name):
+                    flags.append(target.id)
+        elif isinstance(statement, ast.AnnAssign):
+            if (
+                isinstance(statement.target, ast.Name)
+                and isinstance(statement.value, ast.Constant)
+                and statement.value.value is False
+            ):
+                flags.append(statement.target.id)
+    return flags
+
+
+def _module_list_names(tree: ast.Module) -> set[str]:
+    names: set[str] = set()
+    for statement in tree.body:
+        if isinstance(statement, ast.Assign):
+            if not _is_empty_list_expr(statement.value):
+                continue
+            for target in statement.targets:
+                if isinstance(target, ast.Name):
+                    names.add(target.id)
+        elif isinstance(statement, ast.AnnAssign):
+            if isinstance(statement.target, ast.Name) and _is_empty_list_expr(statement.value):
+                names.add(statement.target.id)
+    return names
+
+
+def _is_empty_list_expr(node: ast.AST | None) -> bool:
+    if isinstance(node, ast.List) and not node.elts:
+        return True
+    return isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "list" and not node.args
+
+
+def _module_list_appends(function: ast.FunctionDef, module_lists: set[str]) -> set[str]:
+    appended: set[str] = set()
+    for node in ast.walk(function):
+        if not isinstance(node, ast.Call):
+            continue
+        if not isinstance(node.func, ast.Attribute) or node.func.attr not in {"append", "extend"}:
+            continue
+        if isinstance(node.func.value, ast.Name) and node.func.value.id in module_lists:
+            appended.add(node.func.value.id)
+    return appended
+
+
+def _last_return_expr(source: str, function: ast.FunctionDef) -> str | None:
+    if not function.body:
+        return None
+    last_statement = function.body[-1]
+    if not isinstance(last_statement, ast.Return) or last_statement.value is None:
+        return None
+    return ast.get_source_segment(source, last_statement.value)
+
+
+def _guard_insertion_statement(function: ast.FunctionDef) -> ast.stmt | None:
+    body = list(function.body)
+    if not body:
+        return None
+    if (
+        isinstance(body[0], ast.Expr)
+        and isinstance(body[0].value, ast.Constant)
+        and isinstance(body[0].value.value, str)
+    ):
+        body = body[1:]
+    return body[0] if body else None
+
+
+def _function_references_name(function: ast.FunctionDef, name: str) -> bool:
+    for node in ast.walk(function):
+        if isinstance(node, ast.Name) and node.id == name:
+            return True
+        if isinstance(node, ast.Global) and name in node.names:
+            return True
+    return False
+
+
+def _names_look_related(flag_name: str, list_name: str, function_name: str) -> bool:
+    flag_tokens = _name_tokens(flag_name)
+    list_tokens = _name_tokens(list_name)
+    function_tokens = _name_tokens(function_name)
+    return bool(flag_tokens & list_tokens) or bool(flag_tokens & function_tokens)
+
+
+def _name_tokens(name: str) -> set[str]:
+    return {
+        token
+        for token in name.strip("_").casefold().split("_")
+        if token and token not in {"is", "has", "was", "did", "started", "initialized", "registered"}
+    }

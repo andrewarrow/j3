@@ -39,7 +39,7 @@ def test_load_greenshot_5_tasks() -> None:
 
     by_name = {task.name: task for task in tasks}
 
-    assert len(tasks) == 16
+    assert len(tasks) == 17
     assert tasks[0].name == "quote_total_helper_discount"
     assert tasks[0].family == "expression_helper"
     assert by_name["delivery_summary_multi_step_import_then_literal"].family == "multi_step_revealed_failure"
@@ -58,6 +58,16 @@ def test_load_greenshot_5_tasks() -> None:
             "attribute": "validation_fraction",
             "value": 0.05,
             "exception": "ValueError",
+        },
+    }
+    assert by_name["checkout_startup_idempotence_guard"].preferred_patch == {
+        "file_path": "shop/startup.py",
+        "action": "insert_guard",
+        "symbol": "start_checkout_hooks",
+        "params": {
+            "condition": "_checkout_hooks_started",
+            "state_flag": "_checkout_hooks_started",
+            "return": "checkout_start_events",
         },
     }
 

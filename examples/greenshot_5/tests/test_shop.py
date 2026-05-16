@@ -5,6 +5,7 @@ from shop.api import (
     balance_after_store_credit,
     carrier_timeout_label,
     checkout_widget,
+    checkout_startup_events,
     delivery_summary_service,
     express_shipping_label,
     loyalty_points,
@@ -96,3 +97,7 @@ def test_training_data_file_defaults_validation_fraction_with_warning(tmp_path) 
         config = training_data_config(data_file)
 
     assert config.validation_fraction == 0.05
+
+
+def test_checkout_startup_hooks_are_idempotent() -> None:
+    assert checkout_startup_events() == ["cart_loaded", "payment_ready"]

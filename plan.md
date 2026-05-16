@@ -122,6 +122,10 @@ ranked, Apache checkpoint after adding the timeout keyword passthrough task:
 
 ranked, Apache checkpoint after adding the fallback-plus-warning task:
   solved=16/16 pass@1=11/16 avg_candidates=1.62
+
+ranked, Apache checkpoint after adding the duplicate-side-effect state-flag
+guard task:
+  solved=17/17 pass@1=12/17 avg_candidates=1.29
 ```
 
 Current interpretation:
@@ -139,6 +143,10 @@ Current interpretation:
 - The required-setting fallback task is action-covered by
   `add_fallback_warning`; warning `match=...` text distinguishes the preferred
   default value from decoy fallback candidates and ranks it at rank 1.
+- The duplicate-side-effect state-flag task is action-covered by a generalized
+  `insert_guard` candidate that recognizes module-level list side effects and
+  related `False` state flags; call-graph hint scoring ranks the helper guard at
+  rank 1 from the public wrapper assertion.
 - The swapped-arguments-across-modules task is action-covered by
   `swap_call_arg`; hint-only ranking solves it at rank 1. A ranker trained from
   old pre-hint outcome rows buries it, which confirms that current outcome data
@@ -210,7 +218,7 @@ has enough coverage and data to make neural regressions visible.
   through a call chain.
 - [x] Add Apache-mined GreenShot-5 task: hard failure replaced by a
   default/fallback plus warning.
-- [ ] Add Apache-mined GreenShot-5 task: guard that prevents duplicate side
+- [x] Add Apache-mined GreenShot-5 task: guard that prevents duplicate side
   effects with a state flag.
 - [ ] Add Apache-mined GreenShot-5 task: import compatibility fallback from a
   new package path to an old package path.

@@ -133,5 +133,21 @@
         "exception": "ValueError"
       }
     }
+  },
+  {
+    "name": "checkout_startup_idempotence_guard",
+    "family": "state_flag_guard",
+    "repo": ".",
+    "test": "python -m pytest tests/test_shop.py::test_checkout_startup_hooks_are_idempotent",
+    "preferred": {
+      "file_path": "shop/startup.py",
+      "action": "insert_guard",
+      "symbol": "start_checkout_hooks",
+      "params": {
+        "condition": "_checkout_hooks_started",
+        "state_flag": "_checkout_hooks_started",
+        "return": "checkout_start_events"
+      }
+    }
   }
 ]

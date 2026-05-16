@@ -25,6 +25,7 @@ from .control_flow import (
     _guard_candidates,
     _modify_condition_candidates,
     _return_candidates,
+    _state_flag_guard_candidates,
     _wrap_try_except_candidates,
 )
 from .data_access import (
@@ -78,6 +79,7 @@ def generate_candidate_patches(repo: Path) -> list[CandidatePatch]:
             arg_types = _function_arg_types(function)
             local_symbols = module_symbols | _local_symbols(function)
             candidates.extend(_guard_candidates(source.relative_path, source.text, function, arg_names))
+            candidates.extend(_state_flag_guard_candidates(source.relative_path, source.text, tree, function))
             for node in ast.walk(function):
                 if isinstance(node, ast.Return) and node.value is not None:
                     candidates.extend(

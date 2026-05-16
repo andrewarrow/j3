@@ -334,6 +334,37 @@ def test_generate_fallback_warning_candidate_for_missing_setting(tmp_path) -> No
     )
 
 
+def test_generate_state_flag_guard_candidate_for_duplicate_side_effects(tmp_path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "startup.py").write_text(
+        "startup_events: list[str] = []\n"
+        "_startup_hooks_started = False\n\n"
+        "\n"
+        "def start_startup_hooks() -> list[str]:\n"
+        "    startup_events.append('cart_loaded')\n"
+        "    startup_events.append('payment_ready')\n"
+        "    return startup_events\n",
+        encoding="utf-8",
+    )
+
+    candidates = generate_candidate_patches(repo)
+
+    assert any(
+        candidate.action.kind.value == "insert_guard"
+        and candidate.action.params == {
+            "condition": "_startup_hooks_started",
+            "state_flag": "_startup_hooks_started",
+            "return": "startup_events",
+        }
+        and "global _startup_hooks_started" in candidate.patched_source
+        and "if _startup_hooks_started:" in candidate.patched_source
+        and "return startup_events" in candidate.patched_source
+        and "_startup_hooks_started = True" in candidate.patched_source
+        for candidate in candidates
+    )
+
+
 def test_generate_subscript_key_candidate_from_repo_string_literals(tmp_path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()
@@ -666,3 +697,27 @@ def test_patch_solves_missing_setting_with_default_warning(tmp_path) -> None:
     assert "import warnings" in result.selected.patched_source
     assert "self.validation_fraction = 0.05" in result.selected.patched_source
     assert "warnings.warn(" in result.selected.patched_source
+
+
+def test_patch_solves_duplicate_side_effects_with_state_flag_guard(tmp_path) -> None:
+    repo = tmp_path / "greenshot_5"
+    shutil.copytree("examples/greenshot_5", repo)
+
+    result = plan_and_maybe_apply_patch(
+        repo=repo,
+        test_command="python -m pytest tests/test_shop.py::test_checkout_startup_hooks_are_idempotent",
+        dry_run=True,
+        timeout_seconds=10,
+    )
+
+    assert result.selected is not None
+    assert result.candidates_tested == 1
+    assert result.selected.file_path == "shop/startup.py"
+    assert result.selected.action.kind.value == "insert_guard"
+    assert result.selected.action.params == {
+        "condition": "_checkout_hooks_started",
+        "state_flag": "_checkout_hooks_started",
+        "return": "checkout_start_events",
+    }
+    assert "global _checkout_hooks_started" in result.selected.patched_source
+    assert "_checkout_hooks_started = True" in result.selected.patched_source

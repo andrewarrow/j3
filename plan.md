@@ -96,6 +96,11 @@ Recent completed work:
 - [x] The module-level config constant loop is covered with
   `change_module_constant`, and assertion delta hints rank the constant edit at
   rank 1.
+- [x] GreenShot-5 reached 20 tasks with a serialized metadata dictionary-key
+  repair.
+- [x] The dictionary literal key loop is covered with `change_dict_key`, and
+  `KeyError` hints distinguish value-preserving key renames from add-key
+  candidates with unknown defaults.
 
 Current GreenShot-5 signal:
 
@@ -140,6 +145,9 @@ ranked, Apache checkpoint after adding the import compatibility fallback task:
 
 ranked, Apache checkpoint after adding the module-level config constant task:
   solved=19/19 pass@1=14/19 avg_candidates=1.26
+
+ranked, Apache checkpoint after adding the dictionary literal key task:
+  solved=20/20 pass@1=15/20 avg_candidates=1.25
 ```
 
 Current interpretation:
@@ -167,6 +175,10 @@ Current interpretation:
 - The module-level config constant task is action-covered by
   `change_module_constant`; assertion numeric-delta hints rank the preferred
   helper-module constant edit at rank 1.
+- The serialized metadata dictionary-key task is action-covered by
+  `change_dict_key`; missing-key hints rank the value-preserving key rename at
+  rank 1 while preserving the existing add-key behavior for inferred defaults
+  like `disabled=False`.
 - The swapped-arguments-across-modules task is action-covered by
   `swap_call_arg`; hint-only ranking solves it at rank 1. A ranker trained from
   old pre-hint outcome rows buries it, which confirms that current outcome data
@@ -233,7 +245,7 @@ has enough coverage and data to make neural regressions visible.
 - [x] Add a task where tests expose an error only after one repair is applied.
 - [x] Add Apache-mined GreenShot-5 task: missing dictionary/output key in a
   serialized payload.
-- [ ] Grow GreenShot-5 to at least 20 tasks before neural ranker work.
+- [x] Grow GreenShot-5 to at least 20 tasks before neural ranker work.
 - [x] Add Apache-mined GreenShot-5 task: missing keyword argument propagated
   through a call chain.
 - [x] Add Apache-mined GreenShot-5 task: hard failure replaced by a
@@ -263,7 +275,7 @@ has enough coverage and data to make neural regressions visible.
 - [x] `rename_symbol`
 - [x] `modify_condition`
 - [x] `propagate_signature`
-- [ ] Change dictionary literal key.
+- [x] Change dictionary literal key.
 - [ ] Change dictionary literal value.
 - [x] Add missing dictionary key/default.
 - [x] Change function default parameter value.

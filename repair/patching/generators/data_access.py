@@ -156,6 +156,46 @@ def _add_dict_key_candidates(
     return candidates
 
 
+def _change_dict_key_candidates(
+    file_path: str,
+    source: str,
+    function: ast.FunctionDef,
+    node: ast.Dict,
+    repo_string_literals: set[str],
+) -> list[CandidatePatch]:
+    candidates: list[CandidatePatch] = []
+    for key_node in node.keys:
+        if not isinstance(key_node, ast.Constant) or not isinstance(key_node.value, str):
+            continue
+        original = key_node.value
+        for replacement in _subscript_key_alternatives(original, repo_string_literals):
+            rendered_key = _render_string_key(source, key_node, replacement)
+            edit = _node_edit(key_node, rendered_key)
+            patched = apply_edit(source, edit)
+            action = PatchAction(
+                kind=PatchActionKind.CHANGE_DICT_KEY,
+                target=PatchTarget(
+                    file_path=file_path,
+                    start_line=key_node.lineno,
+                    end_line=key_node.end_lineno,
+                    symbol=function.name,
+                    node_kind="Dict",
+                ),
+                params={"from": original, "to": replacement},
+            )
+            candidates.append(
+                CandidatePatch(
+                    file_path=file_path,
+                    action=action,
+                    edit=edit,
+                    original_source=source,
+                    patched_source=patched,
+                    reason=f"try dictionary key {replacement!r}",
+                )
+            )
+    return candidates
+
+
 def _dict_string_keys(node: ast.Dict) -> set[str]:
     keys: set[str] = set()
     for key in node.keys:
@@ -235,10 +275,21 @@ def _render_dict_key(source: str, node: ast.Dict, key: str) -> str:
             continue
         segment = ast.get_source_segment(source, existing)
         if segment and segment.startswith('"'):
-            return '"' + key.replace("\\", "\\\\").replace('"', '\\"') + '"'
+            return _double_quoted(key)
         if segment and segment.startswith("'"):
             return repr(key)
     return repr(key)
+
+
+def _render_string_key(source: str, node: ast.Constant, key: str) -> str:
+    segment = ast.get_source_segment(source, node)
+    if segment and segment.startswith('"'):
+        return _double_quoted(key)
+    return repr(key)
+
+
+def _double_quoted(value: str) -> str:
+    return '"' + value.replace("\\", "\\\\").replace('"', '\\"') + '"'
 
 
 def _ensure_previous_dict_entry_comma(lines: list[str]) -> list[str]:

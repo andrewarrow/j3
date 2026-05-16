@@ -39,7 +39,7 @@ def test_load_greenshot_5_tasks() -> None:
 
     by_name = {task.name: task for task in tasks}
 
-    assert len(tasks) == 18
+    assert len(tasks) == 20
     assert tasks[0].name == "quote_total_helper_discount"
     assert tasks[0].family == "expression_helper"
     assert by_name["delivery_summary_multi_step_import_then_literal"].family == "multi_step_revealed_failure"
@@ -78,6 +78,15 @@ def test_load_greenshot_5_tasks() -> None:
             "name": "CacheBackend",
             "primary_module": "shop.cache_v2",
             "fallback_module": "shop.cache_legacy",
+        },
+    }
+    assert by_name["checkout_step_metadata_dict_key"].preferred_patch == {
+        "file_path": "shop/widgets.py",
+        "action": "change_dict_key",
+        "symbol": "checkout_step_metadata",
+        "params": {
+            "from": "icon",
+            "to": "metadata_icon",
         },
     }
 

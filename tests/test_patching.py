@@ -424,6 +424,37 @@ def test_generate_add_dict_key_candidate_from_repo_string_literals(tmp_path) -> 
     )
 
 
+def test_generate_change_dict_key_candidate_from_repo_string_literals(tmp_path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "bug.py").write_text(
+        "def step_metadata(icon: str) -> dict[str, object]:\n"
+        "    return {\n"
+        "        'label': 'checkout',\n"
+        "        'icon': icon,\n"
+        "    }\n",
+        encoding="utf-8",
+    )
+    tests = repo / "tests"
+    tests.mkdir()
+    (tests / "test_bug.py").write_text(
+        "from bug import step_metadata\n\n"
+        "def test_step_metadata() -> None:\n"
+        "    metadata = step_metadata('card')\n"
+        "    assert metadata['metadata_icon'] == 'card'\n",
+        encoding="utf-8",
+    )
+
+    candidates = generate_candidate_patches(repo)
+
+    assert any(
+        candidate.action.kind.value == "change_dict_key"
+        and candidate.action.params == {"from": "icon", "to": "metadata_icon"}
+        and "'metadata_icon': icon" in candidate.patched_source
+        for candidate in candidates
+    )
+
+
 def test_generate_string_literal_candidate_from_repo_string_literals(tmp_path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()
@@ -729,6 +760,25 @@ def test_patch_solves_missing_dictionary_output_key(tmp_path) -> None:
     assert result.selected.action.kind.value == "add_dict_key"
     assert result.selected.action.params == {"key": "disabled", "value": False}
     assert '"disabled": False,' in result.selected.patched_source
+
+
+def test_patch_solves_dictionary_literal_key_change(tmp_path) -> None:
+    repo = tmp_path / "greenshot_5"
+    shutil.copytree("examples/greenshot_5", repo)
+
+    result = plan_and_maybe_apply_patch(
+        repo=repo,
+        test_command="python -m pytest tests/test_shop.py::test_checkout_step_metadata_uses_metadata_icon_key",
+        dry_run=True,
+        timeout_seconds=10,
+    )
+
+    assert result.selected is not None
+    assert result.candidates_tested == 1
+    assert result.selected.file_path == "shop/widgets.py"
+    assert result.selected.action.kind.value == "change_dict_key"
+    assert result.selected.action.params == {"from": "icon", "to": "metadata_icon"}
+    assert '"metadata_icon": icon,' in result.selected.patched_source
 
 
 def test_patch_solves_missing_keyword_argument_passthrough(tmp_path) -> None:

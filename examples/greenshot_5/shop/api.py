@@ -15,7 +15,7 @@ from .shipping import (
     shipping_service_label,
     shipping_timeout_label,
 )
-from .widgets import checkout_widget_payload
+from .widgets import checkout_step_metadata, checkout_widget_payload
 from .startup import checkout_start_events, start_checkout_hooks
 
 
@@ -81,6 +81,10 @@ def delivery_summary_service() -> str:
 
 def checkout_widget(label: str) -> dict[str, object]:
     return checkout_widget_payload(label)
+
+
+def checkout_step(icon: str) -> dict[str, object]:
+    return checkout_step_metadata(icon)
 
 
 def carrier_timeout_label(timeout_seconds: int = 30) -> str:

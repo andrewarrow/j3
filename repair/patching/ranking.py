@@ -178,10 +178,20 @@ def _score_against_hint(candidate: CandidatePatch, hint: PytestFailureHint) -> f
         if hint.assertions:
             score += 10.0
 
+    if candidate.action.kind == PatchActionKind.CHANGE_DICT_KEY:
+        original = str(candidate.action.params.get("from", ""))
+        replacement = str(candidate.action.params.get("to", ""))
+        if original in hint.missing_keys:
+            score += 40.0
+        if replacement in hint.missing_keys:
+            score += 70.0
+        if hint.assertions:
+            score += 10.0
+
     if candidate.action.kind == PatchActionKind.ADD_DICT_KEY:
         key = str(candidate.action.params.get("key", ""))
         if key in hint.missing_keys:
-            score += 70.0
+            score += 80.0 if candidate.action.params.get("value") is not None else 60.0
         if hint.assertions:
             score += 10.0
 

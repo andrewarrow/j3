@@ -4,6 +4,7 @@ from shop.accounts import Account
 from shop.api import (
     balance_after_store_credit,
     cache_status_label,
+    checkout_step,
     carrier_timeout_label,
     checkout_widget,
     checkout_startup_events,
@@ -89,6 +90,12 @@ def test_checkout_widget_payload_includes_disabled_key() -> None:
 
     assert payload["label"] == "Pay now"
     assert payload["disabled"] is False
+
+
+def test_checkout_step_metadata_uses_metadata_icon_key() -> None:
+    metadata = checkout_step("card")
+
+    assert metadata["metadata_icon"] == "card"
 
 
 def test_carrier_timeout_label_passes_timeout_keyword() -> None:

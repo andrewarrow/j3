@@ -119,6 +119,21 @@
     }
   },
   {
+    "name": "checkout_step_metadata_dict_key",
+    "family": "mapping_key",
+    "repo": ".",
+    "test": "python -m pytest tests/test_shop.py::test_checkout_step_metadata_uses_metadata_icon_key",
+    "preferred": {
+      "file_path": "shop/widgets.py",
+      "action": "change_dict_key",
+      "symbol": "checkout_step_metadata",
+      "params": {
+        "from": "icon",
+        "to": "metadata_icon"
+      }
+    }
+  },
+  {
     "name": "carrier_timeout_keyword_passthrough",
     "family": "keyword_argument",
     "repo": ".",

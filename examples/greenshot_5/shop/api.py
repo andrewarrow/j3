@@ -4,6 +4,7 @@ from .paths import attachment_extension
 from .policies import default_return_window_days
 from .pricing import discounted_subtotal
 from .profiles import display_profile, render_profile
+from .reports.summary import receipt_total_label
 
 
 def quote_total(subtotal: float, discount_percent: float) -> float:
@@ -32,3 +33,7 @@ def order_customer_label(order: dict[str, str]) -> str:
 
 def return_window_days() -> int:
     return default_return_window_days()
+
+
+def receipt_label(total_cents: int) -> str:
+    return receipt_total_label(total_cents)

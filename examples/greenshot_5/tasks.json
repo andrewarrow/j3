@@ -28,5 +28,10 @@
     "name": "return_window_policy_default",
     "repo": ".",
     "test": "python -m pytest tests/test_shop.py::test_return_window_uses_policy_default"
+  },
+  {
+    "name": "receipt_label_nested_module_import_decoy",
+    "repo": ".",
+    "test": "python -m pytest tests/test_shop.py::test_receipt_label_imports_nested_report_formatter"
   }
 ]

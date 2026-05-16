@@ -266,6 +266,43 @@ def test_generate_subscript_key_candidate_from_repo_string_literals(tmp_path) ->
     )
 
 
+def test_generate_local_import_candidates_with_decoy(tmp_path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    package = repo / "shop"
+    package.mkdir()
+    reports = package / "reports"
+    reports.mkdir()
+    (package / "__init__.py").write_text("", encoding="utf-8")
+    (reports / "__init__.py").write_text("", encoding="utf-8")
+    (package / "money.py").write_text(
+        "def format_receipt_total(total_cents: int) -> str:\n"
+        "    return f'{total_cents} cents'\n",
+        encoding="utf-8",
+    )
+    (reports / "money.py").write_text(
+        "def format_receipt_total(total_cents: int) -> str:\n"
+        "    return f'${total_cents / 100:.2f}'\n",
+        encoding="utf-8",
+    )
+    (reports / "summary.py").write_text(
+        "def receipt_total_label(total_cents: int) -> str:\n"
+        "    return format_receipt_total(total_cents)\n",
+        encoding="utf-8",
+    )
+
+    candidates = generate_candidate_patches(repo)
+    imports = {
+        candidate.action.params["import"]
+        for candidate in candidates
+        if candidate.file_path == "shop/reports/summary.py"
+        and candidate.action.kind.value == "add_import"
+    }
+
+    assert "from shop.money import format_receipt_total" in imports
+    assert "from shop.reports.money import format_receipt_total" in imports
+
+
 def test_patch_uses_key_error_hints_to_prioritize_subscript_key_fix(tmp_path) -> None:
     repo = tmp_path / "greenshot_5"
     shutil.copytree("examples/greenshot_5", repo)
@@ -300,3 +337,28 @@ def test_patch_solves_helper_module_default_value(tmp_path) -> None:
     assert result.selected.file_path == "shop/policies.py"
     assert result.selected.action.kind.value == "change_literal"
     assert result.selected.action.params == {"from": 13, "to": 14}
+
+
+def test_patch_solves_nested_module_missing_import_with_decoy(tmp_path) -> None:
+    repo = tmp_path / "greenshot_5"
+    shutil.copytree("examples/greenshot_5", repo)
+
+    result = plan_and_maybe_apply_patch(
+        repo=repo,
+        test_command="python -m pytest tests/test_shop.py::test_receipt_label_imports_nested_report_formatter",
+        dry_run=True,
+        timeout_seconds=10,
+    )
+
+    assert result.selected is not None
+    assert result.selected.file_path == "shop/reports/summary.py"
+    assert result.selected.action.kind.value == "add_import"
+    assert result.selected.action.params == {
+        "name": "format_receipt_total",
+        "module": "shop.reports.money",
+        "import": "from shop.reports.money import format_receipt_total",
+    }
+    assert any(
+        candidate.action.params.get("module") == "shop.money"
+        for candidate in result.tested_candidates
+    )

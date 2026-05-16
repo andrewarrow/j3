@@ -61,18 +61,20 @@ Recent completed work:
   compatibility shim.
 - [x] GreenShot-5 includes a helper-module wrong default value task.
 - [x] `train-ranker` can consume candidate outcome JSONL directly.
+- [x] GreenShot-5 includes a nested-module missing import task with a decoy
+  local import.
 
 Current GreenShot-5 signal:
 
 ```text
 ranked, no candidate ranker:
-  solved=6/6 pass@1=3/6 avg_candidates=1.67
+  solved=7/7 pass@1=3/7 avg_candidates=1.71
 
 ranked, legacy diagnostics candidate ranker:
-  solved=6/6 pass@1=3/6 avg_candidates=2.00
+  solved=7/7 pass@1=3/7 avg_candidates=2.00
 
 ranked, outcome-trained candidate ranker:
-  solved=6/6 pass@1=5/6 avg_candidates=1.67
+  solved=7/7 pass@1=5/7 avg_candidates=1.71
 ```
 
 Current interpretation:
@@ -82,10 +84,13 @@ Current interpretation:
 - The wrong-default task is solved by an existing `change_literal` candidate on
   the helper-module default parameter, so it is ranking/hint signal rather than
   a missing action.
+- The nested import task generates both the correct local import and a decoy
+  local import. Full-budget eval solves it, but the correct candidate is second,
+  so this is locality/ranking signal rather than a missing action.
 - The outcome-trained ranker improves pass@1 on GreenShot-5, but this is
   in-sample signal from a tiny benchmark. Treat the remaining
-  `quote_total_helper_discount` max-candidate-1 miss as a ranking calibration
-  failure, not a missing action.
+  `quote_total_helper_discount` and nested-import max-candidate-1 misses as
+  ranking calibration failures, not missing actions.
 - The benchmark is still tiny. It is good for tight iteration, not evidence of
   broad Python-editing competence.
 
@@ -110,7 +115,7 @@ has enough coverage and data to make neural regressions visible.
 - [x] GreenShot-5 starts multi-file helper/API repair.
 - [x] GreenShot-5 includes helper-boundary dictionary key repair.
 - [x] Add wrong default/config constant in a separate module.
-- [ ] Add nested-module missing import with at least one decoy import.
+- [x] Add nested-module missing import with at least one decoy import.
 - [ ] Add exception handling through a wrapper API.
 - [ ] Add swapped arguments across modules.
 - [ ] Add rename propagated through helper and public API.
@@ -202,7 +207,7 @@ has enough coverage and data to make neural regressions visible.
 
 - [x] Lightweight diagnostics ranker exists.
 - [x] Ranker can override handcrafted hint score.
-- [x] GreenShot-5 ranker improves pass@1 from 3/6 to 5/6 on full-budget ranked
+- [x] GreenShot-5 ranker improves pass@1 from 3/7 to 5/7 on full-budget ranked
   eval when trained from in-sample candidate outcomes.
 - [x] Train ranker from candidate outcome JSONL.
 - [ ] Add per-action and per-task-family ranker metrics.
@@ -410,8 +415,8 @@ pytest -q
 ## Immediate Next Tasks
 
 1. Improve ranker calibration.
-   - The legacy diagnostics ranker solves 6/6 full-budget but only 3/6 pass@1.
-   - The outcome-trained ranker solves 6/6 full-budget and 5/6 pass@1 in-sample.
+   - The legacy diagnostics ranker solves 7/7 full-budget but only 3/7 pass@1.
+   - The outcome-trained ranker solves 7/7 full-budget and 5/7 pass@1 in-sample.
    - Investigate `quote_total_helper_discount`, where the passing candidate is
      present but still ranked fifth by the outcome-trained ranker.
    - Avoid overfitting to exact action/reason strings when hint and context
@@ -423,11 +428,12 @@ pytest -q
      failed candidate reasons.
 
 3. Add the next GreenShot-5 ladder task.
-   - Prefer nested-module missing import with at least one decoy import, unless
-     ranker calibration is blocked on needing more candidate-outcome rows.
-   - Keep it small and diagnostic.
-   - Record whether the remaining problem is missing action, weak hint, or bad
-     ranking.
+   - Nested-module missing import with a decoy import is done.
+   - Remaining problem: bad ranking/locality signal. The correct import is
+     generated and passes, but it is ranked second behind a decoy import.
+   - Next ladder options: exception handling through a wrapper API, swapped
+     arguments across modules, or rename propagated through helper and public
+     API.
 
 ## Stop Conditions
 

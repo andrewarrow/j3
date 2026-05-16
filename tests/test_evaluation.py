@@ -37,9 +37,9 @@ def test_load_greenshot_4_tasks() -> None:
 def test_load_greenshot_5_tasks() -> None:
     tasks = load_tasks(Path("examples/greenshot_5"))
 
-    assert len(tasks) == 5
+    assert len(tasks) == 7
     assert tasks[0].name == "quote_total_helper_discount"
-    assert tasks[-1].name == "order_customer_name_dict_key_helper"
+    assert tasks[-1].name == "receipt_label_nested_module_import_decoy"
 
 
 def test_evaluate_greenshot_bugs(tmp_path) -> None:

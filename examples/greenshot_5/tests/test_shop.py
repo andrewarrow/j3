@@ -4,6 +4,7 @@ from shop.api import (
     profile_heading,
     profile_label,
     quote_total,
+    receipt_label,
     return_window_days,
     uploaded_extension,
     visible_balance,
@@ -35,3 +36,7 @@ def test_order_customer_label_uses_customer_name_key() -> None:
 
 def test_return_window_uses_policy_default() -> None:
     assert return_window_days() == 14
+
+
+def test_receipt_label_imports_nested_report_formatter() -> None:
+    assert receipt_label(1250) == "$12.50"

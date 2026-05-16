@@ -179,6 +179,17 @@ def test_candidate_features_include_missing_key_hint_matches() -> None:
     assert features["action_hint_missing_key_matches_from:change_subscript_key"] == 1.0
 
 
+def test_candidate_features_avoid_exact_task_specific_identity() -> None:
+    candidate = _candidate(to=">=", failure_hint_score=50.0, symbol="meets_minimum")
+
+    features = candidate_features(candidate)
+
+    assert "reason:try comparison operator >=" not in features
+    assert "symbol:meets_minimum" not in features
+    assert "param:to=>=" not in features
+    assert features["param_symbol:to=>="] == 1.0
+
+
 def _candidate_record(*, to: str, passed: bool) -> dict[str, object]:
     return {
         "file_path": "bugs.py",

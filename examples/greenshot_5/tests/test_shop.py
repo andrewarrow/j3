@@ -1,5 +1,6 @@
 from shop.accounts import Account
 from shop.api import (
+    loyalty_points,
     order_customer_label,
     profile_heading,
     profile_label,
@@ -40,3 +41,7 @@ def test_return_window_uses_policy_default() -> None:
 
 def test_receipt_label_imports_nested_report_formatter() -> None:
     assert receipt_label(1250) == "$12.50"
+
+
+def test_loyalty_points_wrapper_handles_pending_value() -> None:
+    assert loyalty_points("pending") == 0

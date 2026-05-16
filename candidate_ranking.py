@@ -12,7 +12,28 @@ from actions import PatchAction
 
 
 RANKER_FORMAT = "j3.candidate-ranker.v1"
-RANKER_FEATURE_VERSION = "candidate-diagnostics-v1"
+RANKER_FEATURE_VERSION = "candidate-diagnostics-v2"
+
+_SYMBOLIC_PARAM_VALUES = {
+    "!=",
+    "%",
+    "*",
+    "+",
+    "-",
+    "/",
+    "//",
+    "<",
+    "<=",
+    "==",
+    ">",
+    ">=",
+    "and",
+    "in",
+    "is",
+    "is not",
+    "not in",
+    "or",
+}
 
 
 class CandidateLike(Protocol):
@@ -233,22 +254,17 @@ def candidate_features(
     features: dict[str, float] = {
         "bias": 1.0,
         f"action:{action}": 1.0,
-        f"reason:{candidate.reason}": 1.0,
         "failure_hint_score": candidate.failure_hint_score / 100.0,
     }
     if candidate.model_score is not None:
         features["has_model_score"] = 1.0
         features["model_score"] = candidate.model_score
     if candidate.action.target.symbol:
-        features[f"symbol:{candidate.action.target.symbol}"] = 1.0
+        features["has_target_symbol"] = 1.0
     if candidate.action.target.node_kind:
         features[f"node_kind:{candidate.action.target.node_kind}"] = 1.0
 
-    for key, value in sorted(params.items()):
-        normalized = _normalize_value(value)
-        features[f"param:{key}"] = 1.0
-        features[f"param:{key}={normalized}"] = 1.0
-        features[f"action_param:{action}:{key}={normalized}"] = 1.0
+    _add_param_features(features, action, params)
 
     for hint in hints:
         _merge_hint_features(features, candidate, action, hint)
@@ -319,7 +335,6 @@ def _candidate_record_features(candidate: dict[str, object], hints: object) -> d
     features: dict[str, float] = {
         "bias": 1.0,
         f"action:{action}": 1.0,
-        f"reason:{candidate.get('reason', '')}": 1.0,
         "failure_hint_score": _float_value(candidate.get("failure_hint_score")) / 100.0,
     }
     model_score = candidate.get("model_score")
@@ -328,18 +343,45 @@ def _candidate_record_features(candidate: dict[str, object], hints: object) -> d
         features["model_score"] = _float_value(model_score)
     symbol = candidate.get("symbol")
     if symbol:
-        features[f"symbol:{symbol}"] = 1.0
-    for key, value in sorted(params.items()) if isinstance(params, dict) else []:
-        normalized = _normalize_value(value)
-        features[f"param:{key}"] = 1.0
-        features[f"param:{key}={normalized}"] = 1.0
-        features[f"action_param:{action}:{key}={normalized}"] = 1.0
+        features["has_target_symbol"] = 1.0
+    node_kind = candidate.get("node_kind")
+    if node_kind:
+        features[f"node_kind:{node_kind}"] = 1.0
+    if isinstance(params, dict):
+        _add_param_features(features, action, params)
 
     if isinstance(hints, list):
         for hint in hints:
             if isinstance(hint, dict):
                 _merge_hint_record_features(features, candidate, action, hint)
     return features
+
+
+def _add_param_features(features: dict[str, float], action: str, params: Mapping[str, object]) -> None:
+    for key, value in sorted(params.items()):
+        normalized = _normalize_value(value)
+        features[f"param:{key}"] = 1.0
+        features[f"action_param:{action}:{key}"] = 1.0
+        features[f"param_type:{key}:{type(value).__name__}"] = 1.0
+        if normalized in _SYMBOLIC_PARAM_VALUES:
+            features[f"param_symbol:{key}={normalized}"] = 1.0
+            features[f"action_param_symbol:{action}:{key}={normalized}"] = 1.0
+
+    original = params.get("from")
+    replacement = params.get("to")
+    if _is_plain_number(original) and _is_plain_number(replacement):
+        delta = float(replacement) - float(original)
+        if delta > 0:
+            features["numeric_param_delta:increase"] = 1.0
+        elif delta < 0:
+            features["numeric_param_delta:decrease"] = 1.0
+        else:
+            features["numeric_param_delta:same"] = 1.0
+        features[f"action_numeric_param_delta:{action}"] = 1.0
+
+
+def _is_plain_number(value: object) -> bool:
+    return isinstance(value, int | float) and not isinstance(value, bool)
 
 
 def _merge_hint_features(

@@ -63,34 +63,40 @@ Recent completed work:
 - [x] `train-ranker` can consume candidate outcome JSONL directly.
 - [x] GreenShot-5 includes a nested-module missing import task with a decoy
   local import.
+- [x] GreenShot-5 includes exception handling through a wrapper API.
 
 Current GreenShot-5 signal:
 
 ```text
 ranked, no candidate ranker:
-  solved=7/7 pass@1=3/7 avg_candidates=1.71
+  solved=8/8 pass@1=4/8 avg_candidates=1.62
 
 ranked, legacy diagnostics candidate ranker:
-  solved=7/7 pass@1=3/7 avg_candidates=2.00
+  solved=8/8 pass@1=5/8 avg_candidates=1.38
 
-ranked, outcome-trained candidate ranker:
-  solved=7/7 pass@1=5/7 avg_candidates=1.71
+ranked, outcome-trained candidate ranker with v2 generalized features:
+  solved=8/8 pass@1=6/8 avg_candidates=1.25
 ```
 
 Current interpretation:
 
-- The action-generation loop is improving: the latest ladder task was added,
-  the right candidate was generated, and full-budget eval solves it.
+- The action-generation loop is improving: the latest wrapper-exception ladder
+  task was added, the right candidate was generated, and full-budget eval solves
+  it at rank 1.
 - The wrong-default task is solved by an existing `change_literal` candidate on
   the helper-module default parameter, so it is ranking/hint signal rather than
   a missing action.
 - The nested import task generates both the correct local import and a decoy
   local import. Full-budget eval solves it, but the correct candidate is second,
   so this is locality/ranking signal rather than a missing action.
+- Candidate-ranker v2 features remove exact reason strings, exact target
+  symbols, and arbitrary exact param values from the learned feature set. This
+  fixes the prior `quote_total_helper_discount` ranker miss without adding a
+  task-specific rule.
 - The outcome-trained ranker improves pass@1 on GreenShot-5, but this is
   in-sample signal from a tiny benchmark. Treat the remaining
-  `quote_total_helper_discount` and nested-import max-candidate-1 misses as
-  ranking calibration failures, not missing actions.
+  `visible_balance_attribute_decoys` and nested-import max-candidate-1 misses as
+  ranking/context failures, not missing actions.
 - The benchmark is still tiny. It is good for tight iteration, not evidence of
   broad Python-editing competence.
 
@@ -116,7 +122,7 @@ has enough coverage and data to make neural regressions visible.
 - [x] GreenShot-5 includes helper-boundary dictionary key repair.
 - [x] Add wrong default/config constant in a separate module.
 - [x] Add nested-module missing import with at least one decoy import.
-- [ ] Add exception handling through a wrapper API.
+- [x] Add exception handling through a wrapper API.
 - [ ] Add swapped arguments across modules.
 - [ ] Add rename propagated through helper and public API.
 - [ ] Add a task with two passing patches where one is semantically preferable.
@@ -415,12 +421,14 @@ pytest -q
 ## Immediate Next Tasks
 
 1. Improve ranker calibration.
-   - The legacy diagnostics ranker solves 7/7 full-budget but only 3/7 pass@1.
-   - The outcome-trained ranker solves 7/7 full-budget and 5/7 pass@1 in-sample.
-   - Investigate `quote_total_helper_discount`, where the passing candidate is
-     present but still ranked fifth by the outcome-trained ranker.
-   - Avoid overfitting to exact action/reason strings when hint and context
-     features should generalize.
+   - The legacy diagnostics ranker solves 8/8 full-budget and 5/8 pass@1.
+   - The outcome-trained ranker with v2 generalized features solves 8/8
+     full-budget and 6/8 pass@1 in-sample.
+   - The prior `quote_total_helper_discount` miss is fixed by removing raw
+     reason strings, exact target symbols, and arbitrary exact param values from
+     ranker features.
+   - Continue with better locality/context features for
+     `visible_balance_attribute_decoys` and the nested import decoy.
 
 2. Add a compact diagnostics comparison command.
    - Compare two diagnostics files.
@@ -429,11 +437,11 @@ pytest -q
 
 3. Add the next GreenShot-5 ladder task.
    - Nested-module missing import with a decoy import is done.
+   - Exception handling through a wrapper API is done.
    - Remaining problem: bad ranking/locality signal. The correct import is
      generated and passes, but it is ranked second behind a decoy import.
-   - Next ladder options: exception handling through a wrapper API, swapped
-     arguments across modules, or rename propagated through helper and public
-     API.
+   - Next ladder options: swapped arguments across modules or rename propagated
+     through helper and public API.
 
 ## Stop Conditions
 

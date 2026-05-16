@@ -176,6 +176,17 @@ has enough coverage and data to make neural regressions visible.
 - [x] Add a task where the correct edit is in a callee, not the public API.
 - [x] Add a task where tests expose an error only after one repair is applied.
 - [ ] Grow GreenShot-5 to at least 20 tasks before neural ranker work.
+- [ ] Add Apache-mined GreenShot-5 task: missing dictionary/output key in a
+  serialized payload.
+- [ ] Add Apache-mined GreenShot-5 task: missing keyword argument propagated
+  through a call chain.
+- [ ] Add Apache-mined GreenShot-5 task: hard failure replaced by a
+  default/fallback plus warning.
+- [ ] Add Apache-mined GreenShot-5 task: guard that prevents duplicate side
+  effects with a state flag.
+- [ ] Add Apache-mined GreenShot-5 task: import compatibility fallback from a
+  new package path to an old package path.
+- [ ] Add Apache-mined GreenShot-5 task: module-level config constant repair.
 - [ ] Create GreenShot-6 for small real packages, not only toy fixtures.
 - [ ] Add mutation-generated held-out tasks from real repos.
 - [ ] Add git-history-derived held-out repair tasks.
@@ -214,6 +225,18 @@ has enough coverage and data to make neural regressions visible.
 - [ ] Support multi-edit actions with bounded, typed edit lists.
 - [ ] Deduplicate equivalent candidates before test execution.
 - [ ] Store action schemas in a machine-readable registry.
+
+Apache-mined action examples to prioritize:
+
+- `data/transitions/apache-python/Chainlit__chainlit.jsonl`: widget output adds a
+  missing `"disabled"` key; step serialization moves an optional `icon` into
+  metadata.
+- `data/transitions/apache-python/Lightning-AI__litgpt.jsonl`: JSON data setup
+  replaces a required setting error with a fallback default and warning; server
+  code propagates a new timeout keyword.
+- `data/transitions/apache-python/Chainlit__chainlit.jsonl`: socket startup adds
+  an idempotence guard around chat-start hooks; cache setup adds import-path
+  compatibility fallback.
 
 ### Observations and Hints
 

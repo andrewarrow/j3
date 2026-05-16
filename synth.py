@@ -142,9 +142,17 @@ def _return_transition(
     source: str,
     node: ast.Return,
 ) -> Iterable[SyntheticTransition]:
+    yield from _return_value_transition(file_path, source, node)
+    yield from _replace_expr_transition(file_path, source, node)
+
+
+def _return_value_transition(
+    file_path: str,
+    source: str,
+    node: ast.Return,
+) -> Iterable[SyntheticTransition]:
     if not isinstance(node.value, ast.Constant) or not isinstance(node.value.value, bool):
         return
-
     original = node.value.value
     broken_value = not original
     edit = _node_edit(node.value, repr(broken_value))
@@ -155,6 +163,29 @@ def _return_transition(
         params={"from": broken_value, "to": original},
     )
     yield SyntheticTransition(file_path, source, broken_source, action, "return_value")
+
+
+def _replace_expr_transition(
+    file_path: str,
+    source: str,
+    node: ast.Return,
+) -> Iterable[SyntheticTransition]:
+    if node.value is None:
+        return
+
+    replacement = _simpler_expression(source, node.value)
+    original = ast.get_source_segment(source, node.value)
+    if not replacement or not original or replacement == original:
+        return
+
+    edit = _node_edit(node.value, replacement)
+    broken_source = apply_edit(source, edit)
+    action = PatchAction(
+        kind=PatchActionKind.REPLACE_EXPR,
+        target=_target(file_path, node.value, type(node.value).__name__),
+        params={"from": replacement, "to": original},
+    )
+    yield SyntheticTransition(file_path, source, broken_source, action, "replace_expr")
 
 
 def _condition_transition(
@@ -174,6 +205,22 @@ def _condition_transition(
         params={"operation": "remove_not"},
     )
     yield SyntheticTransition(file_path, source, broken_source, action, "condition_negation")
+
+
+def _simpler_expression(source: str, node: ast.AST) -> str | None:
+    if isinstance(node, ast.BinOp):
+        left = ast.get_source_segment(source, node.left)
+        right = ast.get_source_segment(source, node.right)
+        return left or right
+    if isinstance(node, ast.BoolOp) and node.values:
+        return ast.get_source_segment(source, node.values[0])
+    if isinstance(node, ast.IfExp):
+        return ast.get_source_segment(source, node.body)
+    if isinstance(node, ast.Call):
+        return "None"
+    if isinstance(node, ast.Compare):
+        return "False"
+    return None
 
 
 def apply_edit(source: str, edit: SourceEdit) -> str:

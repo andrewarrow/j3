@@ -14,6 +14,10 @@ def is_large(value):
     if value > 10:
         return True
     return False
+
+
+def double(value):
+    return value * 2
 """.lstrip(),
         encoding="utf-8",
     )
@@ -33,6 +37,7 @@ def is_large(value):
 
     assert model["format"] == "j3.prototype-jepa.v1"
     assert model["embedding_dim"] == 32
+    assert "replace_expr" in model["action_delta_prototypes"]
     assert metrics["synthetic_examples"] == result.parsed_examples
     assert "repair_action" in first_example
 

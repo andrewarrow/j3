@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import ast
 import difflib
+import json
+import math
 import shutil
 import subprocess
 import tempfile
@@ -11,6 +13,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from actions import PatchAction, PatchActionKind, PatchTarget
+from features import embed_python_source, vector_delta
 from repo import DEFAULT_EXCLUDE_DIRS, iter_python_sources
 from synth import SourceEdit, apply_edit
 
@@ -26,6 +29,7 @@ class CandidatePatch:
     original_source: str
     patched_source: str
     reason: str
+    model_score: float | None = None
 
     def diff(self) -> str:
         return "".join(
@@ -48,6 +52,43 @@ class PatchPlanResult:
     selected: CandidatePatch | None
     applied: bool
     test_output: str
+    model_path: Path | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class PatchRankingModel:
+    """Prototype latent action model used to rank structured patch candidates."""
+
+    path: Path
+    embedding_dim: int
+    action_delta_prototypes: dict[str, list[float]]
+
+    @classmethod
+    def load(cls, path: Path) -> "PatchRankingModel":
+        resolved = path.expanduser().resolve()
+        payload = json.loads(resolved.read_text(encoding="utf-8"))
+        if payload.get("format") != "j3.prototype-jepa.v1":
+            raise ValueError(f"unsupported model format in {resolved}")
+        embedding_dim = int(payload["embedding_dim"])
+        prototypes = {
+            str(action): [float(value) for value in vector]
+            for action, vector in payload.get("action_delta_prototypes", {}).items()
+        }
+        return cls(
+            path=resolved,
+            embedding_dim=embedding_dim,
+            action_delta_prototypes=prototypes,
+        )
+
+    def score(self, candidate: CandidatePatch) -> float:
+        prototype = self.action_delta_prototypes.get(candidate.action.kind.value)
+        if prototype is None:
+            return -1.0
+
+        before = embed_python_source(candidate.original_source, dim=self.embedding_dim)
+        after = embed_python_source(candidate.patched_source, dim=self.embedding_dim)
+        delta = vector_delta(after, before)
+        return _cosine_similarity(delta, prototype)
 
 
 def plan_and_maybe_apply_patch(
@@ -57,6 +98,7 @@ def plan_and_maybe_apply_patch(
     dry_run: bool,
     timeout_seconds: int = DEFAULT_PATCH_TIMEOUT_SECONDS,
     max_candidates: int = 80,
+    model_path: Path | None = None,
 ) -> PatchPlanResult:
     """Find the first candidate patch that makes the requested test pass."""
 
@@ -77,9 +119,13 @@ def plan_and_maybe_apply_patch(
             selected=None,
             applied=False,
             test_output=_combined_output(baseline),
+            model_path=None,
         )
 
     candidates = generate_candidate_patches(root)
+    model = _load_model_if_available(model_path)
+    if model is not None:
+        candidates = rank_candidate_patches(candidates, model)
     candidates_tested = 0
     for candidate in candidates[:max_candidates]:
         candidates_tested += 1
@@ -100,6 +146,7 @@ def plan_and_maybe_apply_patch(
                     selected=candidate,
                     applied=not dry_run,
                     test_output=_combined_output(attempt),
+                    model_path=model.path if model else None,
                 )
 
     return PatchPlanResult(
@@ -111,7 +158,29 @@ def plan_and_maybe_apply_patch(
         selected=None,
         applied=False,
         test_output=_combined_output(baseline),
+        model_path=model.path if model else None,
     )
+
+
+def rank_candidate_patches(
+    candidates: list[CandidatePatch],
+    model: PatchRankingModel,
+) -> list[CandidatePatch]:
+    """Sort candidates by learned latent delta similarity."""
+
+    scored = [
+        CandidatePatch(
+            file_path=candidate.file_path,
+            action=candidate.action,
+            edit=candidate.edit,
+            original_source=candidate.original_source,
+            patched_source=candidate.patched_source,
+            reason=candidate.reason,
+            model_score=model.score(candidate),
+        )
+        for candidate in candidates
+    ]
+    return sorted(scored, key=lambda candidate: candidate.model_score or -1.0, reverse=True)
 
 
 def generate_candidate_patches(repo: Path) -> list[CandidatePatch]:
@@ -274,6 +343,25 @@ def _copy_repo(source: Path, destination: Path) -> None:
 
 def _combined_output(result: subprocess.CompletedProcess[str]) -> str:
     return (result.stdout + result.stderr).strip()
+
+
+def _load_model_if_available(model_path: Path | None) -> PatchRankingModel | None:
+    if model_path is None:
+        return None
+    resolved = model_path.expanduser().resolve()
+    if not resolved.exists():
+        return None
+    return PatchRankingModel.load(resolved)
+
+
+def _cosine_similarity(left: list[float], right: list[float]) -> float:
+    if len(left) != len(right):
+        raise ValueError("vectors must have the same dimension")
+    left_norm = math.sqrt(sum(value * value for value in left))
+    right_norm = math.sqrt(sum(value * value for value in right))
+    if left_norm == 0.0 or right_norm == 0.0:
+        return 0.0
+    return sum(a * b for a, b in zip(left, right, strict=True)) / (left_norm * right_norm)
 
 
 def _operator_text(op: ast.cmpop) -> str | None:

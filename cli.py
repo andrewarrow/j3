@@ -68,6 +68,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="find and show a passing candidate without changing files",
     )
     patch_parser.add_argument(
+        "--model",
+        type=Path,
+        default=Path("runs/greenshot-1/model.json"),
+        help="prototype model used to rank patch candidates (default: runs/greenshot-1/model.json)",
+    )
+    patch_parser.add_argument(
         "--timeout",
         type=int,
         default=30,
@@ -161,6 +167,7 @@ def handle_patch(args: argparse.Namespace) -> int:
         dry_run=args.dry_run,
         timeout_seconds=args.timeout,
         max_candidates=args.max_candidates,
+        model_path=args.model,
     )
 
     mode = "dry run" if args.dry_run else "apply"
@@ -168,6 +175,8 @@ def handle_patch(args: argparse.Namespace) -> int:
     print(f"repo: {repo}")
     print(f"test: {args.test}")
     print(f"baseline exit code: {result.baseline_exit_code}")
+    if result.model_path:
+        print(f"model: {result.model_path}")
 
     if result.baseline_exit_code == 0:
         print("status: test already passes; no patch generated")
@@ -184,6 +193,8 @@ def handle_patch(args: argparse.Namespace) -> int:
     print(f"action: {result.selected.action.kind.value}")
     print(f"file: {result.selected.file_path}")
     print(f"reason: {result.selected.reason}")
+    if result.selected.model_score is not None:
+        print(f"model score: {result.selected.model_score:.4f}")
     print("diff:")
     print(result.selected.diff(), end="" if result.selected.diff().endswith("\n") else "\n")
     return 0

@@ -95,7 +95,7 @@ j3 actions
 j3 actions --json
 j3 train --data examples/greenshot_bug
 j3 train --data ../Decepticon ../scientific-agent-skills ../CLI-Anything
-j3 patch --repo examples/greenshot_bug --test "pytest tests/test_calculator.py" --dry-run
+j3 patch --repo examples/greenshot_bug --test "python -m pytest tests/test_calculator.py" --dry-run
 pytest
 ```
 
@@ -168,11 +168,23 @@ Expected result today:
 From the `j3` repo root, use it with:
 
 ```bash
-j3 patch --repo examples/greenshot_bug --test "pytest tests/test_calculator.py" --dry-run
+j3 patch --repo examples/greenshot_bug --test "python -m pytest tests/test_calculator.py" --dry-run
 ```
 
 Without `--dry-run`, `j3 patch` applies the first candidate that passes the
 requested test in a temporary copy of the repo.
+
+When `runs/greenshot-1/model.json` exists, `patch` uses it by default to rank
+candidate edits by latent action-delta similarity before running tests. You can
+also pass a model explicitly:
+
+```bash
+j3 patch \
+  --repo examples/greenshot_bug \
+  --test "python -m pytest tests/test_calculator.py" \
+  --model runs/greenshot-1/model.json \
+  --dry-run
+```
 
 ## Initial Patch Action Space
 

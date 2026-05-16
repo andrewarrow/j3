@@ -39,6 +39,10 @@ Done:
   bounded number of additional candidates after the first pass and diagnostics
   record first-pass index, passing candidates, and before/after-pass counts.
 - Added focused eval and diagnostics coverage for post-pass exploration.
+- Completed Immediate Change 6. `j3 eval --candidate-outcomes PATH` now writes
+  candidate outcome JSONL with one row per tested candidate, including rank
+  index, pass labels, first-pass index, and multiple-pass context.
+- Added focused evaluation and CLI coverage for candidate outcome export.
 
 Verified:
 
@@ -47,12 +51,12 @@ pytest tests/test_cli.py -q
 pytest tests/test_evaluation.py -q
 pytest tests/test_failure_hints.py -q
 pytest tests/test_patching.py tests/test_candidate_ranking.py -q
-python -m py_compile patching.py evaluation.py cli.py tests/test_evaluation.py
+python -m py_compile patching.py evaluation.py cli.py tests/test_evaluation.py tests/test_cli.py
 ```
 
 Next:
 
-- Start Immediate Change 6: export candidate outcome rows.
+- Start Immediate Change 7: add the next GreenShot-5 missing-action task.
 
 ## Current Diagnosis
 

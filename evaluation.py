@@ -232,6 +232,17 @@ def write_eval_diagnostics(summary: EvalSummary, path: Path) -> Path:
     return resolved
 
 
+def write_candidate_outcomes(summary: EvalSummary, path: Path) -> Path:
+    """Write one JSONL row per tested candidate from an eval summary."""
+
+    resolved = path.expanduser().resolve()
+    resolved.parent.mkdir(parents=True, exist_ok=True)
+    rows = list(_candidate_outcome_rows(summary))
+    text = "".join(json.dumps(row, sort_keys=True) + "\n" for row in rows)
+    resolved.write_text(text, encoding="utf-8")
+    return resolved
+
+
 def _run_task(
     *,
     task: RepairTask,
@@ -297,19 +308,29 @@ def _plan_diagnostics(plan: PatchPlanResult | None) -> dict[str, object]:
         "failure_hints": [_failure_hint_diagnostics(hint) for hint in plan.failure_hints],
         "selected": _candidate_diagnostics(plan.selected, passed=True) if plan.selected else None,
         "tested_candidates": [
-            _candidate_diagnostics(candidate, passed=_candidate_passed(candidate, plan))
-            for candidate in plan.tested_candidates
+            _candidate_diagnostics(
+                candidate,
+                passed=_candidate_passed(candidate, plan),
+                rank_index=rank_index,
+            )
+            for rank_index, candidate in enumerate(plan.tested_candidates, start=1)
         ],
     }
 
 
-def _candidate_diagnostics(candidate: CandidatePatch, *, passed: bool) -> dict[str, object]:
-    return {
+def _candidate_diagnostics(
+    candidate: CandidatePatch,
+    *,
+    passed: bool,
+    rank_index: int | None = None,
+) -> dict[str, object]:
+    diagnostics: dict[str, object] = {
         "file_path": candidate.file_path,
         "action": candidate.action.kind.value,
         "symbol": candidate.action.target.symbol,
         "start_line": candidate.action.target.start_line,
         "end_line": candidate.action.target.end_line,
+        "node_kind": candidate.action.target.node_kind,
         "params": dict(candidate.action.params),
         "reason": candidate.reason,
         "model_score": candidate.model_score,
@@ -317,6 +338,42 @@ def _candidate_diagnostics(candidate: CandidatePatch, *, passed: bool) -> dict[s
         "ranker_score": candidate.ranker_score,
         "passed": passed,
     }
+    if rank_index is not None:
+        diagnostics["rank_index"] = rank_index
+    return diagnostics
+
+
+def _candidate_outcome_rows(summary: EvalSummary) -> Iterable[dict[str, object]]:
+    for result in summary.tasks:
+        for phase, plan in (("baseline", result.baseline), ("ranked", result.ranked)):
+            if plan is None:
+                continue
+            first_passing_index = _first_passing_index(plan)
+            passing_candidates = _passing_candidates(plan)
+            passing_count = len(passing_candidates)
+            for rank_index, candidate in enumerate(plan.tested_candidates, start=1):
+                passed = _candidate_passed(candidate, plan)
+                yield {
+                    "task": result.task.name,
+                    "phase": phase,
+                    "file_path": candidate.file_path,
+                    "action": candidate.action.kind.value,
+                    "symbol": candidate.action.target.symbol,
+                    "start_line": candidate.action.target.start_line,
+                    "end_line": candidate.action.target.end_line,
+                    "node_kind": candidate.action.target.node_kind,
+                    "params": dict(candidate.action.params),
+                    "reason": candidate.reason,
+                    "model_score": candidate.model_score,
+                    "failure_hint_score": candidate.failure_hint_score,
+                    "ranker_score": candidate.ranker_score,
+                    "passed": passed,
+                    "rank_index": rank_index,
+                    "first_passing_index": first_passing_index,
+                    "is_first_pass": passed and rank_index == first_passing_index,
+                    "passing_candidates": passing_count,
+                    "other_candidates_also_passed": passing_count > 1,
+                }
 
 
 def _failure_hint_diagnostics(hint: object) -> dict[str, object]:

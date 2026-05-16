@@ -9,7 +9,12 @@ from typing import Sequence
 
 from actions import PatchActionKind
 from candidate_ranking import train_candidate_ranker
-from evaluation import EvalSummary, evaluate_tasks, write_eval_diagnostics
+from evaluation import (
+    EvalSummary,
+    evaluate_tasks,
+    write_candidate_outcomes,
+    write_eval_diagnostics,
+)
 from fixing import run_fix_workflow
 from mining import mine_git_transitions
 from patching import plan_and_maybe_apply_patch
@@ -317,6 +322,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="optional JSON file for per-task candidate ranking diagnostics",
     )
     eval_parser.add_argument(
+        "--candidate-outcomes",
+        type=Path,
+        help="optional JSONL file with one row per tested candidate",
+    )
+    eval_parser.add_argument(
         "--quiet",
         action="store_true",
         help="suppress per-task progress logging",
@@ -544,6 +554,11 @@ def handle_eval(args: argparse.Namespace) -> int:
         progress=progress,
     )
     diagnostics_path = write_eval_diagnostics(summary, args.diagnostics) if args.diagnostics else None
+    outcomes_path = (
+        write_candidate_outcomes(summary, args.candidate_outcomes)
+        if args.candidate_outcomes
+        else None
+    )
 
     print("j3 eval complete")
     print(f"tasks: {summary.total}")
@@ -595,6 +610,8 @@ def handle_eval(args: argparse.Namespace) -> int:
         )
     if diagnostics_path:
         print(f"diagnostics: {diagnostics_path}")
+    if outcomes_path:
+        print(f"candidate outcomes: {outcomes_path}")
     return 0 if _eval_phase_solved(summary=summary, phase=args.phase) else 1
 
 

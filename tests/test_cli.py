@@ -244,3 +244,38 @@ def test_eval_both_phase_preserves_existing_summary_numbers(capsys) -> None:
     assert "baseline: solved=1/4 pass@1=1/4 avg_candidates=1.00" in output
     assert "model-ranked: solved=4/4 pass@1=4/4 avg_candidates=1.00" in output
     assert "baseline: skipped" not in output
+
+
+def test_eval_writes_candidate_outcomes_jsonl(capsys, tmp_path) -> None:
+    outcomes = tmp_path / "candidate_outcomes.jsonl"
+
+    assert (
+        main(
+            [
+                "eval",
+                "--tasks",
+                "examples/greenshot_3",
+                "--checkpoint",
+                "runs/greenshot-1/model.json",
+                "--timeout",
+                "10",
+                "--max-candidates",
+                "1",
+                "--candidate-outcomes",
+                str(outcomes),
+            ]
+        )
+        == 0
+    )
+
+    output = capsys.readouterr().out
+    rows = [
+        json.loads(line)
+        for line in outcomes.read_text(encoding="utf-8").splitlines()
+    ]
+
+    assert f"candidate outcomes: {outcomes.resolve()}" in output
+    assert len(rows) == 4
+    assert {row["phase"] for row in rows} == {"ranked"}
+    assert all(row["rank_index"] == 1 for row in rows)
+    assert all("first_passing_index" in row for row in rows)

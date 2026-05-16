@@ -11,6 +11,7 @@ from evaluation import (
     TaskEvalResult,
     evaluate_tasks,
     load_tasks,
+    write_candidate_outcomes,
     write_eval_diagnostics,
 )
 from patching import CandidatePatch, PatchPlanResult
@@ -208,6 +209,43 @@ def test_diagnostics_records_exploration_after_pass(tmp_path) -> None:
     assert [candidate["passed"] for candidate in ranked["tested_candidates"]] == [True, True, False]
     assert ranked["summary"]["first_passing_index"] == 1
     assert ranked["summary"]["passing_candidates"] == 2
+
+
+def test_write_candidate_outcomes_jsonl_records_one_row_per_tested_candidate(tmp_path) -> None:
+    tasks_dir = _write_multi_pass_task(tmp_path)
+    summary = evaluate_tasks(
+        tasks_path=tasks_dir,
+        model_path=None,
+        timeout_seconds=10,
+        max_candidates=3,
+        phase="ranked",
+        explore_after_pass=2,
+    )
+
+    outcomes = write_candidate_outcomes(summary, tmp_path / "candidate_outcomes.jsonl")
+    rows = [
+        json.loads(line)
+        for line in outcomes.read_text(encoding="utf-8").splitlines()
+    ]
+
+    assert len(rows) == 3
+    assert {row["task"] for row in rows} == {"multi_pass_literal"}
+    assert {row["phase"] for row in rows} == {"ranked"}
+    assert [row["rank_index"] for row in rows] == [1, 2, 3]
+    assert [row["passed"] for row in rows] == [True, True, False]
+    assert [row["is_first_pass"] for row in rows] == [True, False, False]
+    assert all(row["first_passing_index"] == 1 for row in rows)
+    assert all(row["passing_candidates"] == 2 for row in rows)
+    assert all(row["other_candidates_also_passed"] is True for row in rows)
+    assert {
+        "file_path",
+        "action",
+        "params",
+        "reason",
+        "model_score",
+        "failure_hint_score",
+        "ranker_score",
+    }.issubset(rows[0])
 
 
 def _candidate_patch(*, ranker_score: float | None) -> CandidatePatch:

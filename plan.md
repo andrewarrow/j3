@@ -77,6 +77,8 @@ Recent completed work:
 - [x] `train-ranker` can score held-out diagnostics/outcome files after training
   and reports validation pass@1, preferred-positive rank, calibration, and
   per-family slices.
+- [x] `train-ranker` can hold out named tasks or task families from the same
+  diagnostics/outcome sources, then score those held-out rows as validation.
 - [x] GreenShot-5 includes a bounded multi-step task where the first repair
   changes the observed failure and exposes the second repair.
 - [x] GreenShot-5 includes an Apache-mined serialized payload task where the
@@ -574,7 +576,7 @@ pytest -q
    - Import compatibility fallback is done.
    - Module-level config constant repair is done.
 
-3. Validate ranker calibration beyond in-sample GreenShot-5.
+3. [x] Validate ranker calibration beyond in-sample GreenShot-5.
    - The legacy diagnostics ranker solves 9/9 full-budget and 5/9 pass@1.
    - The stale outcome-ranker artifact solves 9/9 full-budget and 5/9 pass@1.
    - A fresh v3 outcome ranker trained from 9-task exploration rows solves 9/9
@@ -590,6 +592,10 @@ pytest -q
      in-sample.
    - GreenShot-5 now records explicit task families so held-out calibration can
      be sliced by family instead of relying on task names alone.
+   - `train-ranker --holdout-task-family ...` and `--holdout-task ...` now
+     exclude matching rows from training and include them in validation metrics,
+     so same-source candidate outcome files can report held-out calibration by
+     task family without pre-splitting JSONL files.
    - Next ranker work should focus on held-out calibration and operator/value
      preference, because the remaining held-out miss is a wrong helper operator
      ranked just ahead of the preferred `>=` edit.

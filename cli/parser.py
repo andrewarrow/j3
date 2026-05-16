@@ -267,6 +267,20 @@ def build_parser() -> argparse.ArgumentParser:
         help="held-out candidate outcome JSONL files to score after training",
     )
     ranker_parser.add_argument(
+        "--holdout-task",
+        dest="holdout_tasks",
+        nargs="+",
+        default=[],
+        help="task names to exclude from training and score as held-out validation",
+    )
+    ranker_parser.add_argument(
+        "--holdout-task-family",
+        dest="holdout_task_families",
+        nargs="+",
+        default=[],
+        help="task families to exclude from training and score as held-out validation",
+    )
+    ranker_parser.add_argument(
         "--out",
         type=Path,
         default=Path("runs/candidate-ranker"),

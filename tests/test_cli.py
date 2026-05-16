@@ -236,6 +236,108 @@ def test_train_ranker_command_accepts_validation_outcomes(capsys, tmp_path) -> N
     assert metrics["validation"]["pass_at_1"] == 1
 
 
+def test_train_ranker_command_accepts_holdout_task_family(capsys, tmp_path) -> None:
+    outcomes = tmp_path / "candidate-outcomes.jsonl"
+    rows = [
+        {
+            "task": "held_out_boundary",
+            "task_family": "operator_boundary",
+            "phase": "ranked",
+            "file_path": "bugs.py",
+            "action": "change_operator",
+            "symbol": "meets_minimum",
+            "params": {"from": ">", "to": "<"},
+            "reason": "try comparison operator <",
+            "model_score": 0.5,
+            "failure_hint_score": 50.0,
+            "ranker_score": None,
+            "passed": False,
+            "rank_index": 1,
+            "first_passing_index": 2,
+            "is_first_pass": False,
+        },
+        {
+            "task": "held_out_boundary",
+            "task_family": "operator_boundary",
+            "phase": "ranked",
+            "file_path": "bugs.py",
+            "action": "change_operator",
+            "symbol": "meets_minimum",
+            "params": {"from": ">", "to": ">="},
+            "reason": "try comparison operator >=",
+            "model_score": 0.5,
+            "failure_hint_score": 50.0,
+            "ranker_score": None,
+            "passed": True,
+            "rank_index": 2,
+            "first_passing_index": 2,
+            "is_first_pass": True,
+        },
+        {
+            "task": "train_attribute",
+            "task_family": "attribute_repair",
+            "phase": "ranked",
+            "file_path": "accounts.py",
+            "action": "change_attribute",
+            "symbol": "account_balance",
+            "params": {"from": "amount_cents", "to": "available_cents"},
+            "reason": "try attribute available_cents",
+            "model_score": 0.0,
+            "failure_hint_score": 20.0,
+            "ranker_score": None,
+            "passed": False,
+            "rank_index": 1,
+            "first_passing_index": 2,
+            "is_first_pass": False,
+        },
+        {
+            "task": "train_attribute",
+            "task_family": "attribute_repair",
+            "phase": "ranked",
+            "file_path": "accounts.py",
+            "action": "change_attribute",
+            "symbol": "account_balance",
+            "params": {"from": "amount_cents", "to": "balance_cents"},
+            "reason": "try attribute balance_cents",
+            "model_score": 0.0,
+            "failure_hint_score": 20.0,
+            "ranker_score": None,
+            "passed": True,
+            "rank_index": 2,
+            "first_passing_index": 2,
+            "is_first_pass": True,
+        },
+    ]
+    outcomes.write_text(
+        "\n".join(json.dumps(row) for row in rows) + "\n",
+        encoding="utf-8",
+    )
+    out_dir = tmp_path / "ranker"
+
+    assert (
+        main(
+            [
+                "train-ranker",
+                "--candidate-outcomes",
+                str(outcomes),
+                "--holdout-task-family",
+                "operator_boundary",
+                "--out",
+                str(out_dir),
+            ]
+        )
+        == 0
+    )
+
+    output = capsys.readouterr().out
+    metrics = json.loads((out_dir / "candidate-ranker-metrics.json").read_text(encoding="utf-8"))
+    assert "holdout task families: operator_boundary" in output
+    assert "rows: 2" in output
+    assert "validation: plans=1 solved=1/1" in output
+    assert metrics["holdout_task_families"] == ["operator_boundary"]
+    assert metrics["validation"]["holdout_candidate_outcome_sources"] == [str(outcomes.resolve())]
+
+
 def test_compare_diagnostics_command_reports_rank_movement(capsys, tmp_path) -> None:
     old = tmp_path / "old-diagnostics.json"
     new = tmp_path / "new-diagnostics.json"

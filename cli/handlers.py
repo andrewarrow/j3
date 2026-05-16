@@ -192,6 +192,8 @@ def handle_train_ranker(args: argparse.Namespace) -> int:
         candidate_outcome_paths=args.candidate_outcomes,
         validation_diagnostics_paths=args.validation_diagnostics,
         validation_candidate_outcome_paths=args.validation_candidate_outcomes,
+        holdout_tasks=args.holdout_tasks,
+        holdout_task_families=args.holdout_task_families,
         out_dir=args.out,
         epochs=args.epochs,
         learning_rate=args.learning_rate,
@@ -213,6 +215,10 @@ def handle_train_ranker(args: argparse.Namespace) -> int:
         print("validation candidate outcomes:")
         for path in result.validation_candidate_outcome_paths:
             print(f"  {path}")
+    if result.holdout_tasks:
+        print(f"holdout tasks: {', '.join(result.holdout_tasks)}")
+    if result.holdout_task_families:
+        print(f"holdout task families: {', '.join(result.holdout_task_families)}")
     print(f"out: {result.out_dir}")
     print(f"rows: {result.rows}")
     print(f"passing rows: {result.passing_rows}")

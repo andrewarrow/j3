@@ -225,6 +225,72 @@ def test_train_candidate_ranker_reports_held_out_validation_metrics(tmp_path) ->
     assert metrics["validation_candidate_outcome_sources"] == [str(validation_outcomes.resolve())]
 
 
+def test_train_candidate_ranker_can_hold_out_task_family_from_same_outcomes(tmp_path) -> None:
+    outcomes = tmp_path / "candidate-outcomes.jsonl"
+    rows = [
+        {
+            "task": "held_out_boundary",
+            "task_family": "operator_boundary",
+            "phase": "ranked",
+            **_candidate_record(to="<", passed=False),
+            "rank_index": 1,
+            "first_passing_index": 2,
+            "is_first_pass": False,
+        },
+        {
+            "task": "held_out_boundary",
+            "task_family": "operator_boundary",
+            "phase": "ranked",
+            **_candidate_record(to=">=", passed=True),
+            "rank_index": 2,
+            "first_passing_index": 2,
+            "is_first_pass": True,
+        },
+        {
+            "task": "train_mapping_key",
+            "task_family": "mapping_key",
+            "phase": "ranked",
+            **_subscript_key_candidate_record(passed=False),
+            "params": {"from": "name", "to": "display_name"},
+            "rank_index": 1,
+            "first_passing_index": 2,
+            "is_first_pass": False,
+        },
+        {
+            "task": "train_mapping_key",
+            "task_family": "mapping_key",
+            "phase": "ranked",
+            **_subscript_key_candidate_record(passed=True),
+            "rank_index": 2,
+            "first_passing_index": 2,
+            "is_first_pass": True,
+        },
+    ]
+    outcomes.write_text(
+        "\n".join(json.dumps(row) for row in rows) + "\n",
+        encoding="utf-8",
+    )
+
+    result = train_candidate_ranker(
+        candidate_outcome_paths=[outcomes],
+        holdout_task_families=["operator_boundary"],
+        out_dir=tmp_path / "run",
+    )
+
+    assert result.rows == 2
+    assert result.tasks == 1
+    assert result.holdout_task_families == ["operator_boundary"]
+    assert result.per_task_family.keys() == {"mapping_key"}
+    assert result.validation["plans"] == 1
+    assert result.validation["rows"] == 2
+    assert result.validation["per_task_family"].keys() == {"operator_boundary"}
+    assert result.validation["holdout_candidate_outcome_sources"] == [str(outcomes.resolve())]
+
+    metrics = json.loads(result.metrics_path.read_text(encoding="utf-8"))
+    assert metrics["holdout_task_families"] == ["operator_boundary"]
+    assert metrics["validation"]["holdout_task_families"] == ["operator_boundary"]
+
+
 def test_train_candidate_ranker_prefers_marked_passing_outcome(tmp_path) -> None:
     outcomes = tmp_path / "candidate-outcomes.jsonl"
     rows = [

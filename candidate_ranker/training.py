@@ -41,6 +41,8 @@ def train_candidate_ranker(
     candidate_outcome_paths: list[Path] | None = None,
     validation_diagnostics_paths: list[Path] | None = None,
     validation_candidate_outcome_paths: list[Path] | None = None,
+    holdout_tasks: list[str] | set[str] | tuple[str, ...] | None = None,
+    holdout_task_families: list[str] | set[str] | tuple[str, ...] | None = None,
     out_dir: Path,
     epochs: int = 8,
     learning_rate: float = 0.25,
@@ -53,6 +55,8 @@ def train_candidate_ranker(
     candidate_outcome_paths = candidate_outcome_paths or []
     validation_diagnostics_paths = validation_diagnostics_paths or []
     validation_candidate_outcome_paths = validation_candidate_outcome_paths or []
+    holdout_task_names = _normalize_holdout_names(holdout_tasks)
+    holdout_families = _normalize_holdout_names(holdout_task_families)
     if not diagnostics_paths and not candidate_outcome_paths:
         raise ValueError("at least one diagnostics or candidate outcome path is required")
     if epochs < 1:
@@ -86,6 +90,8 @@ def train_candidate_ranker(
             action_metrics=action_metrics,
             family_metrics=family_metrics,
             calibration_rows=calibration_rows,
+            holdout_tasks=holdout_task_names,
+            holdout_task_families=holdout_families,
         )
         pairs.extend(path_pairs)
         plans += path_plans
@@ -100,6 +106,8 @@ def train_candidate_ranker(
             action_metrics=action_metrics,
             family_metrics=family_metrics,
             calibration_rows=calibration_rows,
+            holdout_tasks=holdout_task_names,
+            holdout_task_families=holdout_families,
         )
         pairs.extend(path_pairs)
         plans += path_plans
@@ -130,6 +138,8 @@ def train_candidate_ranker(
         "feature_version": RANKER_FEATURE_VERSION,
         "diagnostics_sources": [str(path) for path in resolved_paths],
         "candidate_outcome_sources": [str(path) for path in resolved_outcome_paths],
+        "holdout_tasks": sorted(holdout_task_names),
+        "holdout_task_families": sorted(holdout_families),
         "plan": plan_name,
         "epochs": epochs,
         "learning_rate": learning_rate,
@@ -143,6 +153,10 @@ def train_candidate_ranker(
     validation = _ranker_validation_record(
         diagnostics_paths=resolved_validation_paths,
         candidate_outcome_paths=resolved_validation_outcome_paths,
+        holdout_diagnostics_paths=resolved_paths,
+        holdout_candidate_outcome_paths=resolved_outcome_paths,
+        holdout_tasks=holdout_task_names,
+        holdout_task_families=holdout_families,
         plan_name=plan_name,
         weights=weights,
     )
@@ -155,6 +169,14 @@ def train_candidate_ranker(
         "validation_candidate_outcome_sources": [
             str(path) for path in resolved_validation_outcome_paths
         ],
+        "holdout_diagnostics_sources": [
+            str(path) for path in resolved_paths if holdout_task_names or holdout_families
+        ],
+        "holdout_candidate_outcome_sources": [
+            str(path) for path in resolved_outcome_paths if holdout_task_names or holdout_families
+        ],
+        "holdout_tasks": sorted(holdout_task_names),
+        "holdout_task_families": sorted(holdout_families),
         "plan": plan_name,
         "rows": rows,
         "passing_rows": passing_rows,
@@ -185,6 +207,8 @@ def train_candidate_ranker(
         candidate_outcome_paths=resolved_outcome_paths,
         validation_diagnostics_paths=resolved_validation_paths,
         validation_candidate_outcome_paths=resolved_validation_outcome_paths,
+        holdout_tasks=sorted(holdout_task_names),
+        holdout_task_families=sorted(holdout_families),
         rows=rows,
         passing_rows=passing_rows,
         failing_rows=failing_rows,
@@ -209,6 +233,8 @@ def _read_diagnostics_path(
     action_metrics: dict[str, _RankerMetricsAccumulator],
     family_metrics: dict[str, _RankerMetricsAccumulator],
     calibration_rows: list[tuple[dict[str, float], bool]],
+    holdout_tasks: set[str],
+    holdout_task_families: set[str],
 ) -> tuple[list[tuple[dict[str, float], dict[str, float]]], int, int, int, set[str]]:
     payload = json.loads(path.read_text(encoding="utf-8"))
     pairs: list[tuple[dict[str, float], dict[str, float]]] = []
@@ -220,8 +246,17 @@ def _read_diagnostics_path(
     for task in payload.get("tasks", []):
         if not isinstance(task, dict):
             continue
-        if task.get("name"):
-            task_names.add(str(task["name"]))
+        task_name = str(task.get("name", ""))
+        task_family = str(task.get("family", "unclassified"))
+        if _matches_holdout(
+            task=task_name,
+            family=task_family,
+            holdout_tasks=holdout_tasks,
+            holdout_task_families=holdout_task_families,
+        ):
+            continue
+        if task_name:
+            task_names.add(task_name)
         plan = task.get(plan_name)
         if not isinstance(plan, dict):
             continue
@@ -237,7 +272,7 @@ def _read_diagnostics_path(
             _accumulate_ranker_metrics(
                 action_metrics=action_metrics,
                 family_metrics=family_metrics,
-                task_family=str(task.get("family", "unclassified")),
+                task_family=task_family,
                 rows=[candidate for candidate in tested if isinstance(candidate, dict)],
                 training_pairs=len(plan_pairs),
             )
@@ -259,6 +294,8 @@ def _read_candidate_outcome_path(
     action_metrics: dict[str, _RankerMetricsAccumulator],
     family_metrics: dict[str, _RankerMetricsAccumulator],
     calibration_rows: list[tuple[dict[str, float], bool]],
+    holdout_tasks: set[str],
+    holdout_task_families: set[str],
 ) -> tuple[list[tuple[dict[str, float], dict[str, float]]], int, int, int, set[str]]:
     grouped_rows: dict[tuple[str, str], list[dict[str, object]]] = {}
     rows = 0
@@ -271,13 +308,8 @@ def _read_candidate_outcome_path(
         row = json.loads(line)
         if not isinstance(row, dict):
             continue
-        rows += 1
         task = str(row.get("task", ""))
         phase = str(row.get("phase", plan_name))
-        if task:
-            task_names.add(task)
-        if row.get("passed") is True:
-            passing_rows += 1
         grouped_rows.setdefault((task, phase), []).append(row)
 
     pairs: list[tuple[dict[str, float], dict[str, float]]] = []
@@ -285,12 +317,24 @@ def _read_candidate_outcome_path(
     for (_task, phase), task_rows in grouped_rows.items():
         if phase != plan_name:
             continue
+        task_family = _outcome_task_family(task_rows)
+        if _matches_holdout(
+            task=_task,
+            family=task_family,
+            holdout_tasks=holdout_tasks,
+            holdout_task_families=holdout_task_families,
+        ):
+            continue
+        rows += len(task_rows)
+        passing_rows += sum(1 for row in task_rows if row.get("passed") is True)
+        if _task:
+            task_names.add(_task)
         _append_outcome_calibration_rows(task_rows, calibration_rows)
         plan_pairs = _training_pairs_from_outcome_rows(task_rows)
         _accumulate_ranker_metrics(
             action_metrics=action_metrics,
             family_metrics=family_metrics,
-            task_family=_outcome_task_family(task_rows),
+            task_family=task_family,
             rows=task_rows,
             training_pairs=len(plan_pairs),
         )
@@ -379,6 +423,10 @@ def _ranker_validation_record(
     *,
     diagnostics_paths: list[Path],
     candidate_outcome_paths: list[Path],
+    holdout_diagnostics_paths: list[Path],
+    holdout_candidate_outcome_paths: list[Path],
+    holdout_tasks: set[str],
+    holdout_task_families: set[str],
     plan_name: str,
     weights: Mapping[str, float],
 ) -> dict[str, object]:
@@ -386,7 +434,19 @@ def _ranker_validation_record(
         diagnostics_paths=diagnostics_paths,
         candidate_outcome_paths=candidate_outcome_paths,
         plan_name=plan_name,
+        include_tasks=set(),
+        include_task_families=set(),
     )
+    if holdout_tasks or holdout_task_families:
+        plans.extend(
+            _read_validation_plans(
+                diagnostics_paths=holdout_diagnostics_paths,
+                candidate_outcome_paths=holdout_candidate_outcome_paths,
+                plan_name=plan_name,
+                include_tasks=holdout_tasks,
+                include_task_families=holdout_task_families,
+            )
+        )
     action_metrics: dict[str, _RankerMetricsAccumulator] = {}
     family_metrics: dict[str, _RankerMetricsAccumulator] = {}
     calibration_rows: list[tuple[dict[str, float], bool]] = []
@@ -443,6 +503,16 @@ def _ranker_validation_record(
     return {
         "diagnostics_sources": [str(path) for path in diagnostics_paths],
         "candidate_outcome_sources": [str(path) for path in candidate_outcome_paths],
+        "holdout_diagnostics_sources": [
+            str(path) for path in holdout_diagnostics_paths if holdout_tasks or holdout_task_families
+        ],
+        "holdout_candidate_outcome_sources": [
+            str(path)
+            for path in holdout_candidate_outcome_paths
+            if holdout_tasks or holdout_task_families
+        ],
+        "holdout_tasks": sorted(holdout_tasks),
+        "holdout_task_families": sorted(holdout_task_families),
         "rows": rows,
         "passing_rows": passing_rows,
         "failing_rows": failing_rows,
@@ -470,12 +540,23 @@ def _read_validation_plans(
     diagnostics_paths: list[Path],
     candidate_outcome_paths: list[Path],
     plan_name: str,
+    include_tasks: set[str],
+    include_task_families: set[str],
 ) -> list[_ValidationPlan]:
     plans: list[_ValidationPlan] = []
     for path in diagnostics_paths:
         payload = json.loads(path.read_text(encoding="utf-8"))
         for task in payload.get("tasks", []):
             if not isinstance(task, dict):
+                continue
+            task_name = str(task.get("name", ""))
+            task_family = str(task.get("family", "unclassified"))
+            if not _included_by_holdout_filter(
+                task=task_name,
+                family=task_family,
+                include_tasks=include_tasks,
+                include_task_families=include_task_families,
+            ):
                 continue
             plan = task.get(plan_name)
             if not isinstance(plan, dict):
@@ -485,8 +566,8 @@ def _read_validation_plans(
                 continue
             plans.append(
                 _ValidationPlan(
-                    task=str(task.get("name", "")),
-                    family=str(task.get("family", "unclassified")),
+                    task=task_name,
+                    family=task_family,
                     hints=[
                         hint for hint in plan.get("failure_hints", []) if isinstance(hint, dict)
                     ]
@@ -511,15 +592,51 @@ def _read_validation_plans(
             grouped_rows.setdefault((task, phase), []).append(row)
 
     for (task, _phase), rows in grouped_rows.items():
+        task_family = _outcome_task_family(rows)
+        if not _included_by_holdout_filter(
+            task=task,
+            family=task_family,
+            include_tasks=include_tasks,
+            include_task_families=include_task_families,
+        ):
+            continue
         plans.append(
             _ValidationPlan(
                 task=task,
-                family=_outcome_task_family(rows),
+                family=task_family,
                 hints=[],
                 rows=sorted(rows, key=lambda row: _validation_original_rank(row, 0)),
             )
         )
     return plans
+
+
+def _normalize_holdout_names(values: list[str] | set[str] | tuple[str, ...] | None) -> set[str]:
+    if values is None:
+        return set()
+    return {str(value).strip() for value in values if str(value).strip()}
+
+
+def _matches_holdout(
+    *,
+    task: str,
+    family: str,
+    holdout_tasks: set[str],
+    holdout_task_families: set[str],
+) -> bool:
+    return task in holdout_tasks or family in holdout_task_families
+
+
+def _included_by_holdout_filter(
+    *,
+    task: str,
+    family: str,
+    include_tasks: set[str],
+    include_task_families: set[str],
+) -> bool:
+    if not include_tasks and not include_task_families:
+        return True
+    return task in include_tasks or family in include_task_families
 
 
 def _validation_scored_rows(

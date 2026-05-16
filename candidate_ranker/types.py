@@ -26,6 +26,8 @@ class CandidateRankerTrainingResult:
     candidate_outcome_paths: list[Path]
     validation_diagnostics_paths: list[Path]
     validation_candidate_outcome_paths: list[Path]
+    holdout_tasks: list[str]
+    holdout_task_families: list[str]
     rows: int
     passing_rows: int
     failing_rows: int

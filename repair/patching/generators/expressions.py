@@ -1,6 +1,10 @@
 """Compatibility exports for expression-oriented generators."""
 
-from .calls import _swap_call_arg_candidates
+from .calls import (
+    _add_keyword_arg_candidates,
+    _call_signature_index,
+    _swap_call_arg_candidates,
+)
 from .control_flow import (
     _guard_candidates,
     _modify_condition_candidates,
@@ -13,6 +17,8 @@ from .symbols import _rename_symbol_candidates
 
 __all__ = [
     "_attribute_candidates",
+    "_add_keyword_arg_candidates",
+    "_call_signature_index",
     "_compare_candidates",
     "_guard_candidates",
     "_last_item_candidate",

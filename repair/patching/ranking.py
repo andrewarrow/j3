@@ -174,6 +174,11 @@ def _score_against_hint(candidate: CandidatePatch, hint: PytestFailureHint) -> f
     if candidate.action.kind == PatchActionKind.SWAP_CALL_ARG and hint.assertions:
         score += 10.0
 
+    if candidate.action.kind == PatchActionKind.ADD_KEYWORD_ARG:
+        score += 5.0
+        if hint.assertions:
+            score += 10.0
+
     if candidate.action.kind in {PatchActionKind.RENAME_SYMBOL, PatchActionKind.PROPAGATE_SIGNATURE}:
         original = str(candidate.action.params.get("from", ""))
         replacement = str(candidate.action.params.get("to", ""))

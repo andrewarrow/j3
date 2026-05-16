@@ -101,5 +101,21 @@
         "value": false
       }
     }
+  },
+  {
+    "name": "carrier_timeout_keyword_passthrough",
+    "family": "keyword_argument",
+    "repo": ".",
+    "test": "python -m pytest tests/test_shop.py::test_carrier_timeout_label_passes_timeout_keyword",
+    "preferred": {
+      "file_path": "shop/api.py",
+      "action": "add_keyword_arg",
+      "symbol": "carrier_timeout_label",
+      "params": {
+        "keyword": "timeout_seconds",
+        "value": "timeout_seconds",
+        "callee": "shipping_timeout_label"
+      }
+    }
   }
 ]

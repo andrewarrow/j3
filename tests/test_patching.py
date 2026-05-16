@@ -269,6 +269,39 @@ def test_generate_cross_module_signature_propagation_from_imported_keyword(tmp_p
     )
 
 
+def test_generate_missing_keyword_argument_passthrough_candidate(tmp_path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    package = repo / "shop"
+    package.mkdir()
+    (package / "__init__.py").write_text("", encoding="utf-8")
+    (package / "shipping.py").write_text(
+        "def shipping_timeout_label(timeout_seconds: int = 5) -> str:\n"
+        "    return 'extended' if timeout_seconds >= 30 else 'standard'\n",
+        encoding="utf-8",
+    )
+    (package / "api.py").write_text(
+        "from .shipping import shipping_timeout_label\n\n"
+        "def carrier_timeout_label(timeout_seconds: int = 30) -> str:\n"
+        "    return shipping_timeout_label()\n",
+        encoding="utf-8",
+    )
+
+    candidates = generate_candidate_patches(repo)
+
+    assert any(
+        candidate.file_path == "shop/api.py"
+        and candidate.action.kind.value == "add_keyword_arg"
+        and candidate.action.params == {
+            "keyword": "timeout_seconds",
+            "value": "timeout_seconds",
+            "callee": "shipping_timeout_label",
+        }
+        and "shipping_timeout_label(timeout_seconds=timeout_seconds)" in candidate.patched_source
+        for candidate in candidates
+    )
+
+
 def test_generate_subscript_key_candidate_from_repo_string_literals(tmp_path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()
@@ -553,3 +586,26 @@ def test_patch_solves_missing_dictionary_output_key(tmp_path) -> None:
     assert result.selected.action.kind.value == "add_dict_key"
     assert result.selected.action.params == {"key": "disabled", "value": False}
     assert '"disabled": False,' in result.selected.patched_source
+
+
+def test_patch_solves_missing_keyword_argument_passthrough(tmp_path) -> None:
+    repo = tmp_path / "greenshot_5"
+    shutil.copytree("examples/greenshot_5", repo)
+
+    result = plan_and_maybe_apply_patch(
+        repo=repo,
+        test_command="python -m pytest tests/test_shop.py::test_carrier_timeout_label_passes_timeout_keyword",
+        dry_run=True,
+        timeout_seconds=10,
+    )
+
+    assert result.selected is not None
+    assert result.candidates_tested == 1
+    assert result.selected.file_path == "shop/api.py"
+    assert result.selected.action.kind.value == "add_keyword_arg"
+    assert result.selected.action.params == {
+        "keyword": "timeout_seconds",
+        "value": "timeout_seconds",
+        "callee": "shipping_timeout_label",
+    }
+    assert "shipping_timeout_label(timeout_seconds=timeout_seconds)" in result.selected.patched_source

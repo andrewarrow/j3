@@ -79,6 +79,8 @@ Recent completed work:
 - [x] GreenShot-5 includes an Apache-mined serialized payload task where the
   repair adds a missing dictionary output key.
 - [x] The missing dictionary output-key loop is covered with `add_dict_key`.
+- [x] GreenShot-5 includes an Apache-mined timeout propagation task where the
+  repair adds a missing keyword argument through a helper call.
 
 Current GreenShot-5 signal:
 
@@ -107,6 +109,9 @@ ranked, fresh 11-task preferred-aware v4 outcome ranker:
 
 ranked, Apache checkpoint after adding the missing serialized payload key task:
   solved=14/14 pass@1=9/14 avg_candidates=1.64
+
+ranked, Apache checkpoint after adding the timeout keyword passthrough task:
+  solved=15/15 pass@1=10/15 avg_candidates=1.67
 ```
 
 Current interpretation:
@@ -119,6 +124,8 @@ Current interpretation:
   the new failure, then changing the caller-side mode literal.
 - The serialized payload missing-key task is action-covered by `add_dict_key`;
   KeyError hints rank the preferred helper serializer edit at rank 1.
+- The timeout keyword passthrough task is action-covered by `add_keyword_arg`;
+  helper-call signature context ranks the public API passthrough edit at rank 1.
 - The swapped-arguments-across-modules task is action-covered by
   `swap_call_arg`; hint-only ranking solves it at rank 1. A ranker trained from
   old pre-hint outcome rows buries it, which confirms that current outcome data
@@ -186,7 +193,7 @@ has enough coverage and data to make neural regressions visible.
 - [x] Add Apache-mined GreenShot-5 task: missing dictionary/output key in a
   serialized payload.
 - [ ] Grow GreenShot-5 to at least 20 tasks before neural ranker work.
-- [ ] Add Apache-mined GreenShot-5 task: missing keyword argument propagated
+- [x] Add Apache-mined GreenShot-5 task: missing keyword argument propagated
   through a call chain.
 - [ ] Add Apache-mined GreenShot-5 task: hard failure replaced by a
   default/fallback plus warning.
@@ -219,7 +226,7 @@ has enough coverage and data to make neural regressions visible.
 - [x] Add missing dictionary key/default.
 - [x] Change function default parameter value.
 - [ ] Change module-level config constant.
-- [ ] Add missing keyword argument.
+- [x] Add missing keyword argument.
 - [ ] Remove wrong keyword argument.
 - [ ] Change call target to nearby helper.
 - [ ] Replace attribute chain segment.

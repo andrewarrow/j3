@@ -15,7 +15,11 @@ from ..ast_utils import (
     _string_literals,
 )
 from ..types import CandidatePatch
-from .calls import _swap_call_arg_candidates
+from .calls import (
+    _add_keyword_arg_candidates,
+    _call_signature_index,
+    _swap_call_arg_candidates,
+)
 from .control_flow import (
     _guard_candidates,
     _modify_condition_candidates,
@@ -48,6 +52,7 @@ def generate_candidate_patches(repo: Path) -> list[CandidatePatch]:
 
     local_imports = _local_import_index(parsed_sources)
     external_signature_keywords = _external_signature_keyword_index(parsed_sources)
+    call_signatures = _call_signature_index(parsed_sources)
     candidates: list[CandidatePatch] = []
     for source, tree in parsed_sources:
         path = Path(source.relative_path)
@@ -124,6 +129,15 @@ def generate_candidate_patches(repo: Path) -> list[CandidatePatch]:
                     )
                 elif isinstance(node, ast.Call):
                     candidates.extend(_swap_call_arg_candidates(source.relative_path, source.text, function, node))
+                    candidates.extend(
+                        _add_keyword_arg_candidates(
+                            source.relative_path,
+                            source.text,
+                            function,
+                            node,
+                            call_signatures.get(source.relative_path, {}),
+                        )
+                    )
                 elif isinstance(node, ast.Attribute):
                     candidates.extend(
                         _attribute_candidates(

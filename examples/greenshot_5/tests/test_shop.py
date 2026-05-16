@@ -1,6 +1,7 @@
 from shop.accounts import Account
 from shop.api import (
     balance_after_store_credit,
+    carrier_timeout_label,
     checkout_widget,
     delivery_summary_service,
     express_shipping_label,
@@ -78,3 +79,7 @@ def test_checkout_widget_payload_includes_disabled_key() -> None:
 
     assert payload["label"] == "Pay now"
     assert payload["disabled"] is False
+
+
+def test_carrier_timeout_label_passes_timeout_keyword() -> None:
+    assert carrier_timeout_label(timeout_seconds=30) == "extended"

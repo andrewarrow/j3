@@ -26,6 +26,7 @@ class PatchActionKind(str, Enum):
     CHANGE_SUBSCRIPT_KEY = "change_subscript_key"
     ADD_DICT_KEY = "add_dict_key"
     SWAP_CALL_ARG = "swap_call_arg"
+    ADD_KEYWORD_ARG = "add_keyword_arg"
     ADD_IMPORT = "add_import"
     CHANGE_ATTRIBUTE = "change_attribute"
     WRAP_TRY_EXCEPT = "wrap_try_except"

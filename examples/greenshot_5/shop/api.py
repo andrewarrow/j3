@@ -6,7 +6,7 @@ from .pricing import discounted_subtotal, total_after_store_credit
 from .profiles import display_profile, render_profile, user_badge_label
 from .reports.summary import receipt_total_label
 from .rewards import parse_loyalty_points
-from .shipping import shipping_service_label
+from .shipping import shipping_service_label, shipping_timeout_label
 from .widgets import checkout_widget_payload
 
 
@@ -68,3 +68,7 @@ def delivery_summary_service() -> str:
 
 def checkout_widget(label: str) -> dict[str, object]:
     return checkout_widget_payload(label)
+
+
+def carrier_timeout_label(timeout_seconds: int = 30) -> str:
+    return shipping_timeout_label()

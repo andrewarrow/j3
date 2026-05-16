@@ -1,8 +1,8 @@
-"""Compatibility entrypoint for running the j3 CLI as a script."""
+"""Run the j3 CLI as a module."""
 
 from __future__ import annotations
 
-from cli import main
+from cli.main import main
 
 
 if __name__ == "__main__":

@@ -1,217 +1,23 @@
-"""Evaluation harness for j3 repair tasks."""
+"""Evaluation diagnostics and candidate outcome serialization."""
 
 from __future__ import annotations
 
 import json
-import shutil
-import tempfile
-import time
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, Iterable, Literal
+from typing import Iterable
 
-from patching import CandidatePatch, PatchPlanResult, plan_and_maybe_apply_patch
-
-EvalPhase = Literal["baseline", "ranked", "both"]
-
-
-@dataclass(frozen=True, slots=True)
-class RepairTask:
-    name: str
-    repo: Path
-    test_command: str
-    family: str = "unclassified"
-    preferred_patch: dict[str, object] | None = None
-    max_steps: int = 1
-
-
-@dataclass(frozen=True, slots=True)
-class TaskEvalResult:
-    task: RepairTask
-    baseline: PatchPlanResult | None
-    ranked: PatchPlanResult | None
-
-    @property
-    def baseline_solved(self) -> bool:
-        return self.baseline is not None and self.baseline.selected is not None
-
-    @property
-    def ranked_solved(self) -> bool:
-        return self.ranked is not None and self.ranked.selected is not None
-
-    @property
-    def baseline_skipped(self) -> bool:
-        return self.baseline is None
-
-    @property
-    def ranked_skipped(self) -> bool:
-        return self.ranked is None
-
-
-@dataclass(frozen=True, slots=True)
-class EvalSummary:
-    tasks: list[TaskEvalResult]
-
-    @property
-    def total(self) -> int:
-        return len(self.tasks)
-
-    @property
-    def baseline_solved(self) -> int:
-        return sum(1 for task in self.tasks if task.baseline_solved)
-
-    @property
-    def ranked_solved(self) -> int:
-        return sum(1 for task in self.tasks if task.ranked_solved)
-
-    @property
-    def baseline_pass_at_1(self) -> int:
-        return sum(
-            1
-            for task in self.tasks
-            if (
-                task.baseline_solved
-                and task.baseline is not None
-                and _first_passing_index(task.baseline) == 1
-            )
-        )
-
-    @property
-    def ranked_pass_at_1(self) -> int:
-        return sum(
-            1
-            for task in self.tasks
-            if (
-                task.ranked_solved
-                and task.ranked is not None
-                and _first_passing_index(task.ranked) == 1
-            )
-        )
-
-    @property
-    def baseline_avg_candidates_tested(self) -> float:
-        return _average(
-            [task.baseline.candidates_tested for task in self.tasks if task.baseline is not None]
-        )
-
-    @property
-    def ranked_avg_candidates_tested(self) -> float:
-        return _average(
-            [task.ranked.candidates_tested for task in self.tasks if task.ranked is not None]
-        )
-
-    @property
-    def baseline_skipped(self) -> bool:
-        return all(task.baseline_skipped for task in self.tasks)
-
-    @property
-    def ranked_skipped(self) -> bool:
-        return all(task.ranked_skipped for task in self.tasks)
-
-
-def load_tasks(path: Path) -> list[RepairTask]:
-    """Load a task manifest from a JSON file or directory containing tasks.json."""
-
-    resolved = path.expanduser().resolve()
-    manifest = resolved / "tasks.json" if resolved.is_dir() else resolved
-    base_dir = manifest.parent
-    payload = json.loads(manifest.read_text(encoding="utf-8"))
-
-    tasks: list[RepairTask] = []
-    for item in payload:
-        tasks.append(
-            RepairTask(
-                name=str(item["name"]),
-                repo=(base_dir / str(item.get("repo", "."))).resolve(),
-                test_command=str(item["test"]),
-                family=str(item.get("family", "unclassified")),
-                preferred_patch=(
-                    dict(item["preferred"])
-                    if isinstance(item.get("preferred"), dict)
-                    else None
-                ),
-                max_steps=int(item.get("max_steps", 1)),
-            )
-        )
-    return tasks
-
-
-def evaluate_tasks(
-    *,
-    tasks_path: Path,
-    model_path: Path | None,
-    ranker_path: Path | None = None,
-    timeout_seconds: int = 30,
-    max_candidates: int = 80,
-    max_steps: int = 1,
-    phase: EvalPhase = "both",
-    explore_after_pass: int = 0,
-    progress: Callable[[str], None] | None = None,
-) -> EvalSummary:
-    if phase not in {"baseline", "ranked", "both"}:
-        raise ValueError(f"unsupported eval phase: {phase}")
-    if explore_after_pass < 0:
-        raise ValueError("explore_after_pass must be >= 0")
-    tasks = load_tasks(tasks_path)
-    _emit_progress(progress, f"eval: loaded {len(tasks)} task(s) from {tasks_path}")
-    results: list[TaskEvalResult] = []
-    for index, task in enumerate(tasks, start=1):
-        task_started = time.perf_counter()
-        _emit_progress(progress, f"task {index}/{len(tasks)} {task.name}: start")
-        baseline: PatchPlanResult | None = None
-        if phase in {"baseline", "both"}:
-            baseline = _run_task(
-                task=task,
-                phase="baseline",
-                model_path=None,
-                ranker_path=None,
-                use_failure_hints=False,
-                timeout_seconds=timeout_seconds,
-                max_candidates=max_candidates,
-                max_steps=task.max_steps if task.max_steps != 1 else max_steps,
-                explore_after_pass=explore_after_pass,
-                progress=progress,
-            )
-            _emit_progress(
-                progress,
-                "task "
-                f"{index}/{len(tasks)} {task.name}: baseline "
-                f"solved={baseline.selected is not None} tested={baseline.candidates_tested}",
-            )
-        else:
-            _emit_progress(progress, f"task {index}/{len(tasks)} {task.name}: baseline skipped")
-
-        ranked: PatchPlanResult | None = None
-        if phase in {"ranked", "both"}:
-            ranked = _run_task(
-                task=task,
-                phase="model",
-                model_path=model_path,
-                ranker_path=ranker_path,
-                use_failure_hints=True,
-                timeout_seconds=timeout_seconds,
-                max_candidates=max_candidates,
-                max_steps=task.max_steps if task.max_steps != 1 else max_steps,
-                explore_after_pass=explore_after_pass,
-                progress=progress,
-            )
-            _emit_progress(
-                progress,
-                "task "
-                f"{index}/{len(tasks)} {task.name}: model "
-                f"solved={ranked.selected is not None} tested={ranked.candidates_tested} "
-                f"elapsed={time.perf_counter() - task_started:.2f}s",
-            )
-        else:
-            _emit_progress(
-                progress,
-                "task "
-                f"{index}/{len(tasks)} {task.name}: model skipped "
-                f"elapsed={time.perf_counter() - task_started:.2f}s",
-            )
-        results.append(TaskEvalResult(task=task, baseline=baseline, ranked=ranked))
-    return EvalSummary(tasks=results)
+from evaluation.models import EvalSummary, RepairTask
+from evaluation.plan_utils import (
+    _average,
+    _candidate_passed,
+    _candidates_tested_after_pass,
+    _candidates_tested_before_pass,
+    _first_passing_index,
+    _passing_candidates,
+)
+from patching import CandidatePatch, PatchPlanResult
 
 
 def write_eval_diagnostics(summary: EvalSummary, path: Path) -> Path:
@@ -241,7 +47,7 @@ def write_eval_diagnostics(summary: EvalSummary, path: Path) -> Path:
                 "ranked": _plan_diagnostics(result.ranked),
             }
             for result in summary.tasks
-        ]
+        ],
     }
     resolved.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     return resolved
@@ -256,53 +62,6 @@ def write_candidate_outcomes(summary: EvalSummary, path: Path) -> Path:
     text = "".join(json.dumps(row, sort_keys=True) + "\n" for row in rows)
     resolved.write_text(text, encoding="utf-8")
     return resolved
-
-
-def _run_task(
-    *,
-    task: RepairTask,
-    phase: str,
-    model_path: Path | None,
-    ranker_path: Path | None,
-    use_failure_hints: bool,
-    timeout_seconds: int,
-    max_candidates: int,
-    max_steps: int,
-    explore_after_pass: int,
-    progress: Callable[[str], None] | None,
-) -> PatchPlanResult:
-    with tempfile.TemporaryDirectory(prefix="j3-eval-") as tmp:
-        tmp_repo = Path(tmp) / task.repo.name
-        shutil.copytree(task.repo, tmp_repo)
-        prefix = f"{task.name}/{phase}"
-        return plan_and_maybe_apply_patch(
-            repo=tmp_repo,
-            test_command=task.test_command,
-            dry_run=False,
-            timeout_seconds=timeout_seconds,
-            max_candidates=max_candidates,
-            max_steps=max_steps,
-            model_path=model_path,
-            ranker_path=ranker_path,
-            use_failure_hints=use_failure_hints,
-            explore_after_pass=explore_after_pass,
-            progress=(
-                (lambda message: progress(f"{prefix}: {message}"))
-                if progress is not None
-                else None
-            ),
-        )
-
-
-def _average(values: list[int]) -> float:
-    if not values:
-        return 0.0
-    return sum(values) / len(values)
-
-
-def _emit_progress(progress: Callable[[str], None] | None, message: str) -> None:
-    if progress is not None:
-        progress(message)
 
 
 def _plan_diagnostics(plan: PatchPlanResult | None) -> dict[str, object]:
@@ -569,29 +328,6 @@ def _failure_mode(plan: PatchPlanResult) -> str:
     return "search_budget_or_bad_ranking"
 
 
-def _first_passing_index(plan: PatchPlanResult) -> int | None:
-    if plan.first_passing_index is not None:
-        return plan.first_passing_index
-    if plan.selected is None:
-        return None
-    for index, candidate in enumerate(plan.tested_candidates, start=1):
-        if candidate == plan.selected:
-            return index
-    return plan.candidates_tested if plan.candidates_tested > 0 else None
-
-
-def _passing_candidates(plan: PatchPlanResult) -> tuple[CandidatePatch, ...]:
-    if plan.passing_candidates:
-        return plan.passing_candidates
-    if plan.selected is None:
-        return ()
-    return (plan.selected,)
-
-
-def _candidate_passed(candidate: CandidatePatch, plan: PatchPlanResult) -> bool:
-    return any(candidate == passing for passing in _passing_candidates(plan))
-
-
 def _candidate_matches_preferred(
     candidate: CandidatePatch,
     preferred_patch: dict[str, object] | None,
@@ -611,20 +347,6 @@ def _candidate_matches_preferred(
             if candidate.action.params.get(key) != value:
                 return False
     return True
-
-
-def _candidates_tested_before_pass(plan: PatchPlanResult) -> int | None:
-    first_passing_index = _first_passing_index(plan)
-    if first_passing_index is None:
-        return None
-    return first_passing_index - 1
-
-
-def _candidates_tested_after_pass(plan: PatchPlanResult) -> int:
-    first_passing_index = _first_passing_index(plan)
-    if first_passing_index is None:
-        return 0
-    return max(0, plan.candidates_tested - first_passing_index)
 
 
 def _top_counter(counter: Counter[str], limit: int = 10) -> list[dict[str, object]]:

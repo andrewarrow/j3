@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 
-from training import train_from_path
+from training import train_from_path, train_from_paths
 
 
 def test_train_from_path_writes_model_metrics_and_examples(tmp_path) -> None:
@@ -48,3 +48,22 @@ def test_train_from_path_rejects_repos_without_examples(tmp_path) -> None:
         assert "no synthetic Python repair transitions" in str(error)
     else:
         raise AssertionError("expected ValueError")
+
+
+def test_train_from_paths_combines_multiple_repos(tmp_path) -> None:
+    repo_a = tmp_path / "repo_a"
+    repo_b = tmp_path / "repo_b"
+    repo_a.mkdir()
+    repo_b.mkdir()
+    (repo_a / "first.py").write_text("def a(value):\n    return value > 1\n", encoding="utf-8")
+    (repo_b / "second.py").write_text("def b():\n    return True\n", encoding="utf-8")
+
+    result = train_from_paths(
+        data_paths=[repo_a, repo_b],
+        out_dir=tmp_path / "run",
+        embedding_dim=32,
+        max_examples=10,
+    )
+
+    assert result.source_files == 2
+    assert result.parsed_examples >= 2

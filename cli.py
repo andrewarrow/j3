@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Sequence
 
 from actions import PatchActionKind
-from training import train_from_path
+from training import train_from_paths
 
 
 DESCRIPTION = (
@@ -80,7 +80,8 @@ def build_parser() -> argparse.ArgumentParser:
         "--data",
         type=Path,
         required=True,
-        help="path to transition data",
+        nargs="+",
+        help="one or more Python repo paths to use as training data",
     )
     train_parser.add_argument(
         "--out",
@@ -150,14 +151,16 @@ def handle_patch(args: argparse.Namespace) -> int:
 
 
 def handle_train(args: argparse.Namespace) -> int:
-    result = train_from_path(
-        data_path=args.data,
+    result = train_from_paths(
+        data_paths=args.data,
         out_dir=args.out,
         embedding_dim=args.embedding_dim,
         max_examples=args.max_examples,
     )
     print("j3 train complete")
-    print(f"data: {args.data.expanduser().resolve()}")
+    print("data:")
+    for path in args.data:
+        print(f"  {path.expanduser().resolve()}")
     print(f"out: {result.out_dir}")
     print(f"source files: {result.source_files}")
     print(f"synthetic transitions: {result.parsed_examples}")

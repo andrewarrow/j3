@@ -93,8 +93,9 @@ Useful starter commands:
 ```bash
 j3 actions
 j3 actions --json
-j3 train --data ../Decepticon
-j3 patch --repo . --test "pytest" --dry-run
+j3 train --data examples/greenshot_bug
+j3 train --data ../Decepticon ../scientific-agent-skills ../CLI-Anything
+j3 patch --repo examples/greenshot_bug --test "pytest tests/test_calculator.py" --dry-run
 pytest
 ```
 
@@ -104,6 +105,7 @@ pytest
 .
 ├── actions.py        # structured patch actions and targets
 ├── cli.py            # command line interface
+├── examples/         # small local repos for demos and smoke tests
 ├── features.py       # deterministic AST hashing encoder
 ├── repo.py           # repository discovery helpers
 ├── synth.py          # synthetic break/fix transition generation
@@ -126,7 +128,13 @@ local data loop:
 5. write reproducible artifacts under `runs/`
 
 ```bash
-j3 train --data ../Decepticon
+j3 train --data examples/greenshot_bug
+```
+
+You can also train from more than one local repo:
+
+```bash
+j3 train --data ../Decepticon ../scientific-agent-skills ../CLI-Anything
 ```
 
 Artifacts:
@@ -140,6 +148,28 @@ runs/greenshot-1/
 
 This gives the next step something concrete to consume: `patch` can load
 `model.json`, score candidate structured edits, and make the first patch attempt.
+
+## Example Failing Repo
+
+`examples/greenshot_bug` is a tiny Python repo with one intentional bug and one
+failing pytest test. It is the stable first target for `j3 patch`:
+
+```bash
+cd examples/greenshot_bug
+pytest tests/test_calculator.py
+```
+
+Expected result today:
+
+```text
+1 failed, 1 passed
+```
+
+From the `j3` repo root, use it with:
+
+```bash
+j3 patch --repo examples/greenshot_bug --test "pytest tests/test_calculator.py" --dry-run
+```
 
 ## Initial Patch Action Space
 

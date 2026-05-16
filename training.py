@@ -36,31 +36,55 @@ def train_from_path(
 ) -> TrainingResult:
     """Train the first prototype model from a Python repo path."""
 
+    return train_from_paths(
+        data_paths=[data_path],
+        out_dir=out_dir,
+        embedding_dim=embedding_dim,
+        max_examples=max_examples,
+    )
+
+
+def train_from_paths(
+    *,
+    data_paths: list[Path],
+    out_dir: Path,
+    embedding_dim: int = 256,
+    max_examples: int = 500,
+) -> TrainingResult:
+    """Train the first prototype model from one or more Python repo paths."""
+
     if embedding_dim < 8:
         raise ValueError("embedding_dim must be >= 8")
     if max_examples < 1:
         raise ValueError("max_examples must be >= 1")
+    if not data_paths:
+        raise ValueError("at least one data path is required")
 
-    repo_root = data_path.expanduser().resolve()
+    repo_roots = [path.expanduser().resolve() for path in data_paths]
     output = out_dir.expanduser().resolve()
     output.mkdir(parents=True, exist_ok=True)
 
-    sources = iter_python_sources(repo_root)
+    sources_by_repo = [(repo_root, iter_python_sources(repo_root)) for repo_root in repo_roots]
     transitions: list[SyntheticTransition] = []
-    for source in sources:
-        remaining = max_examples - len(transitions)
-        if remaining <= 0:
-            break
-        transitions.extend(
-            generate_transitions(
-                file_path=source.relative_path,
-                source=source.text,
-                max_examples=min(remaining, 20),
+    for repo_root, sources in sources_by_repo:
+        for source in sources:
+            remaining = max_examples - len(transitions)
+            if remaining <= 0:
+                break
+            file_path = f"{repo_root.name}/{source.relative_path}"
+            transitions.extend(
+                generate_transitions(
+                    file_path=file_path,
+                    source=source.text,
+                    max_examples=min(remaining, 20),
+                )
             )
-        )
+        if len(transitions) >= max_examples:
+            break
 
     if not transitions:
-        raise ValueError(f"no synthetic Python repair transitions found in {repo_root}")
+        sources = ", ".join(str(root) for root in repo_roots)
+        raise ValueError(f"no synthetic Python repair transitions found in {sources}")
 
     deltas_by_action: dict[str, list[list[float]]] = defaultdict(list)
     before_vectors: list[list[float]] = []
@@ -88,7 +112,7 @@ def train_from_path(
     model = {
         "format": MODEL_FORMAT,
         "created_at": datetime.now(timezone.utc).isoformat(),
-        "source": str(repo_root),
+        "sources": [str(root) for root in repo_roots],
         "feature_version": FEATURE_VERSION,
         "embedding_dim": embedding_dim,
         "examples": len(transitions),
@@ -102,9 +126,9 @@ def train_from_path(
     }
 
     metrics = {
-        "source": str(repo_root),
+        "sources": [str(root) for root in repo_roots],
         "output": str(output),
-        "source_files": len(sources),
+        "source_files": sum(len(sources) for _, sources in sources_by_repo),
         "synthetic_examples": len(transitions),
         "embedding_dim": embedding_dim,
         "max_examples": max_examples,
@@ -126,7 +150,7 @@ def train_from_path(
         model_path=model_path,
         metrics_path=metrics_path,
         examples_path=examples_path,
-        source_files=len(sources),
+        source_files=sum(len(sources) for _, sources in sources_by_repo),
         parsed_examples=len(transitions),
         action_counts=dict(sorted(action_counts.items())),
     )

@@ -1,138 +1,136 @@
 # j3
 
-JEPA is naturally a predictor/planner, not a text generator. So we should not ask it to free-form generate arbitrary source text like an LLM.
+`j3` is an experiment in building a local-first JEPA coding agent.
 
-  we define a structured patch action space:
+The goal is simple and ambitious: repair Python repositories by predicting the
+consequences of code edits in latent repo space, without asking an LLM to
+generate patch candidates first.
 
-  replace_expr
-  insert_guard
-  change_literal
-  change_operator
-  swap_call_arg
-  add_import
-  change_attribute
-  wrap_try_except
-  change_return_value
-  rename_symbol
-  modify_condition
+## Why This Exists
 
-  Then Code-JEPA chooses the edit action, target AST node, and parameters from the repo symbol table. A deterministic
-  patch engine turns that action into a real diff.
+Most coding agents are language models wrapped in tools. They read files, guess
+a patch, run tests, inspect the failure, and repeat. That can work, but it is
+expensive, token-heavy, and often blind to the actual dynamics of a codebase.
 
-  So the model makes the patch, but through structured edits rather than next-token generation.
+`j3` treats a repository as a world:
 
-  First Demo: GreenShot-1
-  Input:
+- the current codebase is the state
+- a patch is an action
+- tests, type checks, stack traces, and runtime behavior are observations
+- a passing test suite is a target state
 
-  A Python repo with one failing pytest failure.
+Instead of generating arbitrary source text token by token, `j3` starts with a
+structured patch action space. The model chooses an edit type, target, and
+parameters. A deterministic patch engine turns that decision into a real diff.
 
-  Output:
+## First Demo: GreenShot-1
 
-  One patch attempt, generated without an LLM.
+The first milestone is intentionally narrow:
 
-  Flow:
+```text
+Input:  a Python repo with one failing pytest failure
+Output: one patch attempt, generated without an LLM
+```
 
-  repo + failing test log
-        ↓
-  encode repo state into latent space
-        ↓
-  predict which edit moves state toward "tests pass"
-        ↓
-  materialize structured edit as patch
-        ↓
-  run tests once
+The intended flow:
 
-  Command shape:
+```text
+repo + failing test log
+      -> encode repo state into latent space
+      -> predict which structured edit moves the repo toward "tests pass"
+      -> materialize the edit as a patch
+      -> run the target test once
+```
 
-  codemesh patch --repo ~/my_project --test "pytest tests/test_parser.py::test_edge_case"
+Example command shape:
 
-  Expected output:
+```bash
+j3 patch --repo ~/projects/example --test "pytest tests/test_parser.py::test_edge_case"
+```
 
-  - if value > limit:
-  + if value >= limit:
+Example patch shapes:
 
-  or:
+```diff
+- if value > limit:
++ if value >= limit:
+```
 
-  + from pathlib import Path
+```diff
+- return items[0]
++ return items[-1]
+```
 
-  or:
+```diff
++ from pathlib import Path
+```
 
-  - return items[0]
-  + return items[-1]
+## What Makes This Different
 
-  What Runs Locally
-  On your Mac Studio, I would build this with:
+`j3` is not trying to be another code completion model. The first useful system
+should be a repo-world predictor and planner:
 
-  - libcst or tree-sitter for Python ASTs
-  - pytest log parser
-  - lightweight graph/transformer encoder
-  - MLX or PyTorch MPS backend
-  - local SQLite/DuckDB transition cache
-  - no hosted LLM dependency
+- predict the effect of a patch before running every possible test
+- choose a first repair action from a constrained edit space
+- learn from synthetic break/fix transitions generated locally
+- cache compact repo embeddings instead of repeatedly sending large prompts
+- run on developer hardware, starting with Apple silicon
 
-  Apple’s MLX is designed for Apple silicon unified memory, and PyTorch’s MPS backend supports GPU acceleration on Apple
-  hardware:
+In pure mode, the first demo uses no hosted LLM and no API tokens.
 
-  - https://opensource.apple.com/projects/mlx/
-  - https://docs.pytorch.org/docs/stable/notes/mps
+## Initial Patch Action Space
 
-  Training Data
-  Start with data we can generate locally:
+The early action space is deliberately small:
 
-  1. Take passing Python repos.
-  2. Mutate them into failing versions.
-  3. Store:
+- `replace_expr`
+- `insert_guard`
+- `change_literal`
+- `change_operator`
+- `swap_call_arg`
+- `add_import`
+- `change_attribute`
+- `wrap_try_except`
+- `change_return_value`
+- `rename_symbol`
+- `modify_condition`
 
-  before_state + failing_log + repair_action -> after_state
+This keeps the first model honest. It either learns to choose useful edits from
+real repo signals, or it fails visibly.
 
-  4. Train Code-JEPA to predict the latent after-state and learn which action reduces failure.
+## Local Training Plan
 
-  Then add SWE-smith because it already generates many software-engineering tasks from Python repos:
+The first training set can be generated without scraping private code:
 
-  - https://swesmith.com/
-  - https://arxiv.org/abs/2504.21798
+1. Start from passing Python projects.
+2. Apply controlled mutations that create failing tests.
+3. Store the failing repo state, pytest output, repair action, and repaired
+   state.
+4. Train a small JEPA-style model to predict the latent repaired state and rank
+   useful actions.
 
-  Why This Uses Fewer Tokens
-  In pure mode, there are no LLM tokens.
+The first target is not arbitrary SWE-bench performance. A useful early result
+would be strong `pass@1` on held-out synthetic Python bugs, then a constrained
+subset of generated software-engineering tasks.
 
-  Internally, the model still reads code, but it does not repeatedly stuff whole files, logs, and instructions into an
-  autoregressive context. It caches file/AST embeddings and predicts over compact latent states.
+## Developer Roadmap
 
-  The bottleneck becomes:
+The project should grow in this order:
 
-  parsing + model inference + pytest runtime
+1. Define structured patch actions and repo-state records.
+2. Add a Python AST parser and target selector.
+3. Add a deterministic patch materializer.
+4. Generate synthetic break/fix transitions from small repos.
+5. Train a compact local JEPA predictor.
+6. Run the GreenShot-1 demo end to end.
+7. Add a distributed node that contributes anonymized transition metrics,
+   adapters, or public examples.
 
-  not prompt size.
+## Hardware Target
 
-  Realistic First Target
-  Do not start with arbitrary SWE-bench. Start with a controlled benchmark:
+The first implementation should be practical on a Mac Studio-class machine with
+Apple silicon, 48 GB unified memory, and local Python projects. The first model
+should be small enough that iteration speed matters more than benchmark scale.
 
-  - wrong operator
-  - wrong literal
-  - missing import
-  - wrong function argument
-  - missing guard
-  - bad return expression
-  - simple exception handling
-  - off-by-one indexing
-  - incorrect attribute access
+## Status
 
-  First success metric:
-
-  pass@1: one JEPA-generated patch, one test run
-
-  A strong first result would be:
-
-  30-50% pass@1 on held-out synthetic repo bugs
-  10-25% pass@1 on a constrained SWE-smith subset
-
-  That would already be interesting because it proves a non-LLM latent world model can produce useful first patches
-  locally.
-
-  Revised Project Claim
-  The MVP should say:
-
-  > CodeMesh-JEPA is a local-first JEPA coding agent that repairs Python repos by planning structured edits in latent
-  > repo space, using no LLM-generated patch candidates.
-
-  That is a sharper and more original first demo.
+This repository is at the foundation stage. The first code defines the structured
+patch actions that the rest of the system will learn to select and apply.

@@ -255,7 +255,7 @@ Run GreenShot-2 against the trained model:
 ```bash
 python3 cli.py eval \
   --tasks examples/greenshot_bugs \
-  --checkpoint runs/mit-python-10k/model.json \
+  --checkpoint runs/mit-python-git/model.json \
   --timeout 10
 ```
 
@@ -263,18 +263,19 @@ Observed result:
 
 ```text
 baseline: solved=5/5 pass@1=1/5 avg_candidates=21.80
-model-ranked: solved=5/5 pass@1=0/5 avg_candidates=16.80
+model-ranked: solved=5/5 pass@1=1/5 avg_candidates=11.00
 ```
 
-The current prototype model reduces average search but does not improve pass@1
-yet. That is expected: the current trainer uses synthetic transitions and a
-prototype latent action-delta scorer, not a neural JEPA model.
+The current prototype model now stores bounded action-delta exemplars alongside
+the old averaged prototypes. Mined `git_transition` examples are used as
+action-agnostic nearest-neighbor evidence during candidate ranking, which lets
+real commit history influence ordinary structured actions such as
+`replace_expr`, `change_literal`, and `change_operator`.
 
-The combined synthetic plus git-transition model currently produces the same
-GreenShot-2 metrics. That means the data path works, but the prototype scorer is
-too shallow to benefit from real commit history yet. The next modeling step is a
-trainable encoder/ranker that can learn from the `git_transition` examples
-instead of only averaging action deltas.
+This is still a shallow non-neural scorer. It improves the GreenShot-2 average
+search cost and restores one pass@1 result, but one task still regresses versus
+baseline. The next modeling step remains a trainable encoder/ranker with
+explicit positive and negative candidate pairs.
 
 ## Full Repository URLs
 

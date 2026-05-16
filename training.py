@@ -14,6 +14,7 @@ from synth import SyntheticTransition, generate_transitions
 
 
 MODEL_FORMAT = "j3.prototype-jepa.v1"
+MAX_EXEMPLARS_PER_ACTION = 256
 
 
 @dataclass(frozen=True, slots=True)
@@ -169,6 +170,10 @@ def train_from_paths(
             action: mean_vector(vectors, dim=embedding_dim)
             for action, vectors in sorted(deltas_by_action.items())
         },
+        "action_delta_exemplars": {
+            action: _select_exemplars(vectors, limit=MAX_EXEMPLARS_PER_ACTION)
+            for action, vectors in sorted(deltas_by_action.items())
+        },
     }
 
     metrics = {
@@ -230,3 +235,16 @@ def _load_mined_examples(paths: list[Path], *, limit: int) -> list[dict[str, obj
                     if "before_source" in record and "after_source" in record:
                         examples.append(record)
     return examples
+
+
+def _select_exemplars(vectors: list[list[float]], *, limit: int) -> list[list[float]]:
+    if limit < 1:
+        return []
+    if len(vectors) <= limit:
+        return vectors
+    if limit == 1:
+        return [vectors[0]]
+
+    step = (len(vectors) - 1) / (limit - 1)
+    indexes = [round(index * step) for index in range(limit)]
+    return [vectors[index] for index in indexes]

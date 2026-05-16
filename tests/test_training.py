@@ -39,6 +39,7 @@ def double(value):
     assert model["format"] == "j3.prototype-jepa.v1"
     assert model["embedding_dim"] == 32
     assert "replace_expr" in model["action_delta_prototypes"]
+    assert "replace_expr" in model["action_delta_exemplars"]
     assert metrics["synthetic_examples"] == result.parsed_examples
     assert "repair_action" in first_example
 
@@ -108,3 +109,6 @@ def test_train_includes_mined_transitions(tmp_path) -> None:
     assert result.mined_examples == 1
     assert metrics["mined_examples"] == 1
     assert "git_transition" in result.action_counts
+
+    model = json.loads(result.model_path.read_text(encoding="utf-8"))
+    assert len(model["action_delta_exemplars"]["git_transition"]) == 1

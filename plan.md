@@ -224,37 +224,37 @@ Next 10 small tasks:
    training pairs, training accuracy, margin violations, ranker path.
    Focused check: `pytest tests/test_cli.py -q`.
 
-3. Add `--plan baseline|ranked` to `train-ranker` so diagnostics can train
-   from either eval phase.
-   Focused check: `pytest tests/test_candidate_ranking.py -q`.
-
-4. Add a diagnostics utility that reports the first bad-ranking task and the
-   failed candidates before the passing candidate.
-   Focused check: `pytest tests/test_evaluation.py -q`.
-
-5. Add a small test for eval progress logging shape without running a large
-   benchmark.
-   Focused check: `pytest tests/test_cli.py -q`.
-
-6. Teach candidate-ranker metrics to report top positive and negative feature
-   weights for inspection.
-   Focused check: `pytest tests/test_candidate_ranking.py -q`.
-
-7. Add one narrow GreenShot task for operator tie-breaking around inclusive
-   boundaries.
-   Focused check: run that one pytest node in `examples/greenshot_4`.
-
-8. Add ranker-aware diagnostics summary fields: ranker path, ranker score
+3. Add ranker-aware diagnostics summary fields: ranker path, ranker score
    presence, and selected candidate ranker score.
    Focused check: `pytest tests/test_evaluation.py -q`.
 
-9. Add a quick eval smoke command to docs that uses GreenShot-3 with
-   `--max-candidates 1`, matching the new verification cadence.
-   Docs-only check unless command text changes CLI behavior.
+4. Create `examples/greenshot_5` as a multi-file benchmark fixture with a
+   `tasks.json`, package code, and pytest tests.
+   Focused check: run one new GreenShot-5 pytest node directly.
 
-10. Add a guardrail test that `patch` behaves the same when a missing ranker
-    path is provided.
-    Focused check: `pytest tests/test_patching.py -q`.
+5. Add the first GreenShot-5 task: a repair through a call chain where the
+   failing assertion names a public API but the edit belongs in a helper.
+   Focused check: run that one new pytest node directly.
+
+6. Add a GreenShot-5 multi-file missing import task where the traceback points
+   to one module and the import belongs in that module.
+   Focused check: run that one new pytest node directly.
+
+7. Add a GreenShot-5 attribute rename task with repeated nearby attributes so
+   candidate ranking has plausible wrong choices.
+   Focused check: run that one new pytest node directly.
+
+8. Add a GreenShot-5 signature/call-site propagation task that spans two
+   functions and includes a plausible call-site-only wrong fix.
+   Focused check: run that one new pytest node directly.
+
+9. Add `tests/test_evaluation.py` coverage that `load_tasks` handles
+   `examples/greenshot_5`.
+   Focused check: `pytest tests/test_evaluation.py -q`.
+
+10. Run a small GreenShot-5 eval smoke with a tight candidate budget and record
+    baseline vs model-ranked numbers in this plan.
+    Focused check: `python3 cli.py eval --tasks examples/greenshot_5 --checkpoint runs/mit-python-git/model.json --timeout 10 --max-candidates 3`.
 
 ### Later Tasks
 

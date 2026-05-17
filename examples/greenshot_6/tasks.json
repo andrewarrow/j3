@@ -704,6 +704,27 @@
     }
   },
   {
+    "name": "smolagents_manager_timing_details_wording",
+    "family": "agent_timing_message",
+    "source_type": "git_history",
+    "split": "train",
+    "repo": ".",
+    "test": "python -m pytest tests/test_agentlogs.py::test_manager_timing_summary_uses_details_wording",
+    "source": {
+      "repo": "huggingface/smolagents",
+      "commit": "255325182c94760a6e9bb03838e25593e967d701"
+    },
+    "preferred": {
+      "file_path": "agentlogs/monitoring.py",
+      "action": "change_literal",
+      "symbol": "manager_timing_summary",
+      "params": {
+        "from": "Here are the timing informations for the manager agent:",
+        "to": "Here are the timing details for the manager agent:"
+      }
+    }
+  },
+  {
     "name": "django_makemessages_locale_directory_exists",
     "family": "i18n_error_message",
     "source_type": "git_history",

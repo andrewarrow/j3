@@ -99,7 +99,7 @@ def test_load_greenshot_6_tasks() -> None:
     tasks = load_tasks(Path("examples/greenshot_6"))
     by_name = {task.name: task for task in tasks}
 
-    assert len(tasks) == 65
+    assert len(tasks) == 66
     assert tasks[0].name == "core_metadata_version_dict_value"
     assert tasks[0].family == "mapping_value"
     assert tasks[0].source_type == "mutation"
@@ -346,6 +346,22 @@ def test_load_greenshot_6_tasks() -> None:
         "params": {
             "from": "Control plane APIs for programatically building/deploying Chalice apps.",
             "to": "Control plane APIs for programmatically building/deploying Chalice apps.",
+        },
+    }
+    assert by_name["smolagents_manager_timing_details_wording"].family == (
+        "agent_timing_message"
+    )
+    assert by_name["smolagents_manager_timing_details_wording"].source_type == (
+        "git_history"
+    )
+    assert by_name["smolagents_manager_timing_details_wording"].split == "train"
+    assert by_name["smolagents_manager_timing_details_wording"].preferred_patch == {
+        "file_path": "agentlogs/monitoring.py",
+        "action": "change_literal",
+        "symbol": "manager_timing_summary",
+        "params": {
+            "from": "Here are the timing informations for the manager agent:",
+            "to": "Here are the timing details for the manager agent:",
         },
     }
     assert by_name["starlette_websocket_runtime_error_allowed_messages"].family == (

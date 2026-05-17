@@ -1726,6 +1726,30 @@ def test_patch_solves_httpx_stream_read_docline_response_text(tmp_path) -> None:
     assert "making response.text" in result.selected.patched_source
 
 
+def test_patch_solves_smolagents_manager_timing_details_wording(tmp_path) -> None:
+    repo = tmp_path / "greenshot_6"
+    shutil.copytree("examples/greenshot_6", repo)
+
+    result = plan_and_maybe_apply_patch(
+        repo=repo,
+        test_command=(
+            "python -m pytest "
+            "tests/test_agentlogs.py::test_manager_timing_summary_uses_details_wording"
+        ),
+        dry_run=True,
+        timeout_seconds=10,
+    )
+
+    assert result.selected is not None
+    assert result.selected.file_path == "agentlogs/monitoring.py"
+    assert result.selected.action.kind.value == "change_literal"
+    assert result.selected.action.params == {
+        "from": "Here are the timing informations for the manager agent:",
+        "to": "Here are the timing details for the manager agent:",
+    }
+    assert "timing details" in result.selected.patched_source
+
+
 def test_generate_membership_operator_with_literal_needle_decoy(tmp_path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()

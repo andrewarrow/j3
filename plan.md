@@ -1700,48 +1700,56 @@ Start neural/JEPA work only when:
 
 ## Handoff Recommendation
 
-The next context window should start from the post-HTTPX-docline GreenShot-6
+The next context window should start from the post-smolagents-timing GreenShot-6
 refresh, not the older pytestdocs, typechecker, keyword-coverage, packaging
 parser, FastAPI OAuth2, Werkzeug AirPlay, flake8-bugbear B037, Seaborn
 plot-label, graphlayout/NetworkX, taskqueue/Celery, envwrite, v13 literal-key,
-scipyquad, raisemsg, attrvalidators, or pytest-regex-label states. GreenShot-6
-now has 65 tasks.
+scipyquad, raisemsg, attrvalidators, pytest-regex-label, or HTTPX-docline
+states. GreenShot-6 now has 66 tasks.
 
 Latest addition:
 
-- Fixture domain: `httpclient`
-- Task: `httpx_stream_read_docline_response_text`
-- Source: `encode/httpx` PR 3359 / commit
-  `6f9b50990dad9645a6f9dc0e1eb90af0a6474c3b`
-- Repair shape: HTTPX stream-read docs should refer to `response.text`, not
-  `request.text`, when reading a response body.
+- Fixture domain: `agentlogs`
+- Task: `smolagents_manager_timing_details_wording`
+- Source: `huggingface/smolagents` commit
+  `255325182c94760a6e9bb03838e25593e967d701`
+- Repair shape: manager timing output should say `timing details`, not
+  `timing informations`.
 - Action: existing `change_literal`; no action family, ranker metadata, broad
   weight, or pass/preferred-label change was needed.
 
-Latest GreenShot-6 refresh with `--explore-after-pass 5` solved all 65 tasks:
-`pass@1=48/65`, average candidates `7.66`, rows `498`, passing rows `96`, and
-preferred-positive rows `65`. Source-type pass@1 is `git_history=30/44` and
-`mutation=18/21`. The new HTTPX-derived task passes at raw rank 1 with the
-preferred `change_literal` candidate.
+Latest standard GreenShot-6 refresh with `--max-candidates 80 --phase ranked`
+and `--explore-after-pass 5` solved all 66 tasks: `pass@1=49/66`, average
+candidates `7.64`, rows `504`, passing rows `97`, and preferred-positive rows
+`66`. Source-type pass@1 is `git_history=31/45` and `mutation=18/21`. The new
+smolagents-derived task passes at raw rank 1 with the preferred
+`change_literal` candidate.
 
 The same GreenShot-6 `split: test` held-out validation is clean:
 solved=7/7, pass@1=7/7, positive@1=7/7, validation rows=46, and
-avg_first_passing_index=1.0. Training used 578 rows, 104 passing rows, 499
+avg_first_passing_index=1.0. Training used 584 rows, 105 passing rows, 504
 training pairs, 906 features, and 4 margin violations.
 
 Latest inspection summary:
 
-- Raw GreenShot-6 has 17 pass@1 misses after the HTTPX-docline refresh. Every
-  task has a tested preferred-positive row.
-- Applying the saved GreenShot-6 `split: test` ranker to all refreshed
-  GreenShot-6 rows found no trained pass@1 or preferred-positive misses.
+- Before dataset growth, refreshed raw GreenShot-6 had 17 pass@1 misses after
+  the HTTPX-docline refresh. Every task had a tested preferred-positive row,
+  and the saved `split: test` ranker placed every preferred-positive candidate
+  first across all 65 tasks.
+- After adding `smolagents_manager_timing_details_wording`, raw GreenShot-6 has
+  17 pass@1 misses under the standard refresh command. Every task still has a
+  tested preferred-positive row.
+- Applying the refreshed GreenShot-6 `split: test` ranker to all refreshed
+  GreenShot-6 rows found no trained pass@1 or preferred-positive misses across
+  all 66 tasks.
 - `HARD_NEGATIVES.md` was not updated this turn because no new verified
   residual appeared.
 
 Immediate next sequence:
 
 1. Inspect refreshed raw pass@1 misses and trained preferred-positive ranks.
-2. If no narrow residual appears, add the next real-package-derived GreenShot-6
-   train-split task.
+2. If no narrow candidate-generation, outcome-quality, or ranker-metadata
+   residual appears, add the next real-package-derived GreenShot-6 train-split
+   task using an existing action family where possible.
 3. Keep the same GreenShot-6 `split: test` held-out validation as the
    cookie-inclusive regression slice.

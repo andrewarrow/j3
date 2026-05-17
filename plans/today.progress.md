@@ -7,11 +7,11 @@ new implementation facts change the 24-hour plan itself. Record any
 
 ## Status
 
-- Current phase: pre-implementation setup for GreenShot-7 calculator slice
+- Current phase: deterministic parser implementation for GreenShot-7 calculator slice
 - Completed iterations: 2
 - Passing focused tests: prompt seed JSONL validation, `test -s REQUEST_SPEC.md`,
   GreenShot-7 fixture JSON validation
-- Latest commit: `Add GreenShot-7 prompt fixtures`
+- Latest commit: `9a9f93b094e9c35b2bbeb6965556681480accc4f` (`Add GreenShot-7 prompt fixtures`)
 - Current blocker: none
 - Next task: implement deterministic prompt-to-`request-spec-v1` baseline parser
 
@@ -92,7 +92,7 @@ Use this shape for each worker handoff:
   prompts and two clarification prompts from `plans/today.md`, including stable
   task names, prompt text, expected actions, expected features, and expected
   `request-spec-v1` fields for later parser tests.
-- Commit: `Add GreenShot-7 prompt fixtures`
+- Commit: `9a9f93b094e9c35b2bbeb6965556681480accc4f` (`Add GreenShot-7 prompt fixtures`)
 - Push: succeeded to `origin/main`
 - Next: Implement the deterministic prompt-to-`request-spec-v1` baseline parser
   against `examples/greenshot_7/tasks.json`.

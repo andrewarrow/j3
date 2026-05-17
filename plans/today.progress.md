@@ -7,8 +7,8 @@ new implementation facts change the 24-hour plan itself. Record any
 
 ## Status
 
-- Current phase: derived prompt-intent targets added for clarification and artifact routing
-- Completed iterations: 6
+- Current phase: unsupported-requirement labels and eval target added locally
+- Completed iterations: 7
 - Passing focused tests:
   - `pytest tests/test_prompt_intents.py -q`
   - `pytest tests/test_prompt_intents.py tests/test_request_spec.py -q`
@@ -18,14 +18,16 @@ new implementation facts change the 24-hour plan itself. Record any
   - `git diff --check`
   - `python -m py_compile prompt_intents.py request_spec.py cli/handlers.py`
   - `python -m py_compile existing_repo_change.py cli/handlers.py cli/parser.py cli/__init__.py`
-- `python cli.py train-prompt-intents --labels ../prompts/coding_agent_prompts_seed.jsonl --target expected_action repo_mode`
-- `python cli.py train-prompt-intents --labels ../prompts/coding_agent_prompts_seed.jsonl --target expected_action repo_mode requires_clarification primary_artifact --show-residuals --residual-limit 12`
-- `python -m py_compile prompt_intents.py cli/handlers.py cli/parser.py cli/__init__.py`
-- Latest implementation commit: `2e14c9367836d84835243ee6be297da3614262ea`
+  - `python cli.py train-prompt-intents --labels ../prompts/coding_agent_prompts_seed.jsonl --target expected_action repo_mode`
+  - `python cli.py train-prompt-intents --labels ../prompts/coding_agent_prompts_seed.jsonl --target expected_action repo_mode requires_clarification primary_artifact --show-residuals --residual-limit 12`
+  - `python cli.py train-prompt-intents --labels examples/prompt_intents/greenshot_7_intents.jsonl --target unsupported_requirement --show-residuals --residual-limit 12`
+  - `python -m py_compile prompt_intents.py cli/handlers.py cli/parser.py cli/__init__.py`
+- Latest implementation commit: iteration 7 commit, see worker report
 - Current blocker: none
-- Next task: keep learned production routing blocked; add or source explicit
-  unsupported-interface/graphical labels in the seed corpus before any learned
-  model can replace fixture-backed request-spec or change-spec routing
+- Next task: keep learned production routing blocked; inspect unsupported-
+  requirement residuals and add more held-out label coverage or better encoder
+  features before any model can replace fixture-backed request-spec or
+  change-spec routing
 
 ## Worker Iteration Template
 
@@ -379,4 +381,65 @@ Use this shape for each worker handoff:
 - Next: add/source explicit unsupported-interface labels for graphical or other
   unsupported UI requests in the seed corpus before any learned production
   routing decision.
+- Blockers: none
+
+### Iteration 7: Unsupported-Requirement Labels And Target
+
+- Worker: Codex
+- Goal: add/source explicit unsupported-interface labels for graphical or other
+  unsupported UI requests before any learned production routing decision.
+- Files changed:
+  - `prompt_intents.py`
+  - `examples/prompt_intents/greenshot_7_intents.jsonl`
+  - `cli/parser.py`
+  - `cli/handlers.py`
+  - `tests/test_prompt_intents.py`
+  - `tests/test_cli.py`
+  - `plans/today.progress.md`
+- Tests run:
+  - `pytest tests/test_prompt_intents.py -q` -> passed, 8 tests
+  - `pytest tests/test_cli.py -q` -> passed, 27 tests
+  - `pytest tests/test_prompt_intents.py tests/test_request_spec.py tests/test_existing_repo_change.py tests/test_cli.py -q`
+    -> passed, 45 tests
+  - `python -m py_compile prompt_intents.py cli/handlers.py cli/parser.py cli/__init__.py`
+    -> passed
+  - `git diff --check` -> passed
+  - `python cli.py train-prompt-intents --labels examples/prompt_intents/greenshot_7_intents.jsonl --target unsupported_requirement --show-residuals --residual-limit 12`
+    -> passed
+  - `python cli.py train-prompt-intents --labels ../prompts/coding_agent_prompts_seed.jsonl --target expected_action repo_mode requires_clarification primary_artifact --show-residuals --residual-limit 12`
+    -> passed
+- Result:
+  - Did not edit `../prompts/coding_agent_prompts_seed.jsonl` because it is
+    outside the current git repo. The external seed corpus still profiles as
+    `unsupported_requirement_counts={"none": 80}` and remains unsuitable for
+    unsupported-interface training.
+  - Added focused local prompt-intent fixture rows for unsupported graphical,
+    GUI, desktop, web, UI, and scientific calculator requests. Local fixture
+    coverage is now 25 rows with 17 unsupported/clarification rows.
+  - Added a scalar `unsupported_requirement` target derived from labeled
+    `unsupported_requirements`, while preserving the multi-label list. For
+    prompts with both generic complexity and concrete interface labels,
+    `unsupported_requirement` prioritizes the concrete label, e.g.
+    `make me a complex graphic calc app` -> `graphical_interface`.
+  - Local unsupported label counts:
+    `graphical_interface=6`, `web_interface=3`,
+    `scientific_operations_unspecified=3`, `desktop_interface=2`,
+    `ui_interface=1`, `visual_interface_scope=1`,
+    `domain_unspecified=1`, `none=8`.
+  - Added `unsupported_requirement` to train/eval CLI target choices and
+    residual context output. Production routing remains fixture-backed exact
+    matching; no learned model was wired into request-spec or change-spec
+    behavior.
+  - Local `unsupported_requirement` learned-baseline metrics:
+    train 11/11 = 1.000 vs majority 4/11 = 0.364; validation 5/6 = 0.833 vs
+    majority 2/6 = 0.333; test 3/8 = 0.375 vs majority 2/8 = 0.250.
+  - Residual gap: held-out graphical examples remain weak. Misses include
+    `make me a complex graphic calc app`, `make a graphical calculator`, and
+    `make a graphical desktop calc`, so this target is not ready for learned
+    production routing.
+- Commit: pending, reported by worker after commit
+- Push: pending
+- Next: add more split-balanced unsupported-interface labels and/or improve
+  prompt representation features so graphical/UI unsupported target recall
+  improves on held-out rows before production learned routing is reconsidered.
 - Blockers: none

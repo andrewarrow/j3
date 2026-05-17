@@ -186,6 +186,15 @@ def test_train_prompt_intents_command_accepts_derived_targets(capsys, tmp_path) 
                     '"clarify":true,"clarification_fields":["goal"]}}'
                 ),
                 (
+                    '{"id":"train-ui","split":"train","source_type":"test",'
+                    '"task_type":"create_app","repo_mode":"new_repo","domain":"calculator",'
+                    '"prompt":"make a calculator UI","expected":'
+                    '{"action":"ask_clarification","artifacts":[],'
+                    '"requested_interfaces":["ui"],'
+                    '"unsupported_requirements":["ui_interface"],'
+                    '"clarify":true,"clarification_fields":["interfaces"]}}'
+                ),
+                (
                     '{"id":"test-config","split":"test","source_type":"test",'
                     '"task_type":"config_change","repo_mode":"existing_repo","domain":"ci",'
                     '"prompt":"add github actions","expected":'
@@ -207,6 +216,7 @@ def test_train_prompt_intents_command_accepts_derived_targets(capsys, tmp_path) 
                 "--target",
                 "requires_clarification",
                 "primary_artifact",
+                "unsupported_requirement",
                 "--json",
             ]
         )
@@ -217,9 +227,11 @@ def test_train_prompt_intents_command_accepts_derived_targets(capsys, tmp_path) 
     assert [result["target_field"] for result in output] == [
         "requires_clarification",
         "primary_artifact",
+        "unsupported_requirement",
     ]
     assert output[0]["model"]["labels"] == ["no", "yes"]
     assert output[1]["model"]["labels"] == ["cli", "none", "pyproject"]
+    assert output[2]["model"]["labels"] == ["none", "ui_interface"]
 
 
 def test_implement_command_builds_repo_and_request_spec_artifact(capsys, tmp_path) -> None:

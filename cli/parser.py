@@ -350,6 +350,7 @@ def build_parser() -> argparse.ArgumentParser:
             "expected_action",
             "requires_clarification",
             "primary_artifact",
+            "unsupported_requirement",
         ),
         help="one or more scalar prompt-intent target fields",
     )

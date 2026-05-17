@@ -416,7 +416,9 @@ def handle_train_prompt_intents(args: argparse.Namespace) -> int:
                             f"repo_mode={context.get('repo_mode')} "
                             f"primary_artifact={context.get('primary_artifact')} "
                             "requires_clarification="
-                            f"{context.get('requires_clarification')}"
+                            f"{context.get('requires_clarification')} "
+                            "unsupported_requirement="
+                            f"{context.get('unsupported_requirement')}"
                         )
                     print(f"      prompt: {residual.prompt}")
                     if residual.tags:

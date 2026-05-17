@@ -21,22 +21,32 @@ def test_loads_greenshot_7_prompt_intent_fixtures() -> None:
     records = load_prompt_intent_records(GREENSHOT_7_INTENTS)
     profile = profile_prompt_intents(records)
 
-    assert len(records) == 14
+    assert len(records) == 25
     assert profile["expected_action_counts"] == {
-        "ask_clarification": 6,
+        "ask_clarification": 17,
         "emit_existing_repo_change_spec": 5,
         "emit_request_spec": 3,
     }
     assert profile["repo_mode_counts"] == {
         "existing_repo": 5,
-        "new_repo": 8,
+        "new_repo": 19,
         "unknown": 1,
     }
-    assert profile["unsupported_requirement_count"] == 6
+    assert profile["unsupported_requirement_count"] == 17
     assert profile["existing_repo_change_count"] == 5
-    assert profile["requires_clarification_counts"] == {"no": 8, "yes": 6}
-    assert profile["primary_artifact_counts"] == {"none": 14}
-    assert profile["missing_artifact_label_count"] == 14
+    assert profile["requires_clarification_counts"] == {"no": 8, "yes": 17}
+    assert profile["primary_artifact_counts"] == {"none": 25}
+    assert profile["unsupported_requirement_counts"] == {
+        "desktop_interface": 2,
+        "domain_unspecified": 1,
+        "graphical_interface": 6,
+        "none": 8,
+        "scientific_operations_unspecified": 3,
+        "ui_interface": 1,
+        "visual_interface_scope": 1,
+        "web_interface": 3,
+    }
+    assert profile["missing_artifact_label_count"] == 25
 
     unsupported = next(
         record
@@ -46,12 +56,26 @@ def test_loads_greenshot_7_prompt_intent_fixtures() -> None:
     assert unsupported.target.expected_action == "ask_clarification"
     assert unsupported.target.requires_clarification == "yes"
     assert unsupported.target.primary_artifact == "none"
+    assert unsupported.target.unsupported_requirement == "graphical_interface"
     assert unsupported.target.requested_interfaces == ("graphic",)
     assert unsupported.target.unsupported_requirements == (
         "complex_scope",
         "graphical_interface",
     )
     assert unsupported.target.clarification_fields == ("interfaces",)
+
+    labeled_unsupported_requirements = {
+        record.target.unsupported_requirement
+        for record in records
+        if record.target.unsupported_requirement != "none"
+    }
+    assert {
+        "desktop_interface",
+        "graphical_interface",
+        "scientific_operations_unspecified",
+        "ui_interface",
+        "web_interface",
+    }.issubset(labeled_unsupported_requirements)
 
     power_change = next(record for record in records if record.prompt == "add exponent support")
     assert power_change.target.repo_mode == "existing_repo"
@@ -93,6 +117,33 @@ def test_prompt_intent_eval_scores_future_predictors() -> None:
     assert result["mismatches"][0]["id"] == "gs7-intent-0004"  # type: ignore[index]
 
 
+def test_local_fixture_trains_unsupported_requirement_target() -> None:
+    records = load_prompt_intent_records(GREENSHOT_7_INTENTS)
+
+    result = train_prompt_intent_token_baseline(
+        records,
+        target_field="unsupported_requirement",
+    )
+
+    assert result.model.labels == (
+        "desktop_interface",
+        "graphical_interface",
+        "none",
+        "scientific_operations_unspecified",
+        "ui_interface",
+        "visual_interface_scope",
+        "web_interface",
+    )
+    assert result.metrics["validation"].accuracy >= 0.83
+    assert (
+        result.metrics["validation"].accuracy
+        > result.metrics["validation"].baseline_accuracy
+    )
+    assert result.metrics["test"].accuracy >= 0.37
+    assert result.metrics["test"].accuracy > result.metrics["test"].baseline_accuracy
+    assert result.decision == "evaluation_only_not_wired_to_production"
+
+
 def test_fixture_backed_prompt_intent_prediction_is_exact_boundary() -> None:
     prediction = predict_prompt_intent("make me a complex graphic calc app")
 
@@ -100,6 +151,7 @@ def test_fixture_backed_prompt_intent_prediction_is_exact_boundary() -> None:
     assert prediction.source == "prompt_intent_fixture_exact_match"
     assert prediction.record_id == "gs7-intent-0004"
     assert prediction.target.expected_action == "ask_clarification"
+    assert prediction.target.unsupported_requirement == "graphical_interface"
     assert prediction.target.requested_interfaces == ("graphic",)
     assert prediction.target.unsupported_requirements == (
         "complex_scope",
@@ -125,6 +177,7 @@ def test_loads_external_seed_prompt_corpus_profile() -> None:
     assert profile["artifact_counts"]["module"] > 0  # type: ignore[index]
     assert profile["artifact_counts"]["pyproject"] > 0  # type: ignore[index]
     assert profile["requires_clarification_counts"] == {"no": 72, "yes": 8}
+    assert profile["unsupported_requirement_counts"] == {"none": len(records)}
     assert profile["primary_artifact_counts"]["pyproject"] == 4  # type: ignore[index]
     assert profile["primary_artifact_counts"]["package"] == 1  # type: ignore[index]
     assert profile["primary_artifact_counts"]["ci_config"] == 1  # type: ignore[index]
@@ -222,7 +275,9 @@ def test_trains_token_baseline_only_from_train_split(tmp_path: Path) -> None:
             "expected_action": "ask_clarification",
             "requires_clarification": "yes",
             "primary_artifact": "none",
+            "unsupported_requirement": "none",
             "artifacts": [],
+            "unsupported_requirements": [],
             "clarification_fields": [],
         },
     }

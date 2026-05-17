@@ -27,9 +27,11 @@ TARGET_FIELDS = [
     "expected_action",
     "requires_clarification",
     "primary_artifact",
+    "unsupported_requirement",
     "requested_interfaces",
     "features",
     "artifacts",
+    "unsupported_requirements",
     "clarification_fields",
 ]
 SCALAR_TARGET_FIELDS = (
@@ -39,6 +41,7 @@ SCALAR_TARGET_FIELDS = (
     "expected_action",
     "requires_clarification",
     "primary_artifact",
+    "unsupported_requirement",
 )
 DEFAULT_LEARNED_BASELINE_EPOCHS = 10
 
@@ -53,6 +56,7 @@ class PromptIntentTarget:
     expected_action: str
     requires_clarification: str = "no"
     primary_artifact: str = "none"
+    unsupported_requirement: str = "none"
     requested_interfaces: tuple[str, ...] = ()
     features: tuple[str, ...] = ()
     artifacts: tuple[str, ...] = ()
@@ -68,6 +72,7 @@ class PromptIntentTarget:
             "expected_action": self.expected_action,
             "requires_clarification": self.requires_clarification,
             "primary_artifact": self.primary_artifact,
+            "unsupported_requirement": self.unsupported_requirement,
             "requested_interfaces": list(self.requested_interfaces),
             "features": list(self.features),
             "artifacts": list(self.artifacts),
@@ -324,6 +329,9 @@ def profile_prompt_intents(records: Sequence[PromptIntentRecord]) -> dict[str, o
         ),
         "primary_artifact_counts": _counter_record(
             record.target.primary_artifact for record in records
+        ),
+        "unsupported_requirement_counts": _counter_record(
+            record.target.unsupported_requirement for record in records
         ),
         "interface_counts": _counter_record(
             interface
@@ -620,6 +628,11 @@ def _record_from_row(row: dict[str, object], *, index: int) -> PromptIntentRecor
         field="expected.artifacts",
         index=index,
     )
+    unsupported_requirements = _tuple_strs(
+        expected.get("unsupported_requirements", []),
+        field="expected.unsupported_requirements",
+        index=index,
+    )
     clarification_fields = _tuple_strs(
         expected.get("clarification_fields", []),
         field="expected.clarification_fields",
@@ -637,14 +650,13 @@ def _record_from_row(row: dict[str, object], *, index: int) -> PromptIntentRecor
             clarification_fields=clarification_fields,
         ),
         primary_artifact=_primary_artifact(artifacts),
+        unsupported_requirement=_primary_unsupported_requirement(
+            unsupported_requirements
+        ),
         requested_interfaces=requested_interfaces,
         features=features,
         artifacts=artifacts,
-        unsupported_requirements=_tuple_strs(
-            expected.get("unsupported_requirements", []),
-            field="expected.unsupported_requirements",
-            index=index,
-        ),
+        unsupported_requirements=unsupported_requirements,
         clarification_fields=clarification_fields,
         target_files=_tuple_strs(
             expected.get("target_files", []),
@@ -694,6 +706,15 @@ def _primary_artifact(artifacts: tuple[str, ...]) -> str:
     return artifacts[0] if artifacts else "none"
 
 
+def _primary_unsupported_requirement(unsupported_requirements: tuple[str, ...]) -> str:
+    if not unsupported_requirements:
+        return "none"
+    for requirement in unsupported_requirements:
+        if requirement != "complex_scope":
+            return requirement
+    return unsupported_requirements[0]
+
+
 def _target_from_prediction(
     prediction: PromptIntentTarget | dict[str, object],
     *,
@@ -714,6 +735,9 @@ def _target_from_prediction(
         ),
         primary_artifact=str(
             prediction.get("primary_artifact", expected.primary_artifact)
+        ),
+        unsupported_requirement=str(
+            prediction.get("unsupported_requirement", expected.unsupported_requirement)
         ),
         requested_interfaces=_tuple_prediction(
             prediction.get("requested_interfaces", expected.requested_interfaces)
@@ -776,7 +800,9 @@ def _target_context(target: PromptIntentTarget) -> dict[str, object]:
         "expected_action": target.expected_action,
         "requires_clarification": target.requires_clarification,
         "primary_artifact": target.primary_artifact,
+        "unsupported_requirement": target.unsupported_requirement,
         "artifacts": list(target.artifacts),
+        "unsupported_requirements": list(target.unsupported_requirements),
         "clarification_fields": list(target.clarification_fields),
     }
 

@@ -1037,6 +1037,30 @@ def test_patch_solves_chainlit_oauth_state_logging_percent_format(tmp_path) -> N
     assert "Unable to validate oauth state: %s" in result.selected.patched_source
 
 
+def test_patch_solves_django_makemessages_locale_directory_exists(tmp_path) -> None:
+    repo = tmp_path / "greenshot_6"
+    shutil.copytree("examples/greenshot_6", repo)
+
+    result = plan_and_maybe_apply_patch(
+        repo=repo,
+        test_command=(
+            "python -m pytest "
+            "tests/test_i18nmsgs.py::test_missing_locale_path_message_uses_plural_verb"
+        ),
+        dry_run=True,
+        timeout_seconds=10,
+    )
+
+    assert result.selected is not None
+    assert result.selected.file_path == "i18nmsgs/extraction.py"
+    assert result.selected.action.kind.value == "change_literal"
+    assert result.selected.action.params == {
+        "from": "the 'locale' directory exist in an app",
+        "to": "the 'locale' directory exists in an app",
+    }
+    assert "directory exists in an app" in result.selected.patched_source
+
+
 def test_generate_membership_operator_with_literal_needle_decoy(tmp_path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()

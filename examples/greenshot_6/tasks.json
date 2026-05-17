@@ -638,6 +638,27 @@
     }
   },
   {
+    "name": "django_makemessages_locale_directory_exists",
+    "family": "i18n_error_message",
+    "source_type": "git_history",
+    "split": "train",
+    "repo": ".",
+    "test": "python -m pytest tests/test_i18nmsgs.py::test_missing_locale_path_message_uses_plural_verb",
+    "source": {
+      "repo": "django/django",
+      "commit": "501a3714114b9c72e7dc4d8add76663bb8c83e3a"
+    },
+    "preferred": {
+      "file_path": "i18nmsgs/extraction.py",
+      "action": "change_literal",
+      "symbol": "locale_directory_hint",
+      "params": {
+        "from": "the 'locale' directory exist in an app",
+        "to": "the 'locale' directory exists in an app"
+      }
+    }
+  },
+  {
     "name": "cookie_default_secure_flag_dict_value",
     "family": "mapping_value",
     "source_type": "mutation",

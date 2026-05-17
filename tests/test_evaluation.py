@@ -99,7 +99,7 @@ def test_load_greenshot_6_tasks() -> None:
     tasks = load_tasks(Path("examples/greenshot_6"))
     by_name = {task.name: task for task in tasks}
 
-    assert len(tasks) == 38
+    assert len(tasks) == 39
     assert tasks[0].name == "core_metadata_version_dict_value"
     assert tasks[0].family == "mapping_value"
     assert tasks[0].source_type == "mutation"
@@ -198,6 +198,22 @@ def test_load_greenshot_6_tasks() -> None:
         "params": {
             "from": "Unable to validate oauth state: %1",
             "to": "Unable to validate oauth state: %s",
+        },
+    }
+    assert by_name["django_makemessages_locale_directory_exists"].family == (
+        "i18n_error_message"
+    )
+    assert by_name["django_makemessages_locale_directory_exists"].source_type == (
+        "git_history"
+    )
+    assert by_name["django_makemessages_locale_directory_exists"].split == "train"
+    assert by_name["django_makemessages_locale_directory_exists"].preferred_patch == {
+        "file_path": "i18nmsgs/extraction.py",
+        "action": "change_literal",
+        "symbol": "locale_directory_hint",
+        "params": {
+            "from": "the 'locale' directory exist in an app",
+            "to": "the 'locale' directory exists in an app",
         },
     }
     assert by_name["http_no_store_directive_subscript_key"].preferred_patch == {

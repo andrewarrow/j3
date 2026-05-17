@@ -8,6 +8,7 @@ This file is the live progress log for `plans/today.md`. Keep
 - Current phase: shadow suite and residual-driven readiness.
 - Completed iterations for this reset: 4.
 - Latest relevant commits:
+  - `aedb04a` documented the transition shadow suite workflow.
   - `1c47171` improved transition scorer change features.
   - `23f37ac` added the transition residual report.
   - `f9ed963` recorded shadow suite completion.
@@ -244,8 +245,8 @@ Use this shape for each worker handoff:
   artifact means, the zero hosted usage expectation, the v4 bounded
   `change_context` feature surface, the guarded-ranking gate policy, and why
   generated `/tmp` or ignored `runs/` artifacts must not be committed.
-- Commit: current commit (`Document transition shadow suite workflow`).
-- Push: pending until this iteration is committed and pushed.
+- Commit: `aedb04a` (`Document transition shadow suite workflow`).
+- Push: succeeded to `main`.
 - Next: watcher should choose the next residual-driven or GreenShot-7 task.
 - Blockers: guarded production ranking remains blocked because the checked-in
   suite evidence is `ready_for_shadow_mode`, not

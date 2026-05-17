@@ -555,12 +555,42 @@ Recent work:
   `minimum_python_version_operator_boundary`; every task has a tested
   preferred-positive row, and the saved test-slice ranker places every
   preferred-positive candidate at trained rank 1.
+- GreenShot-6 now includes a seventh fixture domain, `headers`, with one
+  real-package-derived `git_history` task modeled on `tornadoweb/tornado`
+  commit `7c3290fee1ea9cefa977c052aa2bb75a0d1af96b`. The task
+  `tornado_header_newline_forbidden_regex` repairs header validation by
+  changing the forbidden-character regex from excluding selected control
+  characters to excluding the contiguous `\x0A-\x1F` range, using the existing
+  `change_literal` action family.
+- Focused loader/generator coverage passed for the new headers task:
+  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
+  `pytest tests/test_patching.py::test_patch_solves_tornado_header_newline_forbidden_regex -q`.
+- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
+  adding `headers`. The persisted dataset at
+  `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` now covers 26
+  tasks and 188 tested candidates. Ranked eval solved all 26 tasks with
+  `pass@1=20/26` and average candidates `7.23`; the new Tornado-derived task
+  solves at raw rank 1 with the preferred `change_literal` candidate.
+- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
+  the headers outcome refresh and stayed clean: solved=7/7, pass@1=7/7,
+  positive@1=7/7. Training used 268 rows, 61 passing rows, 228 training pairs,
+  704 features, and 3 margin violations.
+- Refreshed raw/trained miss inspection after adding `headers` found no new
+  missing preferred-positive candidates and no trained preferred-positive
+  misses. Raw GreenShot-6 still has six pass@1 misses:
+  `apache_license_classifier_dict_value`, `dynamic_field_error_message`,
+  `http_no_store_directive_subscript_key`,
+  `http_range_request_bypasses_cache`,
+  `litgpt_zero_temperature_greedy_condition`, and
+  `minimum_python_version_operator_boundary`; every task has a tested
+  preferred-positive row, and the saved test-slice ranker places every
+  preferred-positive candidate at trained rank 1.
 
 Last focused verification:
 
 ```bash
 pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q
-pytest tests/test_patching.py::test_patch_solves_dateutil_lowercase_z_utc_suffix -q
+pytest tests/test_patching.py::test_patch_solves_tornado_header_newline_forbidden_regex -q
 python cli.py eval \
   --tasks examples/greenshot_6 \
   --checkpoint runs/apache-python-git/model.json \
@@ -712,9 +742,9 @@ GreenShot-6 outcome collection result:
 
 ```text
 ranked, runs/apache-python-git/model.json, explore-after-pass=5:
-  solved=25/25 pass@1=19/25 avg_candidates=7.28
-  rows=182 passing_rows=52 preferred_positive_rows=25
-  source_type pass@1: git_history=4/7 mutation=15/18
+  solved=26/26 pass@1=20/26 avg_candidates=7.23
+  rows=188 passing_rows=53 preferred_positive_rows=26
+  source_type pass@1: git_history=5/8 mutation=15/18
 ```
 
 Treat this as a smoke check, not a benchmark claim.
@@ -756,7 +786,8 @@ Immediate next sequence:
 
 1. Add the next real-package-derived GreenShot-6 task or small fixture domain
    from real git-history signal, preferring a repair shape not already covered
-   by `pkgmeta`, `httpcache`, `webcookies`, `cliformat`, or `sampling`.
+   by `pkgmeta`, `httpcache`, `webcookies`, `cliformat`, `sampling`,
+   `dateparse`, or `headers`.
 2. Use existing action families where possible; only add an action if the
    held-out repair proves the candidate is missing.
 3. Run focused loader/generator tests, refresh GreenShot-6 outcomes with
@@ -927,15 +958,15 @@ Start neural/JEPA work only when:
 The next context window should add the next real-package-derived GreenShot-6
 task or a small fixture domain from real git-history signal, using existing
 action families where possible. The latest GreenShot-6 `split: test` holdout
-remains clean after adding the Click-derived `cliformat` task, and the fresh
+remains clean after adding the Tornado-derived `headers` task, and the fresh
 raw/trained miss inspection did not reveal a narrow ranker or outcome-quality
 gap.
 
 Immediate next sequence:
 
 1. Pick one real-package-derived repair shape not already represented by the
-   current `pkgmeta`, `httpcache`, `webcookies`, and `cliformat` fixture
-   domains.
+   current `pkgmeta`, `httpcache`, `webcookies`, `cliformat`, `sampling`,
+   `dateparse`, and `headers` fixture domains.
 2. Add the smallest GreenShot-6 task or fixture domain that captures that repair
    with existing actions if possible; only add an action if the held-out repair
    proves the candidate is missing.

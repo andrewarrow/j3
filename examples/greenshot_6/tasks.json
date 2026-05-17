@@ -356,6 +356,27 @@
     }
   },
   {
+    "name": "tornado_header_newline_forbidden_regex",
+    "family": "header_validation_regex",
+    "source_type": "git_history",
+    "split": "train",
+    "repo": ".",
+    "test": "python -m pytest tests/test_headers.py::test_newline_is_rejected_in_header_value",
+    "source": {
+      "repo": "tornadoweb/tornado",
+      "commit": "7c3290fee1ea9cefa977c052aa2bb75a0d1af96b"
+    },
+    "preferred": {
+      "file_path": "headers/validation.py",
+      "action": "change_literal",
+      "symbol": "forbidden_header_chars_pattern",
+      "params": {
+        "from": "[\\x00-\\x08\\x0B\\x0C\\x0E-\\x1F\\x7F]",
+        "to": "[\\x00-\\x08\\x0A-\\x1F\\x7F]"
+      }
+    }
+  },
+  {
     "name": "cookie_default_secure_flag_dict_value",
     "family": "mapping_value",
     "source_type": "mutation",

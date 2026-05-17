@@ -730,6 +730,27 @@ def test_patch_solves_dateutil_lowercase_z_utc_suffix(tmp_path) -> None:
     assert "UTC_ZONE_NAMES = 'UTC GMT Z z'" in result.selected.patched_source
 
 
+def test_patch_solves_tornado_header_newline_forbidden_regex(tmp_path) -> None:
+    repo = tmp_path / "greenshot_6"
+    shutil.copytree("examples/greenshot_6", repo)
+
+    result = plan_and_maybe_apply_patch(
+        repo=repo,
+        test_command="python -m pytest tests/test_headers.py::test_newline_is_rejected_in_header_value",
+        dry_run=True,
+        timeout_seconds=10,
+    )
+
+    assert result.selected is not None
+    assert result.selected.file_path == "headers/validation.py"
+    assert result.selected.action.kind.value == "change_literal"
+    assert result.selected.action.params == {
+        "from": r"[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]",
+        "to": r"[\x00-\x08\x0A-\x1F\x7F]",
+    }
+    assert "return '[\\\\x00-\\\\x08\\\\x0A-\\\\x1F\\\\x7F]'" in result.selected.patched_source
+
+
 def test_generate_membership_operator_with_literal_needle_decoy(tmp_path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()

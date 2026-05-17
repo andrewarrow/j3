@@ -269,6 +269,44 @@ Decision: do not add ranker features or broad weights from this state. The next
 useful step remains dataset growth from another real-package-derived repair
 shape.
 
+## Header Regex Refresh
+
+Inspection date: 2026-05-17.
+
+Inspection source:
+
+```bash
+runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl
+runs/apache-python-git/ranker-holdout-greenshot-6-test-slice/candidate-ranker.json
+```
+
+After adding the Tornado-derived `headers` domain, raw GreenShot-6 solves all
+26 tasks with six pass@1 misses:
+
+| Task | Family | Source | Split | First passing rank | Preferred rank |
+| --- | --- | --- | --- | ---: | ---: |
+| `apache_license_classifier_dict_value` | `mapping_value` | `mutation` | `test` | 5 | 5 |
+| `dynamic_field_error_message` | `exception_message` | `git_history` | `train` | 8 | 10 |
+| `http_no_store_directive_subscript_key` | `http_cache_directive` | `mutation` | `train` | 19 | 19 |
+| `http_range_request_bypasses_cache` | `http_cache_range` | `git_history` | `train` | 2 | 2 |
+| `litgpt_zero_temperature_greedy_condition` | `sampling_condition` | `git_history` | `train` | 2 | 7 |
+| `minimum_python_version_operator_boundary` | `operator_boundary` | `mutation` | `validation` | 2 | 2 |
+
+The new `tornado_header_newline_forbidden_regex` task passes at raw rank 1
+with the preferred `change_literal` candidate:
+
+```text
+[\x00-\x08\x0B\x0C\x0E-\x1F\x7F] -> [\x00-\x08\x0A-\x1F\x7F]
+```
+
+Every refreshed GreenShot-6 task has a tested preferred-positive row, and
+applying the saved GreenShot-6 `split: test` ranker places every
+preferred-positive candidate at trained rank 1.
+
+Decision: do not add ranker features or broad weights from this state. The next
+useful step remains dataset growth from another real-package-derived repair
+shape.
+
 ## Same-Mapping Metadata Follow-Up
 
 Implementation result: same-mapping asserted-key metadata is now recorded for

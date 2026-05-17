@@ -232,6 +232,13 @@ Recent work:
   avg_first_passing_index=1.29. `cookie_default_secure_flag_dict_value` still
   did not move to preferred rank 1; the false `change_dict_key` candidate
   remains above the preferred `change_dict_value` candidate after training.
+- The residual `cookie_default_secure_flag_dict_value` same-mapping decoy was
+  inspected after the metadata change. The rows contain the new same-mapping
+  features, but the false `change_dict_key secure -> __Secure-` candidate still
+  scores 0.160615 above the preferred `change_dict_value secure: True -> False`
+  candidate because broad string-parameter features and boolean-parameter
+  penalties outweigh the sparse same-mapping weights. Details are in
+  `HARD_NEGATIVES.md`.
 
 Last focused verification:
 
@@ -350,13 +357,11 @@ Keep this section as the live queue. When work is completed, move it to
 
 Immediate next sequence:
 
-1. Inspect why the same-mapping asserted-key metadata was not enough to move
-   `cookie_default_secure_flag_dict_value` to preferred rank 1. Compare the
-   trained scores/features for the false `change_dict_key secure -> __Secure-`
-   candidate and the preferred `change_dict_value secure: True -> False`
-   candidate, and update `HARD_NEGATIVES.md` with the smallest next ranking
-   signal before changing behavior.
-2. Keep the next implementation narrow and ranker-focused. Do not add tasks,
+1. Add the smallest ranker signal identified in `HARD_NEGATIVES.md`: an exact
+   assertion-value delta feature for same-mapping asserted-key dictionary value
+   edits, so a candidate changing the asserted key from the observed actual
+   value to the expected value can separate from key-rename/removal decoys.
+2. Keep the implementation narrow and ranker-focused. Do not add tasks,
    action families, or broad handcrafted weights until the residual miss is
    explained from held-out rows.
 3. Re-run the GreenShot-6 `split: test` holdout ranker validation after the
@@ -382,11 +387,11 @@ transition modeling.
 
 Next tasks:
 
-- Inspect the residual `cookie_default_secure_flag_dict_value` same-mapping
-  decoy after the new metadata. Equivalent/overlap relation features and
-  same-mapping asserted-key features are already wired; the current narrow gap
-  is why the trained model still prefers the asserted-key rename/removal decoy
-  over the asserted-key value edit.
+- Add exact assertion-value delta metadata/features for same-mapping asserted-key
+  dictionary value edits. Equivalent/overlap relation features and same-mapping
+  asserted-key features are already wired; the current narrow gap is connecting
+  the asserted key's observed actual/expected values to the candidate's
+  `from`/`to` value change.
 
 ### 3. Collect Hard Negatives
 

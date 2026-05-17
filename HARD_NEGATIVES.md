@@ -209,3 +209,62 @@ preferred rank 1. The false same-mapping `change_dict_key` candidate
 candidate (`secure: True` -> `False`) after training. The next sequence should
 inspect that pair's trained scores and feature differences before adding any
 new task, action family, or broad ranker weighting.
+
+### Residual Pair Inspection
+
+Inspection date: 2026-05-16.
+
+Inspection source:
+
+```bash
+runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl
+runs/apache-python-git/ranker-holdout-greenshot-6-test-slice/candidate-ranker.json
+```
+
+The refreshed outcome rows do contain the same-mapping metadata for both
+candidates, so this is not a missing-row or missing-context issue.
+
+| Candidate | Original rank | Passed | Preferred | Failure hint | Trained score |
+| --- | ---: | --- | --- | ---: | ---: |
+| `change_dict_value`, `secure: True` -> `False` | 1 | yes | yes | 52.0 | 11.169924 |
+| `change_dict_key`, `secure` -> `__Secure-` | 4 | no | no | 50.0 | 11.330538 |
+
+The false key rename wins by only `0.160615`. The new same-mapping features are
+present, but they are too weak and too sparsely trained to overcome broader
+learned parameter-type and token-overlap features:
+
+- Preferred value edit features include
+  `same_mapping_asserted_key_value_changed`,
+  `action_same_mapping_asserted_key_value_changed:change_dict_value`, and
+  `hint_asserted_mapping_key_matches_key`. These contribute only `+0.75`
+  combined in this trained model.
+- False key-rename features include
+  `same_mapping_asserted_key_renamed_or_removed`,
+  `action_same_mapping_asserted_key_renamed_or_removed:change_dict_key`, and
+  `hint_asserted_mapping_key_matches_from`, but those learned weights are `0.0`.
+- The false key rename is helped by broad string-parameter features:
+  `param_type:from:str` and `param_type:to:str` contribute `+2.5` combined.
+  It also avoids the preferred value edit's boolean-parameter penalties:
+  `param_type:from:bool` and `param_type:to:bool` are `-1.5` combined for the
+  preferred edit.
+- The preferred value edit is helped by relation features and its slightly
+  higher hint score, but those do not fully offset the parameter-type gap.
+
+Non-held-out training coverage explains why the new same-mapping signal did not
+move the pair by itself:
+
+| Feature | Non-held-out rows | Passing rows | Tasks |
+| --- | ---: | ---: | ---: |
+| `same_mapping_asserted_key_value_changed` | 5 | 1 | 2 |
+| `same_mapping_asserted_key_renamed_or_removed` | 1 | 0 | 1 |
+| `hint_asserted_mapping_key_matches_key` | 6 | 1 | 3 |
+| `hint_asserted_mapping_key_matches_from` | 1 | 0 | 1 |
+
+Smallest next ranking signal: record and consume an exact assertion-value match
+for same-mapping dictionary value edits. In this task, the failure hint already
+has assertion `actual=True`, `expected=False`, and asserted mapping key
+`secure`; the preferred candidate changes the same mapping's `secure` value
+from `True` to `False`, while the false key candidate leaves the value as
+`True` and removes the asserted lookup key. A narrow feature such as
+`same_mapping_asserted_key_value_matches_assertion_delta` would distinguish
+this pair without adding tasks, action families, or broad handcrafted weights.

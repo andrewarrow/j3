@@ -19,8 +19,9 @@ This file is the live progress log for `plans/today.md`. Keep
   - `1859e9c` hardened transition bench normalization.
 - Current blocker: V2 beats V1 on the full local candidate bench, but the
   held-out validation gate still underperforms existing rank order, so guarded
-  opt-in remains blocked for normal local artifacts.
-- Next task: train/evaluate a held-out V3 scorer from shadow outcomes.
+  opt-in remains blocked for normal local artifacts. V3 is now evaluation-only
+  and must also pass held-out product gates before any guarded use.
+- Next task: add a release-quality transition evidence bundle command.
 
 ## Active Task Queue
 
@@ -28,7 +29,7 @@ This file is the live progress log for `plans/today.md`. Keep
 - [x] Add a shadow advice summary command.
 - [x] Run and document a real shadow `eval` loop.
 - [x] Normalize shadow advice plus candidate outcomes into a training surface.
-- [ ] Train/evaluate a held-out V3 scorer from shadow outcomes.
+- [x] Train/evaluate a held-out V3 scorer from shadow outcomes.
 - [ ] Add a release-quality transition evidence bundle command.
 - [ ] Update product docs for shadow-to-gate evidence.
 
@@ -207,4 +208,38 @@ Use this shape for each worker handoff:
 - Commit: `e65e38d` (`Add transition shadow outcomes`).
 - Push: pushed to `origin/main` (`e65e38d`).
 - Next: train/evaluate a held-out V3 scorer from shadow outcomes.
+- Blockers: none.
+
+### Iteration 4: Train/evaluate held-out V3 scorer from shadow outcomes
+
+- Worker: Worker 4.
+- Goal: add evaluation-only `transition-action-future-scorer-v3` training and
+  held-out reporting from `transition-shadow-outcome-v1` rows joined to
+  action-choice groups, without making transition scoring default.
+- Files changed: `j3/transition_action_scoring.py`, `cli/parser.py`,
+  `cli/handlers.py`, `cli/__init__.py`,
+  `tests/test_transition_shadow_scorer.py`, `plans/today.progress.md`.
+- Tests run:
+  - `pytest tests/test_transition_shadow_scorer.py -q` passed.
+  - `pytest tests/test_transition_action_scoring.py tests/test_transition_shadow_outcomes.py -q` passed.
+  - `pytest tests/test_cli.py -q` passed.
+  - `pytest tests/test_transition_bench_demo.py -q` passed.
+  - `python -m compileall -q j3/transition_action_scoring.py cli/handlers.py cli/parser.py cli/__init__.py tests/test_transition_shadow_scorer.py` passed.
+  - `python cli.py evaluate-transition-shadow-scorer --shadow-outcomes /tmp/j3-worker4-v3-smoke/transition-shadow-outcomes.jsonl --candidate-outcomes /tmp/j3-worker4-v3-smoke/candidate-outcomes.jsonl --split-by order --validation-fraction 0.34 --top-k 1 --embedding-dim 8 --epochs 6 --out /tmp/j3-worker4-v3-smoke/report.json --json` passed and reported a held-out V3 product gate plus zero hosted usage.
+  - `python -m json.tool /tmp/j3-worker4-v3-smoke/report.json >/dev/null` passed.
+  - `python cli.py demo-transition-bench --no-fixtures --embedding-dim 256 --top-k 3 --candidate-outcomes runs/apache-python-git/*candidate-outcomes.jsonl --out /tmp/j3-worker4-transition-bench-candidates-report.json` passed with the existing V2 held-out gate still `not_ready_underperforms_existing_rank_order`.
+  - `python -m json.tool /tmp/j3-worker4-transition-bench-candidates-report.json >/dev/null` passed.
+  - `git diff --check` passed.
+- Result: added deterministic `evaluate-transition-shadow-scorer` CLI and V3
+  report schema `transition-action-future-scorer-v3-report-v1`. The report
+  trains a local pairwise V3 scorer from matched shadow outcomes and
+  action-choice groups, supports held-out splits by task family, source file,
+  repo, or order, compares V3 against V2, V1, existing rank order, stable
+  lexical order, and deterministic random order, records the product gate, and
+  preserves zero hosted token/context usage. Production rank features are
+  excluded by default and available only through an explicit ablation flag.
+  Patch/fix/eval defaults remain unchanged.
+- Commit: `1ea2dfd` (`Add held-out shadow V3 scorer`).
+- Push: pending.
+- Next: add a release-quality transition evidence bundle command.
 - Blockers: none.

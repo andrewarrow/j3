@@ -15,6 +15,7 @@ from cli.handlers import (
     handle_eval_prompt_jepa_index,
     handle_eval_prompt_repo_transitions,
     handle_eval,
+    handle_evaluate_transition_shadow_scorer,
     handle_fix,
     handle_greenshot_7,
     handle_implement,
@@ -957,6 +958,97 @@ def build_parser() -> argparse.ArgumentParser:
     )
     transition_shadow_outcomes_parser.set_defaults(
         handler=handle_normalize_transition_shadow_outcomes
+    )
+
+    transition_shadow_scorer_parser = subparsers.add_parser(
+        "evaluate-transition-shadow-scorer",
+        help="train and evaluate the held-out V3 transition scorer",
+        description=(
+            "Train evaluation-only transition-action-future-scorer-v3 from "
+            "transition-shadow-outcome-v1 rows joined to candidate outcome "
+            "action-choice groups, then report held-out product gates versus "
+            "existing rank order and local baselines."
+        ),
+    )
+    transition_shadow_scorer_parser.add_argument(
+        "--shadow-outcomes",
+        type=Path,
+        nargs="+",
+        required=True,
+        help="one or more transition-shadow-outcome-v1 JSONL files",
+    )
+    transition_shadow_scorer_parser.add_argument(
+        "--candidate-outcomes",
+        type=Path,
+        nargs="+",
+        required=True,
+        help="one or more candidate outcome JSONL files used for action choices",
+    )
+    transition_shadow_scorer_parser.add_argument(
+        "--split-by",
+        choices=("task_family", "source_file", "repo", "order"),
+        default="task_family",
+        help="held-out split key for V3 validation (default: task_family)",
+    )
+    transition_shadow_scorer_parser.add_argument(
+        "--validation-fraction",
+        type=float,
+        default=0.25,
+        help="fraction of split buckets to reserve for validation (default: 0.25)",
+    )
+    transition_shadow_scorer_parser.add_argument(
+        "--top-k",
+        type=int,
+        default=3,
+        help="top-k window for validation metrics (default: 3)",
+    )
+    transition_shadow_scorer_parser.add_argument(
+        "--embedding-dim",
+        type=int,
+        default=256,
+        help="local source embedding dimension for action-choice groups",
+    )
+    transition_shadow_scorer_parser.add_argument(
+        "--epochs",
+        type=int,
+        default=30,
+        help="pairwise perceptron epochs (default: 30)",
+    )
+    transition_shadow_scorer_parser.add_argument(
+        "--learning-rate",
+        type=float,
+        default=0.1,
+        help="pairwise perceptron learning rate (default: 0.1)",
+    )
+    transition_shadow_scorer_parser.add_argument(
+        "--margin",
+        type=float,
+        default=1.0,
+        help="pairwise ranking margin (default: 1.0)",
+    )
+    transition_shadow_scorer_parser.add_argument(
+        "--residual-limit",
+        type=int,
+        default=10,
+        help="maximum residual examples to include (default: 10)",
+    )
+    transition_shadow_scorer_parser.add_argument(
+        "--allow-production-rank-feature",
+        action="store_true",
+        help="ablation only: allow production rank position as a V3 feature",
+    )
+    transition_shadow_scorer_parser.add_argument(
+        "--out",
+        type=Path,
+        help="optional output JSON report path",
+    )
+    transition_shadow_scorer_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print the report as JSON",
+    )
+    transition_shadow_scorer_parser.set_defaults(
+        handler=handle_evaluate_transition_shadow_scorer
     )
 
     compare_parser = subparsers.add_parser(

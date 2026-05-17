@@ -67,6 +67,11 @@ from j3.transition_assets import (
     inspect_transition_assets,
     write_transition_asset_manifest,
 )
+from j3.transition_action_choice import build_transition_action_choice_groups_jsonl
+from j3.transition_action_scoring import (
+    evaluate_transition_shadow_scorer_v3,
+    format_transition_shadow_scorer_v3_report,
+)
 from j3.transition_bench_demo import (
     format_transition_bench_demo_report,
     run_transition_bench_demo,
@@ -82,6 +87,7 @@ from j3.transition_scorer_advice import (
 )
 from j3.transition_shadow_outcomes import (
     format_transition_shadow_outcome_summary,
+    load_transition_shadow_outcomes,
     normalize_transition_shadow_outcomes,
     summarize_transition_shadow_outcomes,
     write_transition_shadow_outcomes_jsonl,
@@ -1049,6 +1055,56 @@ def handle_normalize_transition_shadow_outcomes(args: argparse.Namespace) -> int
         print(json.dumps(summary.as_dict(), indent=2, sort_keys=True))
     else:
         print(format_transition_shadow_outcome_summary(summary))
+    return 0
+
+
+def handle_evaluate_transition_shadow_scorer(args: argparse.Namespace) -> int:
+    for path in args.shadow_outcomes:
+        resolved = path.expanduser().resolve()
+        if not resolved.exists():
+            raise SystemExit(f"shadow outcome file does not exist: {resolved}")
+        if not resolved.is_file():
+            raise SystemExit(f"shadow outcome path is not a file: {resolved}")
+    for path in args.candidate_outcomes:
+        resolved = path.expanduser().resolve()
+        if not resolved.exists():
+            raise SystemExit(f"candidate outcomes file does not exist: {resolved}")
+        if not resolved.is_file():
+            raise SystemExit(f"candidate outcomes path is not a file: {resolved}")
+
+    shadow_rows = load_transition_shadow_outcomes(args.shadow_outcomes)
+    groups = [
+        group
+        for path in args.candidate_outcomes
+        for group in build_transition_action_choice_groups_jsonl(
+            path,
+            embedding_dim=args.embedding_dim,
+        )
+    ]
+    report = evaluate_transition_shadow_scorer_v3(
+        groups,
+        shadow_rows,
+        top_k=args.top_k,
+        split_by=args.split_by,
+        validation_fraction=args.validation_fraction,
+        epochs=args.epochs,
+        learning_rate=args.learning_rate,
+        margin=args.margin,
+        allow_production_rank_feature=args.allow_production_rank_feature,
+        residual_limit=args.residual_limit,
+    )
+    if args.out is not None:
+        out_path = args.out.expanduser().resolve()
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        report = {**report, "report": str(out_path)}
+        out_path.write_text(
+            json.dumps(report, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+    if args.json:
+        print(json.dumps(report, indent=2, sort_keys=True))
+    else:
+        print(format_transition_shadow_scorer_v3_report(report))
     return 0
 
 

@@ -1012,6 +1012,29 @@
     }
   },
   {
+    "name": "seaborn_countplot_stat_label_capitalization",
+    "family": "plot_label_text",
+    "source_type": "git_history",
+    "split": "train",
+    "repo": ".",
+    "test": "python -m pytest tests/test_plotlabels.py::test_countplot_stat_label_is_capitalized",
+    "source": {
+      "repo": "mwaskom/seaborn",
+      "commit": "52b291c",
+      "pr": 3806
+    },
+    "preferred": {
+      "file_path": "plotlabels/categorical.py",
+      "action": "change_dict_value",
+      "symbol": "countplot_stat_label",
+      "params": {
+        "key": "count",
+        "from": "count",
+        "to": "Count"
+      }
+    }
+  },
+  {
     "name": "cookie_default_secure_flag_dict_value",
     "family": "mapping_value",
     "source_type": "mutation",

@@ -99,7 +99,7 @@ def test_load_greenshot_6_tasks() -> None:
     tasks = load_tasks(Path("examples/greenshot_6"))
     by_name = {task.name: task for task in tasks}
 
-    assert len(tasks) == 56
+    assert len(tasks) == 57
     assert tasks[0].name == "core_metadata_version_dict_value"
     assert tasks[0].family == "mapping_value"
     assert tasks[0].source_type == "mutation"
@@ -196,6 +196,23 @@ def test_load_greenshot_6_tasks() -> None:
         "params": {
             "from": "Regex",
             "to": "Expected regex",
+        },
+    }
+    assert by_name["seaborn_countplot_stat_label_capitalization"].family == (
+        "plot_label_text"
+    )
+    assert by_name["seaborn_countplot_stat_label_capitalization"].source_type == (
+        "git_history"
+    )
+    assert by_name["seaborn_countplot_stat_label_capitalization"].split == "train"
+    assert by_name["seaborn_countplot_stat_label_capitalization"].preferred_patch == {
+        "file_path": "plotlabels/categorical.py",
+        "action": "change_dict_value",
+        "symbol": "countplot_stat_label",
+        "params": {
+            "key": "count",
+            "from": "count",
+            "to": "Count",
         },
     }
     assert by_name["prettytable_missing_attribute_quote"].family == "table_legacy_attribute_error"

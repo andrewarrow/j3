@@ -1270,12 +1270,31 @@ Recent work:
   the attrs outcome refresh and stayed clean: solved=7/7, pass@1=7/7,
   positive@1=7/7, avg_first_passing_index=1.0. Training used 510 rows, 93
   passing rows, 441 training pairs, 826 features, and 5 margin violations.
+- GreenShot-6 now includes a thirty-sixth real-package-derived task,
+  `seaborn_countplot_stat_label_capitalization`, modeled on
+  `mwaskom/seaborn` PR 3806 / commit `52b291c`. The task repairs a countplot
+  stat label from `count` to `Count`, using the existing `change_dict_value`
+  action family against a local label table. No action family or ranker
+  metadata change was needed.
+- Focused loader/generator coverage passed for the Seaborn-derived task:
+  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
+  `pytest tests/test_patching.py::test_patch_solves_seaborn_countplot_stat_label_capitalization -q`.
+- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
+  adding `plotlabels`. The persisted dataset now covers 57 tasks and 446
+  tested candidates. Ranked eval solved all 57 tasks with `pass@1=40/57` and
+  average candidates `7.82`; the new Seaborn-derived task solves at raw rank 1
+  with the preferred `change_dict_value` candidate. Outcome summary reports 88
+  passing rows and 57 preferred-positive rows.
+- The same GreenShot-6 `split: test` held-out ranker validation stayed clean:
+  solved=7/7, pass@1=7/7, positive@1=7/7. Training used 526 rows, 96 passing
+  rows, 455 training pairs, 852 features, and 2 margin violations.
 
 Last focused verification:
 
 ```bash
 pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q
-pytest tests/test_patching.py::test_patch_solves_attrs_gt_validator_docstring_operator -q
+pytest tests/test_patching.py::test_patch_solves_seaborn_countplot_stat_label_capitalization -q
+python3 -m json.tool examples/greenshot_6/tasks.json >/tmp/greenshot6_tasks_check.json
 python cli.py eval \
   --tasks examples/greenshot_6 \
   --checkpoint runs/apache-python-git/model.json \
@@ -1286,6 +1305,8 @@ python cli.py eval \
   --diagnostics runs/apache-python-git/greenshot-6-explore-diagnostics.json \
   --candidate-outcomes runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl \
   --quiet
+python cli.py outcome-summary \
+  --candidate-outcomes runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl
 python cli.py train-ranker \
   --candidate-outcomes \
     runs/apache-python-git/greenshot-5-candidate-outcomes.jsonl \
@@ -1299,8 +1320,6 @@ python cli.py train-ranker \
     cookie_pair_argument_order \
     cookie_scope_include_path_keyword \
   --out runs/apache-python-git/ranker-holdout-greenshot-6-test-slice
-python cli.py outcome-summary \
-  --candidate-outcomes runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl
 git diff --check
 ```
 
@@ -1418,9 +1437,9 @@ GreenShot-6 outcome collection result:
 
 ```text
 ranked, runs/apache-python-git/model.json, explore-after-pass=5:
-  solved=56/56 pass@1=39/56 avg_candidates=7.86
-  rows=440 passing_rows=86 preferred_positive_rows=56
-  source_type pass@1: git_history=22/36 mutation=17/20
+  solved=57/57 pass@1=40/57 avg_candidates=7.82
+  rows=446 passing_rows=88 preferred_positive_rows=57
+  source_type pass@1: git_history=23/37 mutation=17/20
 ```
 
 Treat this as a smoke check, not a benchmark claim.
@@ -1439,7 +1458,7 @@ GreenShot-6 test-slice ranker validation result:
 
 ```text
 train-ranker, holdout-task includes all GreenShot-6 split:test tasks:
-  rows=520 passing_rows=94 tasks=69 plans=69 pairs=450
+  rows=526 passing_rows=96 tasks=70 plans=70 pairs=455
   training_accuracy=1.000 margin_violations=2 features=852
   validation solved=7/7 pass@1=7/7 positive@1=7/7
   validation rows=46 avg_first_passing_index=1.0
@@ -1621,27 +1640,25 @@ Start neural/JEPA work only when:
 
 ## Handoff Recommendation
 
-The next context window should start from the post-pytest-regex-label dataset
+The next context window should start from the post-Seaborn plot-label dataset
 growth, not the older graphlayout/NetworkX, taskqueue/Celery, envwrite, v13
-literal-key, scipyquad, raisemsg, or attrvalidators states. GreenShot-6 now has
-56 tasks.
+literal-key, scipyquad, raisemsg, attrvalidators, or pytest-regex-label states.
+GreenShot-6 now has 57 tasks.
 
 Latest addition:
 
-- Fixture domain: `regexmatch`
-- Task: `pytest_raises_regex_expected_label`
-- Source: `pytest-dev/pytest` PR 13859 / merge commit
-  `b3f3263a83ad5cd53f9e080e4ef52b7f18b9d4f0`
-- Repair shape: regex match failure labels should say `Expected regex` instead
-  of the old `Regex` label.
-- Action: existing `change_literal`; no action family or ranker metadata change
-  was needed.
+- Fixture domain: `plotlabels`
+- Task: `seaborn_countplot_stat_label_capitalization`
+- Source: `mwaskom/seaborn` PR 3806 / commit `52b291c`
+- Repair shape: countplot stat labels should use `Count` instead of lowercase
+  `count`.
+- Action: existing `change_dict_value`; no action family or ranker metadata
+  change was needed.
 
-Latest GreenShot-6 refresh with `--explore-after-pass 5` solved all 56 tasks:
-`pass@1=39/56`, average candidates `7.86`, rows `440`, passing rows `86`, and
-preferred-positive rows `56`. The new pytest-derived task is useful raw ranking
-signal: it passes at raw rank 2 with the preferred `Regex` -> `Expected regex`
-candidate after a lowercase `regex` decoy.
+Latest GreenShot-6 refresh with `--explore-after-pass 5` solved all 57 tasks:
+`pass@1=40/57`, average candidates `7.82`, rows `446`, passing rows `88`, and
+preferred-positive rows `57`. The new Seaborn-derived task passes at raw rank 1
+with the preferred `change_dict_value count: "count" -> "Count"` candidate.
 
 The same GreenShot-6 `split: test` held-out validation is clean:
 solved=7/7, pass@1=7/7, positive@1=7/7, validation rows=46, and

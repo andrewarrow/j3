@@ -108,8 +108,21 @@ python cli.py summarize-transition-advice \
 When `eval` writes candidate outcomes and shadow advice in the same run,
 candidate outcome rows include `repair_plan_id` where advice exists. Join
 candidate outcomes to advice rows on `task`, `phase`, and `repair_plan_id`.
-This is only a smoke-level join key; the normalized shadow training surface is a
-separate artifact.
+This is only a smoke-level join key. The product training surface is produced by
+`normalize-transition-shadow-outcomes`, which preserves unjoined rows with
+explicit reasons:
+
+```bash
+python cli.py normalize-transition-shadow-outcomes \
+  --advice /tmp/j3-shadow-transition-advice.jsonl \
+  --candidate-outcomes /tmp/j3-shadow-candidate-outcomes.jsonl \
+  --out /tmp/j3-shadow-transition-outcomes.jsonl \
+  --json
+```
+
+The resulting `transition-shadow-outcome-v1` rows are the auditable record of
+what production did, what the scorer would have done, and what validation knew
+at the time.
 
 ### Guarded Opt-In Mode
 
@@ -132,6 +145,138 @@ candidate generation. When ranking is allowed, the CLI prints the gate, report
 path, and mode so the run is visibly opt-in. The default `patch` and `fix`
 paths still do not use transition-scorer ranking.
 
+## Shadow-To-Gate Evidence Loop
+
+The current product loop is deliberately staged:
+
+```text
+real patch/eval candidate set
+  -> shadow transition advice
+  -> advice summary metrics
+  -> joined shadow outcomes
+  -> held-out V3 scorer report
+  -> evidence bundle
+  -> guarded ranking only after product gates pass
+```
+
+Each stage answers a different question:
+
+- Demo evidence proves a clean checkout can exercise the schemas and report
+  zero hosted usage. It is not production evidence.
+- Benchmark evidence proves local candidate-outcome and mined-transition files
+  can be normalized, scored, and compared to existing rank order. It can support
+  shadow mode, but a full-set win does not override held-out gates.
+- Shadow evidence observes the candidates that `patch` or `eval` already
+  produced, without changing which candidate production validates first.
+- Held-out V3 scorer evidence trains from normalized shadow outcomes and then
+  tests on reserved groups. It is evaluation-only and must beat existing rank
+  order under the product gate before ranking can be considered.
+- Production readiness is the gate result, not the existence of a report. A
+  bundle with `eligible_for_guarded_opt_in: false` is useful evidence, but it is
+  still a block on guarded ranking.
+
+### 1. Collect Shadow Advice
+
+Run `patch` or `eval` with shadow advice enabled. For evaluation runs, also
+write candidate outcomes so the advice can be joined later:
+
+```bash
+python cli.py eval \
+  --tasks examples/greenshot_bugs \
+  --candidate-outcomes /tmp/j3-shadow-candidate-outcomes.jsonl \
+  --transition-scorer-shadow \
+  --transition-advice-out /tmp/j3-shadow-transition-advice.jsonl \
+  --diagnostics /tmp/j3-shadow-diagnostics.json
+```
+
+Default routing is unchanged in this mode. The scorer records advice, agreement
+with production order, validation comparisons when available, and zero hosted
+usage fields.
+
+### 2. Summarize Advice
+
+Summarize one or more `transition-scorer-advice-v1` JSONL files before using
+them for training:
+
+```bash
+python cli.py summarize-transition-advice \
+  --advice /tmp/j3-shadow-transition-advice.jsonl \
+  --json
+```
+
+The summary reports advice row count, total candidate count,
+scorer/production agreement, known improve/regress/no-change counts, pass@1 for
+the production-selected candidate, pass@1 for the scorer-top candidate when
+validation is known, average candidates saved or lost, and zero hosted
+token/context totals. Regressions in this summary are product signals, not
+routing changes.
+
+### 3. Join Shadow Outcomes
+
+Normalize advice plus candidate outcomes into
+`transition-shadow-outcome-v1` rows:
+
+```bash
+python cli.py normalize-transition-shadow-outcomes \
+  --advice /tmp/j3-shadow-transition-advice.jsonl \
+  --candidate-outcomes /tmp/j3-shadow-candidate-outcomes.jsonl \
+  --out /tmp/j3-shadow-transition-outcomes.jsonl \
+  --json
+```
+
+Joined rows preserve repo and task identity, production selected candidate,
+scorer top candidate, the full candidate ranking, validation outcome,
+agreement/improvement/regression labels, source traceability, and zero hosted
+usage fields. Unjoined advice or outcome groups stay in the output with
+`join_status` and `unjoined_reason` so gaps are visible instead of silently
+dropped.
+
+### 4. Evaluate Held-Out V3
+
+Train the evaluation-only V3 scorer from normalized shadow outcomes and test it
+against held-out action-choice groups:
+
+```bash
+python cli.py evaluate-transition-shadow-scorer \
+  --shadow-outcomes /tmp/j3-shadow-transition-outcomes.jsonl \
+  --candidate-outcomes /tmp/j3-shadow-candidate-outcomes.jsonl \
+  --split-by task_family \
+  --validation-fraction 0.25 \
+  --top-k 3 \
+  --embedding-dim 256 \
+  --out /tmp/j3-shadow-scorer-v3-report.json \
+  --json
+```
+
+The report is `transition-action-future-scorer-v3-report-v1`. It compares V3 to
+V2, V1, existing rank order, stable lexical order, and deterministic random
+order. Production rank is excluded as a feature by default; the
+`--allow-production-rank-feature` flag is an ablation only. The report remains
+`evaluation_only_not_wired_to_production`.
+
+### 5. Build An Evidence Bundle
+
+Package the benchmark report, optional shadow advice summaries, optional V3
+report, asset inventory, reproduction commands, checksums, and effective product
+gate:
+
+```bash
+python cli.py build-transition-evidence-bundle \
+  --bench-report /tmp/j3-transition-bench-candidates-report.json \
+  --advice /tmp/j3-shadow-transition-advice.jsonl \
+  --shadow-scorer-report /tmp/j3-shadow-scorer-v3-report.json \
+  --out /tmp/j3-transition-evidence
+
+shasum -a 256 -c /tmp/j3-transition-evidence/checksums.sha256
+python -m json.tool /tmp/j3-transition-evidence/manifest.json >/dev/null
+python -m json.tool /tmp/j3-transition-evidence/product-readiness-gate.json >/dev/null
+```
+
+The bundle command refuses nonzero hosted usage fields in packaged reports. Its
+effective gate comes from the V3 validation report when provided; otherwise it
+uses the transition bench gate. A bundle is a verification artifact, not a
+request to change defaults.
+
 ### Why Defaults Stay Conservative
 
 The current product boundary is intentional. The checked-in fixture demo can
@@ -142,6 +287,11 @@ heuristic with a scorer until the scorer is robust on messy local artifacts,
 beats the existing baseline on honest held-out evidence, and leaves a clear
 audit trail. Until then, benchmark, shadow, and guarded modes provide evidence
 without changing default production behavior.
+
+Default `patch`, `fix`, and `eval` routing remains unchanged. Guarded ranking
+remains blocked unless the relevant product gate reports
+`ready_for_guarded_opt_in`; failed held-out V2 or V3 gates must not be bypassed
+except through the explicit experimental escape hatch used for local research.
 
 ## What Is Checked In
 
@@ -376,6 +526,60 @@ The V2 scorer is evaluation-only. It fits pairwise weights from local candidate
 outcome groups and supports held-out validation splits by `task_family` or
 `source_file`.
 
+### `transition-scorer-advice-summary-v1`
+
+Produced by `summarize-transition-advice`.
+
+Useful fields:
+
+- `advice_row_count` and `candidate_count`.
+- `scorer_production_agreement`: count, total, and rate.
+- `known_validation`: row count, improved, regressed, no-change,
+  production-selected pass@1, scorer-top pass@1, and average candidates saved
+  or lost versus production order.
+- hosted usage totals, all expected to be zero.
+
+### `transition-shadow-outcome-v1`
+
+Produced by `normalize-transition-shadow-outcomes`.
+
+Useful fields:
+
+- `key`: task, phase, and `repair_plan_id` join identity.
+- `join_status`: `joined`, `unjoined_advice`, or
+  `unjoined_candidate_outcomes`.
+- `unjoined_reason`: explicit reason for any unjoined row.
+- `repo` and `task`: repo path/name, language, task family, split, phase, and
+  test-command context where present.
+- `production_selected_candidate` and `scorer_top_candidate`.
+- `candidate_ranking`: ranked candidate evidence available to both production
+  and the scorer.
+- `validation_outcome`: known/unknown validation status and pass/fail result.
+- `labels`: agreement plus improved/regressed/same/unknown outcome label.
+- `source`: source advice and candidate-outcome path/line traceability.
+- `usage`: hosted usage fields, all expected to be zero.
+
+### `transition-action-future-scorer-v3-report-v1`
+
+Produced by `evaluate-transition-shadow-scorer`.
+
+Useful fields:
+
+- `decision`: always `evaluation_only_not_wired_to_production`.
+- `scorer`: `transition-action-future-scorer-v3`.
+- `parameters`: split key, validation fraction, top-k, epochs, margin, and
+  whether the production-rank ablation was enabled.
+- `shadow_outcomes`: row counts, joined known-validation counts, and matched
+  action-choice groups.
+- `split`: training and validation buckets plus whether the split is held out.
+- `training`: group, candidate, pair, feature, and mistake counts.
+- `validation.metrics`: V3, V2, V1, existing-rank-order, stable-lexical-order,
+  and deterministic-random-order metrics.
+- `validation.product_readiness`: the held-out product gate that blocks guarded
+  ranking unless it is `ready_for_guarded_opt_in`.
+- `model`: local V3 feature weights for inspection.
+- `runtime`: local runtime and zero hosted usage fields.
+
 ### `transition-bench-demo-report-v1`
 
 Produced by `demo-transition-bench`.
@@ -399,34 +603,64 @@ The report `decision` remains evaluation-only even when the same scorer is used
 elsewhere in shadow or guarded opt-in mode. Routing changes are controlled by
 the `patch` and `eval` CLI flags, not by generating this report.
 
-## Future Release Packaging
+### `transition-evidence-bundle-v1`
 
-A future release should keep generated data out of git while still giving
-developers enough information to rebuild or verify the artifacts.
+Produced by `build-transition-evidence-bundle`.
 
-Expected release contents:
+Bundle files:
 
-- `manifest.json`: release-level name, version, git commit, created time,
-  schema versions, command lines, and environment notes.
+- `manifest.json`: bundle name, git commit, created time, inputs, schema
+  versions, bundle files, product gate, reproduction commands, and hosted usage
+  policy.
 - `checksums.sha256`: SHA-256 checksums for every packaged artifact.
 - `transition-assets.json`: `transition-asset-inventory-v1` manifest produced
   by `inspect-transition-assets`.
 - `transition-bench-report.json`: `transition-bench-demo-report-v1` produced by
   `demo-transition-bench`.
-- optional artifact zip containing generated benchmark JSONL/report files from
-  ignored `data/` and `runs/` sources.
-- a short `REPRODUCE.md` with the exact commands used to rebuild the report
-  from either checked-in fixtures or local/public corpus inputs.
+- `shadow-advice-summary.json`: `transition-scorer-advice-summary-v1`, empty
+  when no advice files are supplied.
+- `product-readiness-gate.json`: effective gate, using V3 validation when
+  supplied and otherwise the transition bench gate.
+- `reproduction-commands.json`: local commands for JSON validation, checksum
+  verification, asset inventory rebuild, and bench-report rebuild.
+- `REPRODUCE.md`: short human-readable reproduction instructions.
+- `transition-shadow-scorer-v3-report.json`: optional packaged V3 report.
 
-The release package may include generated artifacts, but the git repository
-should continue to include only source, tests, tiny fixtures, manifests, and
-docs. Another developer should be able to verify a release without hosted
-LLM/API usage by:
+The bundle may include generated reports, but the git repository should
+continue to include only source, tests, tiny fixtures, manifests, and docs.
+Generated JSONL datasets, runs, reports, and evidence directories belong under
+ignored paths such as `/tmp`, `data/`, or `runs/`.
+
+## Release Packaging
+
+Build a verifiable local package after producing a transition bench report:
 
 ```bash
-shasum -a 256 -c checksums.sha256
-python -m json.tool transition-assets.json >/dev/null
-python -m json.tool transition-bench-report.json >/dev/null
+python cli.py build-transition-evidence-bundle \
+  --bench-report /tmp/j3-transition-bench-candidates-report.json \
+  --out /tmp/j3-transition-evidence
+```
+
+Include shadow evidence and a held-out V3 report when available:
+
+```bash
+python cli.py build-transition-evidence-bundle \
+  --bench-report /tmp/j3-transition-bench-candidates-report.json \
+  --advice /tmp/j3-shadow-transition-advice.jsonl \
+  --shadow-scorer-report /tmp/j3-shadow-scorer-v3-report.json \
+  --out /tmp/j3-transition-evidence \
+  --force
+```
+
+Another developer should be able to verify a bundle without hosted LLM/API
+usage by:
+
+```bash
+shasum -a 256 -c /tmp/j3-transition-evidence/checksums.sha256
+python -m json.tool /tmp/j3-transition-evidence/manifest.json >/dev/null
+python -m json.tool /tmp/j3-transition-evidence/transition-assets.json >/dev/null
+python -m json.tool /tmp/j3-transition-evidence/transition-bench-report.json >/dev/null
+python -m json.tool /tmp/j3-transition-evidence/product-readiness-gate.json >/dev/null
 python cli.py inspect-transition-assets --json
 python cli.py demo-transition-bench \
   --embedding-dim 8 \
@@ -434,7 +668,8 @@ python cli.py demo-transition-bench \
   --out /tmp/j3-transition-bench-report.json
 ```
 
-For a local/public rebuild with larger ignored assets, the release notes should
-name the exact source corpus, mining commands, candidate-outcome generation
-commands, and `demo-transition-bench` inputs. The invariant is that rebuild and
-verification remain local and deterministic from already available files.
+For a local/public rebuild with larger ignored assets, package notes should name
+the exact source corpus, mining commands, candidate-outcome generation commands,
+shadow collection commands, normalizer inputs, V3 scorer inputs, and
+`demo-transition-bench` inputs. The invariant is that rebuild and verification
+remain local and deterministic from already available files.

@@ -6,8 +6,10 @@ This file is the live progress log for `plans/today.md`. Keep
 ## Status
 
 - Current phase: shadow-to-gate transition scoring.
-- Completed iterations for this reset: 5.
+- Completed iterations for this reset: 6.
 - Latest relevant commits:
+  - Worker 6 final docs commit for shadow-to-gate evidence, reported in the
+    handoff.
   - `a53b377` added the transition evidence bundle command.
   - `2f13892` added the held-out shadow V3 scorer.
   - `e65e38d` added the transition shadow outcome training surface.
@@ -23,7 +25,7 @@ This file is the live progress log for `plans/today.md`. Keep
   held-out validation gate still underperforms existing rank order, so guarded
   opt-in remains blocked for normal local artifacts. V3 is now evaluation-only
   and must also pass held-out product gates before any guarded use.
-- Next task: update product docs for shadow-to-gate evidence.
+- Next task: active queue complete; watcher should choose the next scope.
 
 ## Active Task Queue
 
@@ -33,7 +35,7 @@ This file is the live progress log for `plans/today.md`. Keep
 - [x] Normalize shadow advice plus candidate outcomes into a training surface.
 - [x] Train/evaluate a held-out V3 scorer from shadow outcomes.
 - [x] Add a release-quality transition evidence bundle command.
-- [ ] Update product docs for shadow-to-gate evidence.
+- [x] Update product docs for shadow-to-gate evidence.
 
 ## Current Facts
 
@@ -277,3 +279,29 @@ Use this shape for each worker handoff:
 - Push: pushed to `origin/main`; implementation commit `a53b377`.
 - Next: update product docs for shadow-to-gate evidence.
 - Blockers: none.
+
+### Iteration 6: Update product docs for shadow-to-gate evidence
+
+- Worker: Worker 6.
+- Goal: document the full shadow-to-gate evidence loop and the product boundary
+  for demo, benchmark, shadow, held-out V3, evidence bundle, and guarded
+  readiness evidence.
+- Files changed: `docs/TRANSITION_BENCH.md`, `plans/today.progress.md`.
+- Tests run:
+  - `git diff --check` passed.
+  - `python cli.py summarize-transition-advice --help >/dev/null` passed.
+  - `python cli.py normalize-transition-shadow-outcomes --help >/dev/null`
+    passed.
+  - `python cli.py evaluate-transition-shadow-scorer --help >/dev/null`
+    passed.
+  - `python cli.py build-transition-evidence-bundle --help >/dev/null` passed.
+- Result: docs now explain shadow advice collection, advice summary metrics,
+  shadow outcome joining, held-out V3 scoring, evidence bundles, and why
+  default patch/fix/eval routing remains conservative. The active queue is now
+  complete, and guarded ranking remains blocked unless held-out product gates
+  pass.
+- Commit: Worker 6 final commit, reported in the handoff.
+- Push: Worker 6 final push, reported in the handoff.
+- Next: active queue complete; watcher should choose the next scope.
+- Blockers: none for this docs slice. Product guarded ranking is still blocked
+  by held-out gate policy until qualifying V2/V3 evidence passes.

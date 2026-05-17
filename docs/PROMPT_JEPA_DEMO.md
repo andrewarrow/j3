@@ -10,11 +10,14 @@ real calculator implement/change outcome rows
 generated calculator repo
   -> validation results
 generated Python source
-  -> deterministic source embedding sidecar
+  -> deterministic repo-state and source embedding artifacts
+prompt + repo_before + structured action
+  -> transition target and evaluation-only consequence prediction
 ```
 
 It does not call a hosted LLM API, does not send repo text to a hosted model,
-and does not switch production routing to retrieval-assisted planning.
+and does not switch production routing to retrieval-assisted planning or
+transition prediction.
 
 ## Generate And Inspect The Corpus
 
@@ -61,6 +64,9 @@ The command writes:
 +-- outcomes.jsonl
 +-- report.json
 +-- source-embeddings.json
++-- transitions.jsonl
++-- transition-model.json
++-- transition-eval.json
 +-- repos/simple-calc/
     +-- calculator.py
     +-- request-spec.json
@@ -73,6 +79,10 @@ mixed index built from labels plus real `implement --record` and
 calculator create path, the exponent-support change path, and a blocked
 clarification path.
 
+`transitions.jsonl`, `transition-model.json`, and `transition-eval.json` are
+the Prompt+Repo JEPA transition artifacts. They turn the same demo outcomes
+into an explicit state/action/target prediction problem for local evaluation.
+
 ## Validate The Report
 
 Check that the report and source sidecar are valid JSON:
@@ -80,6 +90,8 @@ Check that the report and source sidecar are valid JSON:
 ```bash
 python -m json.tool /tmp/j3-prompt-jepa-demo/report.json >/dev/null
 python -m json.tool /tmp/j3-prompt-jepa-demo/source-embeddings.json >/dev/null
+python -m json.tool /tmp/j3-prompt-jepa-demo/transition-model.json >/dev/null
+python -m json.tool /tmp/j3-prompt-jepa-demo/transition-eval.json >/dev/null
 ```
 
 Inspect the report:
@@ -98,8 +110,66 @@ Important report fields:
 - `dry_run_proposals`: `prompt-jepa-planner-proposal-v1` records with
   `applies_changes: false`.
 - `source_embeddings`: metadata for the source-embedding sidecar.
+- `transitions`: transition row/model/eval artifact paths, metrics, residuals,
+  schema versions, and `evaluation_only_not_wired_to_production: true`.
 - `hosted_llm_api_tokens`: always `0` in this demo.
 - `hosted_repo_context_bytes`: always `0` in this demo.
+
+## Prompt+Repo Transition Story
+
+The transition path is the first demo artifact shaped like a small local world
+model:
+
+```text
+prompt context
+  + repo_before state
+  + structured action
+  -> predicted repo_after embedding or blocked/clarification target
+  -> compare against observed repo_after / blocked target
+```
+
+`repo-state-v1` is the deterministic Python repo-state encoding used for
+`repo_before` and `repo_after`. It records the schema version, Python source
+feature version, embedding dimension, included Python file paths, per-file
+SHA-256 hashes and byte counts, aggregate metadata, and a mean aggregate repo
+embedding. Empty repos are represented with the same schema and a zero repo
+embedding, so create-from-empty and no-change blocked rows are comparable.
+
+`prompt-repo-transition-v1` rows are written to `transitions.jsonl`. Each row
+contains:
+
+- prompt context and context-embedding checksum
+- Prompt-JEPA target summary and target-embedding checksum
+- `repo_before` as a `repo-state-v1` record
+- `structured_action` such as calculator repo creation, exponent support, or
+  blocked clarification
+- observed `outcome`, `validation`, and local cost fields
+- `repo_after` as a `repo-state-v1` record for source-changing or no-change
+  outcomes, or the no-change state for blocked clarification targets
+
+The demo writes three transition rows today: create the simple calculator repo
+from an empty repo state, record the blocked auth clarification without source
+changes, and add exponent support to the generated calculator repo.
+
+`prompt-repo-transition-predictor-v0` is a tiny deterministic,
+evaluation-only predictor. It uses prompt context, repo-before, structured
+action, outcome, and validation/status features to predict either a
+repo-after embedding target or a blocked/clarification target.
+
+`prompt-repo-transition-eval-v1` is also evaluation-only. It runs
+leave-one-out consequence prediction, compares the V0 predictor with a
+prompt-only nearest-neighbor baseline, and reports:
+
+- top-1/top-k outcome-kind matches
+- top-1/top-k validation-status matches
+- source-changing/no-change versus blocked/clarification split counts
+- repo-after embedding distance statistics for source-state targets
+- residual examples with prompt, action, expected target, predicted target,
+  prompt-only neighbor, and distance fields
+
+These artifacts are not wired into `implement`, `change`, or planner routing.
+They exist so developers can inspect the state/action/target spaces before any
+production planner consumes transition predictions.
 
 ## Inspect Artifacts
 
@@ -162,6 +232,39 @@ The sidecar uses `features.embed_python_source` with feature version
 `ast-hash-v1`. These are deterministic AST hash vectors, not neural training
 outputs.
 
+Inspect the Prompt+Repo transition rows:
+
+```bash
+python - <<'PY'
+import json
+from pathlib import Path
+
+rows = [
+    json.loads(line)
+    for line in Path("/tmp/j3-prompt-jepa-demo/transitions.jsonl").read_text().splitlines()
+]
+print(len(rows), rows[0]["schema_version"])
+for row in rows:
+    print(row["id"], row["structured_action"]["kind"], row["outcome"]["kind"])
+PY
+```
+
+Evaluate the transition rows directly:
+
+```bash
+python cli.py eval-prompt-repo-transitions \
+  --transitions /tmp/j3-prompt-jepa-demo/transitions.jsonl \
+  --top-k 3 \
+  --json
+```
+
+Inspect the persisted transition artifacts:
+
+```bash
+python -m json.tool /tmp/j3-prompt-jepa-demo/transition-model.json
+python -m json.tool /tmp/j3-prompt-jepa-demo/transition-eval.json
+```
+
 ## Supported Boundaries
 
 Supported and validated by this demo:
@@ -172,6 +275,11 @@ Supported and validated by this demo:
 - Build and query local Prompt-JEPA indexes.
 - Produce dry-run planner proposals for inspection.
 - Write deterministic source embeddings for generated Python files.
+- Encode generated Python repos as deterministic `repo-state-v1` records.
+- Write `prompt-repo-transition-v1` rows for create, change, and blocked
+  calculator-demo outcomes.
+- Fit and evaluate `prompt-repo-transition-predictor-v0` locally as an
+  evaluation-only artifact.
 
 Retrieval/proposal-only in this demo:
 
@@ -191,7 +299,11 @@ Current non-goals and constraints:
 
 - No hosted LLM/API calls.
 - No repo text sent to a hosted model.
+- Hosted LLM/API tokens remain `0`.
+- Hosted repo-context bytes remain `0`.
 - No model download, GPU requirement, or neural training run.
 - No production routing switch. `implement` and `change` still use their
   deterministic request/change parsers and builders.
+- No transition predictor routing switch. `prompt-repo-transition-predictor-v0`
+  and `prompt-repo-transition-eval-v1` are for inspection and evaluation only.
 - No claim that synthetic prompt rows prove broad generalization.

@@ -8,7 +8,7 @@ new implementation facts change the 24-hour plan itself. Record any
 ## Status
 
 - Current phase: Prompt+Repo JEPA transition V0
-- Completed iterations: 5 for this reset; Prompt-JEPA developer demo reset
+- Completed iterations: 6 for this reset; Prompt-JEPA developer demo reset
   completed 5 iterations; previous Prompt-JEPA index reset completed 8
   iterations
 - Passing focused tests: `pytest tests/test_prompt_intents.py -q`;
@@ -27,10 +27,13 @@ new implementation facts change the 24-hour plan itself. Record any
   `python -m py_compile j3/prompt_repo_transitions.py`;
   `python -m py_compile j3/prompt_repo_transitions.py cli/handlers.py cli/parser.py cli/__init__.py`;
   `python cli.py eval-prompt-repo-transitions --transitions /tmp/j3-prompt-jepa-demo/transitions.jsonl --top-k 3 --json`;
+  `python -m json.tool /tmp/j3-prompt-jepa-demo/transition-model.json >/dev/null`;
+  `python -m json.tool /tmp/j3-prompt-jepa-demo/transition-eval.json >/dev/null`;
   `git diff --check`
 - Latest implementation/demo commit: `1783df6` (`Wire transition artifacts into demo`)
+- Latest documentation commit: pending for Worker Iteration 6 documentation slice
 - Current blocker: none
-- Next task: update developer docs with the state/action/target transition story.
+- Next task: watcher should choose the next Prompt+Repo JEPA slice.
 
 ## Active Task Queue
 
@@ -39,7 +42,7 @@ new implementation facts change the 24-hour plan itself. Record any
 - [x] Add a tiny evaluation-only transition predictor V0.
 - [x] Add consequence-prediction metrics and residuals.
 - [x] Wire transition rows/model/eval into `demo-prompt-jepa` report artifacts.
-- [ ] Update developer docs with the state/action/target transition story.
+- [x] Update developer docs with the state/action/target transition story.
 
 ## Worker Iteration Template
 
@@ -754,4 +757,37 @@ Use this shape for each worker handoff:
 - Commit: `1783df6` (`Wire transition artifacts into demo`)
 - Push: succeeded to `main`.
 - Next: update developer docs with the state/action/target transition story.
+- Blockers: none.
+
+### Iteration 6: Prompt+Repo transition developer docs
+
+- Worker: Codex worker iteration 6 for the Prompt+Repo transition V0 reset
+- Goal: update developer-facing docs with the Prompt+Repo JEPA
+  state/action/target transition story.
+- Files changed: `docs/PROMPT_JEPA_DEMO.md`, `README.md`,
+  `plans/today.progress.md`
+- Tests/checks run: `python cli.py demo-prompt-jepa --labels
+  ../prompts/coding_agent_prompts_expanded_v0.jsonl --out
+  /tmp/j3-prompt-jepa-demo --top-k 5` passed; `python -m json.tool
+  /tmp/j3-prompt-jepa-demo/report.json >/dev/null` passed;
+  `python -m json.tool /tmp/j3-prompt-jepa-demo/source-embeddings.json
+  >/dev/null` passed; `python -m json.tool
+  /tmp/j3-prompt-jepa-demo/transition-model.json >/dev/null` passed;
+  `python -m json.tool /tmp/j3-prompt-jepa-demo/transition-eval.json
+  >/dev/null` passed; transition JSONL inspection passed with 3 rows and
+  `prompt-repo-transition-v1`; `python cli.py
+  eval-prompt-repo-transitions --transitions
+  /tmp/j3-prompt-jepa-demo/transitions.jsonl --top-k 3 --json` passed with
+  JSON validation; `git diff --check` passed.
+- Result: documented `repo-state-v1` as deterministic Python repo-state
+  encoding, `prompt-repo-transition-v1` as prompt plus repo-before plus
+  structured-action to repo-after or blocked target rows, and the
+  evaluation-only boundary for `prompt-repo-transition-predictor-v0` and
+  `prompt-repo-transition-eval-v1`. Updated artifact and report descriptions
+  for `transitions.jsonl`, `transition-model.json`, `transition-eval.json`,
+  transition metrics/residuals, and zero hosted token/context usage. README
+  remains a short summary with a focused doc link and starter commands.
+- Commit: pending until commit is created; final hash reported by worker.
+- Push: pending until commit is created.
+- Next: watcher should choose the next Prompt+Repo JEPA slice.
 - Blockers: none.

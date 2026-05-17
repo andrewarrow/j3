@@ -73,8 +73,21 @@ is the JEPA-shaped artifact: context vectors and target vectors are separate,
 dimensions are fixed and validated, rows preserve train/validation/test splits,
 and real `implement --record` / `change --record` outcome rows can be indexed.
 
+The developer demo now also emits Prompt+Repo transition artifacts:
+
+```text
+prompt + repo_before + structured action
+  -> predicted repo_after / blocked target
+  -> local transition evaluation metrics and residuals
+```
+
+Those rows use deterministic `repo-state-v1` Python repo-state records and are
+evaluated by `prompt-repo-transition-predictor-v0`. This is still
+evaluation-only; production `implement` and `change` routing remains
+deterministic.
+
 For the one-command developer demo, exact artifact inspection commands, and
-current supported/retrieval-only boundaries, see
+current supported/retrieval/transition-only boundaries, see
 [docs/PROMPT_JEPA_DEMO.md](docs/PROMPT_JEPA_DEMO.md).
 
 Try the calculator prompt index:
@@ -196,6 +209,12 @@ j3 query-prompt-jepa-index \
   --index /tmp/j3-prompt-jepa-index.json \
   --prompt "make me a simple cli calc" \
   --top-k 5
+j3 demo-prompt-jepa \
+  --labels ../prompts/coding_agent_prompts_expanded_v0.jsonl \
+  --out /tmp/j3-prompt-jepa-demo
+j3 eval-prompt-repo-transitions \
+  --transitions /tmp/j3-prompt-jepa-demo/transitions.jsonl \
+  --top-k 3
 j3 train --data examples/greenshot_bug
 j3 train --data ../Decepticon ../scientific-agent-skills ../CLI-Anything
 j3 mine --repo ../some-python-project --out data/transitions/project.jsonl
@@ -215,8 +234,10 @@ pytest
 │   ├── actions.py
 │   ├── features.py
 │   ├── prompt_jepa.py
+│   ├── prompt_repo_transitions.py
 │   ├── request_spec.py
 │   ├── repo.py
+│   ├── repo_state.py
 │   ├── synth.py
 │   └── training.py
 ├── docs/           # focused long-form docs

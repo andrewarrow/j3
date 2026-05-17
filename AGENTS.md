@@ -75,7 +75,31 @@ natural-language prompt understanding.
 
 Default to the smallest focused test that proves the touched behavior.
 
-Useful focused checks:
+For the active GreenShot-7 calculator work, create focused tests as the feature
+is built. The expected near-term test files are:
+
+- `tests/test_request_spec.py`
+- `tests/test_greenfield_calculator.py`
+- `tests/test_greenshot_7.py`
+
+Run the relevant new test first, for example:
+
+```bash
+pytest tests/test_request_spec.py -q
+pytest tests/test_greenfield_calculator.py -q
+pytest tests/test_greenshot_7.py -q
+```
+
+If an implementation CLI is added, also smoke it directly:
+
+```bash
+python cli.py implement --prompt "make me a simple cli calc" --out /tmp/j3-calc-demo
+python /tmp/j3-calc-demo/calculator.py 2 + 3
+python -m pytest /tmp/j3-calc-demo/tests -q
+```
+
+Existing repair-focused checks remain useful when touching repair, evaluation,
+or ranking code:
 
 ```bash
 pytest tests/test_candidate_ranking.py -q
@@ -84,6 +108,5 @@ pytest tests/test_patching.py -q
 pytest tests/test_failure_hints.py -q
 ```
 
-For GreenShot-7 work, prefer the focused request-spec, greenfield, and
-calculator tests as they are added. Run full `pytest -q` only as an intentional
-integration gate after broad shared changes or when the user asks.
+Run full `pytest -q` only as an intentional integration gate after broad shared
+changes or when the user asks.

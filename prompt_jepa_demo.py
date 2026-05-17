@@ -14,8 +14,10 @@ import subprocess
 import sys
 import time
 from collections import Counter
+from collections.abc import Mapping, Sequence
+from hashlib import sha256
 from pathlib import Path
-from typing import Any, Mapping, Sequence
+from typing import Any
 
 from existing_repo_change import (
     append_existing_repo_change_attempt,
@@ -23,6 +25,8 @@ from existing_repo_change import (
     parse_existing_repo_change_to_spec,
     plan_existing_repo_change,
 )
+from features import FEATURE_VERSION as PYTHON_SOURCE_FEATURE_VERSION
+from features import embed_python_source
 from greenfield import build_calculator_repo, plan_calculator_repo
 from prompt_intents import load_prompt_intent_records, predict_prompt_intent
 from prompt_jepa import (
@@ -36,7 +40,9 @@ from request_spec import parse_request_to_spec
 
 
 PROMPT_JEPA_DEMO_SCHEMA_VERSION = "prompt-jepa-demo-report-v1"
+SOURCE_EMBEDDING_SIDECAR_SCHEMA_VERSION = "prompt-jepa-demo-source-embeddings-v1"
 DEMO_OUTPUT_MARKER = ".j3-prompt-jepa-demo"
+SOURCE_EMBEDDING_ARTIFACT = "source-embeddings.json"
 REPRESENTATIVE_PROMPTS = (
     "make me a simple cli calc",
     "make me a complex calc for spaceships",
@@ -96,6 +102,14 @@ def run_prompt_jepa_demo(
     timings["generate_and_validate_calculator_seconds"] = _elapsed(started)
 
     started = time.perf_counter()
+    source_embeddings = _write_source_embedding_sidecar(
+        generated_results=generated_results,
+        out_dir=out,
+        embedding_dim=embedding_dim,
+    )
+    timings["embed_generated_python_source_seconds"] = _elapsed(started)
+
+    started = time.perf_counter()
     mixed_index = build_prompt_jepa_index_from_sources(
         labels_path=labels,
         records_path=records_path,
@@ -140,6 +154,7 @@ def run_prompt_jepa_demo(
         },
         "held_out_retrieval_eval": retrieval_eval.to_record(),
         "generated_calculator_results": generated_results,
+        "source_embeddings": source_embeddings,
         "representative_queries": representative_queries,
         "dry_run_proposals": dry_run_proposals,
         "artifact_sizes_bytes": _artifact_sizes(out),
@@ -384,6 +399,119 @@ def _artifact_sizes(out_dir: Path) -> dict[str, int]:
         sizes[str(path.relative_to(out_dir))] = size
     sizes["total_demo_artifact_bytes"] = total
     return sizes
+
+
+def _write_source_embedding_sidecar(
+    *,
+    generated_results: Mapping[str, object],
+    out_dir: Path,
+    embedding_dim: int,
+) -> dict[str, object]:
+    artifact_path = out_dir / SOURCE_EMBEDDING_ARTIFACT
+    repo_dirs = _supported_generated_repo_dirs(generated_results)
+
+    files: list[dict[str, object]] = []
+    repos: list[dict[str, object]] = []
+    aggregate_hasher = sha256()
+    total_bytes = 0
+
+    for repo_dir in repo_dirs:
+        repo_files: list[dict[str, object]] = []
+        for source_path in sorted(repo_dir.rglob("*.py")):
+            if not source_path.is_file():
+                continue
+            source_bytes = source_path.read_bytes()
+            source_text = source_bytes.decode("utf-8")
+            digest = sha256(source_bytes).hexdigest()
+            embedding = embed_python_source(source_text, dim=embedding_dim)
+            relative_path = source_path.relative_to(out_dir).as_posix()
+            repo_relative_path = source_path.relative_to(repo_dir).as_posix()
+            total_bytes += len(source_bytes)
+            aggregate_hasher.update(relative_path.encode("utf-8"))
+            aggregate_hasher.update(b"\0")
+            aggregate_hasher.update(digest.encode("ascii"))
+            aggregate_hasher.update(b"\0")
+            file_record = {
+                "path": relative_path,
+                "repo": repo_dir.relative_to(out_dir).as_posix(),
+                "repo_relative_path": repo_relative_path,
+                "bytes": len(source_bytes),
+                "sha256": digest,
+                "embedding_length": len(embedding),
+                "embedding": embedding,
+            }
+            repo_files.append(file_record)
+            files.append(file_record)
+
+        repo_hasher = sha256()
+        repo_bytes = 0
+        for file_record in repo_files:
+            repo_hasher.update(str(file_record["repo_relative_path"]).encode("utf-8"))
+            repo_hasher.update(b"\0")
+            repo_hasher.update(str(file_record["sha256"]).encode("ascii"))
+            repo_hasher.update(b"\0")
+            repo_bytes += int(file_record["bytes"])
+        repos.append(
+            {
+                "path": repo_dir.relative_to(out_dir).as_posix(),
+                "file_count": len(repo_files),
+                "python_source_bytes": repo_bytes,
+                "source_sha256": repo_hasher.hexdigest() if repo_files else None,
+            }
+        )
+
+    embedding_lengths = sorted(
+        {int(file_record["embedding_length"]) for file_record in files}
+    )
+    source_digest = aggregate_hasher.hexdigest() if files else None
+    sidecar = {
+        "schema_version": SOURCE_EMBEDDING_SIDECAR_SCHEMA_VERSION,
+        "artifact": str(artifact_path),
+        "out": str(out_dir),
+        "embedding_feature_version": PYTHON_SOURCE_FEATURE_VERSION,
+        "embedding_dim": embedding_dim,
+        "repo_count": len(repo_dirs),
+        "file_count": len(files),
+        "python_source_bytes": total_bytes,
+        "source_sha256": source_digest,
+        "repos": repos,
+        "files": files,
+    }
+    artifact_path.write_text(
+        json.dumps(sidecar, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    return {
+        "schema_version": SOURCE_EMBEDDING_SIDECAR_SCHEMA_VERSION,
+        "artifact": str(artifact_path),
+        "embedding_feature_version": PYTHON_SOURCE_FEATURE_VERSION,
+        "embedding_dim": embedding_dim,
+        "embedding_lengths": embedding_lengths,
+        "repo_count": len(repo_dirs),
+        "file_count": len(files),
+        "python_source_bytes": total_bytes,
+        "source_sha256": source_digest,
+    }
+
+
+def _supported_generated_repo_dirs(generated_results: Mapping[str, object]) -> list[Path]:
+    seen: set[Path] = set()
+    repo_dirs: list[Path] = []
+    supported = generated_results.get("supported", [])
+    if not isinstance(supported, list):
+        return repo_dirs
+    for item in supported:
+        if not isinstance(item, Mapping):
+            continue
+        repo = item.get("repo")
+        if not isinstance(repo, str):
+            continue
+        repo_dir = Path(repo).resolve()
+        if repo_dir in seen or not repo_dir.is_dir():
+            continue
+        seen.add(repo_dir)
+        repo_dirs.append(repo_dir)
+    return repo_dirs
 
 
 def _elapsed(started: float) -> float:

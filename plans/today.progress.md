@@ -522,3 +522,31 @@ Use this shape for each worker handoff:
 - Next: add a thin Python source-embedding sidecar for generated demo repos
   using `features.embed_python_source`.
 - Blockers: none.
+
+### Iteration 4: Prompt-JEPA demo source-embedding sidecar
+
+- Worker: Codex local iteration
+- Goal: add a thin Python source-embedding sidecar for generated demo repos
+  using `features.embed_python_source`, without changing production routing.
+- Files changed: `prompt_jepa_demo.py`, `tests/test_cli.py`,
+  `plans/today.progress.md`
+- Tests run: `pytest tests/test_cli.py::test_demo_prompt_jepa_command_writes_local_report -q`
+  passed; `pytest tests/test_cli.py -q` passed with 37 tests;
+  `python -m py_compile prompt_jepa_demo.py features.py cli/handlers.py
+  cli/parser.py cli/__init__.py` passed; `python cli.py demo-prompt-jepa
+  --labels ../prompts/coding_agent_prompts_expanded_v0.jsonl --out
+  /tmp/j3-prompt-jepa-demo --top-k 5` passed; `python -m json.tool
+  /tmp/j3-prompt-jepa-demo/report.json >/dev/null` passed; `git diff --check`
+  passed.
+- Result: the demo now scans the supported generated calculator repo for Python
+  files after exponent support is applied, embeds each file with the existing
+  deterministic AST hash source encoder, writes `source-embeddings.json`, and
+  adds concise source-embedding metadata to `report.json`. The sidecar records
+  `calculator.py` and `tests/test_calculator_cli.py` with source byte counts,
+  SHA-256 hashes, embedding lengths, and vectors. Production `implement`,
+  `change`, and Prompt-JEPA routing remain unchanged.
+- Commit: pending local worker commit.
+- Push: pending.
+- Next: document the demo in README or a focused demo doc with exact commands
+  and honest supported/retrieval-only boundaries.
+- Blockers: none.

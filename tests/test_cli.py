@@ -472,6 +472,9 @@ def test_demo_prompt_jepa_command_writes_local_report(capsys, tmp_path) -> None:
 
     output = capsys.readouterr().out
     report = json.loads((out_dir / "report.json").read_text(encoding="utf-8"))
+    source_sidecar = json.loads(
+        (out_dir / "source-embeddings.json").read_text(encoding="utf-8")
+    )
     outcome_rows = _jsonl_rows(out_dir / "outcomes.jsonl")
 
     assert "j3 demo-prompt-jepa complete" in output
@@ -488,6 +491,33 @@ def test_demo_prompt_jepa_command_writes_local_report(capsys, tmp_path) -> None:
     assert report["indexes"]["mixed_index_rows"] == 10
     assert (out_dir / "index.json").exists()
     assert (out_dir / "labels-index.json").exists()
+    source_embeddings = report["source_embeddings"]
+    assert source_embeddings["schema_version"] == (
+        "prompt-jepa-demo-source-embeddings-v1"
+    )
+    assert source_embeddings["artifact"] == str(out_dir / "source-embeddings.json")
+    assert source_embeddings["embedding_feature_version"] == "ast-hash-v1"
+    assert source_embeddings["embedding_dim"] == 64
+    assert source_embeddings["embedding_lengths"] == [64]
+    assert source_embeddings["repo_count"] == 1
+    assert source_embeddings["file_count"] == 2
+    assert source_embeddings["python_source_bytes"] > 0
+    assert len(source_embeddings["source_sha256"]) == 64
+    assert source_sidecar["schema_version"] == (
+        "prompt-jepa-demo-source-embeddings-v1"
+    )
+    assert source_sidecar["embedding_feature_version"] == "ast-hash-v1"
+    assert source_sidecar["embedding_dim"] == 64
+    assert source_sidecar["file_count"] == source_embeddings["file_count"]
+    assert source_sidecar["source_sha256"] == source_embeddings["source_sha256"]
+    assert {file["path"] for file in source_sidecar["files"]} == {
+        "repos/simple-calc/calculator.py",
+        "repos/simple-calc/tests/test_calculator_cli.py",
+    }
+    assert all(file["embedding_length"] == 64 for file in source_sidecar["files"])
+    assert all(len(file["embedding"]) == 64 for file in source_sidecar["files"])
+    assert all(file["bytes"] > 0 for file in source_sidecar["files"])
+    assert all(len(file["sha256"]) == 64 for file in source_sidecar["files"])
     assert [row["record_kind"] for row in outcome_rows] == [
         "greenshot_7_request_to_repo_attempt",
         "greenshot_7_request_to_repo_attempt",
@@ -516,6 +546,7 @@ def test_demo_prompt_jepa_command_writes_local_report(capsys, tmp_path) -> None:
     )
     assert report["artifact_sizes_bytes"]["index.json"] > 0
     assert report["artifact_sizes_bytes"]["outcomes.jsonl"] > 0
+    assert report["artifact_sizes_bytes"]["source-embeddings.json"] > 0
 
 
 def test_build_prompt_jepa_index_command_writes_index(capsys, tmp_path) -> None:

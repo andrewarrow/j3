@@ -188,6 +188,24 @@ def test_generate_rename_symbol_candidate_for_unknown_local(tmp_path) -> None:
     )
 
 
+def test_generate_rename_symbol_candidate_for_builtin_exception_typo(tmp_path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "bug.py").write_text(
+        "def fail() -> None:\n"
+        "    raise RunTimeError('boom')\n",
+        encoding="utf-8",
+    )
+
+    candidates = generate_candidate_patches(repo)
+
+    assert any(
+        candidate.action.kind.value == "rename_symbol"
+        and candidate.action.params == {"from": "RunTimeError", "to": "RuntimeError"}
+        for candidate in candidates
+    )
+
+
 def test_generate_modify_condition_candidates_for_if_tests(tmp_path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()
@@ -1294,6 +1312,30 @@ def test_patch_solves_dotenv_auto_quote_alnum_value(tmp_path) -> None:
         "to": False,
     }
     assert '"auto_alnum": False' in result.selected.patched_source
+
+
+def test_patch_solves_scipy_quad_runtime_error_typo(tmp_path) -> None:
+    repo = tmp_path / "greenshot_6"
+    shutil.copytree("examples/greenshot_6", repo)
+
+    result = plan_and_maybe_apply_patch(
+        repo=repo,
+        test_command=(
+            "python -m pytest "
+            "tests/test_scipyquad.py::test_quad_infinite_bounds_raise_runtime_error"
+        ),
+        dry_run=True,
+        timeout_seconds=10,
+    )
+
+    assert result.selected is not None
+    assert result.selected.file_path == "scipyquad/quadpack.py"
+    assert result.selected.action.kind.value == "rename_symbol"
+    assert result.selected.action.params == {
+        "from": "RunTimeError",
+        "to": "RuntimeError",
+    }
+    assert "raise RuntimeError" in result.selected.patched_source
 
 
 def test_generate_membership_operator_with_literal_needle_decoy(tmp_path) -> None:

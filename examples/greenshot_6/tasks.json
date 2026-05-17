@@ -838,6 +838,27 @@
     }
   },
   {
+    "name": "scipy_quad_runtime_error_typo",
+    "family": "exception_class_name",
+    "source_type": "git_history",
+    "split": "train",
+    "repo": ".",
+    "test": "python -m pytest tests/test_scipyquad.py::test_quad_infinite_bounds_raise_runtime_error",
+    "source": {
+      "repo": "scipy/scipy",
+      "commit": "dec9d9c0137ab47d385ea8be78edc5e5e33bf2b3"
+    },
+    "preferred": {
+      "file_path": "scipyquad/quadpack.py",
+      "action": "rename_symbol",
+      "symbol": "_quad",
+      "params": {
+        "from": "RunTimeError",
+        "to": "RuntimeError"
+      }
+    }
+  },
+  {
     "name": "cookie_default_secure_flag_dict_value",
     "family": "mapping_value",
     "source_type": "mutation",

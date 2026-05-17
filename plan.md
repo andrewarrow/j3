@@ -1132,13 +1132,34 @@ Recent work:
   training pairs, 843 features, and 4 margin violations. The preferred
   `change_dict_value host: "__Host" -> "__Host-"` candidate now ranks first for
   `cookie_host_prefix_dict_value`.
+- GreenShot-6 now includes a twenty-eighth real-package-derived fixture
+  domain, `scipyquad`, with one `git_history` task modeled on `scipy/scipy`
+  commit `dec9d9c0137ab47d385ea8be78edc5e5e33bf2b3`. The task
+  `scipy_quad_runtime_error_typo` repairs a Quadpack exception class typo by
+  changing `RunTimeError` to `RuntimeError`, using the existing
+  `rename_symbol` action family.
+- `rename_symbol` generation now considers close built-in names in addition to
+  local/module symbols. This was needed because the SciPy-derived preferred
+  candidate was otherwise missing; no new action family, broad ranker weight,
+  or pass/preferred-label feature was added.
+- Focused loader/generator coverage passed for the SciPy-derived task:
+  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
+  `pytest tests/test_patching.py::test_generate_rename_symbol_candidate_for_builtin_exception_typo tests/test_patching.py::test_patch_solves_scipy_quad_runtime_error_typo -q`.
+- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
+  adding `scipyquad`. The persisted dataset now covers 49 tasks and 386 tested
+  candidates. Ranked eval solved all 49 tasks with `pass@1=34/49` and average
+  candidates `7.88`; the new SciPy-derived task solves with the preferred
+  `rename_symbol` candidate after 7 tested candidates.
+- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
+  the SciPy outcome refresh and stayed clean: solved=7/7, pass@1=7/7,
+  positive@1=7/7. Training used 466 rows, 87 passing rows, 403 training pairs,
+  816 features, and 4 margin violations.
 
 Last focused verification:
 
 ```bash
-pytest tests/test_candidate_ranking.py -q
-pytest tests/test_evaluation.py::test_load_greenshot_6_tasks tests/test_evaluation.py::test_write_candidate_outcomes_preserves_scalar_dict_value_assertion_delta -q
-pytest tests/test_patching.py::test_generate_literal_dict_key_decoy_for_dict_value_repair tests/test_patching.py::test_patch_solves_legacy_secure_prefix_dict_value -q
+pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q
+pytest tests/test_patching.py::test_generate_rename_symbol_candidate_for_builtin_exception_typo tests/test_patching.py::test_patch_solves_scipy_quad_runtime_error_typo -q
 python cli.py eval \
   --tasks examples/greenshot_6 \
   --checkpoint runs/apache-python-git/model.json \
@@ -1164,6 +1185,7 @@ python cli.py train-ranker \
   --out runs/apache-python-git/ranker-holdout-greenshot-6-test-slice
 python cli.py outcome-summary \
   --candidate-outcomes runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl
+git diff --check
 ```
 
 Previous focused verification:
@@ -1280,9 +1302,9 @@ GreenShot-6 outcome collection result:
 
 ```text
 ranked, runs/apache-python-git/model.json, explore-after-pass=5:
-  solved=48/48 pass@1=34/48 avg_candidates=7.90
-  rows=379 passing_rows=78 preferred_positive_rows=48
-  source_type pass@1: git_history=17/28 mutation=17/20
+  solved=49/49 pass@1=34/49 avg_candidates=7.88
+  rows=386 passing_rows=79 preferred_positive_rows=49
+  source_type pass@1: git_history=17/29 mutation=17/20
 ```
 
 Treat this as a smoke check, not a benchmark claim.
@@ -1301,8 +1323,8 @@ GreenShot-6 test-slice ranker validation result:
 
 ```text
 train-ranker, holdout-task includes all GreenShot-6 split:test tasks:
-  training rows=459 passing_rows=86 tasks=61 plans=61 pairs=397
-  training_accuracy=0.997 margin_violations=4 features=843
+  training rows=466 passing_rows=87 tasks=62 plans=62 pairs=403
+  training_accuracy=1.000 margin_violations=4 features=816
   validation solved=7/7 pass@1=7/7 positive@1=7/7
   validation avg_first_passing_index=1.0
 ```
@@ -1483,11 +1505,11 @@ Start neural/JEPA work only when:
 
 ## Handoff Recommendation
 
-The next context window should start from the post-v13 literal-key cleanup, not
-the older envwrite residual state. GreenShot-6 now has 48 tasks. The same
-`split: test` held-out validation is clean again: solved=7/7, pass@1=7/7, and
-positive@1=7/7. Do not tune broad handcrafted weights or add
-pass/preferred-label features from this state.
+The next context window should start from the post-scipyquad dataset growth,
+not the older envwrite or v13 literal-key residual state. GreenShot-6 now has
+49 tasks. The same `split: test` held-out validation is clean again:
+solved=7/7, pass@1=7/7, and positive@1=7/7. Do not tune broad handcrafted
+weights or add pass/preferred-label features from this state.
 
 Immediate next sequence:
 

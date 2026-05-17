@@ -99,7 +99,7 @@ def test_load_greenshot_6_tasks() -> None:
     tasks = load_tasks(Path("examples/greenshot_6"))
     by_name = {task.name: task for task in tasks}
 
-    assert len(tasks) == 48
+    assert len(tasks) == 49
     assert tasks[0].name == "core_metadata_version_dict_value"
     assert tasks[0].family == "mapping_value"
     assert tasks[0].source_type == "mutation"
@@ -519,6 +519,17 @@ def test_load_greenshot_6_tasks() -> None:
             "key": "auto_alnum",
             "from": True,
             "to": False,
+        },
+    }
+    assert by_name["scipy_quad_runtime_error_typo"].split == "train"
+    assert by_name["scipy_quad_runtime_error_typo"].source_type == "git_history"
+    assert by_name["scipy_quad_runtime_error_typo"].preferred_patch == {
+        "file_path": "scipyquad/quadpack.py",
+        "action": "rename_symbol",
+        "symbol": "_quad",
+        "params": {
+            "from": "RunTimeError",
+            "to": "RuntimeError",
         },
     }
     assert by_name["cookie_default_secure_flag_dict_value"].split == "test"

@@ -21,7 +21,12 @@ def _rename_symbol_candidates(
     if node.id in local_symbols or node.id in BUILTIN_NAMES:
         return []
 
-    alternatives = difflib.get_close_matches(node.id, sorted(local_symbols), n=3, cutoff=0.72)
+    alternatives = difflib.get_close_matches(
+        node.id,
+        sorted(local_symbols | BUILTIN_NAMES),
+        n=3,
+        cutoff=0.72,
+    )
     return [
         _candidate(
             file_path=file_path,

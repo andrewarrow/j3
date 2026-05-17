@@ -4,6 +4,18 @@ import json
 from pathlib import Path
 from typing import Any
 
+import cli.handlers
+from cli import main
+from j3 import transition_shadow_matrix
+from j3.transition_shadow_matrix import (
+    MATRIX_EVIDENCE_DIR,
+    MATRIX_MANIFEST,
+    MATRIX_SUMMARY,
+    MATRIX_SUITE_DIR,
+    TRANSITION_SHADOW_MATRIX_VERSION,
+    run_transition_shadow_matrix,
+)
+
 
 MATRIX_PATH = Path("examples/transition_shadow_matrix.json")
 REQUIRED_SUITES = {
@@ -83,6 +95,196 @@ def test_transition_shadow_matrix_per_suite_parameters_are_runner_ready() -> Non
         assert 0.0 < parameters["validation_fraction"] < 1.0
 
 
+def test_run_transition_shadow_matrix_runs_only_suite_and_writes_summary(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    calls: list[dict[str, Any]] = []
+
+    def fake_run_transition_shadow_suite(**kwargs: Any) -> dict[str, object]:
+        calls.append(kwargs)
+        out_dir = kwargs["out_dir"]
+        out_dir.mkdir(parents=True, exist_ok=True)
+        evidence_dir = out_dir / "evidence"
+        evidence_dir.mkdir()
+        (evidence_dir / "manifest.json").write_text('{"schema_version":"fake"}\n')
+        return _fake_suite_manifest(out_dir, task_count=5, solved=4)
+
+    monkeypatch.setattr(
+        transition_shadow_matrix,
+        "run_transition_shadow_suite",
+        fake_run_transition_shadow_suite,
+    )
+    monkeypatch.setattr(
+        cli.handlers,
+        "run_transition_shadow_matrix",
+        transition_shadow_matrix.run_transition_shadow_matrix,
+    )
+
+    out = tmp_path / "matrix"
+    summary = run_transition_shadow_matrix(
+        matrix_path=MATRIX_PATH,
+        out_dir=out,
+        only="greenshot_bugs",
+    )
+
+    assert len(calls) == 1
+    assert calls[0]["tasks"] == [Path("examples/greenshot_bugs")]
+    assert calls[0]["max_candidates"] == 12
+    assert calls[0]["split_by"] == "order"
+    assert summary["schema_version"] == TRANSITION_SHADOW_MATRIX_VERSION
+    assert summary["zero_hosted_usage"] is True
+    assert summary["totals"]["suite_count"] == 1
+    assert summary["totals"]["task_count"] == 5
+    assert summary["totals"]["ranked_solved"] == 4
+    assert summary["totals"]["advice_rows"] == 5
+    assert summary["totals"]["candidate_count"] == 37
+    assert summary["totals"]["held_out_group_count"] == 2
+    assert summary["totals"]["residual_count"] == 1
+    assert summary["suites"][0]["id"] == "greenshot_bugs"
+    assert summary["suites"][0]["v3_gate"] == "ready_for_shadow_mode"
+    assert summary["suites"][0]["v3_vs_existing_rank_order"]["pass_at_1_delta"] == 0.25
+    assert (out / MATRIX_MANIFEST).is_file()
+    assert (out / MATRIX_SUMMARY).is_file()
+    assert (out / MATRIX_SUITE_DIR / "greenshot_bugs" / "evidence" / "manifest.json").is_file()
+    assert (out / MATRIX_EVIDENCE_DIR / "manifest.json").is_file()
+    assert (out / MATRIX_EVIDENCE_DIR / "checksums.sha256").is_file()
+
+
+def test_run_transition_shadow_matrix_writes_filtered_subset_manifest(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    calls: list[dict[str, Any]] = []
+
+    def fake_run_transition_shadow_suite(**kwargs: Any) -> dict[str, object]:
+        calls.append(kwargs)
+        out_dir = kwargs["out_dir"]
+        out_dir.mkdir(parents=True, exist_ok=True)
+        (out_dir / "evidence").mkdir()
+        (out_dir / "evidence" / "manifest.json").write_text('{"schema_version":"fake"}\n')
+        return _fake_suite_manifest(out_dir, task_count=8, solved=8)
+
+    monkeypatch.setattr(
+        transition_shadow_matrix,
+        "run_transition_shadow_suite",
+        fake_run_transition_shadow_suite,
+    )
+
+    out = tmp_path / "matrix"
+    run_transition_shadow_matrix(
+        matrix_path=MATRIX_PATH,
+        out_dir=out,
+        only="greenshot_5_subset",
+    )
+
+    assert len(calls) == 1
+    subset_manifest = calls[0]["tasks"][0] / "tasks.json"
+    rows = json.loads(subset_manifest.read_text(encoding="utf-8"))
+    suite = next(
+        suite for suite in _load_matrix()["suites"] if suite["id"] == "greenshot_5_subset"
+    )
+    assert [row["name"] for row in rows] == suite["task_names"]
+    assert {Path(row["repo"]).is_absolute() for row in rows} == {True}
+    assert calls[0]["max_candidates"] == 10
+    assert calls[0]["timeout_seconds"] == 45
+    assert calls[0]["validation_fraction"] == 0.25
+
+
+def test_run_transition_shadow_matrix_cli_prints_json_summary(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    def fake_run_transition_shadow_suite(**kwargs: Any) -> dict[str, object]:
+        out_dir = kwargs["out_dir"]
+        out_dir.mkdir(parents=True, exist_ok=True)
+        (out_dir / "evidence").mkdir()
+        (out_dir / "evidence" / "manifest.json").write_text('{"schema_version":"fake"}\n')
+        return _fake_suite_manifest(out_dir, task_count=5, solved=5)
+
+    monkeypatch.setattr(
+        transition_shadow_matrix,
+        "run_transition_shadow_suite",
+        fake_run_transition_shadow_suite,
+    )
+
+    assert (
+        main(
+            [
+                "run-transition-shadow-matrix",
+                "--matrix",
+                str(MATRIX_PATH),
+                "--out",
+                str(tmp_path / "matrix"),
+                "--only",
+                "greenshot_bugs",
+                "--json",
+            ]
+        )
+        == 0
+    )
+
+    output = json.loads(capsys.readouterr().out)
+    assert output["schema_version"] == TRANSITION_SHADOW_MATRIX_VERSION
+    assert output["totals"]["suite_count"] == 1
+    assert output["zero_hosted_usage"] is True
+
+
 def _load_matrix() -> dict[str, Any]:
     assert MATRIX_PATH.is_file()
     return json.loads(MATRIX_PATH.read_text(encoding="utf-8"))
+
+
+def _fake_suite_manifest(
+    out_dir: Path,
+    *,
+    task_count: int,
+    solved: int,
+) -> dict[str, object]:
+    return {
+        "schema_version": "transition-shadow-suite-v1",
+        "out": str(out_dir),
+        "artifacts": {
+            "evidence_manifest": str(out_dir / "evidence" / "manifest.json"),
+        },
+        "eval": {
+            "task_count": task_count,
+            "ranked_solved": solved,
+        },
+        "advice_summary": {
+            "advice_row_count": task_count,
+            "candidate_count": 37,
+        },
+        "shadow_scorer_v3": {
+            "split": {
+                "validation_group_count": 2,
+            },
+            "validation": {
+                "group_count": 2,
+                "product_readiness": {
+                    "gate_result": "ready_for_shadow_mode",
+                    "eligible_for_shadow_mode": True,
+                    "eligible_for_guarded_opt_in": False,
+                    "residual_count": 1,
+                    "baseline_residual_count": 2,
+                    "metrics": {
+                        "pass_at_1": {"delta": 0.25},
+                        "top_k": {"delta": 0.0},
+                        "mean_reciprocal_rank": {"delta": 0.2},
+                        "average_candidates_validated_before_first_pass": {
+                            "delta": -0.5
+                        },
+                    },
+                },
+            },
+        },
+        "usage": {
+            "hosted_llm_api_calls": 0,
+            "hosted_llm_prompt_tokens": 0,
+            "hosted_llm_completion_tokens": 0,
+            "hosted_api_tokens": 0,
+            "hosted_repo_context_bytes": 0,
+        },
+        "zero_hosted_usage": True,
+    }

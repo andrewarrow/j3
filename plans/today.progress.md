@@ -6,7 +6,7 @@ This file is the live progress log for `plans/today.md`. Keep
 ## Status
 
 - Current phase: evidence matrix and guarded product trial.
-- Completed iterations for this reset: 1.
+- Completed iterations for this reset: 2.
 - Latest relevant commits:
   - `c6dbe26` closed the shadow suite loop.
   - `aedb04a` documented the transition shadow suite workflow.
@@ -17,13 +17,13 @@ This file is the live progress log for `plans/today.md`. Keep
 - Current blocker: the checked-in shadow suite reports
   `ready_for_shadow_mode`, not `ready_for_guarded_opt_in`; guarded production
   ranking remains blocked unless broader matrix evidence passes product gates.
-- Next task: add a matrix runner over the standard shadow suites.
+- Next task: add cross-suite residual reporting.
 
 ## Active Task Queue
 
 - [x] Recreate `plans/today.md` and `plans/today.progress.md`.
 - [x] Define a checked-in shadow matrix manifest.
-- [ ] Add a matrix runner over standard shadow suites.
+- [x] Add a matrix runner over standard shadow suites.
 - [ ] Add cross-suite residual reporting.
 - [ ] Produce a release-quality matrix evidence bundle.
 - [ ] Decide guarded trial eligibility from matrix gates.
@@ -137,3 +137,30 @@ Use this shape for each worker handoff:
 - Blockers: none. The `task_names` subset field is the smallest coherent shape
   for bounded GreenShot-5/6 runs because the current suite runner accepts task
   manifests/directories but not subset slicing yet.
+
+### Iteration 2: Transition shadow matrix runner
+
+- Worker: Codex worker iteration 2
+- Goal: add `run-transition-shadow-matrix` over the standard shadow suites with
+  `--only`, filtered subset manifests, per-suite output directories, matrix
+  summary/manifest, and a lightweight matrix evidence area.
+- Files changed: `j3/transition_shadow_matrix.py`, `cli/handlers.py`,
+  `cli/parser.py`, `cli/__init__.py`, `tests/test_transition_shadow_matrix.py`,
+  `tests/test_cli.py`, `plans/today.progress.md`
+- Tests run:
+  - `pytest tests/test_transition_shadow_matrix.py -q` passed.
+  - `pytest tests/test_cli.py -q` passed.
+  - `python cli.py run-transition-shadow-matrix --matrix examples/transition_shadow_matrix.json --out /tmp/j3-transition-shadow-matrix --only greenshot_bugs --force` passed.
+  - `python -m json.tool /tmp/j3-transition-shadow-matrix/matrix-summary.json >/dev/null` passed.
+  - `python -m json.tool /tmp/j3-transition-shadow-matrix/matrix-manifest.json >/dev/null` passed.
+  - `python -m json.tool /tmp/j3-transition-shadow-matrix/evidence/manifest.json >/dev/null` passed.
+  - `shasum -a 256 -c /tmp/j3-transition-shadow-matrix/evidence/checksums.sha256` passed.
+  - `git diff --check` passed.
+- Result: matrix runner reads `examples/transition_shadow_matrix.json`, runs
+  selected suites under `suite/<suite-id>/`, writes `matrix-manifest.json`,
+  `matrix-summary.json`, `evidence/`, aggregates requested suite metrics where
+  available, and preserves zero hosted usage totals.
+- Commit: pending.
+- Push: pending.
+- Next: add cross-suite residual reporting.
+- Blockers: none.

@@ -29,6 +29,7 @@ from cli.handlers import (
     handle_propose_from_prompt_jepa,
     handle_query_prompt_jepa_index,
     handle_report_transition_residuals,
+    handle_run_transition_shadow_matrix,
     handle_run_transition_shadow_suite,
     handle_summarize_transition_advice,
     handle_train,
@@ -1249,6 +1250,45 @@ def build_parser() -> argparse.ArgumentParser:
     )
     transition_shadow_suite_parser.set_defaults(
         handler=handle_run_transition_shadow_suite
+    )
+
+    transition_shadow_matrix_parser = subparsers.add_parser(
+        "run-transition-shadow-matrix",
+        help="run the standard local transition shadow evidence matrix",
+        description=(
+            "Read a transition shadow matrix manifest, run each suite through "
+            "the local shadow-suite workflow, and aggregate product-gate metrics. "
+            "The matrix is evaluation-only and records zero hosted usage."
+        ),
+    )
+    transition_shadow_matrix_parser.add_argument(
+        "--matrix",
+        type=Path,
+        default=Path("examples/transition_shadow_matrix.json"),
+        help="transition shadow matrix manifest (default: examples/transition_shadow_matrix.json)",
+    )
+    transition_shadow_matrix_parser.add_argument(
+        "--out",
+        type=Path,
+        required=True,
+        help="output directory for matrix artifacts",
+    )
+    transition_shadow_matrix_parser.add_argument(
+        "--only",
+        help="run one suite id from the matrix for debugging",
+    )
+    transition_shadow_matrix_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="overwrite an existing matrix directory that contains only matrix files",
+    )
+    transition_shadow_matrix_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print the matrix summary as JSON",
+    )
+    transition_shadow_matrix_parser.set_defaults(
+        handler=handle_run_transition_shadow_matrix
     )
 
     transition_residuals_parser = subparsers.add_parser(

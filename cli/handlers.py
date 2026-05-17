@@ -93,6 +93,10 @@ from j3.transition_scorer_advice import (
     format_transition_scorer_advice_summary,
     summarize_transition_scorer_advice,
 )
+from j3.transition_shadow_matrix import (
+    format_transition_shadow_matrix_summary,
+    run_transition_shadow_matrix,
+)
 from j3.transition_shadow_suite import (
     format_transition_shadow_suite_summary,
     run_transition_shadow_suite,
@@ -1192,6 +1196,30 @@ def handle_run_transition_shadow_suite(args: argparse.Namespace) -> int:
         print(json.dumps(summary, indent=2, sort_keys=True))
     else:
         print(format_transition_shadow_suite_summary(summary))
+    return 0
+
+
+def handle_run_transition_shadow_matrix(args: argparse.Namespace) -> int:
+    try:
+        summary = run_transition_shadow_matrix(
+            matrix_path=args.matrix,
+            out_dir=args.out,
+            only=args.only,
+            force=args.force,
+        )
+    except (
+        FileExistsError,
+        FileNotFoundError,
+        IsADirectoryError,
+        NotADirectoryError,
+        ValueError,
+    ) as error:
+        raise SystemExit(str(error)) from error
+
+    if args.json:
+        print(json.dumps(summary, indent=2, sort_keys=True))
+    else:
+        print(format_transition_shadow_matrix_summary(summary))
     return 0
 
 

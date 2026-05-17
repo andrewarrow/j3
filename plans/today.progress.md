@@ -14,8 +14,8 @@ new implementation facts change the 24-hour plan itself. Record any
   GreenShot-7 fixture JSON validation, `pytest tests/test_request_spec.py -q`,
   `pytest tests/test_greenfield_calculator.py -q`, `pytest tests/test_cli.py -q`,
   direct `python cli.py implement ...` smoke, `git diff --check`
-- Latest implementation commit: Iteration 6 `Add implement CLI command` (hash in
-  worker report)
+- Latest implementation commit: `8bc36d67953df204a45ece8e590046fec4f4c78d`
+  (`Add implement CLI command`)
 - Current blocker: none
 - Next task: add prompt/spec/action/outcome row recording or the bounded
   GreenShot-7 task runner, without broadening beyond calculator request-to-repo
@@ -198,8 +198,9 @@ Use this shape for each worker handoff:
   builds the generated repo, writes `request-spec.json`, runs generated pytest
   validation by default, supports `--no-validate`, and exits non-zero with a
   clarification message for blocked prompts without writing calculator files.
-- Commit: `Add implement CLI command` (hash reported by worker after commit)
-- Push: pending
+- Commit: `8bc36d67953df204a45ece8e590046fec4f4c78d`
+  (`Add implement CLI command`)
+- Push: succeeded to `origin/main`
 - Next: Add prompt/spec/action/outcome row recording or the bounded GreenShot-7
   task runner.
 - Blockers: none

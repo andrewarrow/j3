@@ -40,6 +40,7 @@ def write_eval_diagnostics(summary: EvalSummary, path: Path) -> Path:
             {
                 "name": result.task.name,
                 "family": result.task.family,
+                "source_type": result.task.source_type,
                 "repo": str(result.task.repo),
                 "test_command": result.task.test_command,
                 "max_steps": result.task.max_steps,
@@ -152,6 +153,8 @@ def _candidate_outcome_rows(summary: EvalSummary) -> Iterable[dict[str, object]]
                 yield {
                     "task": result.task.name,
                     "task_family": result.task.family,
+                    "source_type": result.task.source_type,
+                    "language": "python",
                     "phase": phase,
                     "file_path": candidate.file_path,
                     "action": candidate.action.kind.value,
@@ -237,6 +240,7 @@ def _aggregate_plan_summaries(
     plan_list = [plan for _task, plan in plan_items]
     action_stats: defaultdict[str, _ActionSummaryAccumulator] = defaultdict(_ActionSummaryAccumulator)
     family_stats: defaultdict[str, _ActionSummaryAccumulator] = defaultdict(_ActionSummaryAccumulator)
+    source_type_stats: defaultdict[str, _ActionSummaryAccumulator] = defaultdict(_ActionSummaryAccumulator)
     failed_reasons: Counter[str] = Counter()
     failure_modes: Counter[str] = Counter()
     ranker_paths = sorted({str(plan.ranker_path) for plan in plan_list if plan.ranker_path is not None})
@@ -250,12 +254,18 @@ def _aggregate_plan_summaries(
         family_stat = family_stats[family]
         family_stat.tasks += 1
         family_stat.candidate_counts.append(plan.candidates_tested)
+        source_type = task.source_type or "unknown"
+        source_type_stat = source_type_stats[source_type]
+        source_type_stat.tasks += 1
+        source_type_stat.candidate_counts.append(plan.candidates_tested)
         if plan.selected is not None:
             stats.solved += 1
             family_stat.solved += 1
+            source_type_stat.solved += 1
             if _first_passing_index(plan) == 1:
                 stats.pass_at_1 += 1
                 family_stat.pass_at_1 += 1
+                source_type_stat.pass_at_1 += 1
 
         failed_reasons.update(
             candidate.reason
@@ -288,6 +298,15 @@ def _aggregate_plan_summaries(
                 "avg_candidates": _average(stats.candidate_counts),
             }
             for family, stats in sorted(family_stats.items())
+        },
+        "per_source_type": {
+            source_type: {
+                "tasks": stats.tasks,
+                "solved": stats.solved,
+                "pass_at_1": stats.pass_at_1,
+                "avg_candidates": _average(stats.candidate_counts),
+            }
+            for source_type, stats in sorted(source_type_stats.items())
         },
         "top_failed_candidate_reasons": _top_counter(failed_reasons),
         "failure_modes": dict(sorted(failure_modes.items())),

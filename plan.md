@@ -53,7 +53,8 @@ Implemented repair loop capabilities:
 - `train-ranker` supports held-out task names and task families from the same
   input sources.
 - Candidate outcome rows carry compact failure hints, target context, preferred
-  patch labels, task families, scores, and pass labels.
+  patch labels, task families, source types, language, scores, and pass labels.
+- Eval diagnostics aggregate pass@1 by action, task family, and source type.
 - The patching code is split under `repair/patching/`; root `patching.py` is a
   compatibility shim.
 - The planner supports bounded multi-step repair when a candidate changes the
@@ -96,8 +97,12 @@ Implemented observation/hint parsing:
 Recent work:
 
 - GreenShot-5 reached 20 tasks.
-- GreenShot-6 scaffold was added with a package-style metadata task.
+- GreenShot-6 now has 5 package-metadata mutation tasks using existing action
+  families.
+- Task manifests support `source_type`, defaulting to `handcrafted`.
 - `change_dict_value` now covers dictionary literal value repairs.
+- String literal alternatives now handle structured shared prefixes such as
+  MIME-style values (`text/plain` -> `text/markdown`).
 - String assertion comparisons rank the preferred dictionary-value edit at rank
   1.
 - Planner failure signatures now normalize parsed list/dict assertion values
@@ -106,19 +111,16 @@ Recent work:
 Last focused verification:
 
 ```bash
-pytest tests/test_patching.py -q
-pytest tests/test_evaluation.py -q
-pytest tests/test_failure_hints.py tests/test_actions.py -q
-pytest tests/test_candidate_ranking.py -q
+pytest tests/test_evaluation.py tests/test_patching.py tests/test_candidate_ranking.py -q
 python cli.py eval --tasks examples/greenshot_6 --timeout 10 --max-candidates 80 --phase ranked --quiet
 git diff --check
 ```
 
-GreenShot-6 scaffold result:
+GreenShot-6 mutation smoke result:
 
 ```text
 ranked, no candidate ranker:
-  solved=1/1 pass@1=1/1 avg_candidates=1.00
+  solved=5/5 pass@1=3/5 avg_candidates=1.80
 ```
 
 Treat this as a smoke check, not a benchmark claim.
@@ -132,22 +134,20 @@ fixtures, not invented toy modules.
 
 Next tasks:
 
-- Add mutation-generated held-out tasks from real repos.
 - Add git-history-derived held-out repair tasks.
-- Mark every task with a task family and source type:
-  - `handcrafted`
-  - `mutation`
-  - `git_history`
+- Add more mutation-generated held-out tasks from real repos.
+- Continue marking every task with a task family and source type:
+  `handcrafted`, `mutation`, or `git_history`.
 - Keep GreenShot-5 as the toy/helper regression ladder.
 - Use GreenShot-6 for held-out package-style signal.
 
-Good first implementation:
+Done first implementation:
 
-- Pick one small Python package already available locally or from mined
-  transition data.
-- Create 3 to 5 mutation-generated tasks that reuse existing action families.
-- Do not add a new action unless a generated task exposes a true missing action.
-- Report solved, pass@1, average candidates, and failure category.
+- Created 5 GreenShot-6 package-metadata mutation tasks that reuse existing
+  action families.
+- No new action family was added; one missing candidate was handled by expanding
+  structured string-literal alternatives.
+- Current result is solved=5/5, pass@1=3/5, avg_candidates=1.80.
 
 ### 2. Improve Outcome Dataset Quality
 

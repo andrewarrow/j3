@@ -2,6 +2,7 @@
   {
     "name": "core_metadata_version_dict_value",
     "family": "mapping_value",
+    "source_type": "mutation",
     "repo": ".",
     "test": "python -m pytest tests/test_pkgmeta.py::test_core_metadata_uses_current_metadata_version",
     "preferred": {
@@ -12,6 +13,72 @@
         "key": "metadata_version",
         "from": "2.2",
         "to": "2.3"
+      }
+    }
+  },
+  {
+    "name": "project_urls_header_dict_key",
+    "family": "mapping_key",
+    "source_type": "mutation",
+    "repo": ".",
+    "test": "python -m pytest tests/test_pkgmeta.py::test_project_urls_use_core_metadata_header_name",
+    "preferred": {
+      "file_path": "pkgmeta/metadata.py",
+      "action": "change_dict_key",
+      "symbol": "project_url_headers",
+      "params": {
+        "from": "Project_URL",
+        "to": "Project-URL"
+      }
+    }
+  },
+  {
+    "name": "readme_markdown_content_type_dict_value",
+    "family": "mapping_value",
+    "source_type": "mutation",
+    "repo": ".",
+    "test": "python -m pytest tests/test_pkgmeta.py::test_markdown_readme_uses_metadata_content_type",
+    "preferred": {
+      "file_path": "pkgmeta/metadata.py",
+      "action": "change_dict_value",
+      "symbol": "readme_content_type",
+      "params": {
+        "key": "markdown",
+        "from": "text/plain",
+        "to": "text/markdown"
+      }
+    }
+  },
+  {
+    "name": "minimum_python_version_operator_boundary",
+    "family": "operator_boundary",
+    "source_type": "mutation",
+    "repo": ".",
+    "test": "python -m pytest tests/test_pkgmeta.py::test_minimum_python_version_is_inclusive",
+    "preferred": {
+      "file_path": "pkgmeta/metadata.py",
+      "action": "change_operator",
+      "symbol": "supports_python_version",
+      "params": {
+        "from": ">",
+        "to": ">="
+      }
+    }
+  },
+  {
+    "name": "apache_license_classifier_dict_value",
+    "family": "mapping_value",
+    "source_type": "mutation",
+    "repo": ".",
+    "test": "python -m pytest tests/test_pkgmeta.py::test_apache_license_classifier_uses_trove_classifier",
+    "preferred": {
+      "file_path": "pkgmeta/metadata.py",
+      "action": "change_dict_value",
+      "symbol": "license_classifier",
+      "params": {
+        "key": "Apache-2.0",
+        "from": "License :: OSI Approved :: Apache License",
+        "to": "License :: OSI Approved :: Apache Software License"
       }
     }
   }

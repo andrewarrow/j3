@@ -1,4 +1,10 @@
-from pkgmeta.api import build_wheel_metadata
+from pkgmeta.api import (
+    build_project_urls,
+    build_wheel_metadata,
+    describe_readme,
+    is_python_version_supported,
+    trove_license_classifier,
+)
 
 
 def test_core_metadata_uses_current_metadata_version() -> None:
@@ -6,3 +12,29 @@ def test_core_metadata_uses_current_metadata_version() -> None:
     expected_metadata_version = "2.3"
 
     assert metadata["Metadata-Version"] == expected_metadata_version
+
+
+def test_project_urls_use_core_metadata_header_name() -> None:
+    urls = build_project_urls(
+        "https://example.invalid/demo-package",
+        "https://example.invalid/demo-package/source",
+    )
+
+    assert urls["Project-URL"] == "https://example.invalid/demo-package/source"
+
+
+def test_markdown_readme_uses_metadata_content_type() -> None:
+    metadata = describe_readme("markdown")
+
+    assert metadata["Description-Content-Type"] == "text/markdown"
+
+
+def test_minimum_python_version_is_inclusive() -> None:
+    assert is_python_version_supported((3, 8), minimum=(3, 8))
+
+
+def test_apache_license_classifier_uses_trove_classifier() -> None:
+    assert (
+        trove_license_classifier("Apache-2.0")
+        == "License :: OSI Approved :: Apache Software License"
+    )

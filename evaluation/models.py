@@ -18,6 +18,7 @@ class RepairTask:
     repo: Path
     test_command: str
     family: str = "unclassified"
+    source_type: str = "handcrafted"
     preferred_patch: dict[str, object] | None = None
     max_steps: int = 1
 

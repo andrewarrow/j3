@@ -29,6 +29,7 @@ def load_tasks(path: Path) -> list[RepairTask]:
                 repo=(base_dir / str(item.get("repo", "."))).resolve(),
                 test_command=str(item["test"]),
                 family=str(item.get("family", "unclassified")),
+                source_type=str(item.get("source_type", "handcrafted")),
                 preferred_patch=(
                     dict(item["preferred"])
                     if isinstance(item.get("preferred"), dict)

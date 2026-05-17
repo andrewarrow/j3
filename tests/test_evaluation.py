@@ -94,9 +94,10 @@ def test_load_greenshot_5_tasks() -> None:
 def test_load_greenshot_6_tasks() -> None:
     tasks = load_tasks(Path("examples/greenshot_6"))
 
-    assert len(tasks) == 1
+    assert len(tasks) == 5
     assert tasks[0].name == "core_metadata_version_dict_value"
     assert tasks[0].family == "mapping_value"
+    assert tasks[0].source_type == "mutation"
     assert tasks[0].preferred_patch == {
         "file_path": "pkgmeta/metadata.py",
         "action": "change_dict_value",
@@ -105,6 +106,17 @@ def test_load_greenshot_6_tasks() -> None:
             "key": "metadata_version",
             "from": "2.2",
             "to": "2.3",
+        },
+    }
+    assert tasks[-1].name == "apache_license_classifier_dict_value"
+    assert tasks[-1].preferred_patch == {
+        "file_path": "pkgmeta/metadata.py",
+        "action": "change_dict_value",
+        "symbol": "license_classifier",
+        "params": {
+            "key": "Apache-2.0",
+            "from": "License :: OSI Approved :: Apache License",
+            "to": "License :: OSI Approved :: Apache Software License",
         },
     }
 
@@ -162,9 +174,11 @@ def test_write_eval_diagnostics(tmp_path) -> None:
     assert "ranker_scores_present" in payload["summary"]["ranked"]
     assert "per_action" in payload["summary"]["ranked"]
     assert "per_task_family" in payload["summary"]["ranked"]
+    assert "per_source_type" in payload["summary"]["ranked"]
     assert "top_failed_candidate_reasons" in payload["summary"]["ranked"]
     assert "failure_modes" in payload["summary"]["ranked"]
     assert payload["tasks"][0]["family"] == "unclassified"
+    assert payload["tasks"][0]["source_type"] == "handcrafted"
     assert "summary" in payload["tasks"][0]["ranked"]
     assert "ranker_path" in payload["tasks"][0]["ranked"]["summary"]
     assert "ranker_scores_present" in payload["tasks"][0]["ranked"]["summary"]
@@ -330,6 +344,8 @@ def test_write_candidate_outcomes_jsonl_records_one_row_per_tested_candidate(tmp
     assert len(rows) == 3
     assert {row["task"] for row in rows} == {"multi_pass_literal"}
     assert {row["task_family"] for row in rows} == {"unclassified"}
+    assert {row["source_type"] for row in rows} == {"handcrafted"}
+    assert {row["language"] for row in rows} == {"python"}
     assert {row["phase"] for row in rows} == {"ranked"}
     assert [row["rank_index"] for row in rows] == [1, 2, 3]
     assert [row["passed"] for row in rows] == [True, True, False]

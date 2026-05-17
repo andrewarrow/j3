@@ -222,7 +222,20 @@ def _keys_look_related(original: str, candidate: str) -> bool:
     normalized_candidate = candidate.casefold()
     if normalized_original in normalized_candidate or normalized_candidate in normalized_original:
         return True
+    if _share_structured_literal_prefix(normalized_original, normalized_candidate):
+        return True
     return _key_similarity(original, candidate) >= 0.62
+
+
+def _share_structured_literal_prefix(left: str, right: str) -> bool:
+    for separator in ("/", "::", ".", "-", "_"):
+        if separator not in left or separator not in right:
+            continue
+        left_prefix = left.split(separator, maxsplit=1)[0].strip()
+        right_prefix = right.split(separator, maxsplit=1)[0].strip()
+        if len(left_prefix) >= 3 and left_prefix == right_prefix:
+            return True
+    return False
 
 
 def _key_similarity(left: str, right: str) -> float:

@@ -490,6 +490,41 @@ def test_generate_change_dict_value_candidate_from_repo_string_literals(tmp_path
     )
 
 
+def test_generate_change_dict_value_candidate_for_structured_string_prefix(tmp_path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "metadata.py").write_text(
+        "def readme_content_type(readme_format: str) -> str:\n"
+        "    content_types = {\n"
+        "        'markdown': 'text/plain',\n"
+        "        'rst': 'text/x-rst',\n"
+        "    }\n"
+        "    return content_types[readme_format]\n",
+        encoding="utf-8",
+    )
+    tests = repo / "tests"
+    tests.mkdir()
+    (tests / "test_metadata.py").write_text(
+        "from metadata import readme_content_type\n\n"
+        "def test_readme_content_type() -> None:\n"
+        "    assert readme_content_type('markdown') == 'text/markdown'\n",
+        encoding="utf-8",
+    )
+
+    candidates = generate_candidate_patches(repo)
+
+    assert any(
+        candidate.action.kind.value == "change_dict_value"
+        and candidate.action.params == {
+            "key": "markdown",
+            "from": "text/plain",
+            "to": "text/markdown",
+        }
+        and "'markdown': 'text/markdown'" in candidate.patched_source
+        for candidate in candidates
+    )
+
+
 def test_generate_string_literal_candidate_from_repo_string_literals(tmp_path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()

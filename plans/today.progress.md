@@ -8,7 +8,7 @@ This file is the live progress log for `plans/today.md`. Keep
 - Current phase: shadow-to-gate transition scoring.
 - Completed iterations for this reset: 2.
 - Latest relevant commits:
-  - `f26cd39` documented and smoked the real shadow eval loop.
+  - `a85b258` documented and smoked the real shadow eval loop.
   - `f962018` closed the previous transition scoring queue.
   - `106e1ed` documented transition bench product modes.
   - `882f9c4` added guarded transition-scorer ranking.
@@ -172,8 +172,8 @@ Use this shape for each worker handoff:
   now carry `repair_plan_id` when shadow advice exists, and ranked eval advice
   uses the same `ranked` phase label as candidate outcomes; all 5 smoke keys
   joined on `task + phase + repair_plan_id`.
-- Commit: `f26cd39` (`Document shadow eval loop`).
-- Push: pending.
+- Commit: `a85b258` (`Document shadow eval loop`).
+- Push: pushed to `origin/main` (`a85b258`).
 - Next: normalize shadow advice plus candidate outcomes into a training
   surface.
 - Blockers: none.

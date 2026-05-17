@@ -8,15 +8,15 @@ new implementation facts change the 24-hour plan itself. Record any
 ## Status
 
 - Current phase: reset to Prompt-JEPA encoder and index implementation
-- Completed iterations: 4 for this reset
+- Completed iterations: 5 for this reset
 - Passing focused tests: `pytest tests/test_cli.py -q`;
   `pytest tests/test_prompt_jepa.py -q`;
   `python -m py_compile prompt_jepa.py cli/handlers.py cli/parser.py cli/__init__.py`;
   `git diff --check`
-- Latest implementation commit: `6c94881`
+- Latest implementation commit: `f11c9d2`
 - Current blocker: none
-- Next task: compare context-neighbor and predicted-target residuals, then
-  improve target-space domain retrieval without changing production routing.
+- Next task: add Prompt-JEPA indexing for real prompt/spec/action/outcome rows,
+  not just labeled prompt-intent fixtures.
 
 ## Worker Iteration Template
 
@@ -226,8 +226,8 @@ Use this shape for each worker handoff:
   target summary and shared lexical features, included row tags in target
   embeddings, and added an evaluation-only schema-aware domain hint for
   predicted-target target-space scoring. Production routing remains unchanged.
-- Commit: pending
-- Push: pending
-- Next: use the residual report to decide whether to add more train coverage
-  for unseen domains or separate per-field retrieval objectives.
+- Commit: `f11c9d2`
+- Push: succeeded to `main`
+- Next: add Prompt-JEPA indexing for real prompt/spec/action/outcome rows, not
+  just labeled prompt-intent fixtures.
 - Blockers: none.

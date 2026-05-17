@@ -6,8 +6,10 @@ This file is the live progress log for `plans/today.md`. Keep
 ## Status
 
 - Current phase: shadow-to-gate transition scoring.
-- Completed iterations for this reset: 3.
+- Completed iterations for this reset: 5.
 - Latest relevant commits:
+  - pending Worker 5 commit adds the transition evidence bundle command.
+  - `2f13892` added the held-out shadow V3 scorer.
   - `e65e38d` added the transition shadow outcome training surface.
   - `a85b258` documented and smoked the real shadow eval loop.
   - `f962018` closed the previous transition scoring queue.
@@ -21,7 +23,7 @@ This file is the live progress log for `plans/today.md`. Keep
   held-out validation gate still underperforms existing rank order, so guarded
   opt-in remains blocked for normal local artifacts. V3 is now evaluation-only
   and must also pass held-out product gates before any guarded use.
-- Next task: add a release-quality transition evidence bundle command.
+- Next task: update product docs for shadow-to-gate evidence.
 
 ## Active Task Queue
 
@@ -30,7 +32,7 @@ This file is the live progress log for `plans/today.md`. Keep
 - [x] Run and document a real shadow `eval` loop.
 - [x] Normalize shadow advice plus candidate outcomes into a training surface.
 - [x] Train/evaluate a held-out V3 scorer from shadow outcomes.
-- [ ] Add a release-quality transition evidence bundle command.
+- [x] Add a release-quality transition evidence bundle command.
 - [ ] Update product docs for shadow-to-gate evidence.
 
 ## Current Facts
@@ -242,4 +244,36 @@ Use this shape for each worker handoff:
 - Commit: `2f13892` (`Add held-out shadow V3 scorer`).
 - Push: pushed to `origin/main`; implementation commit `2f13892`.
 - Next: add a release-quality transition evidence bundle command.
+- Blockers: none.
+
+### Iteration 5: Add transition evidence bundle command
+
+- Worker: Worker 5.
+- Goal: add a release-quality `build-transition-evidence-bundle` command that
+  packages local transition evidence for verification without hosted APIs.
+- Files changed: `j3/transition_evidence_bundle.py`, `cli/parser.py`,
+  `cli/handlers.py`, `cli/__init__.py`,
+  `tests/test_transition_evidence_bundle.py`, `tests/test_cli.py`,
+  `plans/today.progress.md`.
+- Tests run:
+  - `pytest tests/test_transition_evidence_bundle.py -q` passed.
+  - `pytest tests/test_cli.py::test_help_menu_prints_project_summary tests/test_transition_bench_demo.py -q` passed.
+  - `python -m compileall -q j3/transition_evidence_bundle.py cli/handlers.py cli/parser.py cli/__init__.py tests/test_transition_evidence_bundle.py` passed.
+  - `pytest tests/test_cli.py -q` passed.
+  - `python cli.py demo-transition-bench --no-fixtures --embedding-dim 256 --top-k 3 --candidate-outcomes runs/apache-python-git/*candidate-outcomes.jsonl --out /tmp/j3-transition-bench-candidates-report.json` passed with the existing V2 held-out gate still `not_ready_underperforms_existing_rank_order`.
+  - `python cli.py build-transition-evidence-bundle --bench-report /tmp/j3-transition-bench-candidates-report.json --out /tmp/j3-transition-evidence` passed after removing the prior `/tmp` bundle directory.
+  - `python -m json.tool /tmp/j3-transition-evidence/manifest.json >/dev/null` passed.
+  - `shasum -a 256 -c /tmp/j3-transition-evidence/checksums.sha256` passed.
+  - `git diff --check` passed.
+- Result: bundle generation writes `manifest.json`, `checksums.sha256`,
+  `transition-assets.json`, `transition-bench-report.json`,
+  `shadow-advice-summary.json`, `product-readiness-gate.json`,
+  `reproduction-commands.json`, and `REPRODUCE.md`; optional V3 reports are
+  packaged as `transition-shadow-scorer-v3-report.json`. The command validates
+  required inputs, refuses nonzero hosted usage fields, records the effective
+  product gate, and emits absolute checksum entries so verification works from
+  any current directory.
+- Commit: pending (`Add transition evidence bundle`).
+- Push: pending.
+- Next: update product docs for shadow-to-gate evidence.
 - Blockers: none.

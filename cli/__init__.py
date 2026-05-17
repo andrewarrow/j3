@@ -5,6 +5,7 @@ from __future__ import annotations
 from cli.handlers import (
     handle_actions,
     handle_build_prompt_jepa_index,
+    handle_build_transition_evidence_bundle,
     handle_change,
     handle_compare_diagnostics,
     handle_demo_prompt_jepa,
@@ -32,6 +33,7 @@ __all__ = [
     "build_parser",
     "handle_actions",
     "handle_build_prompt_jepa_index",
+    "handle_build_transition_evidence_bundle",
     "handle_change",
     "handle_compare_diagnostics",
     "handle_demo_prompt_jepa",

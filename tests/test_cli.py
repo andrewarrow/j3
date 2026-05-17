@@ -274,6 +274,7 @@ def test_help_menu_prints_project_summary(capsys) -> None:
     assert "train-ranker" in output
     assert "outcome-summary" in output
     assert "summarize-transition-advice" in output
+    assert "build-transition-evidence-bundle" in output
     assert "compare-diagnostics" in output
     assert "eval" in output
 

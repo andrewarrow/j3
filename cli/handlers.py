@@ -76,6 +76,10 @@ from j3.transition_bench_demo import (
     format_transition_bench_demo_report,
     run_transition_bench_demo,
 )
+from j3.transition_evidence_bundle import (
+    build_transition_evidence_bundle,
+    format_transition_evidence_bundle_summary,
+)
 from j3.transition_ranking import (
     TransitionRankingGateError,
     transition_ranking_gate_decision,
@@ -1105,6 +1109,47 @@ def handle_evaluate_transition_shadow_scorer(args: argparse.Namespace) -> int:
         print(json.dumps(report, indent=2, sort_keys=True))
     else:
         print(format_transition_shadow_scorer_v3_report(report))
+    return 0
+
+
+def handle_build_transition_evidence_bundle(args: argparse.Namespace) -> int:
+    resolved_bench = args.bench_report.expanduser().resolve()
+    if not resolved_bench.exists():
+        raise SystemExit(f"transition bench report does not exist: {resolved_bench}")
+    if not resolved_bench.is_file():
+        raise SystemExit(f"transition bench report path is not a file: {resolved_bench}")
+    for path in args.advice:
+        resolved = path.expanduser().resolve()
+        if not resolved.exists():
+            raise SystemExit(f"transition advice file does not exist: {resolved}")
+        if not resolved.is_file():
+            raise SystemExit(f"transition advice path is not a file: {resolved}")
+    if args.shadow_scorer_report is not None:
+        resolved_shadow = args.shadow_scorer_report.expanduser().resolve()
+        if not resolved_shadow.exists():
+            raise SystemExit(f"shadow scorer report does not exist: {resolved_shadow}")
+        if not resolved_shadow.is_file():
+            raise SystemExit(
+                f"shadow scorer report path is not a file: {resolved_shadow}"
+            )
+
+    try:
+        summary = build_transition_evidence_bundle(
+            bench_report=args.bench_report,
+            out_dir=args.out,
+            repo_root=args.repo_root,
+            prompt_corpus=args.prompt_corpus,
+            advice_paths=args.advice,
+            shadow_scorer_report=args.shadow_scorer_report,
+            force=args.force,
+        )
+    except (FileExistsError, IsADirectoryError, NotADirectoryError, ValueError) as error:
+        raise SystemExit(str(error)) from error
+
+    if args.json:
+        print(json.dumps(summary, indent=2, sort_keys=True))
+    else:
+        print(format_transition_evidence_bundle_summary(summary))
     return 0
 
 

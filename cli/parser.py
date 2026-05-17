@@ -8,6 +8,7 @@ from pathlib import Path
 from cli.handlers import (
     handle_actions,
     handle_build_prompt_jepa_index,
+    handle_build_transition_evidence_bundle,
     handle_change,
     handle_compare_diagnostics,
     handle_demo_prompt_jepa,
@@ -1049,6 +1050,66 @@ def build_parser() -> argparse.ArgumentParser:
     )
     transition_shadow_scorer_parser.set_defaults(
         handler=handle_evaluate_transition_shadow_scorer
+    )
+
+    transition_evidence_bundle_parser = subparsers.add_parser(
+        "build-transition-evidence-bundle",
+        help="package local transition evidence for release verification",
+        description=(
+            "Build a local transition evidence bundle containing a manifest, "
+            "checksums, transition asset inventory, transition bench report, "
+            "shadow advice summary, product gate result, and reproduction "
+            "commands. The bundle is verifiable without hosted APIs."
+        ),
+    )
+    transition_evidence_bundle_parser.add_argument(
+        "--bench-report",
+        type=Path,
+        required=True,
+        help="transition-bench-demo-report-v1 JSON report to package",
+    )
+    transition_evidence_bundle_parser.add_argument(
+        "--out",
+        type=Path,
+        required=True,
+        help="output directory for the evidence bundle",
+    )
+    transition_evidence_bundle_parser.add_argument(
+        "--repo-root",
+        type=Path,
+        default=Path("."),
+        help="repository root to inventory (default: current directory)",
+    )
+    transition_evidence_bundle_parser.add_argument(
+        "--prompt-corpus",
+        type=Path,
+        default=Path("../prompts/coding_agent_prompts_expanded_v0.jsonl"),
+        help="prompt corpus JSONL path to include in asset inventory context",
+    )
+    transition_evidence_bundle_parser.add_argument(
+        "--advice",
+        type=Path,
+        nargs="*",
+        default=[],
+        help="optional transition-scorer-advice-v1 JSONL files to summarize",
+    )
+    transition_evidence_bundle_parser.add_argument(
+        "--shadow-scorer-report",
+        type=Path,
+        help="optional transition-action-future-scorer-v3 report to package",
+    )
+    transition_evidence_bundle_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="overwrite an existing bundle directory that contains only bundle files",
+    )
+    transition_evidence_bundle_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print the bundle build summary as JSON",
+    )
+    transition_evidence_bundle_parser.set_defaults(
+        handler=handle_build_transition_evidence_bundle
     )
 
     compare_parser = subparsers.add_parser(

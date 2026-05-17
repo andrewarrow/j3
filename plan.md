@@ -195,9 +195,11 @@ Recent work:
   and keyword propagation. The new tasks are explicitly marked `split: test`.
 - A focused GreenShot-6 ranked smoke run with
   `runs/apache-python-git/model.json`, without outcome exploration, solves all
-  19 tasks (`pass@1=13/19`, average candidates 2.42). The latest persisted
-  candidate-outcome dataset has not yet been refreshed for the 5 `webcookies`
-  tasks.
+  19 tasks (`pass@1=13/19`, average candidates 2.42).
+- GreenShot-6 candidate outcomes were refreshed with `--explore-after-pass 5`
+  after adding the 5 `webcookies` held-out mutation tasks. The persisted dataset
+  at `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` now covers
+  19 tasks and 141 tested candidates.
 
 Last focused verification:
 
@@ -267,9 +269,9 @@ GreenShot-6 outcome collection result:
 
 ```text
 ranked, runs/apache-python-git/model.json, explore-after-pass=5:
-  solved=14/14 pass@1=9/14 avg_candidates=7.86
-  rows=110 passing_rows=28 preferred_positive_rows=13
-  source_type pass@1: git_history=2/4 mutation=7/10
+  solved=19/19 pass@1=13/19 avg_candidates=7.42
+  rows=141 passing_rows=36 preferred_positive_rows=17
+  source_type pass@1: git_history=2/4 mutation=11/15
 ```
 
 Treat this as a smoke check, not a benchmark claim.
@@ -291,11 +293,12 @@ Keep this section as the live queue. When work is completed, move it to
 
 Immediate next sequence:
 
-1. Refresh GreenShot-6 candidate outcomes with `--explore-after-pass 5` now
-   that the `webcookies` held-out mutation tasks have been added.
-2. Run `j3 outcome-summary` on the refreshed GreenShot-6 candidate-outcome
-   dataset and update this handoff with the new task, row, source-type, and
-   pass@1 summary.
+1. Use the refreshed GreenShot-5 and GreenShot-6 candidate-outcome rows for a
+   held-out ranker validation slice that includes the new `webcookies` test
+   tasks.
+2. Summarize whether the remaining GreenShot-6 pass@1 misses are concentrated
+   in existing hard negatives, the new `webcookies` tasks, or source-type/split
+   differences before adding ranker features or more tasks.
 
 ### 1. Make GreenShot-6 Real
 
@@ -453,6 +456,6 @@ Start neural/JEPA work only when:
 ## Handoff Recommendation
 
 The next context window should not add another handcrafted GreenShot task first.
-It should refresh GreenShot-6 candidate outcomes with exploration for the new
-`webcookies` held-out tasks and summarize the dataset before adding actions or
-ranker features.
+It should use the refreshed GreenShot-6 outcome rows to choose and run a
+held-out ranker validation slice for the `webcookies` additions, then inspect
+the remaining pass@1 misses before adding actions or ranker features.

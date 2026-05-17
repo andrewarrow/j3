@@ -21,6 +21,7 @@ from cli.handlers import (
     handle_inspect_prompt_corpus,
     handle_inspect_transition_assets,
     handle_mine,
+    handle_normalize_transition_shadow_outcomes,
     handle_outcome_summary,
     handle_patch,
     handle_propose_from_prompt_jepa,
@@ -917,6 +918,45 @@ def build_parser() -> argparse.ArgumentParser:
     )
     transition_advice_summary_parser.set_defaults(
         handler=handle_summarize_transition_advice
+    )
+
+    transition_shadow_outcomes_parser = subparsers.add_parser(
+        "normalize-transition-shadow-outcomes",
+        help="join transition scorer shadow advice with candidate outcomes",
+        description=(
+            "Write transition-shadow-outcome-v1 JSONL rows by joining "
+            "transition-scorer-advice-v1 files with candidate outcome JSONL "
+            "files on task, phase, and repair_plan_id. Unjoined evidence is "
+            "preserved with explicit reasons."
+        ),
+    )
+    transition_shadow_outcomes_parser.add_argument(
+        "--advice",
+        type=Path,
+        nargs="+",
+        required=True,
+        help="one or more transition-scorer-advice-v1 JSONL files",
+    )
+    transition_shadow_outcomes_parser.add_argument(
+        "--candidate-outcomes",
+        type=Path,
+        nargs="+",
+        required=True,
+        help="one or more candidate outcome JSONL files from j3 eval",
+    )
+    transition_shadow_outcomes_parser.add_argument(
+        "--out",
+        type=Path,
+        required=True,
+        help="output path for transition-shadow-outcome-v1 JSONL rows",
+    )
+    transition_shadow_outcomes_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print the normalization summary as JSON",
+    )
+    transition_shadow_outcomes_parser.set_defaults(
+        handler=handle_normalize_transition_shadow_outcomes
     )
 
     compare_parser = subparsers.add_parser(

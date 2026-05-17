@@ -6,7 +6,7 @@ This file is the live progress log for `plans/today.md`. Keep
 ## Status
 
 - Current phase: shadow-to-gate transition scoring.
-- Completed iterations for this reset: 2.
+- Completed iterations for this reset: 3.
 - Latest relevant commits:
   - `a85b258` documented and smoked the real shadow eval loop.
   - `f962018` closed the previous transition scoring queue.
@@ -19,15 +19,14 @@ This file is the live progress log for `plans/today.md`. Keep
 - Current blocker: V2 beats V1 on the full local candidate bench, but the
   held-out validation gate still underperforms existing rank order, so guarded
   opt-in remains blocked for normal local artifacts.
-- Next task: normalize shadow advice plus candidate outcomes into a training
-  surface.
+- Next task: train/evaluate a held-out V3 scorer from shadow outcomes.
 
 ## Active Task Queue
 
 - [x] Recreate `plans/today.md` and `plans/today.progress.md`.
 - [x] Add a shadow advice summary command.
 - [x] Run and document a real shadow `eval` loop.
-- [ ] Normalize shadow advice plus candidate outcomes into a training surface.
+- [x] Normalize shadow advice plus candidate outcomes into a training surface.
 - [ ] Train/evaluate a held-out V3 scorer from shadow outcomes.
 - [ ] Add a release-quality transition evidence bundle command.
 - [ ] Update product docs for shadow-to-gate evidence.
@@ -176,4 +175,35 @@ Use this shape for each worker handoff:
 - Push: pushed to `origin/main` (`a85b258`).
 - Next: normalize shadow advice plus candidate outcomes into a training
   surface.
+- Blockers: none.
+
+### Iteration 3: Normalize shadow advice plus candidate outcomes
+
+- Worker: Worker 3.
+- Goal: add a `transition-shadow-outcome-v1` training surface that joins
+  `transition-scorer-advice-v1` rows with candidate outcome rows by
+  `task + phase + repair_plan_id`, while preserving unjoined evidence with
+  explicit reasons.
+- Files changed: `j3/transition_shadow_outcomes.py`, `cli/parser.py`,
+  `cli/handlers.py`, `cli/__init__.py`,
+  `tests/test_transition_shadow_outcomes.py`, `plans/today.progress.md`.
+- Tests run:
+  - `pytest tests/test_transition_shadow_outcomes.py -q` passed.
+  - `pytest tests/test_transition_scorer_advice.py -q` passed.
+  - `pytest tests/test_cli.py -q` passed.
+  - `python cli.py eval --tasks examples/greenshot_3 --checkpoint runs/greenshot-1/model.json --timeout 10 --max-candidates 1 --candidate-outcomes /tmp/j3-worker3-shadow-candidate-outcomes.jsonl --transition-scorer-shadow --transition-advice-out /tmp/j3-worker3-shadow-transition-advice.jsonl --quiet` passed.
+  - `python cli.py normalize-transition-shadow-outcomes --advice /tmp/j3-worker3-shadow-transition-advice.jsonl --candidate-outcomes /tmp/j3-worker3-shadow-candidate-outcomes.jsonl --out /tmp/j3-worker3-transition-shadow-outcomes.jsonl --json` passed and reported 4 joined rows, 4 known-validation rows, 4 same labels, and zero hosted usage.
+  - `python - <<'PY' ... load_transition_shadow_outcomes([Path('/tmp/j3-worker3-transition-shadow-outcomes.jsonl')]) ... PY` passed and loaded 4 JSONL rows.
+  - `python -m compileall -q j3/transition_shadow_outcomes.py tests/test_transition_shadow_outcomes.py cli/handlers.py cli/parser.py cli/__init__.py` passed.
+  - `git diff --check` passed.
+- Result: deterministic normalizer, writer, loader, validator, summary
+  formatter, and `normalize-transition-shadow-outcomes` CLI are implemented.
+  Joined rows carry repo/task identity, production selected candidate, scorer
+  top candidate, candidate ranking, validation outcome, agreement and
+  improve/regress/same labels, source traceability, and zero hosted usage
+  fields. Advice-only and outcome-only groups are retained with explicit
+  unjoined reasons.
+- Commit: pending in this worker report.
+- Push: pending in this worker report.
+- Next: train/evaluate a held-out V3 scorer from shadow outcomes.
 - Blockers: none.

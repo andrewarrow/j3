@@ -80,6 +80,12 @@ from j3.transition_scorer_advice import (
     format_transition_scorer_advice_summary,
     summarize_transition_scorer_advice,
 )
+from j3.transition_shadow_outcomes import (
+    format_transition_shadow_outcome_summary,
+    normalize_transition_shadow_outcomes,
+    summarize_transition_shadow_outcomes,
+    write_transition_shadow_outcomes_jsonl,
+)
 
 
 REQUEST_SPEC_ARTIFACT = "request-spec.json"
@@ -1011,6 +1017,38 @@ def handle_summarize_transition_advice(args: argparse.Namespace) -> int:
         print(json.dumps(summary.as_dict(), indent=2, sort_keys=True))
     else:
         print(format_transition_scorer_advice_summary(summary))
+    return 0
+
+
+def handle_normalize_transition_shadow_outcomes(args: argparse.Namespace) -> int:
+    for path in args.advice:
+        resolved = path.expanduser().resolve()
+        if not resolved.exists():
+            raise SystemExit(f"transition advice file does not exist: {resolved}")
+        if not resolved.is_file():
+            raise SystemExit(f"transition advice path is not a file: {resolved}")
+    for path in args.candidate_outcomes:
+        resolved = path.expanduser().resolve()
+        if not resolved.exists():
+            raise SystemExit(f"candidate outcomes file does not exist: {resolved}")
+        if not resolved.is_file():
+            raise SystemExit(f"candidate outcomes path is not a file: {resolved}")
+
+    rows = normalize_transition_shadow_outcomes(
+        advice_paths=args.advice,
+        candidate_outcome_paths=args.candidate_outcomes,
+    )
+    out_path = write_transition_shadow_outcomes_jsonl(args.out, rows)
+    summary = summarize_transition_shadow_outcomes(
+        rows,
+        advice_paths=args.advice,
+        candidate_outcome_paths=args.candidate_outcomes,
+        out_path=out_path,
+    )
+    if args.json:
+        print(json.dumps(summary.as_dict(), indent=2, sort_keys=True))
+    else:
+        print(format_transition_shadow_outcome_summary(summary))
     return 0
 
 

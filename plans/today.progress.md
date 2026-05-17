@@ -31,7 +31,7 @@ new implementation facts change the 24-hour plan itself. Record any
   `python -m json.tool /tmp/j3-prompt-jepa-demo/transition-eval.json >/dev/null`;
   `git diff --check`
 - Latest implementation/demo commit: `1783df6` (`Wire transition artifacts into demo`)
-- Latest documentation commit: pending for Worker Iteration 6 documentation slice
+- Latest documentation commit: `783f6e0` (`Document prompt repo transition demo`)
 - Current blocker: none
 - Next task: watcher should choose the next Prompt+Repo JEPA slice.
 
@@ -787,7 +787,7 @@ Use this shape for each worker handoff:
   for `transitions.jsonl`, `transition-model.json`, `transition-eval.json`,
   transition metrics/residuals, and zero hosted token/context usage. README
   remains a short summary with a focused doc link and starter commands.
-- Commit: pending until commit is created; final hash reported by worker.
-- Push: pending until commit is created.
+- Commit: `783f6e0` (`Document prompt repo transition demo`)
+- Push: succeeded to `main`.
 - Next: watcher should choose the next Prompt+Repo JEPA slice.
 - Blockers: none.

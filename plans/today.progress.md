@@ -8,7 +8,9 @@ This file is the live progress log for `plans/today.md`. Keep
 - Current phase: shadow suite and residual-driven readiness.
 - Completed iterations for this reset: 4.
 - Latest relevant commits:
+  - `083c6fb` recorded shadow suite docs completion.
   - `aedb04a` documented the transition shadow suite workflow.
+  - `16ba6f6` recorded the guarded trial gate decision.
   - `1c47171` improved transition scorer change features.
   - `23f37ac` added the transition residual report.
   - `f9ed963` recorded shadow suite completion.
@@ -22,7 +24,8 @@ This file is the live progress log for `plans/today.md`. Keep
   - `f962018` closed the previous transition scoring queue.
 - Current blocker: held-out V2/V3 product gates are still the product boundary.
   Guarded ranking must remain non-default and blocked unless evidence passes.
-- Next task: update evidence and product docs for the shadow suite.
+- Next task: no unchecked task remains in this 24-hour queue. Choose the next
+  residual-driven or GreenShot-7 task before starting another worker.
 
 ## Active Task Queue
 
@@ -246,6 +249,7 @@ Use this shape for each worker handoff:
   `change_context` feature surface, the guarded-ranking gate policy, and why
   generated `/tmp` or ignored `runs/` artifacts must not be committed.
 - Commit: `aedb04a` (`Document transition shadow suite workflow`).
+- Follow-up commit: `083c6fb` (`Record shadow suite docs completion`).
 - Push: succeeded to `main`.
 - Next: watcher should choose the next residual-driven or GreenShot-7 task.
 - Blockers: guarded production ranking remains blocked because the checked-in

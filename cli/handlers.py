@@ -408,6 +408,16 @@ def handle_train_prompt_intents(args: argparse.Namespace) -> int:
                         f"{residual.row_id}: expected={residual.expected} "
                         f"predicted={residual.predicted}"
                     )
+                    context = residual.target_context
+                    if context:
+                        print(
+                            "      context: "
+                            f"action={context.get('expected_action')} "
+                            f"repo_mode={context.get('repo_mode')} "
+                            f"primary_artifact={context.get('primary_artifact')} "
+                            "requires_clarification="
+                            f"{context.get('requires_clarification')}"
+                        )
                     print(f"      prompt: {residual.prompt}")
                     if residual.tags:
                         print(f"      tags: {', '.join(residual.tags)}")

@@ -343,7 +343,14 @@ def build_parser() -> argparse.ArgumentParser:
         "--target",
         nargs="+",
         default=["expected_action", "repo_mode"],
-        choices=("repo_mode", "task_type", "domain", "expected_action"),
+        choices=(
+            "repo_mode",
+            "task_type",
+            "domain",
+            "expected_action",
+            "requires_clarification",
+            "primary_artifact",
+        ),
         help="one or more scalar prompt-intent target fields",
     )
     prompt_intents_parser.add_argument(

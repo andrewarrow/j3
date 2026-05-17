@@ -151,8 +151,75 @@ def test_train_prompt_intents_command_can_print_residuals(capsys, tmp_path) -> N
     output = capsys.readouterr().out
     assert "validation residuals: 1" in output
     assert "validation-clarify: expected=ask_clarification predicted=" in output
+    assert (
+        "context: action=ask_clarification repo_mode=unknown "
+        "primary_artifact=none requires_clarification=yes"
+    ) in output
     assert "prompt: validation only vague math thing" in output
     assert "tags: ambiguous, clarification" in output
+
+
+def test_train_prompt_intents_command_accepts_derived_targets(capsys, tmp_path) -> None:
+    labels = tmp_path / "prompt-labels.jsonl"
+    labels.write_text(
+        "\n".join(
+            [
+                (
+                    '{"id":"train-cli","split":"train","source_type":"test",'
+                    '"task_type":"create_app","repo_mode":"new_repo","domain":"calculator",'
+                    '"prompt":"create a new calculator cli","expected":'
+                    '{"action":"emit_request_spec","artifacts":["cli","tests"],'
+                    '"clarify":false}}'
+                ),
+                (
+                    '{"id":"train-config","split":"train","source_type":"test",'
+                    '"task_type":"config_change","repo_mode":"existing_repo","domain":"lint",'
+                    '"prompt":"add ruff config","expected":'
+                    '{"action":"emit_existing_repo_change_spec",'
+                    '"artifacts":["pyproject"],"clarify":false}}'
+                ),
+                (
+                    '{"id":"train-clarify","split":"train","source_type":"test",'
+                    '"task_type":"clarify","repo_mode":"unknown","domain":"quality",'
+                    '"prompt":"make it better","expected":'
+                    '{"action":"ask_clarification","artifacts":[],'
+                    '"clarify":true,"clarification_fields":["goal"]}}'
+                ),
+                (
+                    '{"id":"test-config","split":"test","source_type":"test",'
+                    '"task_type":"config_change","repo_mode":"existing_repo","domain":"ci",'
+                    '"prompt":"add github actions","expected":'
+                    '{"action":"emit_existing_repo_change_spec",'
+                    '"artifacts":["ci_config"],"clarify":false}}'
+                ),
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    assert (
+        main(
+            [
+                "train-prompt-intents",
+                "--labels",
+                str(labels),
+                "--target",
+                "requires_clarification",
+                "primary_artifact",
+                "--json",
+            ]
+        )
+        == 0
+    )
+
+    output = json.loads(capsys.readouterr().out)
+    assert [result["target_field"] for result in output] == [
+        "requires_clarification",
+        "primary_artifact",
+    ]
+    assert output[0]["model"]["labels"] == ["no", "yes"]
+    assert output[1]["model"]["labels"] == ["cli", "none", "pyproject"]
 
 
 def test_implement_command_builds_repo_and_request_spec_artifact(capsys, tmp_path) -> None:

@@ -7,8 +7,8 @@ new implementation facts change the 24-hour plan itself. Record any
 
 ## Status
 
-- Current phase: held-out prompt-intent residuals inspected
-- Completed iterations: 5
+- Current phase: derived prompt-intent targets added for clarification and artifact routing
+- Completed iterations: 6
 - Passing focused tests:
   - `pytest tests/test_prompt_intents.py -q`
   - `pytest tests/test_prompt_intents.py tests/test_request_spec.py -q`
@@ -19,13 +19,13 @@ new implementation facts change the 24-hour plan itself. Record any
   - `python -m py_compile prompt_intents.py request_spec.py cli/handlers.py`
   - `python -m py_compile existing_repo_change.py cli/handlers.py cli/parser.py cli/__init__.py`
 - `python cli.py train-prompt-intents --labels ../prompts/coding_agent_prompts_seed.jsonl --target expected_action repo_mode`
+- `python cli.py train-prompt-intents --labels ../prompts/coding_agent_prompts_seed.jsonl --target expected_action repo_mode requires_clarification primary_artifact --show-residuals --residual-limit 12`
 - `python -m py_compile prompt_intents.py cli/handlers.py cli/parser.py cli/__init__.py`
 - Latest implementation commit: `b369919971d86d77f6d25c0c687ae705ea4dc4ed`
 - Current blocker: none
-- Next task: add targeted labels or a second-stage target for ambiguous
-  clarification and existing-repo config/refactor routing before considering
-  learned production routing; do not replace fixture-backed production intent
-  prediction yet
+- Next task: keep learned production routing blocked; add or source explicit
+  unsupported-interface/graphical labels in the seed corpus before any learned
+  model can replace fixture-backed request-spec or change-spec routing
 
 ## Worker Iteration Template
 
@@ -311,4 +311,72 @@ Use this shape for each worker handoff:
   `ask_clarification` vs concrete existing-repo work and for config/refactor/
   package artifact routing. Keep graphical/unsupported-interface labels as a
   separate gap before learned production routing.
+- Blockers: none
+
+### Iteration 6: Derived Prompt-Intent Safety Targets
+
+- Worker: Codex
+- Goal: add targeted derived train/eval targets for clarification safety and
+  artifact routing, using existing seed labels and keeping graphical/
+  unsupported-interface labels as a separate gap before learned production
+  routing.
+- Files changed:
+  - `prompt_intents.py`
+  - `cli/parser.py`
+  - `cli/handlers.py`
+  - `tests/test_prompt_intents.py`
+  - `tests/test_cli.py`
+  - `plans/today.progress.md`
+- Tests run:
+  - `pytest tests/test_prompt_intents.py -q` -> passed, 7 tests
+  - `pytest tests/test_cli.py -q` -> passed, 27 tests
+  - `pytest tests/test_prompt_intents.py tests/test_cli.py -q` -> passed, 34 tests
+  - `pytest tests/test_prompt_intents.py tests/test_request_spec.py tests/test_existing_repo_change.py tests/test_cli.py -q`
+    -> passed, 44 tests
+  - `python -m py_compile prompt_intents.py cli/handlers.py cli/parser.py cli/__init__.py`
+    -> passed
+  - `git diff --check` -> passed
+  - `python cli.py train-prompt-intents --labels ../prompts/coding_agent_prompts_seed.jsonl --target expected_action repo_mode requires_clarification primary_artifact --show-residuals --residual-limit 12`
+    -> passed
+- Result:
+  - Added derived scalar targets `requires_clarification` and
+    `primary_artifact` to normalized prompt-intent records and train/eval CLI
+    choices. These are derived from existing `expected.action`/`clarify`,
+    `clarification_fields`, and the first `expected.artifacts` label.
+  - Added profile counts for the derived targets and missing artifact labels.
+    Seed corpus profile: `requires_clarification` no=72/yes=8; primary
+    artifact includes module=35, cli=17, pyproject=4, tests=8, package=1,
+    ci_config=1, none=8. The `none` rows are the eight clarification rows.
+  - Added residual context output so misses show action, repo mode, primary
+    artifact, and clarification requirement. This makes expected-action misses
+    show safety/config/package context directly, for example `seed-0067`
+    as `ci_config`, `seed-0065` as `pyproject`, and `seed-0074`/`seed-0078`
+    as `requires_clarification=yes`.
+  - Held-out metrics for new targets:
+    - `requires_clarification`: validation 13/15 = 0.867 vs majority 13/15 =
+      0.867; test 10/12 = 0.833 vs majority 10/12 = 0.833. It isolates the
+      vague clarification misses but is not better than majority yet.
+    - `primary_artifact`: validation 7/15 = 0.467 vs majority 5/15 = 0.333;
+      test 8/12 = 0.667 vs majority 6/12 = 0.500. It improves artifact
+      routing eval but still misses package/CI/pyproject and some docs/none
+      rows.
+  - Inspected requested residual rows:
+    - `seed-0015`: greenfield library, primary artifact `module`
+    - `seed-0059`: existing-repo refactor, primary artifact `module`
+    - `seed-0062`: existing-repo package refactor, primary artifact `package`
+    - `seed-0065`: existing-repo ruff config, primary artifact `pyproject`
+    - `seed-0067`: existing-repo CI config, primary artifact `ci_config`
+    - `seed-0074`, `seed-0076`, `seed-0078`, `seed-0080`: clarification rows,
+      primary artifact `none`, `requires_clarification=yes`
+  - Production routing remains fixture-backed and conservative; no learned
+    model is wired into request-spec or change-spec behavior.
+  - Data gap: the external seed corpus still has no explicit unsupported
+    graphical/interface requirement labels (`unsupported_requirement_count=0`),
+    so graphical unsupported-interface routing remains a separate labeling
+    gap before learned production routing.
+- Commit: pending in this worker commit
+- Push: pending
+- Next: add/source explicit unsupported-interface labels for graphical or other
+  unsupported UI requests in the seed corpus before any learned production
+  routing decision.
 - Blockers: none

@@ -34,6 +34,9 @@ def test_loads_greenshot_7_prompt_intent_fixtures() -> None:
     }
     assert profile["unsupported_requirement_count"] == 6
     assert profile["existing_repo_change_count"] == 5
+    assert profile["requires_clarification_counts"] == {"no": 8, "yes": 6}
+    assert profile["primary_artifact_counts"] == {"none": 14}
+    assert profile["missing_artifact_label_count"] == 14
 
     unsupported = next(
         record
@@ -41,6 +44,8 @@ def test_loads_greenshot_7_prompt_intent_fixtures() -> None:
         if record.prompt == "make me a complex graphic calc app"
     )
     assert unsupported.target.expected_action == "ask_clarification"
+    assert unsupported.target.requires_clarification == "yes"
+    assert unsupported.target.primary_artifact == "none"
     assert unsupported.target.requested_interfaces == ("graphic",)
     assert unsupported.target.unsupported_requirements == (
         "complex_scope",
@@ -51,6 +56,7 @@ def test_loads_greenshot_7_prompt_intent_fixtures() -> None:
     power_change = next(record for record in records if record.prompt == "add exponent support")
     assert power_change.target.repo_mode == "existing_repo"
     assert power_change.target.expected_action == "emit_existing_repo_change_spec"
+    assert power_change.target.requires_clarification == "no"
     assert power_change.target.features == ("power",)
     assert power_change.target.target_files == (
         "calculator.py",
@@ -118,6 +124,11 @@ def test_loads_external_seed_prompt_corpus_profile() -> None:
     assert profile["repo_mode_counts"]["new_repo"] > 0  # type: ignore[index]
     assert profile["artifact_counts"]["module"] > 0  # type: ignore[index]
     assert profile["artifact_counts"]["pyproject"] > 0  # type: ignore[index]
+    assert profile["requires_clarification_counts"] == {"no": 72, "yes": 8}
+    assert profile["primary_artifact_counts"]["pyproject"] == 4  # type: ignore[index]
+    assert profile["primary_artifact_counts"]["package"] == 1  # type: ignore[index]
+    assert profile["primary_artifact_counts"]["ci_config"] == 1  # type: ignore[index]
+    assert profile["missing_artifact_label_count"] == 8
     assert profile["clarification_count"] > 0
     assert profile["existing_repo_change_count"] > 0
 
@@ -204,6 +215,16 @@ def test_trains_token_baseline_only_from_train_split(tmp_path: Path) -> None:
         "baseline_label": "emit_existing_repo_change_spec",
         "baseline_correct": False,
         "tags": [],
+        "target_context": {
+            "repo_mode": "unknown",
+            "task_type": "clarify",
+            "domain": "math",
+            "expected_action": "ask_clarification",
+            "requires_clarification": "yes",
+            "primary_artifact": "none",
+            "artifacts": [],
+            "clarification_fields": [],
+        },
     }
 
 
@@ -220,6 +241,14 @@ def test_seed_corpus_learned_baseline_reports_held_out_metrics() -> None:
     repo_mode = train_prompt_intent_token_baseline(
         records,
         target_field="repo_mode",
+    )
+    requires_clarification = train_prompt_intent_token_baseline(
+        records,
+        target_field="requires_clarification",
+    )
+    primary_artifact = train_prompt_intent_token_baseline(
+        records,
+        target_field="primary_artifact",
     )
 
     assert expected_action.metrics["validation"].accuracy >= 0.66
@@ -258,5 +287,39 @@ def test_seed_corpus_learned_baseline_reports_held_out_metrics() -> None:
     assert [residual.row_id for residual in repo_mode.metrics["test"].residuals] == [
         "seed-0065",
     ]
+    assert requires_clarification.metrics["validation"].accuracy >= 0.86
+    assert requires_clarification.metrics["test"].accuracy >= 0.83
+    assert [
+        residual.row_id
+        for residual in requires_clarification.metrics["validation"].residuals
+    ] == ["seed-0074", "seed-0078"]
+    assert [residual.row_id for residual in requires_clarification.metrics["test"].residuals] == [
+        "seed-0076",
+        "seed-0080",
+    ]
+    assert primary_artifact.metrics["validation"].accuracy >= 0.46
+    assert primary_artifact.metrics["test"].accuracy >= 0.66
+    assert (
+        primary_artifact.metrics["validation"].accuracy
+        > primary_artifact.metrics["validation"].baseline_accuracy
+    )
+    assert (
+        primary_artifact.metrics["test"].accuracy
+        > primary_artifact.metrics["test"].baseline_accuracy
+    )
+    artifact_validation_misses = [
+        residual.row_id for residual in primary_artifact.metrics["validation"].residuals
+    ]
+    artifact_test_misses = [
+        residual.row_id for residual in primary_artifact.metrics["test"].residuals
+    ]
+    assert "seed-0062" in artifact_validation_misses
+    assert "seed-0067" in artifact_validation_misses
+    assert "seed-0065" in artifact_test_misses
+    assert primary_artifact.metrics["test"].residuals[0].target_context[
+        "primary_artifact"
+    ] == "pyproject"
     assert expected_action.decision == "evaluation_only_not_wired_to_production"
     assert repo_mode.decision == "evaluation_only_not_wired_to_production"
+    assert requires_clarification.decision == "evaluation_only_not_wired_to_production"
+    assert primary_artifact.decision == "evaluation_only_not_wired_to_production"

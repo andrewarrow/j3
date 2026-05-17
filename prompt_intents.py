@@ -25,12 +25,21 @@ TARGET_FIELDS = [
     "task_type",
     "domain",
     "expected_action",
+    "requires_clarification",
+    "primary_artifact",
     "requested_interfaces",
     "features",
     "artifacts",
     "clarification_fields",
 ]
-SCALAR_TARGET_FIELDS = ("repo_mode", "task_type", "domain", "expected_action")
+SCALAR_TARGET_FIELDS = (
+    "repo_mode",
+    "task_type",
+    "domain",
+    "expected_action",
+    "requires_clarification",
+    "primary_artifact",
+)
 DEFAULT_LEARNED_BASELINE_EPOCHS = 10
 
 
@@ -42,6 +51,8 @@ class PromptIntentTarget:
     task_type: str
     domain: str
     expected_action: str
+    requires_clarification: str = "no"
+    primary_artifact: str = "none"
     requested_interfaces: tuple[str, ...] = ()
     features: tuple[str, ...] = ()
     artifacts: tuple[str, ...] = ()
@@ -55,6 +66,8 @@ class PromptIntentTarget:
             "task_type": self.task_type,
             "domain": self.domain,
             "expected_action": self.expected_action,
+            "requires_clarification": self.requires_clarification,
+            "primary_artifact": self.primary_artifact,
             "requested_interfaces": list(self.requested_interfaces),
             "features": list(self.features),
             "artifacts": list(self.artifacts),
@@ -154,6 +167,7 @@ class PromptIntentLabelResidual:
     baseline_label: str
     baseline_correct: bool
     tags: tuple[str, ...] = ()
+    target_context: dict[str, object] = field(default_factory=dict)
 
     def to_record(self) -> dict[str, object]:
         return {
@@ -167,6 +181,7 @@ class PromptIntentLabelResidual:
             "baseline_label": self.baseline_label,
             "baseline_correct": self.baseline_correct,
             "tags": list(self.tags),
+            "target_context": dict(self.target_context),
         }
 
 
@@ -304,6 +319,12 @@ def profile_prompt_intents(records: Sequence[PromptIntentRecord]) -> dict[str, o
         "expected_action_counts": _counter_record(
             record.target.expected_action for record in records
         ),
+        "requires_clarification_counts": _counter_record(
+            record.target.requires_clarification for record in records
+        ),
+        "primary_artifact_counts": _counter_record(
+            record.target.primary_artifact for record in records
+        ),
         "interface_counts": _counter_record(
             interface
             for record in records
@@ -323,6 +344,9 @@ def profile_prompt_intents(records: Sequence[PromptIntentRecord]) -> dict[str, o
         ),
         "unsupported_requirement_count": sum(
             1 for record in records if record.target.unsupported_requirements
+        ),
+        "missing_artifact_label_count": sum(
+            1 for record in records if record.target.primary_artifact == "none"
         ),
     }
 
@@ -525,6 +549,7 @@ def evaluate_prompt_intent_label_model(
                     baseline_label=baseline_label,
                     baseline_correct=baseline_label == expected,
                     tags=record.tags,
+                    target_context=_target_context(record.target),
                 )
             )
         if baseline_label == expected:
@@ -579,37 +604,48 @@ def _record_from_row(row: dict[str, object], *, index: int) -> PromptIntentRecor
     domain = _required_str(row, "domain", index=index)
     prompt = _required_str(row, "prompt", index=index)
     expected = _optional_dict(row.get("expected"), field="expected", index=index)
+    expected_action = _expected_action(row, expected)
+    requested_interfaces = _tuple_strs(
+        expected.get("requested_interfaces", expected.get("interfaces", [])),
+        field="expected.interfaces",
+        index=index,
+    )
+    features = _tuple_strs(
+        expected.get("features", []),
+        field="expected.features",
+        index=index,
+    )
+    artifacts = _tuple_strs(
+        expected.get("artifacts", []),
+        field="expected.artifacts",
+        index=index,
+    )
+    clarification_fields = _tuple_strs(
+        expected.get("clarification_fields", []),
+        field="expected.clarification_fields",
+        index=index,
+    )
 
     target = PromptIntentTarget(
         repo_mode=repo_mode,
         task_type=task_type,
         domain=domain,
-        expected_action=_expected_action(row, expected),
-        requested_interfaces=_tuple_strs(
-            expected.get("requested_interfaces", expected.get("interfaces", [])),
-            field="expected.interfaces",
-            index=index,
+        expected_action=expected_action,
+        requires_clarification=_requires_clarification(
+            expected=expected,
+            expected_action=expected_action,
+            clarification_fields=clarification_fields,
         ),
-        features=_tuple_strs(
-            expected.get("features", []),
-            field="expected.features",
-            index=index,
-        ),
-        artifacts=_tuple_strs(
-            expected.get("artifacts", []),
-            field="expected.artifacts",
-            index=index,
-        ),
+        primary_artifact=_primary_artifact(artifacts),
+        requested_interfaces=requested_interfaces,
+        features=features,
+        artifacts=artifacts,
         unsupported_requirements=_tuple_strs(
             expected.get("unsupported_requirements", []),
             field="expected.unsupported_requirements",
             index=index,
         ),
-        clarification_fields=_tuple_strs(
-            expected.get("clarification_fields", []),
-            field="expected.clarification_fields",
-            index=index,
-        ),
+        clarification_fields=clarification_fields,
         target_files=_tuple_strs(
             expected.get("target_files", []),
             field="expected.target_files",
@@ -639,6 +675,25 @@ def _expected_action(row: dict[str, object], expected: dict[str, object]) -> str
     return "ask_clarification"
 
 
+def _requires_clarification(
+    *,
+    expected: dict[str, object],
+    expected_action: str,
+    clarification_fields: tuple[str, ...],
+) -> str:
+    if (
+        expected_action == "ask_clarification"
+        or expected.get("clarify") is True
+        or clarification_fields
+    ):
+        return "yes"
+    return "no"
+
+
+def _primary_artifact(artifacts: tuple[str, ...]) -> str:
+    return artifacts[0] if artifacts else "none"
+
+
 def _target_from_prediction(
     prediction: PromptIntentTarget | dict[str, object],
     *,
@@ -654,6 +709,12 @@ def _target_from_prediction(
         task_type=str(prediction.get("task_type", expected.task_type)),
         domain=str(prediction.get("domain", expected.domain)),
         expected_action=str(prediction.get("expected_action", expected.expected_action)),
+        requires_clarification=str(
+            prediction.get("requires_clarification", expected.requires_clarification)
+        ),
+        primary_artifact=str(
+            prediction.get("primary_artifact", expected.primary_artifact)
+        ),
         requested_interfaces=_tuple_prediction(
             prediction.get("requested_interfaces", expected.requested_interfaces)
         ),
@@ -705,6 +766,19 @@ def _scalar_target_value(record: PromptIntentRecord, target_field: str) -> str:
     if not isinstance(value, str):
         raise ValueError(f"target field {target_field!r} is not scalar")
     return value
+
+
+def _target_context(target: PromptIntentTarget) -> dict[str, object]:
+    return {
+        "repo_mode": target.repo_mode,
+        "task_type": target.task_type,
+        "domain": target.domain,
+        "expected_action": target.expected_action,
+        "requires_clarification": target.requires_clarification,
+        "primary_artifact": target.primary_artifact,
+        "artifacts": list(target.artifacts),
+        "clarification_fields": list(target.clarification_fields),
+    }
 
 
 def _majority_label(label_counts: Counter[str]) -> str:

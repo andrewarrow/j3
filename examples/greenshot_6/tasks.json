@@ -486,6 +486,27 @@
     }
   },
   {
+    "name": "rich_common_cell_width_ascii_range",
+    "family": "cell_width_regex",
+    "source_type": "git_history",
+    "split": "train",
+    "repo": ".",
+    "test": "python -m pytest tests/test_cellwidth.py::test_common_single_cell_range_includes_all_printable_ascii",
+    "source": {
+      "repo": "Textualize/rich",
+      "commit": "68e1b6386db241d49f7713dae4ba3b59c0d30ba6"
+    },
+    "preferred": {
+      "file_path": "cellwidth/cells.py",
+      "action": "change_literal",
+      "symbol": "common_single_cell_pattern",
+      "params": {
+        "from": "^[\\u0020-\\u006f\\u00a0\\u02ff\\u0370-\\u0482]*$",
+        "to": "^[\\u0020-\\u007f\\u00a0\\u02ff\\u0370-\\u0482]*$"
+      }
+    }
+  },
+  {
     "name": "cookie_default_secure_flag_dict_value",
     "family": "mapping_value",
     "source_type": "mutation",

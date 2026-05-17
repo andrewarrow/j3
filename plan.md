@@ -752,12 +752,34 @@ Recent work:
   no trained preferred-positive misses. For the new PrettyTable-derived task,
   the trained ranker places the preferred `change_literal` repair first, above
   the local operator and literal decoys.
+- GreenShot-6 now includes a thirteenth fixture domain, `cellwidth`, with one
+  real-package-derived `git_history` task modeled on `Textualize/rich` commit
+  `68e1b6386db241d49f7713dae4ba3b59c0d30ba6`. The task
+  `rich_common_cell_width_ascii_range` repairs Rich-style common cell-width
+  regex matching by changing the printable ASCII range endpoint from `\u006f`
+  to `\u007f`, using the existing `change_literal` action family.
+- Focused loader/generator coverage passed for the new Rich-derived task:
+  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
+  `pytest tests/test_patching.py::test_patch_solves_rich_common_cell_width_ascii_range -q`.
+- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
+  adding `cellwidth`. The persisted dataset at
+  `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` now covers 32
+  tasks and 234 tested candidates. Ranked eval solved all 32 tasks with
+  `pass@1=23/32` and average candidates `7.31`; the new Rich-derived task
+  solves at raw rank 1 with the preferred `change_literal` candidate.
+- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
+  the cellwidth outcome refresh and stayed clean: solved=7/7, pass@1=7/7,
+  positive@1=7/7. Training used 314 rows, 68 passing rows, 268 training pairs,
+  744 features, and 5 margin violations.
+- Applying the saved test-slice ranker to all refreshed GreenShot-6 rows found
+  no trained preferred-positive misses. For the new Rich-derived task, the
+  trained ranker places the preferred regex `change_literal` repair first.
 
 Last focused verification:
 
 ```bash
-pytest tests/test_evaluation.py::test_load_greenshot_6_tasks tests/test_patching.py::test_patch_solves_prettytable_missing_attribute_quote -q
-pytest tests/test_patching.py::test_patch_solves_urllib3_getheader_warning_typo -q
+pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q
+pytest tests/test_patching.py::test_patch_solves_rich_common_cell_width_ascii_range -q
 python cli.py eval \
   --tasks examples/greenshot_6 \
   --checkpoint runs/apache-python-git/model.json \
@@ -784,8 +806,8 @@ python cli.py train-ranker \
 python cli.py outcome-summary \
   --candidate-outcomes runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl
 python - <<'PY'
-# applied the refreshed test-slice ranker to all refreshed GreenShot-6 rows;
-# no trained preferred-positive residuals were found.
+# Applied the refreshed test-slice ranker to all refreshed GreenShot-6 rows;
+# no trained preferred-positive residuals were found across 32 tasks.
 PY
 git diff --check
 ```
@@ -904,9 +926,9 @@ GreenShot-6 outcome collection result:
 
 ```text
 ranked, runs/apache-python-git/model.json, explore-after-pass=5:
-  solved=31/31 pass@1=22/31 avg_candidates=7.35
-  rows=228 passing_rows=59 preferred_positive_rows=31
-  source_type pass@1: git_history=7/13 mutation=15/18
+  solved=32/32 pass@1=23/32 avg_candidates=7.31
+  rows=234 passing_rows=60 preferred_positive_rows=32
+  source_type pass@1: git_history=8/14 mutation=15/18
 ```
 
 Treat this as a smoke check, not a benchmark claim.
@@ -925,7 +947,7 @@ GreenShot-6 test-slice ranker validation result:
 
 ```text
 train-ranker, holdout-task includes all GreenShot-6 split:test tasks:
-  training rows=308 passing_rows=67 tasks=44 plans=44 pairs=263
+  training rows=314 passing_rows=68 tasks=45 plans=45 pairs=268
   training_accuracy=1.000 margin_violations=5 features=744
   validation solved=7/7 pass@1=7/7 positive@1=7/7
   validation avg_first_passing_index=1.0
@@ -938,7 +960,7 @@ Keep this section as the live queue. When work is completed, move it to
 
 Immediate next sequence:
 
-1. Add the next real-package-derived GreenShot-6 task or small fixture domain.
+1. Add another real-package-derived GreenShot-6 task or small fixture domain.
    Prefer a repair shape that uses an existing action family and creates useful
    ranking or outcome-quality signal.
 2. Add focused loader/generator coverage for the new task, then refresh

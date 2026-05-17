@@ -99,7 +99,7 @@ def test_load_greenshot_6_tasks() -> None:
     tasks = load_tasks(Path("examples/greenshot_6"))
     by_name = {task.name: task for task in tasks}
 
-    assert len(tasks) == 31
+    assert len(tasks) == 32
     assert tasks[0].name == "core_metadata_version_dict_value"
     assert tasks[0].family == "mapping_value"
     assert tasks[0].source_type == "mutation"
@@ -311,6 +311,17 @@ def test_load_greenshot_6_tasks() -> None:
         "params": {
             "from": "HTTResponse.headers.get(name, default)",
             "to": "HTTPResponse.headers.get(name, default)",
+        },
+    }
+    assert by_name["rich_common_cell_width_ascii_range"].split == "train"
+    assert by_name["rich_common_cell_width_ascii_range"].source_type == "git_history"
+    assert by_name["rich_common_cell_width_ascii_range"].preferred_patch == {
+        "file_path": "cellwidth/cells.py",
+        "action": "change_literal",
+        "symbol": "common_single_cell_pattern",
+        "params": {
+            "from": r"^[\u0020-\u006f\u00a0\u02ff\u0370-\u0482]*$",
+            "to": r"^[\u0020-\u007f\u00a0\u02ff\u0370-\u0482]*$",
         },
     }
     assert by_name["cookie_default_secure_flag_dict_value"].split == "test"

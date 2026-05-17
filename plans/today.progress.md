@@ -139,7 +139,7 @@ Use this shape for each worker handoff:
   improve/regress/no-change counts, production-selected and scorer-top
   pass@1, average candidates saved/lost when validation is known, and zero
   hosted usage totals.
-- Commit: pending in this worker iteration.
-- Push: pending in this worker iteration.
+- Commit: `f4fdeb6` (`Add transition advice summary`).
+- Push: pushed to `origin/main` (`f4fdeb6`).
 - Next: run and document a real shadow `eval` loop.
 - Blockers: none.

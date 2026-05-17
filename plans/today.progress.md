@@ -8,7 +8,7 @@ new implementation facts change the 24-hour plan itself. Record any
 ## Status
 
 - Current phase: unsupported-requirement labels and eval target added locally
-- Completed iterations: 7
+- Completed iterations: 8
 - Passing focused tests:
   - `pytest tests/test_prompt_intents.py -q`
   - `pytest tests/test_prompt_intents.py tests/test_request_spec.py -q`
@@ -22,7 +22,7 @@ new implementation facts change the 24-hour plan itself. Record any
   - `python cli.py train-prompt-intents --labels ../prompts/coding_agent_prompts_seed.jsonl --target expected_action repo_mode requires_clarification primary_artifact --show-residuals --residual-limit 12`
   - `python cli.py train-prompt-intents --labels examples/prompt_intents/greenshot_7_intents.jsonl --target unsupported_requirement --show-residuals --residual-limit 12`
   - `python -m py_compile prompt_intents.py cli/handlers.py cli/parser.py cli/__init__.py`
-- Latest implementation commit: `44283da598c50102c3291fdc18b56ac3720cccff`
+- Latest implementation commit: `f603fb2`
 - Current blocker: none
 - Next task: keep learned production routing blocked; inspect unsupported-
   requirement residuals and add more held-out label coverage or better encoder
@@ -489,8 +489,8 @@ Use this shape for each worker handoff:
       `ui_interface` for `make a math thing`
   - Production routing remains fixture-backed and conservative; no learned
     model was wired into request-spec or change-spec behavior.
-- Commit: pending at progress-log update time
-- Push: pending at progress-log update time
+- Commit: `f603fb2`
+- Push: succeeded to `main`
 - Next: inspect the remaining UI-vs-graphical and ambiguous-math residuals, or
   improve prompt representation features, before any learned production routing
   decision.

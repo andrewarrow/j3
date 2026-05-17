@@ -8,13 +8,15 @@ new implementation facts change the 24-hour plan itself. Record any
 ## Status
 
 - Current phase: reset to Prompt-JEPA encoder and index implementation
-- Completed iterations: 1 for this reset
-- Passing focused tests: `pytest tests/test_prompt_jepa.py -q`;
-  `python -m py_compile prompt_jepa.py`; `git diff --check`
-- Latest implementation commit: `a62376d`
+- Completed iterations: 2 for this reset
+- Passing focused tests: `pytest tests/test_cli.py -q`;
+  `pytest tests/test_prompt_jepa.py -q`;
+  `python -m py_compile prompt_jepa.py cli/handlers.py cli/parser.py cli/__init__.py`;
+  `git diff --check`
+- Latest implementation commit: iteration 2 CLI command commit; hash reported by
+  worker after push
 - Current blocker: none
-- Next task: add CLI build/query commands for the Prompt-JEPA index and focused
-  CLI tests
+- Next task: add Prompt-JEPA retrieval evaluation metrics and focused tests
 
 ## Worker Iteration Template
 
@@ -76,4 +78,26 @@ Use this shape for each worker handoff:
 - Commit: `a62376d`
 - Push: succeeded to `main`
 - Next: add CLI build/query commands for persisted Prompt-JEPA indexes.
+- Blockers: none.
+
+### Iteration 2: Prompt-JEPA CLI build/query commands
+
+- Worker: Codex worker iteration 2
+- Goal: add CLI build/query commands for the persisted Prompt-JEPA index and
+  focused CLI tests without changing production request-spec/change-spec
+  routing.
+- Files changed: `cli/parser.py`, `cli/handlers.py`, `cli/__init__.py`,
+  `tests/test_cli.py`, `plans/today.progress.md`
+- Tests run: `pytest tests/test_cli.py -q` passed with 29 tests;
+  `pytest tests/test_prompt_jepa.py -q` passed with 6 tests;
+  `python -m py_compile prompt_jepa.py cli/handlers.py cli/parser.py cli/__init__.py`
+  passed; `git diff --check` passed; manual smoke build/query with
+  `examples/prompt_intents/greenshot_7_intents.jsonl` passed.
+- Result: implemented `build-prompt-jepa-index` and
+  `query-prompt-jepa-index`, persisted local prompt-intent labels to
+  `j3.prompt-jepa-index.v1`, printed stable human-readable build/query
+  summaries, and added CLI coverage for both commands.
+- Commit: this iteration commit; final hash reported by worker after push.
+- Push: pending at progress update time; final result reported by worker.
+- Next: add Prompt-JEPA retrieval evaluation metrics over held-out splits.
 - Blockers: none.

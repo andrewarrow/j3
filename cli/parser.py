@@ -7,6 +7,7 @@ from pathlib import Path
 
 from cli.handlers import (
     handle_actions,
+    handle_build_prompt_jepa_index,
     handle_change,
     handle_compare_diagnostics,
     handle_eval,
@@ -16,6 +17,7 @@ from cli.handlers import (
     handle_mine,
     handle_outcome_summary,
     handle_patch,
+    handle_query_prompt_jepa_index,
     handle_train,
     handle_train_prompt_intents,
     handle_train_ranker,
@@ -378,6 +380,63 @@ def build_parser() -> argparse.ArgumentParser:
         help="maximum residual examples to print per split and target (default: 20)",
     )
     prompt_intents_parser.set_defaults(handler=handle_train_prompt_intents)
+
+    prompt_jepa_build_parser = subparsers.add_parser(
+        "build-prompt-jepa-index",
+        help="build a persisted Prompt-JEPA retrieval index",
+        description=(
+            "Build a persisted Prompt-JEPA index from prompt-intent labels. "
+            "This command writes a retrieval artifact only and does not wire "
+            "retrieval into production request-spec or change-spec routing."
+        ),
+    )
+    prompt_jepa_build_parser.add_argument(
+        "--labels",
+        type=Path,
+        required=True,
+        help="prompt-intent JSONL labels to index",
+    )
+    prompt_jepa_build_parser.add_argument(
+        "--out",
+        type=Path,
+        required=True,
+        help="output path for the Prompt-JEPA index JSON",
+    )
+    prompt_jepa_build_parser.add_argument(
+        "--embedding-dim",
+        type=int,
+        default=256,
+        help="hashed context/target embedding dimension (default: 256)",
+    )
+    prompt_jepa_build_parser.set_defaults(handler=handle_build_prompt_jepa_index)
+
+    prompt_jepa_query_parser = subparsers.add_parser(
+        "query-prompt-jepa-index",
+        help="query a persisted Prompt-JEPA retrieval index",
+        description=(
+            "Query a persisted Prompt-JEPA index for nearest prompt-intent rows. "
+            "Results are printed for inspection and are not used by production "
+            "request-spec or change-spec routing."
+        ),
+    )
+    prompt_jepa_query_parser.add_argument(
+        "--index",
+        type=Path,
+        required=True,
+        help="Prompt-JEPA index JSON path",
+    )
+    prompt_jepa_query_parser.add_argument(
+        "--prompt",
+        required=True,
+        help="prompt text to query",
+    )
+    prompt_jepa_query_parser.add_argument(
+        "--top-k",
+        type=int,
+        default=5,
+        help="number of nearest rows to print (default: 5)",
+    )
+    prompt_jepa_query_parser.set_defaults(handler=handle_query_prompt_jepa_index)
 
     ranker_parser = subparsers.add_parser(
         "train-ranker",

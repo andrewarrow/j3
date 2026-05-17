@@ -33,6 +33,8 @@ def test_help_menu_prints_project_summary(capsys) -> None:
     assert "fix" in output
     assert "train" in output
     assert "train-prompt-intents" in output
+    assert "build-prompt-jepa-index" in output
+    assert "query-prompt-jepa-index" in output
     assert "train-ranker" in output
     assert "outcome-summary" in output
     assert "compare-diagnostics" in output
@@ -236,6 +238,84 @@ def test_train_prompt_intents_command_accepts_derived_targets(capsys, tmp_path) 
     assert output[1]["model"]["labels"] == ["cli", "none", "pyproject"]
     assert output[2]["model"]["labels"] == ["none", "ui_interface"]
     assert output[3]["model"]["labels"] == ["interface", "none"]
+
+
+def test_build_prompt_jepa_index_command_writes_index(capsys, tmp_path) -> None:
+    labels = "examples/prompt_intents/greenshot_7_intents.jsonl"
+    out_path = tmp_path / "prompt-jepa-index.json"
+
+    assert (
+        main(
+            [
+                "build-prompt-jepa-index",
+                "--labels",
+                labels,
+                "--out",
+                str(out_path),
+                "--embedding-dim",
+                "64",
+            ]
+        )
+        == 0
+    )
+
+    output = capsys.readouterr().out
+    index_data = json.loads(out_path.read_text(encoding="utf-8"))
+    assert "j3 build-prompt-jepa-index complete" in output
+    assert "rows: " in output
+    assert "embedding dim: 64" in output
+    assert f"out: {out_path.resolve()}" in output
+    assert index_data["format"] == "j3.prompt-jepa-index.v1"
+    assert index_data["embedding_dim"] == 64
+    assert len(index_data["rows"]) > 0
+    assert index_data["rows"][0]["id"] == "gs7-intent-0001"
+
+
+def test_query_prompt_jepa_index_command_prints_top_rows(capsys, tmp_path) -> None:
+    labels = "examples/prompt_intents/greenshot_7_intents.jsonl"
+    out_path = tmp_path / "prompt-jepa-index.json"
+    assert (
+        main(
+            [
+                "build-prompt-jepa-index",
+                "--labels",
+                labels,
+                "--out",
+                str(out_path),
+            ]
+        )
+        == 0
+    )
+    capsys.readouterr()
+
+    assert (
+        main(
+            [
+                "query-prompt-jepa-index",
+                "--index",
+                str(out_path),
+                "--prompt",
+                "make me a simple cli calc",
+                "--top-k",
+                "3",
+            ]
+        )
+        == 0
+    )
+
+    output = capsys.readouterr().out
+    assert "j3 query-prompt-jepa-index complete" in output
+    assert f"index: {out_path.resolve()}" in output
+    assert "prompt: make me a simple cli calc" in output
+    assert "top k: 3" in output
+    assert "results:" in output
+    assert "1. score=" in output
+    assert "id=gs7-intent-0001" in output
+    assert "split=train" in output
+    assert "expected_action=emit_request_spec" in output
+    assert "repo_mode=new_repo" in output
+    assert "domain=calculator" in output
+    assert 'prompt="make me a simple cli calc"' in output
 
 
 def test_implement_command_builds_repo_and_request_spec_artifact(capsys, tmp_path) -> None:

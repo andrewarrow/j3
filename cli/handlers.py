@@ -44,6 +44,11 @@ from prompt_intents import (
     predict_prompt_intent,
     train_prompt_intent_token_baseline,
 )
+from prompt_jepa import (
+    build_prompt_jepa_index_from_path,
+    load_prompt_jepa_index,
+    save_prompt_jepa_index,
+)
 from request_outcomes import append_request_repo_attempt
 from request_spec import RequestSpec, parse_request_to_spec
 from training import train_from_paths
@@ -428,6 +433,47 @@ def handle_train_prompt_intents(args: argparse.Namespace) -> int:
                 omitted = len(metrics.residuals) - len(shown)
                 if omitted > 0:
                     print(f"      ... {omitted} more")
+    return 0
+
+
+def handle_build_prompt_jepa_index(args: argparse.Namespace) -> int:
+    index = build_prompt_jepa_index_from_path(
+        args.labels,
+        embedding_dim=args.embedding_dim,
+    )
+    out_path = args.out.expanduser().resolve()
+    save_prompt_jepa_index(index, out_path)
+
+    print("j3 build-prompt-jepa-index complete")
+    print(f"labels: {args.labels.expanduser().resolve()}")
+    print(f"rows: {len(index.rows)}")
+    print(f"embedding dim: {index.metadata.embedding_dim}")
+    print(f"out: {out_path}")
+    return 0
+
+
+def handle_query_prompt_jepa_index(args: argparse.Namespace) -> int:
+    index_path = args.index.expanduser().resolve()
+    index = load_prompt_jepa_index(index_path)
+    results = index.query(args.prompt, top_k=args.top_k)
+
+    print("j3 query-prompt-jepa-index complete")
+    print(f"index: {index_path}")
+    print(f"prompt: {args.prompt}")
+    print(f"top k: {args.top_k}")
+    print("results:")
+    for rank, result in enumerate(results, start=1):
+        metadata = result.target_metadata
+        print(
+            "  "
+            f"{rank}. score={result.score:.6f} "
+            f"id={result.row_id} "
+            f"split={result.split} "
+            f"expected_action={metadata.get('expected_action', 'unknown')} "
+            f"repo_mode={metadata.get('repo_mode', 'unknown')} "
+            f"domain={metadata.get('domain', 'unknown')} "
+            f"prompt={json.dumps(result.prompt)}"
+        )
     return 0
 
 

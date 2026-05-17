@@ -1,4 +1,4 @@
-# Today Plan: Intent Fidelity And Existing-Repo Change Slice
+# Today Plan: Learned Prompt Understanding And Intent Fidelity Slice
 
 This 24-hour plan resets the active GreenShot work from "can generate a simple
 calculator repo" to "does not overclaim unsupported intent, and can make a small
@@ -32,29 +32,34 @@ repo build.
 
 ## Goal For The Next 24 Hours
 
-Build a more honest GreenShot request pipeline:
+Build a more honest GreenShot request pipeline that moves toward learned prompt
+understanding instead of accumulating hand-written English rules:
 
 ```text
 natural-language prompt
-  -> intent/scope classification
+  -> labeled prompt record
+  -> prompt representation / encoder training target
+  -> intent/scope prediction with evidence
   -> clarification when requested interface or scope is unsupported
-  -> request-spec-v1 only when the request matches supported capability
+  -> request-spec-v1 only when the predicted request matches supported capability
   -> existing-repo change spec for narrow calculator edits
   -> structured patch actions
   -> validation
   -> prompt/spec/action/outcome row
 ```
 
-Success means j3 can say "I cannot safely do that yet" for unsupported UI or
-complexity requests, and can make at least one small requested change to an
-existing calculator repo through structured code edits.
+Success means j3 has a concrete data/evaluation path for English prompt
+understanding, can say "I cannot safely do that yet" for unsupported UI or
+complexity requests, and can make progress toward one small requested change to
+an existing calculator repo through structured code edits.
 
 ## Non-Goals For Today
 
 - No full GUI, web, desktop, TUI, or graphical calculator generation.
 - No broad existing-repo natural-language editing beyond calculator.py.
-- No neural prompt encoder unless the data profile shows an extremely small,
-  useful classifier can be trained and tested inside the day.
+- No production-quality prompt encoder today. The target is the first concrete
+  learned-understanding slice: labeled rows, representation targets, held-out
+  evaluation, and a tiny trainable model only if the data is ready.
 - No new dependency unless the standard library is clearly insufficient.
 - No general free-form source generation.
 - No changes to `plan.md` unless the strategic roadmap truly changes.
@@ -62,16 +67,18 @@ existing calculator repo through structured code edits.
 ## Core Problems To Fix
 
 1. The parser treats any calculator-ish prompt as the simple CLI calculator.
-2. Interface words like `graphic`, `graphical`, `gui`, `desktop`, `web`, and
-   `complex` are not represented as capability constraints.
-3. `request-spec-v1` has no clear field for rejected or unsupported interface
+2. Prompt understanding is still mostly deterministic English parsing. That is
+   useful as an oracle or fallback, but not the main research direction.
+3. Interface and complexity requests are not represented as capability
+   constraints that a learned encoder can predict.
+4. `request-spec-v1` has no clear field for rejected or unsupported interface
    requests beyond generic clarification.
-4. `j3 implement` currently creates new repos only.
-5. Existing-repo changes are possible only through failing tests, not direct
+5. `j3 implement` currently creates new repos only.
+6. Existing-repo changes are possible only through failing tests, not direct
    user prompts.
-6. The prompt seed corpus in `../prompts` has labels that may help define a
-   better intent classifier, but it has not been evaluated against current
-   parser behavior.
+7. The prompt seed corpus in `../prompts` has labels that should drive the
+   first learned prompt-understanding evaluation, but it has not been profiled
+   or wired into training/eval.
 
 ## Expected User-Facing Behavior
 
@@ -241,21 +248,30 @@ Represent the exponent change as structured actions:
 Do not hand-write arbitrary patches from a prompt. The edit should be derived
 from the structured action record.
 
-## Prompt Corpus Plan
+## Learned Prompt Understanding Plan
 
-Use `../prompts/coding_agent_prompts_seed.jsonl` before training anything.
+Use `../prompts/coding_agent_prompts_seed.jsonl` as the primary path, not as a
+side quest after deterministic parsing.
 
-Step one is profiling and evaluation:
+Step one is data profiling and representation design:
 
 - parse the JSONL
 - summarize rows by `repo_mode`, `task_type`, `domain`, split, and tags
 - identify rows involving GUI, graphics, unsupported scope, clarification, and
   existing-repo changes
-- compare current deterministic parser decisions against the labeled expected
-  fields where labels are usable
-- write a small report or test fixture from the mismatch cases
+- define the narrow prediction targets needed now, such as `repo_mode`,
+  `expected_action`, `domain`, requested interface, unsupported requirement, and
+  feature intent
+- expose those rows through a dataset loader that a future JEPA-style prompt
+  encoder can consume
+- add a held-out evaluation harness before improving model behavior
 
-Training is optional for this slice. Only train from `../prompts` if:
+Deterministic rules may remain as a baseline or regression oracle, but they are
+not the main deliverable. Do not grow a broad keyword classifier except where a
+small fallback is needed to keep user-facing behavior honest.
+
+Training is preferred once the dataset/eval target is concrete. Only train from
+`../prompts` if:
 
 - the labels are consistent enough for a narrow classifier
 - there is a focused target such as `repo_mode` or `clarification_needed`
@@ -263,50 +279,57 @@ Training is optional for this slice. Only train from `../prompts` if:
 - the trained artifact beats or complements deterministic rules in a testable
   way
 
-The default path is still deterministic rules plus fixtures. The corpus should
-drive eval coverage first, not become a premature model.
+If the corpus is not ready for training, record exactly what is missing and
+produce the dataset/evaluation code anyway.
 
 ## Step-By-Step Work Plan
 
-### Step 1: Reset Active Fixtures For Intent Fidelity
+### Step 1: Profile Prompt Corpus And Labels
 
 Deliverable:
 
-- add unsupported graphical/complex calculator prompts
-- add existing-repo calculator change prompts
-- keep existing successful CLI calculator prompts
+- load `../prompts/coding_agent_prompts_seed.jsonl`
+- summarize available labels and splits
+- identify supported CLI, unsupported graphical/complex, and existing-repo
+  change rows
+- record label gaps or inconsistencies that block training
 
 Verification:
 
-- fixture JSON parses
-- stable task names
-- each row has expected action and repo mode
+- JSONL parser validates all seed rows
+- focused test asserts expected minimum coverage for the active GreenShot-7
+  intent targets
 
-### Step 2: Add Parser Guard For Unsupported Interfaces
+### Step 2: Define Prompt Encoder Targets And Eval Harness
 
 Deliverable:
 
-- parser detects graphical/UI/web/desktop/complex interface words
-- parser emits blocked clarification instead of a simple CLI spec
-- `make me a complex graphic calc app` is covered by a test
+- define a compact target schema for prompt understanding:
+  `repo_mode`, `expected_action`, `domain`, `requested_interfaces`,
+  `unsupported_requirements`, and `features`
+- add a dataset/eval module that can score predicted targets against labels
+- include a deterministic baseline only as a lower-bound comparator
+
+Verification:
+
+- focused dataset/eval tests pass
+- baseline metrics are printed or asserted for the active label subset
+
+### Step 3: Connect Learned/Evaluable Intent To Request Spec
+
+Deliverable:
+
+- request-spec construction consumes an intent prediction object rather than
+  scattering English checks through spec helpers
+- unsupported graphical/complex calculator requests can be blocked through that
+  prediction path
+- supported CLI calculator generation still works
 
 Verification:
 
 - `pytest tests/test_request_spec.py -q`
-- direct CLI check exits non-zero and writes no calculator files
-
-### Step 3: Preserve Supported CLI Behavior
-
-Deliverable:
-
-- existing successful CLI prompts still parse and build
-- add-only policy still holds
-- `j3 implement --prompt "make me a simple cli calc"` still works
-
-Verification:
-
-- existing GreenShot-7 tests remain green
-- direct `j3 implement` smoke passes
+- direct unsupported CLI check exits non-zero and writes no calculator files
+- direct supported CLI calculator smoke still passes
 
 ### Step 4: Improve Blocked Outcome Recording
 
@@ -321,18 +344,18 @@ Verification:
 - `--record` on graphical prompt writes one blocked JSONL row
 - row has `passed: false` and a useful failure observation
 
-### Step 5: Profile `../prompts`
+### Step 5: Train Or Defer With Evidence
 
 Deliverable:
 
-- script or test helper that reads `../prompts/coding_agent_prompts_seed.jsonl`
-- summary counts by label
-- extracted mismatch/clarification examples that should become fixtures
+- train the smallest useful prompt-intent model if the profile supports it, or
+  record why training would be misleading today
+- if training proceeds, keep the artifact local and evaluate on a held-out split
 
 Verification:
 
-- JSONL parser validates all seed rows
-- test asserts expected split counts or minimum coverage
+- training decision is recorded in `plans/today.progress.md`
+- model metrics or deferral reason are reproducible from a command/test
 
 ### Step 6: Define Existing-Repo Change Spec
 
@@ -437,7 +460,7 @@ Deliverable:
 
 - short note in progress file based on the `../prompts` profile
 - either:
-  - defer training and add more deterministic fixtures, or
+  - defer training with a concrete data/label blocker, or
   - train a narrow classifier with a documented target and validation result
 
 Verification:
@@ -462,6 +485,7 @@ New tests expected during this slice:
 
 ```bash
 pytest tests/test_prompt_corpus.py -q
+pytest tests/test_prompt_intent_eval.py -q
 pytest tests/test_existing_repo_change.py -q
 ```
 
@@ -497,15 +521,20 @@ integration gate.
 
 Minimum success:
 
+- `../prompts` is profiled into a reproducible prompt-intent dataset summary.
+- A prompt-intent evaluation harness exists with explicit targets and a
+  deterministic lower-bound baseline.
+- The plan records whether a tiny learned model can be trained now, with
+  evidence.
 - `make me a complex graphic calc app` asks clarification and writes no simple
   CLI calculator.
 - Existing simple CLI calculator generation still works.
 - Unsupported interface decisions are represented in fixtures and records.
-- `../prompts` is profiled and at least one finding is converted into a test or
-  fixture.
 
 Strong success:
 
+- A first tiny learned prompt-intent model is trained and evaluated on a
+  held-out split, even if it covers only one narrow target.
 - `j3 change --repo ... --prompt "add exponent support"` works on a generated
   calculator repo.
 - The exponent change is planned as structured actions and then materialized.
@@ -520,8 +549,15 @@ Risk: j3 keeps over-infering from a domain word like `calculator`.
 
 Check:
 
-- classify requested interface and unsupported requirements before defaulting to
-  a simple CLI calculator.
+- predict requested interface and unsupported requirements before defaulting to
+  a simple CLI calculator, and score that prediction against labeled rows.
+
+Risk: the project spends another iteration proving obvious keyword matching.
+
+Check:
+
+- keep deterministic parsing as a lower-bound comparator only; prioritize
+  dataset, encoder target, training decision, and held-out evaluation.
 
 Risk: clarification becomes a generic escape hatch.
 
@@ -564,8 +600,8 @@ Check:
      naturally extends calculator dispatch.
 
 4. Training from `../prompts`:
-   - Proposed: profile and evaluate now; defer model training unless a narrow
-     label target is clearly ready.
+   - Proposed: profile and evaluate now; train the smallest useful narrow model
+     if labels and a held-out split are ready, otherwise record the blocker.
 
 ## After Today
 
@@ -575,5 +611,5 @@ If this slice works, next tasks should be:
 2. Add a tests-only prompt for an existing repo.
 3. Add a non-calculator clarification task such as "make an app with auth".
 4. Add a tiny non-calculator existing-repo feature with local style detection.
-5. Use the prompt corpus profile to grow fixtures before training a prompt
-   classifier.
+5. Replace the deterministic lower-bound baseline with the learned
+   prompt-intent model for the narrow targets where held-out metrics justify it.

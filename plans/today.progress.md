@@ -15,7 +15,7 @@ new implementation facts change the 24-hour plan itself. Record any
   - `pytest tests/test_prompt_intents.py tests/test_request_spec.py -q`
   - `git diff --check`
   - `python -m py_compile prompt_intents.py`
-- Latest implementation commit: none yet in this reset slice
+- Latest implementation commit: `e6b62d1162202798a67d62b6dc92e21f259bd9fa`
 - Current blocker: none
 - Next task: connect prompt-intent prediction objects to request-spec blocking
   so unsupported graphical calculator prompts can be rejected without expanding
@@ -101,8 +101,8 @@ Use this shape for each worker handoff:
     clarification/change labels, but no explicit unsupported graphical
     requirement labels yet; this iteration therefore adds dataset/eval plumbing
     and focused GreenShot-7 labels instead of training a misleading model.
-- Commit: this iteration commit; final hash in worker report
-- Push: pending
+- Commit: `e6b62d1162202798a67d62b6dc92e21f259bd9fa`
+- Push: succeeded to `main`
 - Next: wire an intent prediction object into request-spec construction, then
   make `make me a complex graphic calc app` block through that path while
   preserving simple CLI calculator generation.

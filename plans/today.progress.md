@@ -13,8 +13,7 @@ new implementation facts change the 24-hour plan itself. Record any
   `pytest tests/test_prompt_jepa.py -q`;
   `python -m py_compile prompt_jepa.py cli/handlers.py cli/parser.py cli/__init__.py`;
   `git diff --check`
-- Latest implementation commit: current iteration 8 commit; hash reported in
-  worker final after commit/push
+- Latest implementation commit: `d8bfd1b`
 - Current blocker: none
 - Next task: review proposal dry-run output against additional real outcome
   rows and decide whether a future planner should consume proposals directly or
@@ -323,9 +322,8 @@ Use this shape for each worker handoff:
   existing-repo power change, and blocked graphical evidence from real
   outcome-index neighbors. Production `implement` and `change` routing remains
   unchanged.
-- Commit: current iteration 8 commit; hash reported in worker final after
-  commit/push
-- Push: pending
+- Commit: `d8bfd1b`
+- Push: succeeded to `main`
 - Next: review proposal dry-run output against additional real outcome rows and
   decide whether a future planner should consume proposals directly or through
   a separate planner-evidence adapter.

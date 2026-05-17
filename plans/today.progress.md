@@ -218,8 +218,8 @@ Use this shape for each worker handoff:
   production-ordered candidate set in shadow mode, records selected/top scorer
   candidates, agreement, validation comparison, repo/task context, and zero
   hosted usage, and leaves routing unchanged.
-- Commit: pending.
-- Push: pending.
+- Commit: `6cdd621` (`Add shadow transition scorer advice`)
+- Push: succeeded to `main` (`e814bab..6cdd621`)
 - Next: add guarded, non-default opt-in ranking with gate enforcement.
 - Blockers: guarded opt-in remains blocked until a held-out scorer beats
   existing rank order.

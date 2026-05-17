@@ -137,6 +137,11 @@ Recent work:
   repair passes at rank 19.
 - GreenShot-6 candidate outcomes were collected with `--explore-after-pass 5`
   at `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl`.
+- Combined GreenShot-5 and GreenShot-6 candidate outcomes were used to train
+  the candidate ranker with `http_cache_directive` held out as a task-family
+  validation slice. The held-out plan solved but did not pass at rank 1
+  (`pass@1=0/1`, average first passing index 5.0), confirming it is useful
+  ranking signal for the next hard-negative inspection.
 
 Last focused verification:
 
@@ -160,6 +165,12 @@ python cli.py eval \
   --quiet
 python cli.py outcome-summary \
   --candidate-outcomes runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl
+python cli.py train-ranker \
+  --candidate-outcomes \
+    runs/apache-python-git/greenshot-5-candidate-outcomes.jsonl \
+    runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl \
+  --holdout-task-family http_cache_directive \
+  --out runs/apache-python-git/ranker-holdout-http-cache-directive
 git diff --check
 ```
 
@@ -188,6 +199,16 @@ ranked, runs/apache-python-git/model.json, explore-after-pass=5:
 
 Treat this as a smoke check, not a benchmark claim.
 
+Combined GreenShot-5/6 ranker validation result:
+
+```text
+train-ranker, holdout-task-family=http_cache_directive:
+  training rows=191 passing_rows=42 tasks=30 plans=30 pairs=160
+  training_accuracy=1.000 margin_violations=6 features=412
+  validation solved=1/1 pass@1=0/1 positive@1=0/1
+  validation rows=19 avg_first_passing_index=5.0
+```
+
 ## Next Right Things
 
 Keep this section as the live queue. When work is completed, move it to
@@ -195,14 +216,11 @@ Keep this section as the live queue. When work is completed, move it to
 
 Immediate next sequence:
 
-1. Train/evaluate the candidate ranker on the combined GreenShot-5 and
-   GreenShot-6 outcome rows, holding out at least one family or source-type
-   slice instead of reporting only in-sample pass@1.
-2. Inspect the GreenShot-6 hard negatives before changing ranker features,
+1. Inspect the GreenShot-6 hard negatives before changing ranker features,
    especially `http_cache_directive`, `mapping_value`, and `operator_boundary`.
-3. Add before/after AST delta features to candidate outcome rows.
-4. Record whether candidates are equivalent or overlapping.
-5. Add more real git-history tasks only after the current hard-negative/ranker
+2. Add before/after AST delta features to candidate outcome rows.
+3. Record whether candidates are equivalent or overlapping.
+4. Add more real git-history tasks only after the current hard-negative/ranker
    signal has been used.
 
 ### 1. Make GreenShot-6 Real

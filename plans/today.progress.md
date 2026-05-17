@@ -25,8 +25,8 @@ This file is the live progress log for `plans/today.md`. Keep
 - Current blocker: V2 beats V1 on the full local candidate bench, but the
   held-out validation gate still underperforms existing rank order and is not
   ready for guarded opt-in.
-- Next task: update product docs for demo, benchmark, shadow, and guarded
-  modes.
+- Next task: no queued task remains in `plans/today.progress.md`; choose the
+  next slice from `plans/today.md` or refresh the plan.
 
 ## Active Task Queue
 

@@ -1,0 +1,355 @@
+"""Prompt-intent dataset and evaluation helpers.
+
+This module is intentionally data-first. It turns labeled prompt rows into
+compact targets that a future learned prompt encoder can train on or predict.
+It does not try to understand English with hand-written keyword rules.
+"""
+
+from __future__ import annotations
+
+import json
+from collections import Counter
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Callable, Iterable, Sequence
+
+
+PROMPT_INTENT_SCHEMA_VERSION = "prompt-intent-label-v1"
+EVAL_SCHEMA_VERSION = "prompt-intent-eval-v1"
+TARGET_FIELDS = [
+    "repo_mode",
+    "task_type",
+    "domain",
+    "expected_action",
+    "requested_interfaces",
+    "features",
+    "clarification_fields",
+]
+
+
+@dataclass(frozen=True, slots=True)
+class PromptIntentTarget:
+    """The compact supervised target for prompt understanding."""
+
+    repo_mode: str
+    task_type: str
+    domain: str
+    expected_action: str
+    requested_interfaces: tuple[str, ...] = ()
+    features: tuple[str, ...] = ()
+    unsupported_requirements: tuple[str, ...] = ()
+    clarification_fields: tuple[str, ...] = ()
+    target_files: tuple[str, ...] = ()
+
+    def to_record(self) -> dict[str, object]:
+        return {
+            "repo_mode": self.repo_mode,
+            "task_type": self.task_type,
+            "domain": self.domain,
+            "expected_action": self.expected_action,
+            "requested_interfaces": list(self.requested_interfaces),
+            "features": list(self.features),
+            "unsupported_requirements": list(self.unsupported_requirements),
+            "clarification_fields": list(self.clarification_fields),
+            "target_files": list(self.target_files),
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class PromptIntentRecord:
+    """One labeled prompt row suitable for prompt encoder training/evaluation."""
+
+    row_id: str
+    split: str
+    source_type: str
+    prompt: str
+    target: PromptIntentTarget
+    tags: tuple[str, ...] = ()
+
+    def to_record(self) -> dict[str, object]:
+        return {
+            "schema_version": PROMPT_INTENT_SCHEMA_VERSION,
+            "id": self.row_id,
+            "split": self.split,
+            "source_type": self.source_type,
+            "prompt": self.prompt,
+            "target": self.target.to_record(),
+            "tags": list(self.tags),
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class PromptIntentEvalResult:
+    """Field-level evaluation for prompt-intent predictions."""
+
+    total: int
+    exact_matches: int
+    field_correct: dict[str, int]
+    mismatches: list[dict[str, object]] = field(default_factory=list)
+
+    @property
+    def exact_accuracy(self) -> float:
+        return self.exact_matches / self.total if self.total else 0.0
+
+    def to_record(self) -> dict[str, object]:
+        return {
+            "schema_version": EVAL_SCHEMA_VERSION,
+            "total": self.total,
+            "exact_matches": self.exact_matches,
+            "exact_accuracy": self.exact_accuracy,
+            "field_accuracy": {
+                field: {
+                    "correct": correct,
+                    "total": self.total,
+                    "accuracy": correct / self.total if self.total else 0.0,
+                }
+                for field, correct in self.field_correct.items()
+            },
+            "mismatches": list(self.mismatches),
+        }
+
+
+PromptIntentPredictor = Callable[[PromptIntentRecord], PromptIntentTarget | dict[str, object]]
+
+
+def load_prompt_intent_records(path: Path) -> list[PromptIntentRecord]:
+    """Load JSONL or JSON-array prompt labels into normalized intent targets."""
+
+    rows = _load_json_rows(path)
+    records = [_record_from_row(row, index=index) for index, row in enumerate(rows)]
+    if not records:
+        raise ValueError(f"no prompt intent rows found in {path}")
+    return records
+
+
+def profile_prompt_intents(records: Sequence[PromptIntentRecord]) -> dict[str, object]:
+    """Summarize a prompt-intent dataset without predicting anything."""
+
+    return {
+        "schema_version": "prompt-intent-profile-v1",
+        "total": len(records),
+        "split_counts": _counter_record(record.split for record in records),
+        "repo_mode_counts": _counter_record(record.target.repo_mode for record in records),
+        "task_type_counts": _counter_record(record.target.task_type for record in records),
+        "domain_counts": _counter_record(record.target.domain for record in records),
+        "expected_action_counts": _counter_record(
+            record.target.expected_action for record in records
+        ),
+        "interface_counts": _counter_record(
+            interface
+            for record in records
+            for interface in record.target.requested_interfaces
+        ),
+        "tag_counts": _counter_record(tag for record in records for tag in record.tags),
+        "clarification_count": sum(
+            1 for record in records if record.target.expected_action == "ask_clarification"
+        ),
+        "existing_repo_change_count": sum(
+            1
+            for record in records
+            if record.target.expected_action == "emit_existing_repo_change_spec"
+        ),
+        "unsupported_requirement_count": sum(
+            1 for record in records if record.target.unsupported_requirements
+        ),
+    }
+
+
+def evaluate_prompt_intent_predictions(
+    records: Sequence[PromptIntentRecord],
+    predictor: PromptIntentPredictor,
+) -> PromptIntentEvalResult:
+    """Score prompt-intent predictions against labeled targets."""
+
+    field_correct = {field: 0 for field in TARGET_FIELDS}
+    exact_matches = 0
+    mismatches: list[dict[str, object]] = []
+
+    for record in records:
+        expected = record.target
+        predicted = _target_from_prediction(predictor(record), expected=expected)
+        row_mismatches = []
+
+        for field in TARGET_FIELDS:
+            expected_value = getattr(expected, field)
+            predicted_value = getattr(predicted, field)
+            if expected_value == predicted_value:
+                field_correct[field] += 1
+            else:
+                row_mismatches.append(
+                    {
+                        "field": field,
+                        "expected": _json_value(expected_value),
+                        "predicted": _json_value(predicted_value),
+                    }
+                )
+
+        if row_mismatches:
+            mismatches.append(
+                {
+                    "id": record.row_id,
+                    "split": record.split,
+                    "prompt": record.prompt,
+                    "mismatches": row_mismatches,
+                }
+            )
+        else:
+            exact_matches += 1
+
+    return PromptIntentEvalResult(
+        total=len(records),
+        exact_matches=exact_matches,
+        field_correct=field_correct,
+        mismatches=mismatches,
+    )
+
+
+def _load_json_rows(path: Path) -> list[dict[str, object]]:
+    resolved = path.expanduser().resolve()
+    text = resolved.read_text(encoding="utf-8")
+    if resolved.suffix == ".json":
+        data = json.loads(text)
+        if not isinstance(data, list):
+            raise ValueError(f"{resolved} must contain a JSON array")
+        rows = data
+    else:
+        rows = [
+            json.loads(line)
+            for line in text.splitlines()
+            if line.strip() and not line.lstrip().startswith("#")
+        ]
+
+    for index, row in enumerate(rows):
+        if not isinstance(row, dict):
+            raise ValueError(f"{resolved} row {index} must be an object")
+    return rows
+
+
+def _record_from_row(row: dict[str, object], *, index: int) -> PromptIntentRecord:
+    row_id = _required_str(row, "id", index=index)
+    split = _required_str(row, "split", index=index)
+    source_type = _required_str(row, "source_type", index=index)
+    task_type = _required_str(row, "task_type", index=index)
+    repo_mode = _required_str(row, "repo_mode", index=index)
+    domain = _required_str(row, "domain", index=index)
+    prompt = _required_str(row, "prompt", index=index)
+    expected = _optional_dict(row.get("expected"), field="expected", index=index)
+
+    target = PromptIntentTarget(
+        repo_mode=repo_mode,
+        task_type=task_type,
+        domain=domain,
+        expected_action=_expected_action(row, expected),
+        requested_interfaces=_tuple_strs(
+            expected.get("requested_interfaces", expected.get("interfaces", [])),
+            field="expected.interfaces",
+            index=index,
+        ),
+        features=_tuple_strs(expected.get("features", []), field="expected.features", index=index),
+        unsupported_requirements=_tuple_strs(
+            expected.get("unsupported_requirements", []),
+            field="expected.unsupported_requirements",
+            index=index,
+        ),
+        clarification_fields=_tuple_strs(
+            expected.get("clarification_fields", []),
+            field="expected.clarification_fields",
+            index=index,
+        ),
+        target_files=_tuple_strs(
+            expected.get("target_files", []),
+            field="expected.target_files",
+            index=index,
+        ),
+    )
+    return PromptIntentRecord(
+        row_id=row_id,
+        split=split,
+        source_type=source_type,
+        prompt=prompt,
+        target=target,
+        tags=_tuple_strs(row.get("tags", []), field="tags", index=index),
+    )
+
+
+def _expected_action(row: dict[str, object], expected: dict[str, object]) -> str:
+    explicit = expected.get("action", row.get("expected_action"))
+    if isinstance(explicit, str) and explicit:
+        return explicit
+    if expected.get("clarify") is True or row.get("task_type") == "clarify":
+        return "ask_clarification"
+    if row.get("repo_mode") == "existing_repo":
+        return "emit_existing_repo_change_spec"
+    if row.get("repo_mode") == "new_repo":
+        return "emit_request_spec"
+    return "ask_clarification"
+
+
+def _target_from_prediction(
+    prediction: PromptIntentTarget | dict[str, object],
+    *,
+    expected: PromptIntentTarget,
+) -> PromptIntentTarget:
+    if isinstance(prediction, PromptIntentTarget):
+        return prediction
+    if not isinstance(prediction, dict):
+        raise TypeError("prompt intent predictor must return a target or dict")
+
+    return PromptIntentTarget(
+        repo_mode=str(prediction.get("repo_mode", expected.repo_mode)),
+        task_type=str(prediction.get("task_type", expected.task_type)),
+        domain=str(prediction.get("domain", expected.domain)),
+        expected_action=str(prediction.get("expected_action", expected.expected_action)),
+        requested_interfaces=_tuple_prediction(
+            prediction.get("requested_interfaces", expected.requested_interfaces)
+        ),
+        features=_tuple_prediction(prediction.get("features", expected.features)),
+        unsupported_requirements=_tuple_prediction(
+            prediction.get("unsupported_requirements", expected.unsupported_requirements)
+        ),
+        clarification_fields=_tuple_prediction(
+            prediction.get("clarification_fields", expected.clarification_fields)
+        ),
+        target_files=_tuple_prediction(prediction.get("target_files", expected.target_files)),
+    )
+
+
+def _required_str(row: dict[str, object], field: str, *, index: int) -> str:
+    value = row.get(field)
+    if not isinstance(value, str) or not value:
+        raise ValueError(f"row {index} field {field!r} must be a non-empty string")
+    return value
+
+
+def _optional_dict(value: object, *, field: str, index: int) -> dict[str, object]:
+    if value is None:
+        return {}
+    if not isinstance(value, dict):
+        raise ValueError(f"row {index} field {field!r} must be an object")
+    return value
+
+
+def _tuple_strs(value: object, *, field: str, index: int) -> tuple[str, ...]:
+    if not isinstance(value, list):
+        raise ValueError(f"row {index} field {field!r} must be a list")
+    if not all(isinstance(item, str) and item for item in value):
+        raise ValueError(f"row {index} field {field!r} must contain strings")
+    return tuple(value)
+
+
+def _tuple_prediction(value: object) -> tuple[str, ...]:
+    if isinstance(value, tuple):
+        return tuple(str(item) for item in value)
+    if isinstance(value, list):
+        return tuple(str(item) for item in value)
+    return ()
+
+
+def _counter_record(values: Iterable[str]) -> dict[str, int]:
+    return dict(sorted(Counter(values).items()))
+
+
+def _json_value(value: object) -> object:
+    if isinstance(value, tuple):
+        return list(value)
+    return value

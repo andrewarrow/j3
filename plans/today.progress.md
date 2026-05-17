@@ -160,7 +160,7 @@ Use this shape for each worker handoff:
   selected suites under `suite/<suite-id>/`, writes `matrix-manifest.json`,
   `matrix-summary.json`, `evidence/`, aggregates requested suite metrics where
   available, and preserves zero hosted usage totals.
-- Commit: pending.
-- Push: pending.
+- Commit: `6a07639` (`Add transition shadow matrix runner`)
+- Push: pushed to `origin/main`.
 - Next: add cross-suite residual reporting.
 - Blockers: none.

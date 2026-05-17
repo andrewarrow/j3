@@ -443,3 +443,55 @@ Use this shape for each worker handoff:
   prompt representation features so graphical/UI unsupported target recall
   improves on held-out rows before production learned routing is reconsidered.
 - Blockers: none
+
+### Iteration 8: Split-Balanced Unsupported-Interface Labels
+
+- Worker: Codex
+- Goal: add more split-balanced unsupported-interface labels so graphical/UI
+  unsupported target recall improves on held-out rows before learned production
+  routing is reconsidered.
+- Files changed:
+  - `examples/prompt_intents/greenshot_7_intents.jsonl`
+  - `tests/test_prompt_intents.py`
+  - `plans/today.progress.md`
+- Tests run:
+  - `pytest tests/test_prompt_intents.py -q` -> passed, 8 tests
+  - `pytest tests/test_prompt_intents.py tests/test_request_spec.py tests/test_existing_repo_change.py tests/test_cli.py -q`
+    -> passed, 45 tests
+  - `python -m py_compile prompt_intents.py cli/handlers.py cli/parser.py cli/__init__.py`
+    -> passed
+  - `git diff --check` -> passed
+  - `python cli.py train-prompt-intents --labels examples/prompt_intents/greenshot_7_intents.jsonl --target unsupported_requirement --show-residuals --residual-limit 20`
+    -> passed
+- Result:
+  - Added 10 focused local fixture rows: graphical/gui calculator requests,
+    one ambiguous math clarification row, and two supported `none` negatives
+    for command-line/new-repo and existing-repo power phrasing.
+  - Local fixture coverage is now 35 rows with split counts train=17,
+    validation=8, test=10. Unsupported requirement counts are
+    `graphical_interface=12`, `none=10`, `web_interface=3`,
+    `scientific_operations_unspecified=3`, `desktop_interface=2`,
+    `domain_unspecified=2`, `ui_interface=2`, and
+    `visual_interface_scope=1`.
+  - Local `unsupported_requirement` learned-baseline metrics improved from
+    train 1.000, validation 0.833, test 0.375 to train 17/17 = 1.000,
+    validation 7/8 = 0.875, and test 9/10 = 0.900. Majority baselines were
+    train 6/17 = 0.353, validation 2/8 = 0.250, and test 2/10 = 0.200.
+  - The previous held-out graphical misses are no longer residuals:
+    `gs7-intent-0004` (`make me a complex graphic calc app`),
+    `gs7-intent-0005` (`make a graphical calculator`),
+    `gs7-intent-0006` (`make a gui calculator`), and `gs7-intent-0024`
+    (`make a graphical desktop calc`) are all correctly labeled.
+  - Remaining residuals:
+    - validation: `gs7-intent-0033` expected `ui_interface`, predicted
+      `graphical_interface` for `create a calculator UI app`
+    - test: `gs7-intent-0009` expected `domain_unspecified`, predicted
+      `ui_interface` for `make a math thing`
+  - Production routing remains fixture-backed and conservative; no learned
+    model was wired into request-spec or change-spec behavior.
+- Commit: pending at progress-log update time
+- Push: pending at progress-log update time
+- Next: inspect the remaining UI-vs-graphical and ambiguous-math residuals, or
+  improve prompt representation features, before any learned production routing
+  decision.
+- Blockers: none

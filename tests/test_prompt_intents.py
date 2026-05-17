@@ -21,32 +21,32 @@ def test_loads_greenshot_7_prompt_intent_fixtures() -> None:
     records = load_prompt_intent_records(GREENSHOT_7_INTENTS)
     profile = profile_prompt_intents(records)
 
-    assert len(records) == 25
+    assert len(records) == 35
     assert profile["expected_action_counts"] == {
-        "ask_clarification": 17,
-        "emit_existing_repo_change_spec": 5,
-        "emit_request_spec": 3,
+        "ask_clarification": 25,
+        "emit_existing_repo_change_spec": 6,
+        "emit_request_spec": 4,
     }
     assert profile["repo_mode_counts"] == {
-        "existing_repo": 5,
-        "new_repo": 19,
-        "unknown": 1,
+        "existing_repo": 6,
+        "new_repo": 27,
+        "unknown": 2,
     }
-    assert profile["unsupported_requirement_count"] == 17
-    assert profile["existing_repo_change_count"] == 5
-    assert profile["requires_clarification_counts"] == {"no": 8, "yes": 17}
-    assert profile["primary_artifact_counts"] == {"none": 25}
+    assert profile["unsupported_requirement_count"] == 25
+    assert profile["existing_repo_change_count"] == 6
+    assert profile["requires_clarification_counts"] == {"no": 10, "yes": 25}
+    assert profile["primary_artifact_counts"] == {"none": 35}
     assert profile["unsupported_requirement_counts"] == {
         "desktop_interface": 2,
-        "domain_unspecified": 1,
-        "graphical_interface": 6,
-        "none": 8,
+        "domain_unspecified": 2,
+        "graphical_interface": 12,
+        "none": 10,
         "scientific_operations_unspecified": 3,
-        "ui_interface": 1,
+        "ui_interface": 2,
         "visual_interface_scope": 1,
         "web_interface": 3,
     }
-    assert profile["missing_artifact_label_count"] == 25
+    assert profile["missing_artifact_label_count"] == 35
 
     unsupported = next(
         record
@@ -127,6 +127,7 @@ def test_local_fixture_trains_unsupported_requirement_target() -> None:
 
     assert result.model.labels == (
         "desktop_interface",
+        "domain_unspecified",
         "graphical_interface",
         "none",
         "scientific_operations_unspecified",
@@ -134,13 +135,31 @@ def test_local_fixture_trains_unsupported_requirement_target() -> None:
         "visual_interface_scope",
         "web_interface",
     )
-    assert result.metrics["validation"].accuracy >= 0.83
+    assert result.metrics["validation"].accuracy >= 0.875
     assert (
         result.metrics["validation"].accuracy
         > result.metrics["validation"].baseline_accuracy
     )
-    assert result.metrics["test"].accuracy >= 0.37
+    assert result.metrics["test"].accuracy >= 0.9
     assert result.metrics["test"].accuracy > result.metrics["test"].baseline_accuracy
+    assert [residual.row_id for residual in result.metrics["validation"].residuals] == [
+        "gs7-intent-0033",
+    ]
+    assert [residual.row_id for residual in result.metrics["test"].residuals] == [
+        "gs7-intent-0009",
+    ]
+    graphical_holdout_ids = {
+        "gs7-intent-0004",
+        "gs7-intent-0005",
+        "gs7-intent-0006",
+        "gs7-intent-0024",
+    }
+    residual_ids = {
+        residual.row_id
+        for metrics in result.metrics.values()
+        for residual in metrics.residuals
+    }
+    assert graphical_holdout_ids.isdisjoint(residual_ids)
     assert result.decision == "evaluation_only_not_wired_to_production"
 
 

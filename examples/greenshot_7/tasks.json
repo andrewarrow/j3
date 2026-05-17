@@ -1,0 +1,395 @@
+[
+  {
+    "name": "calculator_basic_etc",
+    "family": "request_spec",
+    "source_type": "prompt_fixture",
+    "split": "train",
+    "prompt": "make me a simple cli python app that's a basic calculator, it should let the user add two numbers, subtract, etc.",
+    "expected_action": "emit_request_spec",
+    "expected_features": ["add", "subtract", "multiply", "divide"],
+    "expected_spec": {
+      "schema_version": "request-spec-v1",
+      "task_name": "calculator_basic_etc",
+      "task_type": "create_app",
+      "language": "python",
+      "repo_mode": "new_repo",
+      "domain": "calculator",
+      "prompt": "make me a simple cli python app that's a basic calculator, it should let the user add two numbers, subtract, etc.",
+      "artifacts": ["calculator.py", "tests/test_calculator_cli.py"],
+      "interfaces": [
+        {
+          "kind": "cli",
+          "style": "argparse"
+        }
+      ],
+      "features": ["add", "subtract", "multiply", "divide"],
+      "operation_aliases": {
+        "add": ["add", "plus", "+"],
+        "subtract": ["subtract", "sub", "minus", "-"],
+        "multiply": ["multiply", "mul", "times", "x", "*"],
+        "divide": ["divide", "div", "/"]
+      },
+      "inferred_defaults": [
+        {
+          "field": "features",
+          "value": ["multiply", "divide"],
+          "reason": "basic_calculator_etc_default_operations",
+          "confidence": 0.86
+        }
+      ],
+      "clarifications_needed": [],
+      "validation": {
+        "commands": ["python -m pytest tests/test_calculator_cli.py -q"],
+        "hidden_cases": true
+      }
+    }
+  },
+  {
+    "name": "calculator_short_calc",
+    "family": "request_spec",
+    "source_type": "prompt_fixture",
+    "split": "train",
+    "prompt": "make me a simple cli calc",
+    "expected_action": "emit_request_spec",
+    "expected_features": ["add", "subtract", "multiply", "divide"],
+    "expected_spec": {
+      "schema_version": "request-spec-v1",
+      "task_name": "calculator_short_calc",
+      "task_type": "create_app",
+      "language": "python",
+      "repo_mode": "new_repo",
+      "domain": "calculator",
+      "prompt": "make me a simple cli calc",
+      "artifacts": ["calculator.py", "tests/test_calculator_cli.py"],
+      "interfaces": [
+        {
+          "kind": "cli",
+          "style": "argparse"
+        }
+      ],
+      "features": ["add", "subtract", "multiply", "divide"],
+      "operation_aliases": {
+        "add": ["add", "plus", "+"],
+        "subtract": ["subtract", "sub", "minus", "-"],
+        "multiply": ["multiply", "mul", "times", "x", "*"],
+        "divide": ["divide", "div", "/"]
+      },
+      "inferred_defaults": [
+        {
+          "field": "features",
+          "value": ["add", "subtract", "multiply", "divide"],
+          "reason": "simple_calculator_default_operations",
+          "confidence": 0.84
+        }
+      ],
+      "clarifications_needed": [],
+      "validation": {
+        "commands": ["python -m pytest tests/test_calculator_cli.py -q"],
+        "hidden_cases": true
+      }
+    }
+  },
+  {
+    "name": "calculator_add_only",
+    "family": "request_spec",
+    "source_type": "prompt_fixture",
+    "split": "train",
+    "prompt": "make cli app to add two numbers",
+    "expected_action": "emit_request_spec",
+    "expected_features": ["add"],
+    "expected_spec": {
+      "schema_version": "request-spec-v1",
+      "task_name": "calculator_add_only",
+      "task_type": "create_app",
+      "language": "python",
+      "repo_mode": "new_repo",
+      "domain": "calculator",
+      "prompt": "make cli app to add two numbers",
+      "artifacts": ["calculator.py", "tests/test_calculator_cli.py"],
+      "interfaces": [
+        {
+          "kind": "cli",
+          "style": "argparse"
+        }
+      ],
+      "features": ["add"],
+      "operation_aliases": {
+        "add": ["add", "plus", "+"]
+      },
+      "inferred_defaults": [],
+      "clarifications_needed": [],
+      "validation": {
+        "commands": ["python -m pytest tests/test_calculator_cli.py -q"],
+        "hidden_cases": true
+      }
+    }
+  },
+  {
+    "name": "calculator_operator_params",
+    "family": "request_spec",
+    "source_type": "prompt_fixture",
+    "split": "train",
+    "prompt": "make cli takes as params two numbers and operator",
+    "expected_action": "emit_request_spec",
+    "expected_features": ["add", "subtract", "multiply", "divide"],
+    "expected_spec": {
+      "schema_version": "request-spec-v1",
+      "task_name": "calculator_operator_params",
+      "task_type": "create_app",
+      "language": "python",
+      "repo_mode": "new_repo",
+      "domain": "calculator",
+      "prompt": "make cli takes as params two numbers and operator",
+      "artifacts": ["calculator.py", "tests/test_calculator_cli.py"],
+      "interfaces": [
+        {
+          "kind": "cli",
+          "style": "argparse"
+        }
+      ],
+      "features": ["add", "subtract", "multiply", "divide"],
+      "operation_aliases": {
+        "add": ["add", "plus", "+"],
+        "subtract": ["subtract", "sub", "minus", "-"],
+        "multiply": ["multiply", "mul", "times", "x", "*"],
+        "divide": ["divide", "div", "/"]
+      },
+      "inferred_defaults": [
+        {
+          "field": "features",
+          "value": ["add", "subtract", "multiply", "divide"],
+          "reason": "operator_parameter_default_operations",
+          "confidence": 0.82
+        }
+      ],
+      "clarifications_needed": [],
+      "validation": {
+        "commands": ["python -m pytest tests/test_calculator_cli.py -q"],
+        "hidden_cases": true
+      }
+    }
+  },
+  {
+    "name": "calculator_named_ops",
+    "family": "request_spec",
+    "source_type": "prompt_fixture",
+    "split": "validation",
+    "prompt": "build a command line calculator for add subtract multiply divide",
+    "expected_action": "emit_request_spec",
+    "expected_features": ["add", "subtract", "multiply", "divide"],
+    "expected_spec": {
+      "schema_version": "request-spec-v1",
+      "task_name": "calculator_named_ops",
+      "task_type": "create_app",
+      "language": "python",
+      "repo_mode": "new_repo",
+      "domain": "calculator",
+      "prompt": "build a command line calculator for add subtract multiply divide",
+      "artifacts": ["calculator.py", "tests/test_calculator_cli.py"],
+      "interfaces": [
+        {
+          "kind": "cli",
+          "style": "argparse"
+        }
+      ],
+      "features": ["add", "subtract", "multiply", "divide"],
+      "operation_aliases": {
+        "add": ["add", "plus", "+"],
+        "subtract": ["subtract", "sub", "minus", "-"],
+        "multiply": ["multiply", "mul", "times", "x", "*"],
+        "divide": ["divide", "div", "/"]
+      },
+      "inferred_defaults": [],
+      "clarifications_needed": [],
+      "validation": {
+        "commands": ["python -m pytest tests/test_calculator_cli.py -q"],
+        "hidden_cases": true
+      }
+    }
+  },
+  {
+    "name": "calculator_symbol_example",
+    "family": "request_spec",
+    "source_type": "prompt_fixture",
+    "split": "validation",
+    "prompt": "create a python script where I can run calc 2 + 3",
+    "expected_action": "emit_request_spec",
+    "expected_features": ["add"],
+    "expected_spec": {
+      "schema_version": "request-spec-v1",
+      "task_name": "calculator_symbol_example",
+      "task_type": "create_app",
+      "language": "python",
+      "repo_mode": "new_repo",
+      "domain": "calculator",
+      "prompt": "create a python script where I can run calc 2 + 3",
+      "artifacts": ["calculator.py", "tests/test_calculator_cli.py"],
+      "interfaces": [
+        {
+          "kind": "cli",
+          "style": "argparse"
+        }
+      ],
+      "features": ["add"],
+      "operation_aliases": {
+        "add": ["add", "plus", "+"]
+      },
+      "inferred_defaults": [],
+      "clarifications_needed": [],
+      "validation": {
+        "commands": ["python -m pytest tests/test_calculator_cli.py -q"],
+        "hidden_cases": true
+      }
+    }
+  },
+  {
+    "name": "calculator_aliases",
+    "family": "request_spec",
+    "source_type": "prompt_fixture",
+    "split": "test",
+    "prompt": "make a tiny calculator cli with plus minus times and divide",
+    "expected_action": "emit_request_spec",
+    "expected_features": ["add", "subtract", "multiply", "divide"],
+    "expected_spec": {
+      "schema_version": "request-spec-v1",
+      "task_name": "calculator_aliases",
+      "task_type": "create_app",
+      "language": "python",
+      "repo_mode": "new_repo",
+      "domain": "calculator",
+      "prompt": "make a tiny calculator cli with plus minus times and divide",
+      "artifacts": ["calculator.py", "tests/test_calculator_cli.py"],
+      "interfaces": [
+        {
+          "kind": "cli",
+          "style": "argparse"
+        }
+      ],
+      "features": ["add", "subtract", "multiply", "divide"],
+      "operation_aliases": {
+        "add": ["add", "plus", "+"],
+        "subtract": ["subtract", "sub", "minus", "-"],
+        "multiply": ["multiply", "mul", "times", "x", "*"],
+        "divide": ["divide", "div", "/"]
+      },
+      "inferred_defaults": [],
+      "clarifications_needed": [],
+      "validation": {
+        "commands": ["python -m pytest tests/test_calculator_cli.py -q"],
+        "hidden_cases": true
+      }
+    }
+  },
+  {
+    "name": "calculator_ambiguous",
+    "family": "request_spec",
+    "source_type": "prompt_fixture",
+    "split": "test",
+    "prompt": "make a calculator",
+    "expected_action": "emit_request_spec",
+    "expected_features": ["add", "subtract", "multiply", "divide"],
+    "expected_inferred": true,
+    "expected_spec": {
+      "schema_version": "request-spec-v1",
+      "task_name": "calculator_ambiguous",
+      "task_type": "create_app",
+      "language": "python",
+      "repo_mode": "new_repo",
+      "domain": "calculator",
+      "prompt": "make a calculator",
+      "artifacts": ["calculator.py", "tests/test_calculator_cli.py"],
+      "interfaces": [
+        {
+          "kind": "cli",
+          "style": "argparse"
+        }
+      ],
+      "features": ["add", "subtract", "multiply", "divide"],
+      "operation_aliases": {
+        "add": ["add", "plus", "+"],
+        "subtract": ["subtract", "sub", "minus", "-"],
+        "multiply": ["multiply", "mul", "times", "x", "*"],
+        "divide": ["divide", "div", "/"]
+      },
+      "inferred_defaults": [
+        {
+          "field": "features",
+          "value": ["add", "subtract", "multiply", "divide"],
+          "reason": "generic_calculator_default_operations",
+          "confidence": 0.8
+        }
+      ],
+      "clarifications_needed": [],
+      "validation": {
+        "commands": ["python -m pytest tests/test_calculator_cli.py -q"],
+        "hidden_cases": true
+      }
+    }
+  },
+  {
+    "name": "math_tool_unclear",
+    "family": "request_spec",
+    "source_type": "prompt_fixture",
+    "split": "test",
+    "prompt": "make a math thing",
+    "expected_action": "ask_clarification",
+    "expected_features": [],
+    "expected_spec": {
+      "schema_version": "request-spec-v1",
+      "task_name": "math_tool_unclear",
+      "task_type": "create_app",
+      "language": "python",
+      "repo_mode": "new_repo",
+      "domain": "unknown",
+      "prompt": "make a math thing",
+      "artifacts": [],
+      "interfaces": [],
+      "features": [],
+      "operation_aliases": {},
+      "inferred_defaults": [],
+      "clarifications_needed": [
+        {
+          "field": "domain",
+          "question": "Should this be a basic CLI calculator, and which operations should it support?"
+        }
+      ],
+      "validation": {
+        "commands": [],
+        "hidden_cases": false
+      }
+    }
+  },
+  {
+    "name": "calculator_scientific_unclear",
+    "family": "request_spec",
+    "source_type": "prompt_fixture",
+    "split": "test",
+    "prompt": "make a scientific calculator",
+    "expected_action": "ask_clarification",
+    "expected_features": [],
+    "expected_spec": {
+      "schema_version": "request-spec-v1",
+      "task_name": "calculator_scientific_unclear",
+      "task_type": "create_app",
+      "language": "python",
+      "repo_mode": "new_repo",
+      "domain": "calculator",
+      "prompt": "make a scientific calculator",
+      "artifacts": [],
+      "interfaces": [],
+      "features": [],
+      "operation_aliases": {},
+      "inferred_defaults": [],
+      "clarifications_needed": [
+        {
+          "field": "features",
+          "question": "Which scientific calculator operations should be supported?"
+        }
+      ],
+      "validation": {
+        "commands": [],
+        "hidden_cases": false
+      }
+    }
+  }
+]

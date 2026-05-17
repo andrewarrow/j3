@@ -8,11 +8,12 @@ new implementation facts change the 24-hour plan itself. Record any
 ## Status
 
 - Current phase: pre-implementation setup for GreenShot-7 calculator slice
-- Completed iterations: 1
-- Passing focused tests: prompt seed JSONL validation, `test -s REQUEST_SPEC.md`
-- Latest commit: `25ac8e153e170c89278f668f1c6c716c36d3d2b1` (`Add request spec docs`)
+- Completed iterations: 2
+- Passing focused tests: prompt seed JSONL validation, `test -s REQUEST_SPEC.md`,
+  GreenShot-7 fixture JSON validation
+- Latest commit: `Add GreenShot-7 prompt fixtures`
 - Current blocker: none
-- Next task: implement deterministic prompt-to-`request-spec-v1` parsing fixtures
+- Next task: implement deterministic prompt-to-`request-spec-v1` baseline parser
 
 ## Worker Iteration Template
 
@@ -73,4 +74,26 @@ Use this shape for each worker handoff:
 - Commit: `25ac8e153e170c89278f668f1c6c716c36d3d2b1` (`Add request spec docs`)
 - Push: succeeded to `origin/main`
 - Next: Implement deterministic prompt-to-`request-spec-v1` parsing fixtures.
+- Blockers: none
+
+### Iteration 2: Add GreenShot-7 prompt fixtures
+
+- Worker: Codex Worker Iteration 2
+- Goal: Add deterministic calculator prompt fixtures for the GreenShot-7
+  prompt-to-`request-spec-v1` parser slice without implementing parser code.
+- Files changed:
+  - `examples/greenshot_7/tasks.json`
+  - `plans/today.progress.md`
+- Tests run:
+  - `python -m json.tool examples/greenshot_7/tasks.json >/dev/null`
+  - Inline Python validation for 10 rows, 8 `emit_request_spec` positives, 2
+    `ask_clarification` rows, matching task names, prompts, and features.
+- Result: Added a single structured manifest with the eight day-one calculator
+  prompts and two clarification prompts from `plans/today.md`, including stable
+  task names, prompt text, expected actions, expected features, and expected
+  `request-spec-v1` fields for later parser tests.
+- Commit: `Add GreenShot-7 prompt fixtures`
+- Push: succeeded to `origin/main`
+- Next: Implement the deterministic prompt-to-`request-spec-v1` baseline parser
+  against `examples/greenshot_7/tasks.json`.
 - Blockers: none

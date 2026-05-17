@@ -239,7 +239,7 @@ Use this shape for each worker handoff:
   preserves zero hosted token/context usage. Production rank features are
   excluded by default and available only through an explicit ablation flag.
   Patch/fix/eval defaults remain unchanged.
-- Commit: `1ea2dfd` (`Add held-out shadow V3 scorer`).
+- Commit: `2f13892` (`Add held-out shadow V3 scorer`).
 - Push: pending.
 - Next: add a release-quality transition evidence bundle command.
 - Blockers: none.

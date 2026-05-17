@@ -8,8 +8,8 @@ This file is the live progress log for `plans/today.md`. Keep
 - Current phase: productize transition scoring without fooling ourselves.
 - Completed iterations for this reset: 5.
 - Latest relevant commits:
-  - This iteration added guarded, non-default transition-scorer ranking with
-    product gate enforcement for patch/eval planning.
+  - `882f9c4` added guarded, non-default transition-scorer ranking with product
+    gate enforcement for patch/eval planning.
   - `6cdd621` added shadow transition-scorer advice for patch/eval planning.
   - `6cd413e` calibrates a V2 transition action scorer from candidate
     outcomes.
@@ -248,8 +248,8 @@ Use this shape for each worker handoff:
   `--transition-scorer-report` or `--allow-experimental-ranking`; failed
   product gates refuse ranking before planning; successful opt-in prints the
   gate, report, and mode; default `patch` and `fix` behavior stays unchanged.
-- Commit: this commit (`Add guarded transition ranking`)
-- Push: pending.
+- Commit: `882f9c4` (`Add guarded transition ranking`)
+- Push: succeeded to `main` (`c0ea575..882f9c4`)
 - Next: update product docs for demo, benchmark, shadow, and guarded modes.
 - Blockers: guarded opt-in remains blocked for normal local V2 artifacts until
   the held-out product gate beats existing rank order.

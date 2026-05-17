@@ -20,7 +20,7 @@ new implementation facts change the 24-hour plan itself. Record any
   - `python -m py_compile existing_repo_change.py cli/handlers.py cli/parser.py cli/__init__.py`
 - `python cli.py train-prompt-intents --labels ../prompts/coding_agent_prompts_seed.jsonl --target expected_action repo_mode`
 - `python -m py_compile prompt_intents.py cli/handlers.py cli/parser.py cli/__init__.py`
-- Latest implementation commit: pending iteration 4 commit
+- Latest implementation commit: `fc9dc87a9b734234e9ebdcbd883147f9dea3d7f7`
 - Current blocker: none
 - Next task: decide the next learned prompt-understanding target after reviewing
   the token-perceptron residuals; do not replace fixture-backed production
@@ -254,8 +254,8 @@ Use this shape for each worker handoff:
     held-out targets, but `expected_action` still has weak validation accuracy
     and the seed corpus has no explicit unsupported graphical requirement
     labels.
-- Commit: pending before staging
-- Push: pending
+- Commit: `fc9dc87a9b734234e9ebdcbd883147f9dea3d7f7`
+- Push: succeeded to `main`
 - Next: inspect held-out residuals and add stronger labeled prompt-intent rows
   or feature targets before considering learned production routing.
 - Blockers: none

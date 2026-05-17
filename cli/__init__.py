@@ -13,6 +13,7 @@ from cli.handlers import (
     handle_mine,
     handle_patch,
     handle_train,
+    handle_train_prompt_intents,
     handle_train_ranker,
 )
 from cli.main import main
@@ -30,6 +31,7 @@ __all__ = [
     "handle_mine",
     "handle_patch",
     "handle_train",
+    "handle_train_prompt_intents",
     "handle_train_ranker",
     "main",
 ]

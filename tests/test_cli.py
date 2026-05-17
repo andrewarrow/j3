@@ -32,6 +32,7 @@ def test_help_menu_prints_project_summary(capsys) -> None:
     assert "patch" in output
     assert "fix" in output
     assert "train" in output
+    assert "train-prompt-intents" in output
     assert "train-ranker" in output
     assert "outcome-summary" in output
     assert "compare-diagnostics" in output
@@ -44,6 +45,65 @@ def test_actions_command_lists_structured_actions(capsys) -> None:
     output = capsys.readouterr().out
     assert "change_operator" in output
     assert "modify_condition" in output
+
+
+def test_train_prompt_intents_command_reports_json_metrics(capsys, tmp_path) -> None:
+    labels = tmp_path / "prompt-labels.jsonl"
+    labels.write_text(
+        "\n".join(
+            [
+                (
+                    '{"id":"train-create-1","split":"train","source_type":"test",'
+                    '"task_type":"create_app","repo_mode":"new_repo","domain":"calculator",'
+                    '"prompt":"create a new calculator cli","expected":{"action":"emit_request_spec"}}'
+                ),
+                (
+                    '{"id":"train-create-2","split":"train","source_type":"test",'
+                    '"task_type":"create_app","repo_mode":"new_repo","domain":"timer",'
+                    '"prompt":"build a fresh timer cli","expected":{"action":"emit_request_spec"}}'
+                ),
+                (
+                    '{"id":"train-change-1","split":"train","source_type":"test",'
+                    '"task_type":"add_feature","repo_mode":"existing_repo","domain":"calculator",'
+                    '"prompt":"change the existing calculator","expected":'
+                    '{"action":"emit_existing_repo_change_spec"}}'
+                ),
+                (
+                    '{"id":"train-change-2","split":"train","source_type":"test",'
+                    '"task_type":"bugfix","repo_mode":"existing_repo","domain":"parser",'
+                    '"prompt":"fix an existing parser bug","expected":'
+                    '{"action":"emit_existing_repo_change_spec"}}'
+                ),
+                (
+                    '{"id":"test-create","split":"test","source_type":"test",'
+                    '"task_type":"create_app","repo_mode":"new_repo","domain":"notes",'
+                    '"prompt":"create a fresh notes cli","expected":{"action":"emit_request_spec"}}'
+                ),
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    assert (
+        main(
+            [
+                "train-prompt-intents",
+                "--labels",
+                str(labels),
+                "--target",
+                "expected_action",
+                "--json",
+            ]
+        )
+        == 0
+    )
+
+    output = json.loads(capsys.readouterr().out)
+    assert output[0]["target_field"] == "expected_action"
+    assert output[0]["train_rows"] == 4
+    assert output[0]["decision"] == "evaluation_only_not_wired_to_production"
+    assert output[0]["metrics"]["test"]["accuracy"] == 1.0
 
 
 def test_implement_command_builds_repo_and_request_spec_artifact(capsys, tmp_path) -> None:

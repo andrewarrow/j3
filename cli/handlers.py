@@ -39,7 +39,11 @@ from greenfield import (
 from greenshot_7 import run_greenshot_7_tasks, summary_has_failures
 from mining import mine_git_transitions
 from patching import plan_and_maybe_apply_patch
-from prompt_intents import predict_prompt_intent
+from prompt_intents import (
+    load_prompt_intent_records,
+    predict_prompt_intent,
+    train_prompt_intent_token_baseline,
+)
 from request_outcomes import append_request_repo_attempt
 from request_spec import RequestSpec, parse_request_to_spec
 from training import train_from_paths
@@ -355,6 +359,45 @@ def handle_train(args: argparse.Namespace) -> int:
     print(f"model: {result.model_path}")
     print(f"metrics: {result.metrics_path}")
     print(f"examples: {result.examples_path}")
+    return 0
+
+
+def handle_train_prompt_intents(args: argparse.Namespace) -> int:
+    records = load_prompt_intent_records(args.labels)
+    results = [
+        train_prompt_intent_token_baseline(
+            records,
+            target_field=target,
+            epochs=args.epochs,
+        )
+        for target in args.target
+    ]
+
+    if args.json:
+        print(
+            json.dumps(
+                [result.to_record() for result in results],
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 0
+
+    print("j3 train-prompt-intents complete")
+    print(f"labels: {args.labels.expanduser().resolve()}")
+    for result in results:
+        print(f"target: {result.target_field}")
+        print(f"train rows: {result.train_rows}")
+        print(f"majority baseline: {result.majority_label}")
+        print(f"decision: {result.decision}")
+        for split, metrics in result.metrics.items():
+            print(
+                f"  {split}: "
+                f"learned={metrics.correct}/{metrics.total} "
+                f"({metrics.accuracy:.3f}) "
+                f"majority={metrics.baseline_correct}/{metrics.total} "
+                f"({metrics.baseline_accuracy:.3f})"
+            )
     return 0
 
 

@@ -8,6 +8,7 @@ It does not try to understand English with hand-written keyword rules.
 from __future__ import annotations
 
 import json
+import re
 from collections import Counter
 from dataclasses import dataclass, field
 from functools import lru_cache
@@ -17,6 +18,7 @@ from typing import Callable, Iterable, Sequence
 
 PROMPT_INTENT_SCHEMA_VERSION = "prompt-intent-label-v1"
 EVAL_SCHEMA_VERSION = "prompt-intent-eval-v1"
+LEARNED_BASELINE_SCHEMA_VERSION = "prompt-intent-token-perceptron-v1"
 DEFAULT_PROMPT_INTENTS_PATH = Path("examples/prompt_intents/greenshot_7_intents.jsonl")
 TARGET_FIELDS = [
     "repo_mode",
@@ -27,6 +29,8 @@ TARGET_FIELDS = [
     "features",
     "clarification_fields",
 ]
+SCALAR_TARGET_FIELDS = ("repo_mode", "task_type", "domain", "expected_action")
+DEFAULT_LEARNED_BASELINE_EPOCHS = 10
 
 
 @dataclass(frozen=True, slots=True)
@@ -130,6 +134,112 @@ class PromptIntentEvalResult:
                 for field, correct in self.field_correct.items()
             },
             "mismatches": list(self.mismatches),
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class PromptIntentLabelMetrics:
+    """Held-out scalar-label metrics for a prompt-intent classifier."""
+
+    split: str
+    total: int
+    correct: int
+    baseline_label: str
+    baseline_correct: int
+    confusion: dict[str, dict[str, int]]
+
+    @property
+    def accuracy(self) -> float:
+        return self.correct / self.total if self.total else 0.0
+
+    @property
+    def baseline_accuracy(self) -> float:
+        return self.baseline_correct / self.total if self.total else 0.0
+
+    def to_record(self) -> dict[str, object]:
+        return {
+            "split": self.split,
+            "total": self.total,
+            "correct": self.correct,
+            "accuracy": self.accuracy,
+            "baseline": {
+                "label": self.baseline_label,
+                "correct": self.baseline_correct,
+                "accuracy": self.baseline_accuracy,
+            },
+            "confusion": self.confusion,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class PromptIntentTokenPerceptronModel:
+    """A small learned baseline over prompt tokens.
+
+    This is a deterministic bag-of-token multiclass perceptron. It is useful as
+    the first honest learned lower bound for prompt-intent fields, but it is not
+    the final JEPA prompt encoder architecture.
+    """
+
+    target_field: str
+    labels: tuple[str, ...]
+    weights: dict[str, dict[str, float]]
+    train_split: str
+    epochs: int
+    feature_schema: str = "prompt-token-unigram-bigram-v1"
+
+    def predict_label(self, prompt: str) -> str:
+        """Predict one scalar prompt-intent label from prompt text."""
+
+        if not self.labels:
+            raise ValueError("prompt intent model has no labels")
+        features = _prompt_token_features(prompt)
+        scores = {
+            label: _score_label(features, self.weights.get(label, {}))
+            for label in self.labels
+        }
+        return max(self.labels, key=lambda label: (scores[label], label))
+
+    def to_record(self) -> dict[str, object]:
+        return {
+            "schema_version": LEARNED_BASELINE_SCHEMA_VERSION,
+            "model_type": "token_perceptron_learned_baseline",
+            "target_field": self.target_field,
+            "labels": list(self.labels),
+            "train_split": self.train_split,
+            "epochs": self.epochs,
+            "feature_schema": self.feature_schema,
+            "weights": {
+                label: dict(sorted(weights.items()))
+                for label, weights in sorted(self.weights.items())
+            },
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class PromptIntentTrainingResult:
+    """Training/evaluation result for the learned prompt-intent baseline."""
+
+    target_field: str
+    train_split: str
+    train_rows: int
+    model: PromptIntentTokenPerceptronModel
+    metrics: dict[str, PromptIntentLabelMetrics]
+    majority_label: str
+    decision: str
+
+    def to_record(self) -> dict[str, object]:
+        return {
+            "schema_version": "prompt-intent-training-result-v1",
+            "target_field": self.target_field,
+            "train_split": self.train_split,
+            "train_rows": self.train_rows,
+            "majority_label": self.majority_label,
+            "decision": self.decision,
+            "model": self.model.to_record(),
+            "metrics": {
+                split: metrics.to_record()
+                for split, metrics in sorted(self.metrics.items())
+            },
         }
 
 
@@ -256,6 +366,126 @@ def evaluate_prompt_intent_predictions(
         exact_matches=exact_matches,
         field_correct=field_correct,
         mismatches=mismatches,
+    )
+
+
+def train_prompt_intent_token_baseline(
+    records: Sequence[PromptIntentRecord],
+    *,
+    target_field: str,
+    train_split: str = "train",
+    eval_splits: Sequence[str] = ("train", "validation", "test"),
+    epochs: int = DEFAULT_LEARNED_BASELINE_EPOCHS,
+) -> PromptIntentTrainingResult:
+    """Train a reproducible token perceptron for one scalar intent field.
+
+    The model trains only on ``train_split`` rows. Validation and test rows are
+    used exclusively for metrics. The returned decision is deliberately
+    conservative: this helper does not opt the model into production request
+    parsing.
+    """
+
+    if target_field not in SCALAR_TARGET_FIELDS:
+        raise ValueError(
+            f"target_field must be one of {', '.join(SCALAR_TARGET_FIELDS)}"
+        )
+    if epochs < 1:
+        raise ValueError("epochs must be at least 1")
+
+    train_records = [record for record in records if record.split == train_split]
+    if not train_records:
+        raise ValueError(f"no prompt intent rows found for train split {train_split!r}")
+
+    label_counts = Counter(
+        _scalar_target_value(record, target_field) for record in train_records
+    )
+    labels = tuple(sorted(label_counts))
+    if len(labels) < 2:
+        raise ValueError(f"target_field {target_field!r} needs at least two train labels")
+
+    majority_label = _majority_label(label_counts)
+    weights = {label: Counter() for label in labels}
+
+    for _epoch in range(epochs):
+        for record in train_records:
+            expected = _scalar_target_value(record, target_field)
+            features = _prompt_token_features(record.prompt)
+            predicted = _predict_from_weights(labels, weights, features)
+            if predicted == expected:
+                continue
+            for feature, value in features.items():
+                weights[expected][feature] += value
+                weights[predicted][feature] -= value
+
+    model = PromptIntentTokenPerceptronModel(
+        target_field=target_field,
+        labels=labels,
+        weights={
+            label: {
+                feature: float(weight)
+                for feature, weight in sorted(feature_weights.items())
+                if weight
+            }
+            for label, feature_weights in weights.items()
+        },
+        train_split=train_split,
+        epochs=epochs,
+    )
+    metrics = {
+        split: evaluate_prompt_intent_label_model(
+            [record for record in records if record.split == split],
+            model=model,
+            baseline_label=majority_label,
+        )
+        for split in eval_splits
+    }
+    return PromptIntentTrainingResult(
+        target_field=target_field,
+        train_split=train_split,
+        train_rows=len(train_records),
+        model=model,
+        metrics=metrics,
+        majority_label=majority_label,
+        decision=(
+            "evaluation_only_not_wired_to_production"
+            if any(split != train_split for split in eval_splits)
+            else "training_only_not_wired_to_production"
+        ),
+    )
+
+
+def evaluate_prompt_intent_label_model(
+    records: Sequence[PromptIntentRecord],
+    *,
+    model: PromptIntentTokenPerceptronModel,
+    baseline_label: str,
+) -> PromptIntentLabelMetrics:
+    """Evaluate a scalar prompt-intent label model against labeled rows."""
+
+    correct = 0
+    baseline_correct = 0
+    confusion: dict[str, dict[str, int]] = {}
+
+    for record in records:
+        expected = _scalar_target_value(record, model.target_field)
+        predicted = model.predict_label(record.prompt)
+        confusion.setdefault(expected, {})
+        confusion[expected][predicted] = confusion[expected].get(predicted, 0) + 1
+        if predicted == expected:
+            correct += 1
+        if baseline_label == expected:
+            baseline_correct += 1
+
+    return PromptIntentLabelMetrics(
+        split=records[0].split if records else "empty",
+        total=len(records),
+        correct=correct,
+        baseline_label=baseline_label,
+        baseline_correct=baseline_correct,
+        confusion={
+            expected: dict(sorted(predictions.items()))
+            for expected, predictions in sorted(confusion.items())
+        },
     )
 
 
@@ -403,6 +633,56 @@ def _tuple_prediction(value: object) -> tuple[str, ...]:
     if isinstance(value, list):
         return tuple(str(item) for item in value)
     return ()
+
+
+def _scalar_target_value(record: PromptIntentRecord, target_field: str) -> str:
+    value = getattr(record.target, target_field)
+    if not isinstance(value, str):
+        raise ValueError(f"target field {target_field!r} is not scalar")
+    return value
+
+
+def _majority_label(label_counts: Counter[str]) -> str:
+    if not label_counts:
+        raise ValueError("cannot choose majority label from empty counts")
+    return sorted(label_counts.items(), key=lambda item: (-item[1], item[0]))[0][0]
+
+
+def _prompt_token_features(prompt: str) -> Counter[str]:
+    tokens = _prompt_tokens(prompt)
+    features: Counter[str] = Counter({"bias": 1})
+    features.update(f"tok={token}" for token in tokens)
+    features.update(
+        f"bigram={tokens[index]} {tokens[index + 1]}"
+        for index in range(len(tokens) - 1)
+    )
+    return features
+
+
+def _prompt_tokens(prompt: str) -> list[str]:
+    return re.findall(r"\*\*|\^|[a-z0-9_]+", prompt.lower())
+
+
+def _predict_from_weights(
+    labels: Sequence[str],
+    weights: dict[str, Counter[str]],
+    features: Counter[str],
+) -> str:
+    scores = {
+        label: _score_label(features, weights.get(label, {}))
+        for label in labels
+    }
+    return max(labels, key=lambda label: (scores[label], label))
+
+
+def _score_label(
+    features: Counter[str],
+    weights: dict[str, float] | Counter[str],
+) -> float:
+    return sum(
+        float(weights.get(feature, 0.0)) * value
+        for feature, value in features.items()
+    )
 
 
 def _counter_record(values: Iterable[str]) -> dict[str, int]:

@@ -9,6 +9,7 @@ from prompt_intents import (
     load_prompt_intent_records,
     predict_prompt_intent,
     profile_prompt_intents,
+    train_prompt_intent_token_baseline,
 )
 
 
@@ -131,3 +132,98 @@ def test_prompt_intent_loader_validates_required_fields(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="prompt"):
         load_prompt_intent_records(path)
+
+
+def test_trains_token_baseline_only_from_train_split(tmp_path: Path) -> None:
+    path = tmp_path / "labels.jsonl"
+    path.write_text(
+        "\n".join(
+            [
+                (
+                    '{"id":"train-create-1","split":"train","source_type":"test",'
+                    '"task_type":"create_app","repo_mode":"new_repo","domain":"calculator",'
+                    '"prompt":"create a new calculator cli","expected":{"action":"emit_request_spec"}}'
+                ),
+                (
+                    '{"id":"train-create-2","split":"train","source_type":"test",'
+                    '"task_type":"create_app","repo_mode":"new_repo","domain":"timer",'
+                    '"prompt":"build a fresh timer cli","expected":{"action":"emit_request_spec"}}'
+                ),
+                (
+                    '{"id":"train-change-1","split":"train","source_type":"test",'
+                    '"task_type":"add_feature","repo_mode":"existing_repo","domain":"calculator",'
+                    '"prompt":"change the existing calculator","expected":'
+                    '{"action":"emit_existing_repo_change_spec"}}'
+                ),
+                (
+                    '{"id":"train-change-2","split":"train","source_type":"test",'
+                    '"task_type":"bugfix","repo_mode":"existing_repo","domain":"parser",'
+                    '"prompt":"fix an existing parser bug","expected":'
+                    '{"action":"emit_existing_repo_change_spec"}}'
+                ),
+                (
+                    '{"id":"validation-unseen","split":"validation","source_type":"test",'
+                    '"task_type":"clarify","repo_mode":"unknown","domain":"math",'
+                    '"prompt":"validation only vague math thing","expected":'
+                    '{"action":"ask_clarification"}}'
+                ),
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    records = load_prompt_intent_records(path)
+    result = train_prompt_intent_token_baseline(
+        records,
+        target_field="expected_action",
+        eval_splits=("train", "validation"),
+    )
+
+    assert result.train_rows == 4
+    assert result.decision == "evaluation_only_not_wired_to_production"
+    assert result.majority_label == "emit_existing_repo_change_spec"
+    assert result.model.labels == (
+        "emit_existing_repo_change_spec",
+        "emit_request_spec",
+    )
+    assert "ask_clarification" not in result.model.labels
+    assert result.metrics["train"].accuracy == 1.0
+    assert result.metrics["validation"].total == 1
+    assert result.metrics["validation"].correct == 0
+
+
+def test_seed_corpus_learned_baseline_reports_held_out_metrics() -> None:
+    if not SEED_CORPUS.exists():
+        pytest.skip(f"seed prompt corpus is not available: {SEED_CORPUS}")
+
+    records = load_prompt_intent_records(SEED_CORPUS)
+
+    expected_action = train_prompt_intent_token_baseline(
+        records,
+        target_field="expected_action",
+    )
+    repo_mode = train_prompt_intent_token_baseline(
+        records,
+        target_field="repo_mode",
+    )
+
+    assert expected_action.metrics["validation"].accuracy >= 0.66
+    assert expected_action.metrics["test"].accuracy >= 0.75
+    assert (
+        expected_action.metrics["validation"].accuracy
+        > expected_action.metrics["validation"].baseline_accuracy
+    )
+    assert (
+        expected_action.metrics["test"].accuracy
+        > expected_action.metrics["test"].baseline_accuracy
+    )
+    assert repo_mode.metrics["validation"].accuracy >= 0.86
+    assert repo_mode.metrics["test"].accuracy >= 0.91
+    assert (
+        repo_mode.metrics["validation"].accuracy
+        > repo_mode.metrics["validation"].baseline_accuracy
+    )
+    assert repo_mode.metrics["test"].accuracy > repo_mode.metrics["test"].baseline_accuracy
+    assert expected_action.decision == "evaluation_only_not_wired_to_production"
+    assert repo_mode.decision == "evaluation_only_not_wired_to_production"

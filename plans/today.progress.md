@@ -7,8 +7,8 @@ new implementation facts change the 24-hour plan itself. Record any
 
 ## Status
 
-- Current phase: existing-repo calculator power change path implemented
-- Completed iterations: 3
+- Current phase: learned prompt-intent baseline evaluated
+- Completed iterations: 4
 - Passing focused tests:
   - `pytest tests/test_prompt_intents.py -q`
   - `pytest tests/test_prompt_intents.py tests/test_request_spec.py -q`
@@ -18,11 +18,13 @@ new implementation facts change the 24-hour plan itself. Record any
   - `git diff --check`
   - `python -m py_compile prompt_intents.py request_spec.py cli/handlers.py`
   - `python -m py_compile existing_repo_change.py cli/handlers.py cli/parser.py cli/__init__.py`
-- Latest implementation commit: `c4a71c8ef1ee326a26f45ebbecbfa3836c3519d5`
+- `python cli.py train-prompt-intents --labels ../prompts/coding_agent_prompts_seed.jsonl --target expected_action repo_mode`
+- `python -m py_compile prompt_intents.py cli/handlers.py cli/parser.py cli/__init__.py`
+- Latest implementation commit: pending iteration 4 commit
 - Current blocker: none
-- Next task: train or evaluate the first narrow learned prompt-intent predictor
-  from the available prompt-intent labels, with held-out metrics and no
-  production wiring unless the result is justified
+- Next task: decide the next learned prompt-understanding target after reviewing
+  the token-perceptron residuals; do not replace fixture-backed production
+  intent prediction yet
 
 ## Worker Iteration Template
 
@@ -204,4 +206,56 @@ Use this shape for each worker handoff:
   a concrete target such as `repo_mode` or `expected_action`, compare it against
   the deterministic lower-bound baseline, and record whether it is ready to
   replace any fixture-backed prediction path.
+- Blockers: none
+
+### Iteration 4: Learned Prompt-Intent Baseline
+
+- Worker: Codex
+- Goal: train/evaluate the first narrow learned prompt-intent predictor from the
+  available labels with held-out metrics, without production wiring unless
+  justified.
+- Files changed:
+  - `prompt_intents.py`
+  - `cli/handlers.py`
+  - `cli/parser.py`
+  - `cli/__init__.py`
+  - `tests/test_prompt_intents.py`
+  - `tests/test_cli.py`
+  - `plans/today.progress.md`
+- Tests run:
+  - `pytest tests/test_prompt_intents.py -q` -> passed, 7 tests
+  - `pytest tests/test_cli.py -q` -> passed, 25 tests
+  - `pytest tests/test_prompt_intents.py tests/test_request_spec.py tests/test_existing_repo_change.py tests/test_cli.py -q`
+    -> passed, 42 tests
+  - `python -m py_compile prompt_intents.py cli/handlers.py cli/parser.py cli/__init__.py`
+    -> passed
+  - `git diff --check` -> passed
+  - `python cli.py train-prompt-intents --labels ../prompts/coding_agent_prompts_seed.jsonl --target expected_action repo_mode`
+    -> passed
+  - Seed-corpus train-exact-prompt fixture coverage check -> validation 0/15,
+    test 0/12
+- Result:
+  - Added a deterministic standard-library token-perceptron learned baseline
+    for scalar prompt-intent fields. It trains only on the train split and
+    reports train/validation/test metrics against a train-majority baseline.
+  - Added `j3 train-prompt-intents` as an evaluation/reporting command. It does
+    not change production `j3 implement` or `j3 change` behavior.
+  - Seed-corpus held-out metrics:
+    - `expected_action`: validation learned 10/15 = 0.667 vs majority 9/15 =
+      0.600; test learned 9/12 = 0.750 vs majority 8/12 = 0.667.
+    - `repo_mode`: validation learned 13/15 = 0.867 vs majority 11/15 = 0.733;
+      test learned 11/12 = 0.917 vs majority 10/12 = 0.833.
+  - Compared with the current fixture-style exact-prompt lower bound on the
+    seed corpus using train-only prompts: it has no validation/test prompt
+    coverage, so majority-label is the useful numeric baseline for held-out
+    scoring.
+  - Production wiring decision: do not replace fixture-backed request-spec or
+    change-spec prediction yet. The model beats the majority baseline on both
+    held-out targets, but `expected_action` still has weak validation accuracy
+    and the seed corpus has no explicit unsupported graphical requirement
+    labels.
+- Commit: pending before staging
+- Push: pending
+- Next: inspect held-out residuals and add stronger labeled prompt-intent rows
+  or feature targets before considering learned production routing.
 - Blockers: none

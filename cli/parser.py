@@ -17,6 +17,7 @@ from cli.handlers import (
     handle_outcome_summary,
     handle_patch,
     handle_train,
+    handle_train_prompt_intents,
     handle_train_ranker,
 )
 
@@ -322,6 +323,41 @@ def build_parser() -> argparse.ArgumentParser:
         help="mined git-transition JSONL files or directories to include",
     )
     train_parser.set_defaults(handler=handle_train)
+
+    prompt_intents_parser = subparsers.add_parser(
+        "train-prompt-intents",
+        help="train and evaluate a learned prompt-intent baseline",
+        description=(
+            "Train a deterministic token-perceptron baseline for scalar "
+            "prompt-intent fields. The command reports held-out metrics and "
+            "does not wire the model into request-spec production behavior."
+        ),
+    )
+    prompt_intents_parser.add_argument(
+        "--labels",
+        type=Path,
+        default=Path("../prompts/coding_agent_prompts_seed.jsonl"),
+        help="prompt-intent JSONL labels to train/evaluate",
+    )
+    prompt_intents_parser.add_argument(
+        "--target",
+        nargs="+",
+        default=["expected_action", "repo_mode"],
+        choices=("repo_mode", "task_type", "domain", "expected_action"),
+        help="one or more scalar prompt-intent target fields",
+    )
+    prompt_intents_parser.add_argument(
+        "--epochs",
+        type=int,
+        default=10,
+        help="deterministic perceptron training epochs (default: 10)",
+    )
+    prompt_intents_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print full metrics and model weights as JSON",
+    )
+    prompt_intents_parser.set_defaults(handler=handle_train_prompt_intents)
 
     ranker_parser = subparsers.add_parser(
         "train-ranker",

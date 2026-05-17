@@ -99,7 +99,7 @@ def test_load_greenshot_6_tasks() -> None:
     tasks = load_tasks(Path("examples/greenshot_6"))
     by_name = {task.name: task for task in tasks}
 
-    assert len(tasks) == 34
+    assert len(tasks) == 35
     assert tasks[0].name == "core_metadata_version_dict_value"
     assert tasks[0].family == "mapping_value"
     assert tasks[0].source_type == "mutation"
@@ -166,6 +166,22 @@ def test_load_greenshot_6_tasks() -> None:
         "params": {
             "from": "List format 'freeze' can not be used with the --outdated option.",
             "to": "List format 'freeze' cannot be used together with the --outdated option.",
+        },
+    }
+    assert by_name["chalice_control_plane_programmatically_docstring"].family == (
+        "api_docstring_typo"
+    )
+    assert by_name["chalice_control_plane_programmatically_docstring"].source_type == (
+        "git_history"
+    )
+    assert by_name["chalice_control_plane_programmatically_docstring"].split == "train"
+    assert by_name["chalice_control_plane_programmatically_docstring"].preferred_patch == {
+        "file_path": "apidocs/api.py",
+        "action": "change_literal",
+        "symbol": "control_plane_description",
+        "params": {
+            "from": "Control plane APIs for programatically building/deploying Chalice apps.",
+            "to": "Control plane APIs for programmatically building/deploying Chalice apps.",
         },
     }
     assert by_name["http_no_store_directive_subscript_key"].preferred_patch == {

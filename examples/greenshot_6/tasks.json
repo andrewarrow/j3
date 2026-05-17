@@ -550,6 +550,28 @@
     }
   },
   {
+    "name": "chalice_control_plane_programmatically_docstring",
+    "family": "api_docstring_typo",
+    "source_type": "git_history",
+    "split": "train",
+    "repo": ".",
+    "test": "python -m pytest tests/test_apidocs.py::test_control_plane_description_spells_programmatically",
+    "source": {
+      "repo": "aws/chalice",
+      "commit": "d8ba1ad1e1e8787d3bf1dd445691c99eebb9c528",
+      "pr": 2148
+    },
+    "preferred": {
+      "file_path": "apidocs/api.py",
+      "action": "change_literal",
+      "symbol": "control_plane_description",
+      "params": {
+        "from": "Control plane APIs for programatically building/deploying Chalice apps.",
+        "to": "Control plane APIs for programmatically building/deploying Chalice apps."
+      }
+    }
+  },
+  {
     "name": "cookie_default_secure_flag_dict_value",
     "family": "mapping_value",
     "source_type": "mutation",

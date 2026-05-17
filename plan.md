@@ -819,12 +819,33 @@ Recent work:
   810 features, and 3 margin violations.
 - Applying the saved test-slice ranker to all refreshed GreenShot-6 rows found
   no trained preferred-positive misses across 34 tasks.
+- GreenShot-6 now includes a sixteenth fixture domain, `apidocs`, with one
+  real-package-derived `git_history` task modeled on `aws/chalice` commit
+  `d8ba1ad1e1e8787d3bf1dd445691c99eebb9c528` / PR 2148. The task
+  `chalice_control_plane_programmatically_docstring` repairs a Chalice control
+  plane API description typo by changing `programatically` to
+  `programmatically`, using the existing `change_literal` action family.
+- Focused loader/generator coverage passed for the new Chalice-derived task:
+  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
+  `pytest tests/test_patching.py::test_patch_solves_chalice_control_plane_programmatically_docstring -q`.
+- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
+  adding `apidocs`. The persisted dataset at
+  `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` now covers 35
+  tasks and 264 tested candidates. Ranked eval solved all 35 tasks with
+  `pass@1=24/35` and average candidates `7.54`; the new Chalice-derived task
+  solves with the preferred `change_literal` candidate.
+- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
+  the apidocs outcome refresh and stayed clean: solved=7/7, pass@1=7/7,
+  positive@1=7/7. Training used 344 rows, 71 passing rows, 295 training pairs,
+  810 features, and 3 margin violations.
+- Applying the saved test-slice ranker to all refreshed GreenShot-6 rows found
+  no trained preferred-positive misses across 35 tasks.
 
 Last focused verification:
 
 ```bash
 pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q
-pytest tests/test_patching.py::test_patch_solves_pip_list_outdated_freeze_error_message -q
+pytest tests/test_patching.py::test_patch_solves_chalice_control_plane_programmatically_docstring -q
 python cli.py eval \
   --tasks examples/greenshot_6 \
   --checkpoint runs/apache-python-git/model.json \
@@ -852,7 +873,7 @@ python cli.py outcome-summary \
   --candidate-outcomes runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl
 python - <<'PY'
 # Applied the refreshed test-slice ranker to all refreshed GreenShot-6 rows;
-# no trained preferred-positive residuals were found across 34 tasks.
+# no trained preferred-positive residuals were found across 35 tasks.
 PY
 git diff --check
 ```
@@ -1176,11 +1197,11 @@ Start neural/JEPA work only when:
 
 ## Handoff Recommendation
 
-The next context window should resume dataset growth by adding another
-real-package-derived GreenShot-6 task or small fixture domain. Do not tune
-broad handcrafted weights or add pass/preferred-label features from this state.
-The current GreenShot-6 `split: test` held-out validation is clean after the
-piplist outcome refresh.
+The next context window should continue dataset growth by adding another
+real-package-derived GreenShot-6 task or small fixture domain. Do not tune broad
+handcrafted weights or add pass/preferred-label features from this state. The
+current GreenShot-6 `split: test` held-out validation is clean after the
+apidocs outcome refresh.
 
 Immediate next sequence:
 

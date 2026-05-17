@@ -46,6 +46,7 @@ from prompt_intents import (
 )
 from prompt_jepa import (
     build_prompt_jepa_index_from_path,
+    evaluate_prompt_jepa_retrieval_from_path,
     load_prompt_jepa_index,
     save_prompt_jepa_index,
 )
@@ -477,6 +478,59 @@ def handle_query_prompt_jepa_index(args: argparse.Namespace) -> int:
     return 0
 
 
+def handle_eval_prompt_jepa_index(args: argparse.Namespace) -> int:
+    result = evaluate_prompt_jepa_retrieval_from_path(
+        args.labels,
+        embedding_dim=args.embedding_dim,
+        top_k=args.top_k,
+        fields=args.target,
+        miss_limit=args.miss_limit,
+    )
+
+    if args.json:
+        print(json.dumps(result.to_record(), indent=2, sort_keys=True))
+        return 0
+
+    print("j3 eval-prompt-jepa-index complete")
+    print(f"labels: {args.labels.expanduser().resolve()}")
+    print(f"train rows: {result.train_rows}")
+    print(f"embedding dim: {result.embedding_dim}")
+    print(f"top k: {result.top_k}")
+    for split, split_result in sorted(result.split_results.items()):
+        print(f"{split}: rows={split_result.total}")
+        for field in result.fields:
+            metrics = split_result.field_metrics[field]
+            top_k_label = f"top{result.top_k}"
+            print(
+                "  "
+                f"{field}: "
+                f"top1={metrics.top_1_correct}/{metrics.total} "
+                f"({metrics.top_1_accuracy:.3f}) "
+                f"{top_k_label}={metrics.top_k_correct}/{metrics.total} "
+                f"({metrics.top_k_accuracy:.3f})"
+            )
+        if args.show_misses and split_result.misses:
+            print("  misses:")
+            for miss in split_result.misses:
+                print(
+                    "    "
+                    f"{miss.query_id}: "
+                    f"top1_missed={','.join(miss.missed_fields_top_1)} "
+                    f"top{result.top_k}_missed="
+                    f"{','.join(miss.missed_fields_top_k) or 'none'} "
+                    f"nearest={miss.nearest_neighbor_id} "
+                    f"score={_format_optional_score(miss.nearest_neighbor_score)}"
+                )
+                print(f"      expected: {_format_scalar_fields(miss.expected)}")
+                print(
+                    "      neighbor: "
+                    f"{_format_scalar_fields(miss.nearest_neighbor_target)}"
+                )
+        elif args.show_misses:
+            print("  misses: none")
+    return 0
+
+
 def handle_train_ranker(args: argparse.Namespace) -> int:
     if not args.diagnostics and not args.candidate_outcomes:
         raise SystemExit("provide --diagnostics or --candidate-outcomes")
@@ -760,3 +814,13 @@ def _format_validation_result(validation: dict[str, object]) -> str:
     if status == "passed":
         return f"validation: passed ({command})"
     return f"validation: failed exit={validation['exit_code']} ({command})"
+
+
+def _format_optional_score(score: float | None) -> str:
+    return "none" if score is None else f"{score:.6f}"
+
+
+def _format_scalar_fields(values: dict[str, str]) -> str:
+    if not values:
+        return "none"
+    return " ".join(f"{field}={value}" for field, value in sorted(values.items()))

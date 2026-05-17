@@ -35,6 +35,7 @@ def test_help_menu_prints_project_summary(capsys) -> None:
     assert "train-prompt-intents" in output
     assert "build-prompt-jepa-index" in output
     assert "query-prompt-jepa-index" in output
+    assert "eval-prompt-jepa-index" in output
     assert "train-ranker" in output
     assert "outcome-summary" in output
     assert "compare-diagnostics" in output
@@ -316,6 +317,78 @@ def test_query_prompt_jepa_index_command_prints_top_rows(capsys, tmp_path) -> No
     assert "repo_mode=new_repo" in output
     assert "domain=calculator" in output
     assert 'prompt="make me a simple cli calc"' in output
+
+
+def test_eval_prompt_jepa_index_command_reports_json_metrics(capsys) -> None:
+    labels = "examples/prompt_intents/greenshot_7_intents.jsonl"
+
+    assert (
+        main(
+            [
+                "eval-prompt-jepa-index",
+                "--labels",
+                labels,
+                "--embedding-dim",
+                "64",
+                "--top-k",
+                "3",
+                "--json",
+            ]
+        )
+        == 0
+    )
+
+    output = json.loads(capsys.readouterr().out)
+    assert output["schema_version"] == "prompt-jepa-retrieval-eval-v1"
+    assert output["decision"] == "evaluation_only_not_wired_to_production"
+    assert output["train_rows"] > 0
+    assert output["embedding_dim"] == 64
+    assert output["top_k"] == 3
+    assert output["fields"] == [
+        "expected_action",
+        "repo_mode",
+        "domain",
+        "unsupported_requirement_family",
+    ]
+    assert set(output["splits"]) == {"validation", "test"}
+    validation = output["splits"]["validation"]
+    assert validation["total"] > 0
+    assert validation["field_metrics"]["expected_action"]["total"] == validation["total"]
+    assert (
+        validation["field_metrics"]["expected_action"]["top_1_correct"]
+        <= validation["field_metrics"]["expected_action"]["top_k_correct"]
+    )
+
+
+def test_eval_prompt_jepa_index_command_can_print_misses(capsys) -> None:
+    labels = "examples/prompt_intents/greenshot_7_intents.jsonl"
+
+    assert (
+        main(
+            [
+                "eval-prompt-jepa-index",
+                "--labels",
+                labels,
+                "--embedding-dim",
+                "64",
+                "--top-k",
+                "3",
+                "--show-misses",
+                "--miss-limit",
+                "2",
+            ]
+        )
+        == 0
+    )
+
+    output = capsys.readouterr().out
+    assert "j3 eval-prompt-jepa-index complete" in output
+    assert "train rows:" in output
+    assert "validation: rows=" in output
+    assert "test: rows=" in output
+    assert "expected_action: top1=" in output
+    assert "unsupported_requirement_family: top1=" in output
+    assert "misses:" in output
 
 
 def test_implement_command_builds_repo_and_request_spec_artifact(capsys, tmp_path) -> None:

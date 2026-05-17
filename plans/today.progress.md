@@ -8,14 +8,17 @@ new implementation facts change the 24-hour plan itself. Record any
 ## Status
 
 - Current phase: reset to Prompt-JEPA encoder and index implementation
-- Completed iterations: 2 for this reset
+- Completed iterations: 3 for this reset
 - Passing focused tests: `pytest tests/test_cli.py -q`;
   `pytest tests/test_prompt_jepa.py -q`;
   `python -m py_compile prompt_jepa.py cli/handlers.py cli/parser.py cli/__init__.py`;
   `git diff --check`
-- Latest implementation commit: `8fff432`
+- Latest implementation commit: this iteration commit; final hash reported by
+  worker after push
 - Current blocker: none
-- Next task: add Prompt-JEPA retrieval evaluation metrics and focused tests
+- Next task: watcher to assign the next Prompt-JEPA slice; candidate next step
+  is improving prompt context features or split-aware reporting based on
+  held-out retrieval residuals.
 
 ## Worker Iteration Template
 
@@ -99,4 +102,43 @@ Use this shape for each worker handoff:
 - Commit: `8fff432`
 - Push: succeeded to `main`
 - Next: add Prompt-JEPA retrieval evaluation metrics over held-out splits.
+- Blockers: none.
+
+### Iteration 3: Prompt-JEPA retrieval eval metrics
+
+- Worker: Codex worker iteration 3
+- Goal: add Prompt-JEPA retrieval evaluation metrics over held-out
+  validation/test splits using a train-only index, plus focused tests and a CLI
+  command.
+- Files changed: `prompt_jepa.py`, `cli/parser.py`, `cli/handlers.py`,
+  `tests/test_prompt_jepa.py`, `tests/test_cli.py`,
+  `plans/today.progress.md`
+- Tests run: `pytest tests/test_prompt_jepa.py -q` passed with 7 tests;
+  `pytest tests/test_cli.py -q` passed with 31 tests;
+  `python -m py_compile prompt_jepa.py cli/handlers.py cli/parser.py cli/__init__.py`
+  passed; `git diff --check` passed.
+- Metrics: local fixture
+  `examples/prompt_intents/greenshot_7_intents.jsonl` with top-k 3 and 256
+  dimensions used 53 train rows. Validation: expected_action 16/16 top1 and
+  top3, repo_mode 16/16 top1 and top3, domain 16/16 top1 and top3,
+  unsupported_requirement_family 15/16 top1 and 16/16 top3. Test:
+  expected_action 18/18 top1 and top3, repo_mode 18/18 top1 and top3, domain
+  18/18 top1 and top3, unsupported_requirement_family 16/18 top1 and 18/18
+  top3.
+- Metrics: `../prompts/coding_agent_prompts_seed.jsonl` was available and ran
+  with top-k 3 and 256 dimensions using 53 train rows. Validation:
+  expected_action 8/15 top1 and 12/15 top3, repo_mode 10/15 top1 and 15/15
+  top3, domain 0/15 top1 and 1/15 top3,
+  unsupported_requirement_family 15/15 top1 and top3. Test: expected_action
+  9/12 top1 and 11/12 top3, repo_mode 10/12 top1 and 12/12 top3, domain 0/12
+  top1 and 1/12 top3, unsupported_requirement_family 12/12 top1 and top3.
+- Result: implemented evaluation-only retrieval metrics with top-1/top-k exact
+  matches for scalar target fields, bounded representative misses with query
+  ids, expected labels, nearest neighbor ids/scores/targets, and a new
+  `eval-prompt-jepa-index` CLI command. Production routing remains unchanged.
+- Commit: this iteration commit; final hash reported by worker after push.
+- Push: pending at progress update time; final result reported by worker.
+- Next: watcher to assign the next Prompt-JEPA slice; candidate next step is
+  improving prompt context features or split-aware reporting based on held-out
+  retrieval residuals.
 - Blockers: none.

@@ -10,6 +10,7 @@ from cli.handlers import (
     handle_build_prompt_jepa_index,
     handle_change,
     handle_compare_diagnostics,
+    handle_eval_prompt_jepa_index,
     handle_eval,
     handle_fix,
     handle_greenshot_7,
@@ -437,6 +438,73 @@ def build_parser() -> argparse.ArgumentParser:
         help="number of nearest rows to print (default: 5)",
     )
     prompt_jepa_query_parser.set_defaults(handler=handle_query_prompt_jepa_index)
+
+    prompt_jepa_eval_parser = subparsers.add_parser(
+        "eval-prompt-jepa-index",
+        help="evaluate Prompt-JEPA retrieval on held-out prompt splits",
+        description=(
+            "Build a train-only Prompt-JEPA index from prompt-intent labels and "
+            "evaluate validation/test prompts by nearest train rows. This "
+            "command reports retrieval metrics only and does not wire retrieval "
+            "into production request-spec or change-spec routing."
+        ),
+    )
+    prompt_jepa_eval_parser.add_argument(
+        "--labels",
+        type=Path,
+        required=True,
+        help="prompt-intent JSONL labels to train/evaluate",
+    )
+    prompt_jepa_eval_parser.add_argument(
+        "--embedding-dim",
+        type=int,
+        default=256,
+        help="hashed context/target embedding dimension (default: 256)",
+    )
+    prompt_jepa_eval_parser.add_argument(
+        "--top-k",
+        type=int,
+        default=3,
+        help="retrieval cutoff for top-k exact-match metrics (default: 3)",
+    )
+    prompt_jepa_eval_parser.add_argument(
+        "--target",
+        nargs="+",
+        default=[
+            "expected_action",
+            "repo_mode",
+            "domain",
+            "unsupported_requirement_family",
+        ],
+        choices=(
+            "repo_mode",
+            "task_type",
+            "domain",
+            "expected_action",
+            "requires_clarification",
+            "primary_artifact",
+            "unsupported_requirement",
+            "unsupported_requirement_family",
+        ),
+        help="one or more scalar target fields to score",
+    )
+    prompt_jepa_eval_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print retrieval metrics as JSON",
+    )
+    prompt_jepa_eval_parser.add_argument(
+        "--show-misses",
+        action="store_true",
+        help="print representative nearest-neighbor misses",
+    )
+    prompt_jepa_eval_parser.add_argument(
+        "--miss-limit",
+        type=int,
+        default=20,
+        help="maximum miss examples to retain per split (default: 20)",
+    )
+    prompt_jepa_eval_parser.set_defaults(handler=handle_eval_prompt_jepa_index)
 
     ranker_parser = subparsers.add_parser(
         "train-ranker",

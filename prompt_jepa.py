@@ -28,6 +28,12 @@ PROMPT_TARGET_ENCODER_SCHEMA_VERSION = "prompt-target-v1"
 FEATURE_HASHING_KIND = "feature_hashing"
 DEFAULT_EMBEDDING_DIM = 256
 MIN_EMBEDDING_DIM = 8
+DEFAULT_RETRIEVAL_EVAL_FIELDS = (
+    "expected_action",
+    "repo_mode",
+    "domain",
+    "unsupported_requirement_family",
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -134,6 +140,114 @@ class PromptJepaEvalResult:
             "total": self.total,
             "top_k": self.top_k,
             "field_matches": dict(sorted(self.field_matches.items())),
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class PromptJepaFieldRetrievalMetrics:
+    """Top-1 and top-k retrieval metrics for one scalar target field."""
+
+    field: str
+    total: int
+    top_1_correct: int
+    top_k_correct: int
+
+    @property
+    def top_1_accuracy(self) -> float:
+        return self.top_1_correct / self.total if self.total else 0.0
+
+    @property
+    def top_k_accuracy(self) -> float:
+        return self.top_k_correct / self.total if self.total else 0.0
+
+    def to_record(self) -> dict[str, object]:
+        return {
+            "field": self.field,
+            "total": self.total,
+            "top_1_correct": self.top_1_correct,
+            "top_1_accuracy": self.top_1_accuracy,
+            "top_k_correct": self.top_k_correct,
+            "top_k_accuracy": self.top_k_accuracy,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class PromptJepaRetrievalMiss:
+    """Representative held-out query whose nearest neighbors missed labels."""
+
+    query_id: str
+    split: str
+    prompt: str
+    missed_fields_top_1: tuple[str, ...]
+    missed_fields_top_k: tuple[str, ...]
+    expected: dict[str, str]
+    nearest_neighbor_id: str | None
+    nearest_neighbor_score: float | None
+    nearest_neighbor_target: dict[str, str]
+    top_k_neighbor_ids: tuple[str, ...]
+
+    def to_record(self) -> dict[str, object]:
+        return {
+            "query_id": self.query_id,
+            "split": self.split,
+            "prompt": self.prompt,
+            "missed_fields_top_1": list(self.missed_fields_top_1),
+            "missed_fields_top_k": list(self.missed_fields_top_k),
+            "expected": dict(self.expected),
+            "nearest_neighbor_id": self.nearest_neighbor_id,
+            "nearest_neighbor_score": self.nearest_neighbor_score,
+            "nearest_neighbor_target": dict(self.nearest_neighbor_target),
+            "top_k_neighbor_ids": list(self.top_k_neighbor_ids),
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class PromptJepaRetrievalSplitResult:
+    """Retrieval evaluation for one held-out split."""
+
+    split: str
+    total: int
+    top_k: int
+    field_metrics: dict[str, PromptJepaFieldRetrievalMetrics]
+    misses: tuple[PromptJepaRetrievalMiss, ...] = ()
+
+    def to_record(self) -> dict[str, object]:
+        return {
+            "split": self.split,
+            "total": self.total,
+            "top_k": self.top_k,
+            "field_metrics": {
+                field: self.field_metrics[field].to_record()
+                for field in sorted(self.field_metrics)
+            },
+            "misses": [miss.to_record() for miss in self.misses],
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class PromptJepaRetrievalEvalResult:
+    """Held-out retrieval evaluation over a train-only Prompt-JEPA index."""
+
+    train_split: str
+    train_rows: int
+    embedding_dim: int
+    top_k: int
+    fields: tuple[str, ...]
+    split_results: dict[str, PromptJepaRetrievalSplitResult]
+
+    def to_record(self) -> dict[str, object]:
+        return {
+            "schema_version": "prompt-jepa-retrieval-eval-v1",
+            "decision": "evaluation_only_not_wired_to_production",
+            "train_split": self.train_split,
+            "train_rows": self.train_rows,
+            "embedding_dim": self.embedding_dim,
+            "top_k": self.top_k,
+            "fields": list(self.fields),
+            "splits": {
+                split: self.split_results[split].to_record()
+                for split in sorted(self.split_results)
+            },
         }
 
 
@@ -291,6 +405,87 @@ def build_prompt_jepa_index_from_path(
     return build_prompt_jepa_index(
         load_prompt_intent_records(path),
         embedding_dim=embedding_dim,
+        source_path=path,
+    )
+
+
+def evaluate_prompt_jepa_retrieval(
+    records: Sequence[PromptIntentRecord],
+    *,
+    embedding_dim: int = DEFAULT_EMBEDDING_DIM,
+    train_split: str = "train",
+    eval_splits: Sequence[str] = ("validation", "test"),
+    top_k: int = 3,
+    fields: Sequence[str] = DEFAULT_RETRIEVAL_EVAL_FIELDS,
+    miss_limit: int = 20,
+    source_path: Path | str | None = None,
+) -> PromptJepaRetrievalEvalResult:
+    """Evaluate held-out prompts against nearest train-split rows.
+
+    This builds a train-only retrieval index, queries each requested held-out
+    split, and reports exact scalar-field matches for the nearest row and for
+    any of the top-k rows. It is intentionally evaluation-only.
+    """
+
+    _validate_embedding_dim(embedding_dim)
+    if top_k < 1:
+        raise ValueError("top_k must be >= 1")
+    if miss_limit < 0:
+        raise ValueError("miss_limit must be >= 0")
+    if not fields:
+        raise ValueError("at least one evaluation field is required")
+
+    eval_fields = tuple(dict.fromkeys(fields))
+    train_records = [record for record in records if record.split == train_split]
+    if not train_records:
+        raise ValueError(f"no prompt intent rows found for train split {train_split!r}")
+
+    index = build_prompt_jepa_index(
+        train_records,
+        embedding_dim=embedding_dim,
+        source_path=source_path,
+    )
+    split_results = {
+        split: _evaluate_prompt_jepa_retrieval_split(
+            [record for record in records if record.split == split],
+            index=index,
+            split=split,
+            top_k=top_k,
+            fields=eval_fields,
+            miss_limit=miss_limit,
+        )
+        for split in eval_splits
+    }
+    return PromptJepaRetrievalEvalResult(
+        train_split=train_split,
+        train_rows=len(train_records),
+        embedding_dim=embedding_dim,
+        top_k=top_k,
+        fields=eval_fields,
+        split_results=split_results,
+    )
+
+
+def evaluate_prompt_jepa_retrieval_from_path(
+    path: Path,
+    *,
+    embedding_dim: int = DEFAULT_EMBEDDING_DIM,
+    train_split: str = "train",
+    eval_splits: Sequence[str] = ("validation", "test"),
+    top_k: int = 3,
+    fields: Sequence[str] = DEFAULT_RETRIEVAL_EVAL_FIELDS,
+    miss_limit: int = 20,
+) -> PromptJepaRetrievalEvalResult:
+    """Load prompt-intent labels and run held-out retrieval evaluation."""
+
+    return evaluate_prompt_jepa_retrieval(
+        load_prompt_intent_records(path),
+        embedding_dim=embedding_dim,
+        train_split=train_split,
+        eval_splits=eval_splits,
+        top_k=top_k,
+        fields=fields,
+        miss_limit=miss_limit,
         source_path=path,
     )
 
@@ -560,6 +755,116 @@ def _target_metadata(target: Mapping[str, object]) -> dict[str, object]:
         for field_name in metadata_fields
         if field_name in target
     }
+
+
+def _evaluate_prompt_jepa_retrieval_split(
+    records: Sequence[PromptIntentRecord],
+    *,
+    index: PromptJepaIndex,
+    split: str,
+    top_k: int,
+    fields: Sequence[str],
+    miss_limit: int,
+) -> PromptJepaRetrievalSplitResult:
+    counters = {
+        field: {"total": 0, "top_1_correct": 0, "top_k_correct": 0}
+        for field in fields
+    }
+    misses: list[PromptJepaRetrievalMiss] = []
+
+    for record in records:
+        expected = _scalar_field_values(record.target.to_record(), fields=fields)
+        if not expected:
+            continue
+
+        results = index.query(record.prompt, top_k=top_k)
+        nearest = results[0] if results else None
+        missed_top_1: list[str] = []
+        missed_top_k: list[str] = []
+
+        for field, expected_value in expected.items():
+            counters[field]["total"] += 1
+            top_1_value = (
+                _scalar_eval_value(nearest.target_metadata.get(field))
+                if nearest is not None
+                else None
+            )
+            top_k_values = [
+                value
+                for result in results
+                if (value := _scalar_eval_value(result.target_metadata.get(field)))
+                is not None
+            ]
+
+            if top_1_value == expected_value:
+                counters[field]["top_1_correct"] += 1
+            else:
+                missed_top_1.append(field)
+
+            if expected_value in top_k_values:
+                counters[field]["top_k_correct"] += 1
+            else:
+                missed_top_k.append(field)
+
+        if missed_top_1 and len(misses) < miss_limit:
+            misses.append(
+                PromptJepaRetrievalMiss(
+                    query_id=record.row_id,
+                    split=record.split,
+                    prompt=record.prompt,
+                    missed_fields_top_1=tuple(missed_top_1),
+                    missed_fields_top_k=tuple(missed_top_k),
+                    expected=expected,
+                    nearest_neighbor_id=nearest.row_id if nearest else None,
+                    nearest_neighbor_score=nearest.score if nearest else None,
+                    nearest_neighbor_target=(
+                        _scalar_field_values(nearest.target_metadata, fields=fields)
+                        if nearest is not None
+                        else {}
+                    ),
+                    top_k_neighbor_ids=tuple(result.row_id for result in results),
+                )
+            )
+
+    field_metrics = {
+        field: PromptJepaFieldRetrievalMetrics(
+            field=field,
+            total=counter["total"],
+            top_1_correct=counter["top_1_correct"],
+            top_k_correct=counter["top_k_correct"],
+        )
+        for field, counter in counters.items()
+    }
+    return PromptJepaRetrievalSplitResult(
+        split=split,
+        total=len(records),
+        top_k=top_k,
+        field_metrics=field_metrics,
+        misses=tuple(misses),
+    )
+
+
+def _scalar_field_values(
+    target: Mapping[str, object],
+    *,
+    fields: Sequence[str],
+) -> dict[str, str]:
+    values: dict[str, str] = {}
+    for field in fields:
+        if field not in target:
+            continue
+        value = _scalar_eval_value(target[field])
+        if value is not None:
+            values[field] = value
+    return values
+
+
+def _scalar_eval_value(value: object) -> str | None:
+    if isinstance(value, str):
+        return value
+    if value is None or isinstance(value, bool | int | float):
+        return _feature_scalar(value)
+    return None
 
 
 def _vector_from_record(value: object, *, dim: int, field: str) -> tuple[float, ...]:

@@ -12,7 +12,8 @@ new implementation facts change the 24-hour plan itself. Record any
 - Passing focused tests: prompt seed JSONL validation, `test -s REQUEST_SPEC.md`,
   GreenShot-7 fixture JSON validation, `pytest tests/test_request_spec.py -q`,
   `git diff --check`
-- Latest commit: `9a9f93b094e9c35b2bbeb6965556681480accc4f` (`Add GreenShot-7 prompt fixtures`)
+- Latest implementation commit: `60ac8ae4af704fee01e63b9c9066246cd32df89a`
+  (`Add request spec parser`)
 - Current blocker: none
 - Next task: build structured greenfield calculator action planning from `request-spec-v1`
 
@@ -116,8 +117,8 @@ Use this shape for each worker handoff:
   positive calculator prompts and two clarification prompts in
   `examples/greenshot_7/tasks.json`, including operation aliases, inferred
   defaults, blocking clarifications, and validation fields.
-- Commit: `Add request spec parser` (hash reported in worker handoff)
-- Push: pending
+- Commit: `60ac8ae4af704fee01e63b9c9066246cd32df89a` (`Add request spec parser`)
+- Push: succeeded to `origin/main`
 - Next: Build structured greenfield calculator action planning from
   `request-spec-v1`; do not generate repos until that slice is assigned.
 - Blockers: none

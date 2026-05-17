@@ -693,7 +693,7 @@ Use this shape for each worker handoff:
   predictions; JSON-serializable model metadata; and predictor JSON
   save/load helpers. The predictor is explicitly evaluation-only and not wired
   into production routing.
-- Commit: pending; final hash reported by worker.
-- Push: pending until commit is created.
+- Commit: `ca3065d`
+- Push: succeeded to `main`.
 - Next: add consequence-prediction metrics and residuals.
 - Blockers: none.

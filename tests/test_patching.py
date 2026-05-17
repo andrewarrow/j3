@@ -892,6 +892,30 @@ def test_patch_solves_rich_common_cell_width_ascii_range(tmp_path) -> None:
     assert r"\u007f" in result.selected.patched_source
 
 
+def test_patch_solves_pydantic_field_regex_pattern_message(tmp_path) -> None:
+    repo = tmp_path / "greenshot_6"
+    shutil.copytree("examples/greenshot_6", repo)
+
+    result = plan_and_maybe_apply_patch(
+        repo=repo,
+        test_command=(
+            "python -m pytest "
+            "tests/test_fieldopts.py::test_regex_keyword_error_points_to_pattern_parameter"
+        ),
+        dry_run=True,
+        timeout_seconds=10,
+    )
+
+    assert result.selected is not None
+    assert result.selected.file_path == "fieldopts/fields.py"
+    assert result.selected.action.kind.value == "change_literal"
+    assert result.selected.action.params == {
+        "from": "`regex` is removed. use `Pattern` instead",
+        "to": "`regex` is removed. use `pattern` instead",
+    }
+    assert "use `pattern` instead" in result.selected.patched_source
+
+
 def test_generate_membership_operator_with_literal_needle_decoy(tmp_path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()

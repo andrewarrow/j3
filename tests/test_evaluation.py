@@ -99,7 +99,7 @@ def test_load_greenshot_6_tasks() -> None:
     tasks = load_tasks(Path("examples/greenshot_6"))
     by_name = {task.name: task for task in tasks}
 
-    assert len(tasks) == 32
+    assert len(tasks) == 33
     assert tasks[0].name == "core_metadata_version_dict_value"
     assert tasks[0].family == "mapping_value"
     assert tasks[0].source_type == "mutation"
@@ -322,6 +322,17 @@ def test_load_greenshot_6_tasks() -> None:
         "params": {
             "from": r"^[\u0020-\u006f\u00a0\u02ff\u0370-\u0482]*$",
             "to": r"^[\u0020-\u007f\u00a0\u02ff\u0370-\u0482]*$",
+        },
+    }
+    assert by_name["pydantic_field_regex_pattern_message"].split == "train"
+    assert by_name["pydantic_field_regex_pattern_message"].source_type == "git_history"
+    assert by_name["pydantic_field_regex_pattern_message"].preferred_patch == {
+        "file_path": "fieldopts/fields.py",
+        "action": "change_literal",
+        "symbol": "validate_field_options",
+        "params": {
+            "from": "`regex` is removed. use `Pattern` instead",
+            "to": "`regex` is removed. use `pattern` instead",
         },
     }
     assert by_name["cookie_default_secure_flag_dict_value"].split == "test"

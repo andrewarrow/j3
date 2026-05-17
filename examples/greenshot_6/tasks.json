@@ -507,6 +507,28 @@
     }
   },
   {
+    "name": "pydantic_field_regex_pattern_message",
+    "family": "field_option_error_message",
+    "source_type": "git_history",
+    "split": "train",
+    "repo": ".",
+    "test": "python -m pytest tests/test_fieldopts.py::test_regex_keyword_error_points_to_pattern_parameter",
+    "source": {
+      "repo": "pydantic/pydantic",
+      "commit": "20914e367fe6b7fac8486c0023f8d212f4948054",
+      "pr": 5734
+    },
+    "preferred": {
+      "file_path": "fieldopts/fields.py",
+      "action": "change_literal",
+      "symbol": "validate_field_options",
+      "params": {
+        "from": "`regex` is removed. use `Pattern` instead",
+        "to": "`regex` is removed. use `pattern` instead"
+      }
+    }
+  },
+  {
     "name": "cookie_default_secure_flag_dict_value",
     "family": "mapping_value",
     "source_type": "mutation",

@@ -774,12 +774,35 @@ Recent work:
 - Applying the saved test-slice ranker to all refreshed GreenShot-6 rows found
   no trained preferred-positive misses. For the new Rich-derived task, the
   trained ranker places the preferred regex `change_literal` repair first.
+- GreenShot-6 now includes a fourteenth fixture domain, `fieldopts`, with one
+  real-package-derived `git_history` task modeled on `pydantic/pydantic` commit
+  `20914e367fe6b7fac8486c0023f8d212f4948054` / PR 5734. The task
+  `pydantic_field_regex_pattern_message` repairs a Field-style removed-keyword
+  error message by changing `Pattern` to `pattern`, using the existing
+  `change_literal` action family.
+- Focused loader/generator coverage passed for the new pydantic-derived task:
+  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
+  `pytest tests/test_patching.py::test_patch_solves_pydantic_field_regex_pattern_message -q`.
+- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
+  adding `fieldopts`. The persisted dataset at
+  `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` now covers 33
+  tasks and 243 tested candidates. Ranked eval solved all 33 tasks with
+  `pass@1=23/33` and average candidates `7.36`; the new pydantic-derived task
+  solves at raw rank 4 with the preferred `change_literal` candidate.
+- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
+  the fieldopts outcome refresh and stayed clean: solved=7/7, pass@1=7/7,
+  positive@1=7/7. Training used 323 rows, 69 passing rows, 276 training pairs,
+  814 features, and 4 margin violations.
+- Applying the saved test-slice ranker to all refreshed GreenShot-6 rows found
+  no trained preferred-positive misses. For the new pydantic-derived task, the
+  trained ranker places the preferred literal repair first, above the local
+  operator and partial-literal decoys.
 
 Last focused verification:
 
 ```bash
 pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q
-pytest tests/test_patching.py::test_patch_solves_rich_common_cell_width_ascii_range -q
+pytest tests/test_patching.py::test_patch_solves_pydantic_field_regex_pattern_message -q
 python cli.py eval \
   --tasks examples/greenshot_6 \
   --checkpoint runs/apache-python-git/model.json \
@@ -807,7 +830,7 @@ python cli.py outcome-summary \
   --candidate-outcomes runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl
 python - <<'PY'
 # Applied the refreshed test-slice ranker to all refreshed GreenShot-6 rows;
-# no trained preferred-positive residuals were found across 32 tasks.
+# no trained preferred-positive residuals were found across 33 tasks.
 PY
 git diff --check
 ```
@@ -926,9 +949,9 @@ GreenShot-6 outcome collection result:
 
 ```text
 ranked, runs/apache-python-git/model.json, explore-after-pass=5:
-  solved=32/32 pass@1=23/32 avg_candidates=7.31
-  rows=234 passing_rows=60 preferred_positive_rows=32
-  source_type pass@1: git_history=8/14 mutation=15/18
+  solved=33/33 pass@1=23/33 avg_candidates=7.36
+  rows=243 passing_rows=61 preferred_positive_rows=33
+  source_type pass@1: git_history=8/15 mutation=15/18
 ```
 
 Treat this as a smoke check, not a benchmark claim.
@@ -947,8 +970,8 @@ GreenShot-6 test-slice ranker validation result:
 
 ```text
 train-ranker, holdout-task includes all GreenShot-6 split:test tasks:
-  training rows=314 passing_rows=68 tasks=45 plans=45 pairs=268
-  training_accuracy=1.000 margin_violations=5 features=744
+  training rows=323 passing_rows=69 tasks=46 plans=46 pairs=276
+  training_accuracy=0.996 margin_violations=4 features=814
   validation solved=7/7 pass@1=7/7 positive@1=7/7
   validation avg_first_passing_index=1.0
 ```
@@ -1135,7 +1158,7 @@ The next context window should resume dataset growth by adding another
 real-package-derived GreenShot-6 task or small fixture domain. Do not tune
 broad handcrafted weights or add pass/preferred-label features from this state.
 The current GreenShot-6 `split: test` held-out validation is clean after the
-tablefmt outcome refresh.
+fieldopts outcome refresh.
 
 Immediate next sequence:
 

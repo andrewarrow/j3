@@ -189,6 +189,15 @@ Recent work:
   after adding the 4 git-history-derived tasks. The persisted dataset at
   `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` now covers 14
   tasks and 110 tested candidates.
+- GreenShot-6 now includes a third fixture domain, `webcookies`, with 5
+  mutation-derived cookie policy/rendering tasks using existing action families:
+  dictionary value repair, inclusive max-age boundary, swapped call arguments,
+  and keyword propagation. The new tasks are explicitly marked `split: test`.
+- A focused GreenShot-6 ranked smoke run with
+  `runs/apache-python-git/model.json`, without outcome exploration, solves all
+  19 tasks (`pass@1=13/19`, average candidates 2.42). The latest persisted
+  candidate-outcome dataset has not yet been refreshed for the 5 `webcookies`
+  tasks.
 
 Last focused verification:
 
@@ -282,8 +291,11 @@ Keep this section as the live queue. When work is completed, move it to
 
 Immediate next sequence:
 
-1. Add more mutation-generated held-out tasks from real repos, preferably in an
-   additional fixture domain rather than adding more `pkgmeta` metadata tasks.
+1. Refresh GreenShot-6 candidate outcomes with `--explore-after-pass 5` now
+   that the `webcookies` held-out mutation tasks have been added.
+2. Run `j3 outcome-summary` on the refreshed GreenShot-6 candidate-outcome
+   dataset and update this handoff with the new task, row, source-type, and
+   pass@1 summary.
 
 ### 1. Make GreenShot-6 Real
 
@@ -292,10 +304,10 @@ fixtures, not invented toy modules.
 
 Next tasks:
 
-- Add more mutation-generated held-out tasks from real repos.
-- Prefer additional fixture domains/packages over more `pkgmeta` metadata tasks.
 - Continue marking every task with a task family and source type:
   `handcrafted`, `mutation`, or `git_history`.
+- Prefer additional fixture domains/packages over more `pkgmeta` metadata tasks
+  when the next dataset expansion is needed.
 
 ### 2. Improve Outcome Dataset Quality
 
@@ -441,6 +453,6 @@ Start neural/JEPA work only when:
 ## Handoff Recommendation
 
 The next context window should not add another handcrafted GreenShot task first.
-It should add several real-derived GreenShot-6 tasks, ideally in a second
-fixture domain, then collect candidate outcomes with exploration and summarize
-the dataset before adding actions or ranker features.
+It should refresh GreenShot-6 candidate outcomes with exploration for the new
+`webcookies` held-out tasks and summarize the dataset before adding actions or
+ranker features.

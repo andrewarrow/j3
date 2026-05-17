@@ -243,5 +243,113 @@
         "to": "Range"
       }
     }
+  },
+  {
+    "name": "cookie_default_secure_flag_dict_value",
+    "family": "mapping_value",
+    "source_type": "mutation",
+    "split": "test",
+    "repo": ".",
+    "test": "python -m pytest tests/test_webcookies.py::test_default_secure_attribute_can_be_disabled",
+    "source": {
+      "repo": "pallets/werkzeug",
+      "fixture": "cookie attribute policy mutation"
+    },
+    "preferred": {
+      "file_path": "webcookies/policy.py",
+      "action": "change_dict_value",
+      "symbol": "default_cookie_attributes",
+      "params": {
+        "key": "secure",
+        "from": true,
+        "to": false
+      }
+    }
+  },
+  {
+    "name": "cookie_host_prefix_dict_value",
+    "family": "mapping_value",
+    "source_type": "mutation",
+    "split": "test",
+    "repo": ".",
+    "test": "python -m pytest tests/test_webcookies.py::test_host_cookie_prefix_has_trailing_dash",
+    "source": {
+      "repo": "pallets/werkzeug",
+      "fixture": "cookie prefix policy mutation"
+    },
+    "preferred": {
+      "file_path": "webcookies/policy.py",
+      "action": "change_dict_value",
+      "symbol": "cookie_prefix",
+      "params": {
+        "key": "host",
+        "from": "__Host",
+        "to": "__Host-"
+      }
+    }
+  },
+  {
+    "name": "cookie_zero_max_age_operator_boundary",
+    "family": "operator_boundary",
+    "source_type": "mutation",
+    "split": "test",
+    "repo": ".",
+    "test": "python -m pytest tests/test_webcookies.py::test_zero_max_age_cookie_is_expired",
+    "source": {
+      "repo": "pallets/werkzeug",
+      "fixture": "cookie max-age policy mutation"
+    },
+    "preferred": {
+      "file_path": "webcookies/policy.py",
+      "action": "change_operator",
+      "symbol": "is_expired_cookie",
+      "params": {
+        "from": "<",
+        "to": "<="
+      }
+    }
+  },
+  {
+    "name": "cookie_pair_argument_order",
+    "family": "call_order",
+    "source_type": "mutation",
+    "split": "test",
+    "repo": ".",
+    "test": "python -m pytest tests/test_webcookies.py::test_render_cookie_pair_preserves_name_before_value",
+    "source": {
+      "repo": "pallets/werkzeug",
+      "fixture": "cookie rendering mutation"
+    },
+    "preferred": {
+      "file_path": "webcookies/policy.py",
+      "action": "swap_call_arg",
+      "symbol": "render_cookie_pair",
+      "params": {
+        "left": 0,
+        "right": 1
+      }
+    }
+  },
+  {
+    "name": "cookie_scope_include_path_keyword",
+    "family": "keyword_propagation",
+    "source_type": "mutation",
+    "split": "test",
+    "repo": ".",
+    "test": "python -m pytest tests/test_webcookies.py::test_cookie_scope_key_includes_path_when_requested",
+    "source": {
+      "repo": "pallets/werkzeug",
+      "fixture": "cookie scope key mutation"
+    },
+    "preferred": {
+      "file_path": "webcookies/policy.py",
+      "action": "add_keyword_arg",
+      "symbol": "cookie_scope_key",
+      "params": {
+        "keyword": "include_path",
+        "value": true,
+        "callee": "normalize_scope"
+      }
+    }
   }
 ]

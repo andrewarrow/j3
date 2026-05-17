@@ -96,7 +96,7 @@ def test_load_greenshot_6_tasks() -> None:
     tasks = load_tasks(Path("examples/greenshot_6"))
     by_name = {task.name: task for task in tasks}
 
-    assert len(tasks) == 14
+    assert len(tasks) == 19
     assert tasks[0].name == "core_metadata_version_dict_value"
     assert tasks[0].family == "mapping_value"
     assert tasks[0].source_type == "mutation"
@@ -186,6 +186,36 @@ def test_load_greenshot_6_tasks() -> None:
         "params": {
             "from": "Content-Range",
             "to": "Range",
+        },
+    }
+    assert by_name["cookie_default_secure_flag_dict_value"].split == "test"
+    assert by_name["cookie_default_secure_flag_dict_value"].preferred_patch == {
+        "file_path": "webcookies/policy.py",
+        "action": "change_dict_value",
+        "symbol": "default_cookie_attributes",
+        "params": {
+            "key": "secure",
+            "from": True,
+            "to": False,
+        },
+    }
+    assert by_name["cookie_pair_argument_order"].preferred_patch == {
+        "file_path": "webcookies/policy.py",
+        "action": "swap_call_arg",
+        "symbol": "render_cookie_pair",
+        "params": {
+            "left": 0,
+            "right": 1,
+        },
+    }
+    assert by_name["cookie_scope_include_path_keyword"].preferred_patch == {
+        "file_path": "webcookies/policy.py",
+        "action": "add_keyword_arg",
+        "symbol": "cookie_scope_key",
+        "params": {
+            "keyword": "include_path",
+            "value": True,
+            "callee": "normalize_scope",
         },
     }
 

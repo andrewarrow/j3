@@ -645,3 +645,31 @@ Use this shape for each worker handoff:
 - Push: succeeded to `main`.
 - Next: build `prompt-repo-transition-v1` rows from demo outcomes.
 - Blockers: none.
+
+### Iteration 2: Prompt-repo transition rows
+
+- Worker: Codex worker iteration 2
+- Goal: build `prompt-repo-transition-v1` rows from demo outcomes.
+- Files changed: `j3/prompt_repo_transitions.py`, `j3/prompt_jepa_demo.py`,
+  `tests/test_prompt_repo_transitions.py`, `tests/test_cli.py`,
+  `plans/today.progress.md`
+- Tests run: `pytest tests/test_prompt_repo_transitions.py -q` passed with 4
+  tests; `pytest tests/test_cli.py::test_demo_prompt_jepa_command_writes_local_report -q`
+  passed; `pytest tests/test_cli.py -q` passed with 37 tests;
+  `python -m py_compile j3/prompt_repo_transitions.py j3/prompt_jepa_demo.py
+  cli/handlers.py cli/parser.py cli/__init__.py` passed; `python cli.py
+  demo-prompt-jepa --labels ../prompts/coding_agent_prompts_expanded_v0.jsonl
+  --out /tmp/j3-prompt-jepa-demo --top-k 5` passed; `python -m json.tool
+  /tmp/j3-prompt-jepa-demo/report.json >/dev/null` passed; transition JSONL
+  assertion passed with 3 rows and `prompt-repo-transition-v1`; `git diff
+  --check` passed.
+- Result: added deterministic transition rows with prompt context embeddings,
+  Prompt-JEPA target summaries/checksums, repo-before and repo-after
+  `repo-state-v1` records, blocked no-change state handling, validation
+  summaries, and zero hosted token/context cost fields. `demo-prompt-jepa` now
+  writes `/tmp/j3-prompt-jepa-demo/transitions.jsonl` for its create,
+  blocked-clarification, and exponent-change outcomes.
+- Commit: pending; final hash reported by worker.
+- Push: pending.
+- Next: add a tiny evaluation-only transition predictor V0.
+- Blockers: none.

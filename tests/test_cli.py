@@ -476,6 +476,7 @@ def test_demo_prompt_jepa_command_writes_local_report(capsys, tmp_path) -> None:
         (out_dir / "source-embeddings.json").read_text(encoding="utf-8")
     )
     outcome_rows = _jsonl_rows(out_dir / "outcomes.jsonl")
+    transition_rows = _jsonl_rows(out_dir / "transitions.jsonl")
 
     assert "j3 demo-prompt-jepa complete" in output
     assert "hosted_llm_api_tokens: 0" in output
@@ -491,6 +492,7 @@ def test_demo_prompt_jepa_command_writes_local_report(capsys, tmp_path) -> None:
     assert report["indexes"]["mixed_index_rows"] == 10
     assert (out_dir / "index.json").exists()
     assert (out_dir / "labels-index.json").exists()
+    assert (out_dir / "transitions.jsonl").exists()
     source_embeddings = report["source_embeddings"]
     assert source_embeddings["schema_version"] == (
         "prompt-jepa-demo-source-embeddings-v1"
@@ -524,6 +526,26 @@ def test_demo_prompt_jepa_command_writes_local_report(capsys, tmp_path) -> None:
         "greenshot_7_existing_repo_change_attempt",
     ]
     assert [row["passed"] for row in outcome_rows] == [True, False, True]
+    assert [row["schema_version"] for row in transition_rows] == [
+        "prompt-repo-transition-v1",
+        "prompt-repo-transition-v1",
+        "prompt-repo-transition-v1",
+    ]
+    assert [row["outcome"]["kind"] for row in transition_rows] == [
+        "source_changed",
+        "blocked_no_change",
+        "source_changed",
+    ]
+    assert transition_rows[0]["repo_before"]["state"]["included_python_file_paths"] == []
+    assert transition_rows[0]["repo_after"]["state"]["included_python_file_paths"] == [
+        "calculator.py",
+        "tests/test_calculator_cli.py",
+    ]
+    assert transition_rows[1]["repo_after"]["state_checksum"] == (
+        transition_rows[1]["repo_before"]["state_checksum"]
+    )
+    assert report["transitions"]["artifact"] == str(out_dir / "transitions.jsonl")
+    assert report["transitions"]["rows"] == 3
     supported = report["generated_calculator_results"]["supported"]
     blocked = report["generated_calculator_results"]["blocked"]
     assert supported[0]["validation"]["status"] == "passed"
@@ -547,6 +569,7 @@ def test_demo_prompt_jepa_command_writes_local_report(capsys, tmp_path) -> None:
     assert report["artifact_sizes_bytes"]["index.json"] > 0
     assert report["artifact_sizes_bytes"]["outcomes.jsonl"] > 0
     assert report["artifact_sizes_bytes"]["source-embeddings.json"] > 0
+    assert report["artifact_sizes_bytes"]["transitions.jsonl"] > 0
 
 
 def test_build_prompt_jepa_index_command_writes_index(capsys, tmp_path) -> None:

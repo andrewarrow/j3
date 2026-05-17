@@ -35,6 +35,13 @@ from j3.prompt_jepa import (
     propose_from_prompt_jepa,
     save_prompt_jepa_index,
 )
+from j3.prompt_repo_transitions import (
+    TRANSITION_ARTIFACT,
+    PromptRepoOutcomeState,
+    build_prompt_repo_transition_rows,
+    write_prompt_repo_transitions_jsonl,
+)
+from j3.repo_state import encode_repo_state_record
 from j3.request_outcomes import append_request_repo_attempt
 from j3.request_spec import parse_request_to_spec
 
@@ -73,6 +80,7 @@ def run_prompt_jepa_demo(
     labels_index_path = out / "labels-index.json"
     mixed_index_path = out / "index.json"
     records_path = out / "outcomes.jsonl"
+    transitions_path = out / TRANSITION_ARTIFACT
     report_path = out / "report.json"
 
     started = time.perf_counter()
@@ -98,8 +106,22 @@ def run_prompt_jepa_demo(
     timings["held_out_retrieval_eval_seconds"] = _elapsed(started)
 
     started = time.perf_counter()
-    generated_results = _record_demo_outcomes(records_path=records_path, out_dir=out)
+    generated_results, outcome_states = _record_demo_outcomes(
+        records_path=records_path,
+        out_dir=out,
+        embedding_dim=embedding_dim,
+    )
     timings["generate_and_validate_calculator_seconds"] = _elapsed(started)
+
+    started = time.perf_counter()
+    outcome_rows = _load_jsonl_objects(records_path)
+    transition_rows = build_prompt_repo_transition_rows(
+        outcome_rows,
+        outcome_states,
+        embedding_dim=embedding_dim,
+    )
+    write_prompt_repo_transitions_jsonl(transition_rows, transitions_path)
+    timings["build_prompt_repo_transition_rows_seconds"] = _elapsed(started)
 
     started = time.perf_counter()
     source_embeddings = _write_source_embedding_sidecar(
@@ -155,6 +177,11 @@ def run_prompt_jepa_demo(
         "held_out_retrieval_eval": retrieval_eval.to_record(),
         "generated_calculator_results": generated_results,
         "source_embeddings": source_embeddings,
+        "transitions": {
+            "artifact": str(transitions_path),
+            "rows": len(transition_rows),
+            "schema_version": "prompt-repo-transition-v1",
+        },
         "representative_queries": representative_queries,
         "dry_run_proposals": dry_run_proposals,
         "artifact_sizes_bytes": _artifact_sizes(out),
@@ -194,32 +221,62 @@ def _record_demo_outcomes(
     *,
     records_path: Path,
     out_dir: Path,
-) -> dict[str, object]:
+    embedding_dim: int,
+) -> tuple[dict[str, object], tuple[PromptRepoOutcomeState, ...]]:
     repos_dir = out_dir / "repos"
     simple_repo = repos_dir / "simple-calc"
     blocked_auth_repo = repos_dir / "blocked-auth"
+    outcome_states: list[PromptRepoOutcomeState] = []
 
+    simple_repo.mkdir(parents=True, exist_ok=True)
+    simple_before = encode_repo_state_record(simple_repo, embedding_dim=embedding_dim)
     simple_result = _record_implement(
         prompt="make me a simple cli calc",
         repo_dir=simple_repo,
         records_path=records_path,
+    )
+    simple_after = encode_repo_state_record(simple_repo, embedding_dim=embedding_dim)
+    outcome_states.append(
+        PromptRepoOutcomeState(repo_before=simple_before, repo_after=simple_after)
+    )
+
+    blocked_auth_repo.mkdir(parents=True, exist_ok=True)
+    blocked_before = encode_repo_state_record(
+        blocked_auth_repo,
+        embedding_dim=embedding_dim,
     )
     blocked_result = _record_implement(
         prompt="add auth",
         repo_dir=blocked_auth_repo,
         records_path=records_path,
     )
+    blocked_after = encode_repo_state_record(
+        blocked_auth_repo,
+        embedding_dim=embedding_dim,
+    )
+    outcome_states.append(
+        PromptRepoOutcomeState(repo_before=blocked_before, repo_after=blocked_after)
+    )
+
+    change_before = encode_repo_state_record(simple_repo, embedding_dim=embedding_dim)
     change_result = _record_change(
         prompt="add exponent support",
         repo_dir=simple_repo,
         records_path=records_path,
     )
+    change_after = encode_repo_state_record(simple_repo, embedding_dim=embedding_dim)
+    outcome_states.append(
+        PromptRepoOutcomeState(repo_before=change_before, repo_after=change_after)
+    )
 
-    return {
-        "records": str(records_path),
-        "supported": [simple_result, change_result],
-        "blocked": [blocked_result],
-    }
+    return (
+        {
+            "records": str(records_path),
+            "supported": [simple_result, change_result],
+            "blocked": [blocked_result],
+        },
+        tuple(outcome_states),
+    )
 
 
 def _record_implement(
@@ -399,6 +456,20 @@ def _artifact_sizes(out_dir: Path) -> dict[str, int]:
         sizes[str(path.relative_to(out_dir))] = size
     sizes["total_demo_artifact_bytes"] = total
     return sizes
+
+
+def _load_jsonl_objects(path: Path) -> tuple[dict[str, object], ...]:
+    rows: list[dict[str, object]] = []
+    with path.open(encoding="utf-8") as handle:
+        for line_index, line in enumerate(handle, start=1):
+            stripped = line.strip()
+            if not stripped:
+                continue
+            row = json.loads(stripped)
+            if not isinstance(row, dict):
+                raise ValueError(f"demo outcome row {line_index} must be an object")
+            rows.append(row)
+    return tuple(rows)
 
 
 def _write_source_embedding_sidecar(

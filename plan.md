@@ -185,12 +185,14 @@ Recent work:
   dynamic-field error-message task passes at rank 4, and the new Range-header
   cache bypass task passes at rank 3, providing additional ranking signal
   without adding action families.
+- GreenShot-6 candidate outcomes were refreshed with `--explore-after-pass 5`
+  after adding the 4 git-history-derived tasks. The persisted dataset at
+  `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` now covers 14
+  tasks and 110 tested candidates.
 
 Last focused verification:
 
 ```bash
-pytest tests/test_candidate_ranking.py -q
-pytest tests/test_failure_hints.py -q
 python cli.py eval \
   --tasks examples/greenshot_6 \
   --checkpoint runs/apache-python-git/model.json \
@@ -198,15 +200,11 @@ python cli.py eval \
   --max-candidates 80 \
   --phase ranked \
   --explore-after-pass 5 \
-  --diagnostics /tmp/j3-ranker-validation/greenshot-6-explore-diagnostics.json \
-  --candidate-outcomes /tmp/j3-ranker-validation/greenshot-6-candidate-outcomes.jsonl \
+  --diagnostics runs/apache-python-git/greenshot-6-explore-diagnostics.json \
+  --candidate-outcomes runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl \
   --quiet
-python cli.py train-ranker \
-  --candidate-outcomes \
-    runs/apache-python-git/greenshot-5-candidate-outcomes.jsonl \
-    /tmp/j3-ranker-validation/greenshot-6-candidate-outcomes.jsonl \
-  --holdout-task-family http_cache_directive \
-  --out /tmp/j3-ranker-validation/ranker-holdout-http-cache-directive
+python cli.py outcome-summary \
+  --candidate-outcomes runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl
 git diff --check
 ```
 
@@ -260,8 +258,9 @@ GreenShot-6 outcome collection result:
 
 ```text
 ranked, runs/apache-python-git/model.json, explore-after-pass=5:
-  solved=11/11 pass@1=8/11 avg_candidates=7.64
-  rows=84 passing_rows=19 preferred_positive_rows=11
+  solved=14/14 pass@1=9/14 avg_candidates=7.86
+  rows=110 passing_rows=28 preferred_positive_rows=13
+  source_type pass@1: git_history=2/4 mutation=7/10
 ```
 
 Treat this as a smoke check, not a benchmark claim.
@@ -283,8 +282,8 @@ Keep this section as the live queue. When work is completed, move it to
 
 Immediate next sequence:
 
-1. Re-run GreenShot-6 with `--explore-after-pass 5` and refresh the
-   candidate-outcome summary now that more git-history-derived tasks were added.
+1. Add more mutation-generated held-out tasks from real repos, preferably in an
+   additional fixture domain rather than adding more `pkgmeta` metadata tasks.
 
 ### 1. Make GreenShot-6 Real
 

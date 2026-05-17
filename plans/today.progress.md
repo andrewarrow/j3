@@ -3,6 +3,33 @@
 This file is the live progress log for `plans/today.md`. Keep `plan.md` and
 `plans/today.md` stable unless the user explicitly asks to change them.
 
+## Status
+
+- Current phase: pre-implementation setup for GreenShot-7 calculator slice
+- Completed iterations: 0
+- Passing focused tests: prompt seed JSONL validation only
+- Latest commit: none yet in this loop
+- Current blocker: none
+- Next task: add `REQUEST_SPEC.md` for `request-spec-v1`
+
+## Worker Iteration Template
+
+Use this shape for each worker handoff:
+
+```md
+### Iteration N: <task>
+
+- Worker:
+- Goal:
+- Files changed:
+- Tests run:
+- Result:
+- Commit:
+- Push:
+- Next:
+- Blockers:
+```
+
 ## 2026-05-17
 
 - Created the active 24-hour plan in `plans/today.md`.

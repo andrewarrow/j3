@@ -45,6 +45,62 @@ Update `plans/today.progress.md` after meaningful steps:
 
 Keep progress concise and chronological. Do not duplicate the full plan.
 
+## Agent Loop Protocol
+
+When running repeated worker-agent iterations, keep this parent context as the
+watcher and assign exactly one bounded task to each worker.
+
+Watcher flow:
+
+1. Read `plans/today.progress.md`.
+2. Pick the next unchecked task from the progress file.
+3. If no task is listed there, pick the next step from `plans/today.md` and add
+   it to the progress file before starting a worker.
+4. Spawn one worker for that task.
+5. Review the worker result, commit status, pushed commit, and tests.
+6. Update or confirm `plans/today.progress.md`.
+7. Start the next worker only after the previous worker is closed.
+
+Worker flow:
+
+1. Read `AGENTS.md`, `plans/today.md`, and `plans/today.progress.md`.
+2. Do exactly the assigned slice.
+3. Prefer implementation plus focused tests over more planning.
+4. Run the focused tests relevant to the slice.
+5. Update `plans/today.progress.md` with files changed, tests, result, commit,
+   push, blockers, and next task.
+6. Stage only relevant files.
+7. Commit with a concise task-specific message.
+8. Push.
+9. Report commit hash, tests run, push result, and any blocker.
+
+Do not edit `plan.md` or `plans/today.md` during worker iterations unless the
+watcher explicitly assigns that documentation change.
+
+## Worker Definition of Done
+
+A worker iteration is done only when:
+
+- one bounded slice is complete
+- focused tests for that slice pass, or a blocker is recorded
+- generated files are intentional
+- `plans/today.progress.md` is updated
+- relevant files are staged and committed
+- push succeeds
+- `git status --short` is clean except for explicitly deferred work
+
+If tests fail and the fix is obvious, fix it in the same iteration. If the fix
+requires broad scope expansion, stop, record the blocker, and report back.
+
+## Commit Rules
+
+- Use one task per commit.
+- Use concise commit messages such as `Add request spec docs`.
+- Do not include unrelated dirty files.
+- Do not add dependencies without watcher approval.
+- Do not use destructive git commands.
+- Do not rewrite or clean up unrelated history.
+
 ## Project Direction
 
 j3 is a local-first, no-LLM Python coding agent experiment. The long-term goal

@@ -8,22 +8,24 @@ new implementation facts change the 24-hour plan itself. Record any
 ## Status
 
 - Current phase: Prompt-JEPA developer demo and prompt corpus scale-up
-- Completed iterations: 0 for this reset; previous Prompt-JEPA index reset
+- Completed iterations: 2 for this reset; previous Prompt-JEPA index reset
   completed 8 iterations
-- Passing focused tests: `pytest tests/test_cli.py -q`;
+- Passing focused tests: `pytest tests/test_prompt_intents.py -q`;
+  `pytest tests/test_cli.py -q`;
   `pytest tests/test_prompt_jepa.py -q`;
-  `python -m py_compile prompt_jepa.py cli/handlers.py cli/parser.py cli/__init__.py`;
+  `python -m py_compile prompt_intents.py prompt_jepa.py cli/handlers.py cli/parser.py cli/__init__.py`;
   `git diff --check`
-- Latest implementation commit: `d8bfd1b`
+- Latest implementation commit: `0c5c51f`
 - Current blocker: none
-- Next task: add a reproducible expanded prompt corpus under `../prompts`, then
-  add a corpus quality/profile gate before building the one-command demo.
+- Next task: add a one-command Prompt-JEPA demo/report path with timings,
+  artifact sizes, representative queries, dry-run proposals, and hosted API
+  tokens `0`.
 
 ## Active Task Queue
 
 - [x] Add reproducible expanded prompt corpus under `../prompts` with clear
   provenance, stable splits, and roughly 300 to 350 total rows.
-- [ ] Add a prompt corpus quality/profile command or equivalent tested path.
+- [x] Add a prompt corpus quality/profile command or equivalent tested path.
 - [ ] Add a one-command Prompt-JEPA demo/report path with timings, artifact
   sizes, representative queries, dry-run proposals, and hosted API tokens `0`.
 - [ ] Generate real calculator outcome rows and build a mixed labels+records

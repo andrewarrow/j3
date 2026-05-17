@@ -21,7 +21,7 @@ new implementation facts change the 24-hour plan itself. Record any
 - `python cli.py train-prompt-intents --labels ../prompts/coding_agent_prompts_seed.jsonl --target expected_action repo_mode`
 - `python cli.py train-prompt-intents --labels ../prompts/coding_agent_prompts_seed.jsonl --target expected_action repo_mode requires_clarification primary_artifact --show-residuals --residual-limit 12`
 - `python -m py_compile prompt_intents.py cli/handlers.py cli/parser.py cli/__init__.py`
-- Latest implementation commit: `b369919971d86d77f6d25c0c687ae705ea4dc4ed`
+- Latest implementation commit: `2e14c9367836d84835243ee6be297da3614262ea`
 - Current blocker: none
 - Next task: keep learned production routing blocked; add or source explicit
   unsupported-interface/graphical labels in the seed corpus before any learned
@@ -374,8 +374,8 @@ Use this shape for each worker handoff:
     graphical/interface requirement labels (`unsupported_requirement_count=0`),
     so graphical unsupported-interface routing remains a separate labeling
     gap before learned production routing.
-- Commit: pending in this worker commit
-- Push: pending
+- Commit: `2e14c9367836d84835243ee6be297da3614262ea`
+- Push: succeeded to `main`
 - Next: add/source explicit unsupported-interface labels for graphical or other
   unsupported UI requests in the seed corpus before any learned production
   routing decision.

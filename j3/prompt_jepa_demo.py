@@ -39,6 +39,9 @@ from j3.prompt_repo_transitions import (
     TRANSITION_ARTIFACT,
     PromptRepoOutcomeState,
     build_prompt_repo_transition_rows,
+    evaluate_prompt_repo_transition_predictions,
+    fit_prompt_repo_transition_predictor_v0,
+    write_prompt_repo_transition_predictor_json,
     write_prompt_repo_transitions_jsonl,
 )
 from j3.repo_state import encode_repo_state_record
@@ -50,6 +53,8 @@ PROMPT_JEPA_DEMO_SCHEMA_VERSION = "prompt-jepa-demo-report-v1"
 SOURCE_EMBEDDING_SIDECAR_SCHEMA_VERSION = "prompt-jepa-demo-source-embeddings-v1"
 DEMO_OUTPUT_MARKER = ".j3-prompt-jepa-demo"
 SOURCE_EMBEDDING_ARTIFACT = "source-embeddings.json"
+TRANSITION_MODEL_ARTIFACT = "transition-model.json"
+TRANSITION_EVAL_ARTIFACT = "transition-eval.json"
 REPRESENTATIVE_PROMPTS = (
     "make me a simple cli calc",
     "make me a complex calc for spaceships",
@@ -81,6 +86,8 @@ def run_prompt_jepa_demo(
     mixed_index_path = out / "index.json"
     records_path = out / "outcomes.jsonl"
     transitions_path = out / TRANSITION_ARTIFACT
+    transition_model_path = out / TRANSITION_MODEL_ARTIFACT
+    transition_eval_path = out / TRANSITION_EVAL_ARTIFACT
     report_path = out / "report.json"
 
     started = time.perf_counter()
@@ -122,6 +129,26 @@ def run_prompt_jepa_demo(
     )
     write_prompt_repo_transitions_jsonl(transition_rows, transitions_path)
     timings["build_prompt_repo_transition_rows_seconds"] = _elapsed(started)
+
+    started = time.perf_counter()
+    transition_predictor = fit_prompt_repo_transition_predictor_v0(transition_rows)
+    write_prompt_repo_transition_predictor_json(
+        transition_predictor,
+        transition_model_path,
+    )
+    timings["fit_prompt_repo_transition_predictor_seconds"] = _elapsed(started)
+
+    started = time.perf_counter()
+    transition_eval = evaluate_prompt_repo_transition_predictions(
+        transition_rows,
+        top_k=top_k,
+        residual_limit=5,
+    )
+    transition_eval_path.write_text(
+        json.dumps(transition_eval, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    timings["eval_prompt_repo_transition_predictions_seconds"] = _elapsed(started)
 
     started = time.perf_counter()
     source_embeddings = _write_source_embedding_sidecar(
@@ -181,6 +208,17 @@ def run_prompt_jepa_demo(
             "artifact": str(transitions_path),
             "rows": len(transition_rows),
             "schema_version": "prompt-repo-transition-v1",
+            "model_artifact": str(transition_model_path),
+            "eval_artifact": str(transition_eval_path),
+            "predictor_kind": transition_predictor.predictor_kind,
+            "model_schema_version": transition_predictor.schema_version,
+            "eval_schema_version": transition_eval["schema_version"],
+            "evaluation_only_not_wired_to_production": True,
+            "source_state_feature_version": _transition_source_state_feature_version(
+                transition_rows
+            ),
+            "metrics": _transition_report_metrics(transition_eval),
+            "residual_examples": transition_eval["residual_examples"],
         },
         "representative_queries": representative_queries,
         "dry_run_proposals": dry_run_proposals,
@@ -456,6 +494,70 @@ def _artifact_sizes(out_dir: Path) -> dict[str, int]:
         sizes[str(path.relative_to(out_dir))] = size
     sizes["total_demo_artifact_bytes"] = total
     return sizes
+
+
+def _transition_report_metrics(
+    transition_eval: Mapping[str, object],
+) -> dict[str, object]:
+    v0 = _mapping_value(transition_eval, "v0_predictor")
+    prompt_only = _mapping_value(transition_eval, "prompt_only_baseline")
+    return {
+        "rows": transition_eval.get("rows"),
+        "top_k": transition_eval.get("top_k"),
+        "effective_top_k": transition_eval.get("effective_top_k"),
+        "source_split": dict(_mapping_value(transition_eval, "source_split")),
+        "v0_predictor": _compact_transition_metric_section(v0),
+        "prompt_only_baseline": _compact_transition_metric_section(prompt_only),
+    }
+
+
+def _compact_transition_metric_section(
+    section: Mapping[str, object],
+) -> dict[str, object]:
+    return {
+        "outcome_kind": _compact_top_k_metric(_mapping_value(section, "outcome_kind")),
+        "validation_status": _compact_top_k_metric(
+            _mapping_value(section, "validation_status")
+        ),
+        "repo_after_embedding_distance": dict(
+            _mapping_value(section, "repo_after_embedding_distance")
+        ),
+    }
+
+
+def _compact_top_k_metric(metric: Mapping[str, object]) -> dict[str, object]:
+    return {
+        "total": metric.get("total"),
+        "top_1_correct": metric.get("top_1_correct"),
+        "top_k_correct": metric.get("top_k_correct"),
+        "top_1_accuracy": metric.get("top_1_accuracy"),
+        "top_k_accuracy": metric.get("top_k_accuracy"),
+    }
+
+
+def _transition_source_state_feature_version(
+    transition_rows: Sequence[Mapping[str, object]],
+) -> str | None:
+    versions: set[str] = set()
+    for row in transition_rows:
+        for field in ("repo_before", "repo_after"):
+            wrapper = row.get(field)
+            if not isinstance(wrapper, Mapping):
+                continue
+            state = wrapper.get("state")
+            if not isinstance(state, Mapping):
+                continue
+            version = state.get("feature_version")
+            if isinstance(version, str) and version:
+                versions.add(version)
+    return versions.pop() if len(versions) == 1 else None
+
+
+def _mapping_value(value: Mapping[str, object], field: str) -> Mapping[str, object]:
+    item = value.get(field)
+    if not isinstance(item, Mapping):
+        raise ValueError(f"expected mapping field {field!r}")
+    return item
 
 
 def _load_jsonl_objects(path: Path) -> tuple[dict[str, object], ...]:

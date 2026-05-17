@@ -616,6 +616,12 @@ def test_demo_prompt_jepa_command_writes_local_report(capsys, tmp_path) -> None:
     source_sidecar = json.loads(
         (out_dir / "source-embeddings.json").read_text(encoding="utf-8")
     )
+    transition_model = json.loads(
+        (out_dir / "transition-model.json").read_text(encoding="utf-8")
+    )
+    transition_eval = json.loads(
+        (out_dir / "transition-eval.json").read_text(encoding="utf-8")
+    )
     outcome_rows = _jsonl_rows(out_dir / "outcomes.jsonl")
     transition_rows = _jsonl_rows(out_dir / "transitions.jsonl")
 
@@ -634,6 +640,8 @@ def test_demo_prompt_jepa_command_writes_local_report(capsys, tmp_path) -> None:
     assert (out_dir / "index.json").exists()
     assert (out_dir / "labels-index.json").exists()
     assert (out_dir / "transitions.jsonl").exists()
+    assert (out_dir / "transition-model.json").exists()
+    assert (out_dir / "transition-eval.json").exists()
     source_embeddings = report["source_embeddings"]
     assert source_embeddings["schema_version"] == (
         "prompt-jepa-demo-source-embeddings-v1"
@@ -687,6 +695,50 @@ def test_demo_prompt_jepa_command_writes_local_report(capsys, tmp_path) -> None:
     )
     assert report["transitions"]["artifact"] == str(out_dir / "transitions.jsonl")
     assert report["transitions"]["rows"] == 3
+    assert report["transitions"]["model_artifact"] == str(
+        out_dir / "transition-model.json"
+    )
+    assert report["transitions"]["eval_artifact"] == str(
+        out_dir / "transition-eval.json"
+    )
+    assert report["transitions"]["predictor_kind"] == "nearest_context_action_delta"
+    assert report["transitions"]["model_schema_version"] == (
+        "prompt-repo-transition-predictor-v0"
+    )
+    assert report["transitions"]["eval_schema_version"] == (
+        "prompt-repo-transition-eval-v1"
+    )
+    assert report["transitions"]["evaluation_only_not_wired_to_production"] is True
+    assert report["transitions"]["source_state_feature_version"] == "ast-hash-v1"
+    assert transition_model["schema_version"] == "prompt-repo-transition-predictor-v0"
+    assert transition_model["decision"] == "evaluation-only"
+    assert transition_model["train_rows"] == 3
+    assert transition_model["train_row_ids"] == [
+        "prompt-repo-transition-0001",
+        "prompt-repo-transition-0002",
+        "prompt-repo-transition-0003",
+    ]
+    assert transition_eval["schema_version"] == "prompt-repo-transition-eval-v1"
+    assert transition_eval["decision"] == "evaluation-only"
+    assert transition_eval["rows"] == 3
+    assert transition_eval["top_k"] == 3
+    assert transition_eval["effective_top_k"] == 2
+    assert report["transitions"]["metrics"]["rows"] == 3
+    assert report["transitions"]["metrics"]["top_k"] == 3
+    assert report["transitions"]["metrics"]["effective_top_k"] == 2
+    assert (
+        report["transitions"]["metrics"]["v0_predictor"]["outcome_kind"]["total"]
+        == 3
+    )
+    assert (
+        report["transitions"]["metrics"]["prompt_only_baseline"]["validation_status"][
+            "total"
+        ]
+        == 3
+    )
+    assert report["transitions"]["residual_examples"] == transition_eval[
+        "residual_examples"
+    ]
     supported = report["generated_calculator_results"]["supported"]
     blocked = report["generated_calculator_results"]["blocked"]
     assert supported[0]["validation"]["status"] == "passed"
@@ -711,6 +763,8 @@ def test_demo_prompt_jepa_command_writes_local_report(capsys, tmp_path) -> None:
     assert report["artifact_sizes_bytes"]["outcomes.jsonl"] > 0
     assert report["artifact_sizes_bytes"]["source-embeddings.json"] > 0
     assert report["artifact_sizes_bytes"]["transitions.jsonl"] > 0
+    assert report["artifact_sizes_bytes"]["transition-model.json"] > 0
+    assert report["artifact_sizes_bytes"]["transition-eval.json"] > 0
 
 
 def test_build_prompt_jepa_index_command_writes_index(capsys, tmp_path) -> None:

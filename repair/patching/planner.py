@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import shutil
+import shlex
 import subprocess
 import tempfile
 import time
@@ -12,6 +13,7 @@ from typing import Any, Callable
 from j3.candidate_ranking import CandidateRankerModel
 from j3.failure_hints import PytestFailureHint, parse_pytest_failure_hints
 from j3.repo import DEFAULT_EXCLUDE_DIRS
+from j3.transition_scorer_advice import build_transition_scorer_advice
 
 from .context import attach_target_context
 from .generation import generate_candidate_patches
@@ -39,6 +41,8 @@ def plan_and_maybe_apply_patch(
     ranker_path: Path | None = None,
     use_failure_hints: bool = True,
     explore_after_pass: int = 0,
+    transition_scorer_shadow: bool = False,
+    transition_advice_context: dict[str, object] | None = None,
     progress: Callable[[str], None] | None = None,
 ) -> PatchPlanResult:
     """Find the first candidate patch that makes the requested test pass."""
@@ -93,6 +97,8 @@ def plan_and_maybe_apply_patch(
     tested_candidate_hints: list[tuple[PytestFailureHint, ...]] = []
     passing_candidates: list[CandidatePatch] = []
     selected_candidates: list[CandidatePatch] = []
+    shadow_candidates: list[CandidatePatch] = []
+    shadow_candidate_hints: list[tuple[PytestFailureHint, ...]] = []
     selected: CandidatePatch | None = None
     first_passing_index: int | None = None
     current_output = baseline_output
@@ -126,6 +132,10 @@ def plan_and_maybe_apply_patch(
             elif ranker is not None:
                 _emit_progress(progress, f"rank: scoring with candidate ranker {ranker.path}")
                 candidates = rank_with_candidate_ranker(candidates, ranker, hints=[])
+
+            if transition_scorer_shadow:
+                shadow_candidates.extend(candidates)
+                shadow_candidate_hints.extend(tuple(step_hints) for _candidate in candidates)
 
             improved_candidate: CandidatePatch | None = None
             improved_output = current_output
@@ -209,6 +219,21 @@ def plan_and_maybe_apply_patch(
         if not dry_run:
             for candidate in selected_candidates:
                 _write_candidate(root, candidate)
+        transition_advice = _build_transition_advice_if_requested(
+            enabled=transition_scorer_shadow,
+            repo=root,
+            test_command=test_command,
+            baseline_exit_code=baseline.returncode,
+            candidates=shadow_candidates,
+            selected=selected,
+            tested_candidates=tested_candidates,
+            passing_candidates=passing_candidates,
+            candidate_hints=shadow_candidate_hints,
+            first_passing_index=first_passing_index,
+            model_path=model.path if model else None,
+            ranker_path=ranker.path if ranker else None,
+            context=transition_advice_context,
+        )
         return PatchPlanResult(
             repo=root,
             test_command=test_command,
@@ -226,9 +251,25 @@ def plan_and_maybe_apply_patch(
             first_passing_index=first_passing_index,
             passing_candidates=tuple(passing_candidates),
             selected_candidates=tuple(selected_candidates),
+            transition_advice=transition_advice,
         )
 
     _emit_progress(progress, f"status: no passing candidate within tested={candidates_tested}")
+    transition_advice = _build_transition_advice_if_requested(
+        enabled=transition_scorer_shadow,
+        repo=root,
+        test_command=test_command,
+        baseline_exit_code=baseline.returncode,
+        candidates=shadow_candidates,
+        selected=None,
+        tested_candidates=tested_candidates,
+        passing_candidates=passing_candidates,
+        candidate_hints=shadow_candidate_hints,
+        first_passing_index=None,
+        model_path=model.path if model else None,
+        ranker_path=ranker.path if ranker else None,
+        context=transition_advice_context,
+    )
     return PatchPlanResult(
         repo=root,
         test_command=test_command,
@@ -246,6 +287,7 @@ def plan_and_maybe_apply_patch(
         first_passing_index=None,
         passing_candidates=(),
         selected_candidates=tuple(selected_candidates),
+        transition_advice=transition_advice,
     )
 
 
@@ -255,6 +297,7 @@ def _write_candidate(repo: Path, candidate: CandidatePatch) -> None:
 
 
 def _run_test(repo: Path, command: str, timeout_seconds: int) -> subprocess.CompletedProcess[str]:
+    command = _test_shell_command(command)
     return subprocess.run(
         command,
         cwd=repo,
@@ -263,6 +306,24 @@ def _run_test(repo: Path, command: str, timeout_seconds: int) -> subprocess.Comp
         capture_output=True,
         timeout=timeout_seconds,
         check=False,
+    )
+
+
+def _test_shell_command(command: str) -> str:
+    stripped = command.strip()
+    if _looks_like_pytest_target(stripped):
+        return f"python -m pytest {shlex.quote(stripped)}"
+    return command
+
+
+def _looks_like_pytest_target(command: str) -> bool:
+    if not command or any(character.isspace() for character in command):
+        return False
+    return (
+        command.endswith(".py")
+        or "::" in command
+        or command.startswith("tests/")
+        or command.startswith("./tests/")
     )
 
 
@@ -298,6 +359,40 @@ def _load_candidate_ranker_if_available(ranker_path: Path | None) -> CandidateRa
     if not resolved.exists():
         return None
     return CandidateRankerModel.load(resolved)
+
+
+def _build_transition_advice_if_requested(
+    *,
+    enabled: bool,
+    repo: Path,
+    test_command: str,
+    baseline_exit_code: int,
+    candidates: list[CandidatePatch],
+    selected: CandidatePatch | None,
+    tested_candidates: list[CandidatePatch],
+    passing_candidates: list[CandidatePatch],
+    candidate_hints: list[tuple[PytestFailureHint, ...]],
+    first_passing_index: int | None,
+    model_path: Path | None,
+    ranker_path: Path | None,
+    context: dict[str, object] | None,
+) -> dict[str, object] | None:
+    if not enabled:
+        return None
+    return build_transition_scorer_advice(
+        repo=repo,
+        test_command=test_command,
+        baseline_exit_code=baseline_exit_code,
+        candidates=tuple(candidates),
+        selected=selected,
+        tested_candidates=tuple(tested_candidates),
+        passing_candidates=tuple(passing_candidates),
+        candidate_hints=tuple(candidate_hints),
+        first_passing_index=first_passing_index,
+        model_path=model_path,
+        ranker_path=ranker_path,
+        context=context,
+    )
 
 
 def _failure_signature(output: str) -> tuple[object, ...]:

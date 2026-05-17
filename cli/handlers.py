@@ -71,6 +71,7 @@ from j3.transition_bench_demo import (
     format_transition_bench_demo_report,
     run_transition_bench_demo,
 )
+from j3.transition_scorer_advice import append_transition_scorer_advice_jsonl
 
 
 REQUEST_SPEC_ARTIFACT = "request-spec.json"
@@ -241,6 +242,10 @@ def handle_patch(args: argparse.Namespace) -> int:
         raise SystemExit(f"repo does not exist: {repo}")
     if not repo.is_dir():
         raise SystemExit(f"repo is not a directory: {repo}")
+    if args.transition_advice_out is not None and not args.transition_scorer_shadow:
+        raise SystemExit("--transition-scorer-shadow is required with --transition-advice-out")
+    if args.transition_scorer_shadow and args.transition_advice_out is None:
+        raise SystemExit("--transition-advice-out is required with --transition-scorer-shadow")
 
     result = plan_and_maybe_apply_patch(
         repo=repo,
@@ -251,7 +256,14 @@ def handle_patch(args: argparse.Namespace) -> int:
         max_steps=args.max_steps,
         model_path=args.model,
         ranker_path=args.ranker,
+        transition_scorer_shadow=args.transition_scorer_shadow,
     )
+    advice_path = None
+    if args.transition_scorer_shadow and result.transition_advice is not None:
+        advice_path = append_transition_scorer_advice_jsonl(
+            args.transition_advice_out,
+            result.transition_advice,
+        )
 
     mode = "dry run" if args.dry_run else "apply"
     print(f"j3 patch ({mode})")
@@ -262,6 +274,8 @@ def handle_patch(args: argparse.Namespace) -> int:
         print(f"model: {result.model_path}")
     if result.ranker_path:
         print(f"ranker: {result.ranker_path}")
+    if advice_path:
+        print(f"transition advice: {advice_path}")
 
     if result.baseline_exit_code == 0:
         print("status: test already passes; no patch generated")
@@ -995,6 +1009,10 @@ def handle_mine(args: argparse.Namespace) -> int:
 
 
 def handle_eval(args: argparse.Namespace) -> int:
+    if args.transition_advice_out is not None and not args.transition_scorer_shadow:
+        raise SystemExit("--transition-scorer-shadow is required with --transition-advice-out")
+    if args.transition_scorer_shadow and args.transition_advice_out is None:
+        raise SystemExit("--transition-advice-out is required with --transition-scorer-shadow")
     progress = None if args.quiet else (verbose_progress if args.verbose else summary_progress)
     if progress is not None:
         progress("j3 eval starting")
@@ -1006,6 +1024,8 @@ def handle_eval(args: argparse.Namespace) -> int:
         if args.explore_after_pass:
             progress(f"explore after pass: {args.explore_after_pass}")
         progress(f"phase: {args.phase}")
+        if args.transition_scorer_shadow:
+            progress("transition scorer shadow: enabled")
     summary = evaluate_tasks(
         tasks_path=args.tasks,
         model_path=args.checkpoint,
@@ -1015,12 +1035,18 @@ def handle_eval(args: argparse.Namespace) -> int:
         max_steps=args.max_steps,
         phase=args.phase,
         explore_after_pass=args.explore_after_pass,
+        transition_scorer_shadow=args.transition_scorer_shadow,
         progress=progress,
     )
     diagnostics_path = write_eval_diagnostics(summary, args.diagnostics) if args.diagnostics else None
     outcomes_path = (
         write_candidate_outcomes(summary, args.candidate_outcomes)
         if args.candidate_outcomes
+        else None
+    )
+    advice_path = (
+        _write_eval_transition_advice(summary, args.transition_advice_out)
+        if args.transition_scorer_shadow and args.transition_advice_out
         else None
     )
 
@@ -1076,7 +1102,25 @@ def handle_eval(args: argparse.Namespace) -> int:
         print(f"diagnostics: {diagnostics_path}")
     if outcomes_path:
         print(f"candidate outcomes: {outcomes_path}")
+    if advice_path:
+        print(f"transition advice: {advice_path}")
     return 0 if eval_phase_solved(summary=summary, phase=args.phase) else 1
+
+
+def _write_eval_transition_advice(summary: object, path: Path) -> Path:
+    resolved = path.expanduser().resolve()
+    resolved.parent.mkdir(parents=True, exist_ok=True)
+    rows = []
+    for task in getattr(summary, "tasks", []):
+        for plan in (getattr(task, "baseline", None), getattr(task, "ranked", None)):
+            advice = getattr(plan, "transition_advice", None)
+            if advice is not None:
+                rows.append(advice)
+    resolved.write_text(
+        "".join(json.dumps(row, sort_keys=True) + "\n" for row in rows),
+        encoding="utf-8",
+    )
+    return resolved
 
 
 def _confirm(prompt: str) -> bool:

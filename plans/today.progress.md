@@ -28,7 +28,7 @@ This file is the live progress log for `plans/today.md`. Keep
 - [x] Harden real-data normalization for empty mined source rows.
 - [x] Add product-readiness gates to transition bench reports.
 - [x] Calibrate a V2 action scorer from candidate outcomes.
-- [ ] Add shadow transition-scorer advice to real patch/eval planning.
+- [x] Add shadow transition-scorer advice to real patch/eval planning.
 - [ ] Add guarded, non-default opt-in ranking with gate enforcement.
 - [ ] Update product docs for demo, benchmark, shadow, and guarded modes.
 
@@ -196,5 +196,30 @@ Use this shape for each worker handoff:
 - Commit: `6cd413e` (`Calibrate transition action scorer v2`)
 - Push: succeeded to `main` (`646442a..6cd413e`)
 - Next: add shadow transition-scorer advice to real patch/eval planning.
+- Blockers: guarded opt-in remains blocked until a held-out scorer beats
+  existing rank order.
+
+### Iteration 4: Add shadow transition-scorer advice to real patch/eval planning
+
+- Worker: Codex Worker Iteration 4
+- Goal: add shadow-only transition scorer advice to real repair planning without
+  changing candidate order, selected candidates, or production routing.
+- Files changed: `j3/transition_scorer_advice.py`,
+  `repair/patching/planner.py`, `repair/patching/types.py`, `cli/parser.py`,
+  `cli/handlers.py`, `evaluation/runner.py`, `tests/test_patching.py`,
+  `tests/test_cli.py`, `plans/today.progress.md`.
+- Tests run:
+  - `pytest tests/test_patching.py -q` passed, 93 tests.
+  - `pytest tests/test_cli.py -q` passed, 43 tests.
+  - `python cli.py patch --repo examples/greenshot_bug --test tests/test_calculator.py --transition-scorer-shadow --transition-advice-out /tmp/j3-transition-advice.jsonl` passed and wrote one `transition-scorer-advice-v1` JSONL row with 24 candidates and zero hosted usage fields.
+  - `git diff --check` passed.
+- Result: `patch` and `eval` accept `--transition-scorer-shadow` plus
+  `--transition-advice-out`; the planner scores the already generated
+  production-ordered candidate set in shadow mode, records selected/top scorer
+  candidates, agreement, validation comparison, repo/task context, and zero
+  hosted usage, and leaves routing unchanged.
+- Commit: pending.
+- Push: pending.
+- Next: add guarded, non-default opt-in ranking with gate enforcement.
 - Blockers: guarded opt-in remains blocked until a held-out scorer beats
   existing rank order.

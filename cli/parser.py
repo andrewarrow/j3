@@ -204,6 +204,16 @@ def build_parser() -> argparse.ArgumentParser:
         default=1,
         help="maximum sequential repair steps to plan (default: 1)",
     )
+    patch_parser.add_argument(
+        "--transition-scorer-shadow",
+        action="store_true",
+        help="run the transition action scorer in shadow mode without changing routing",
+    )
+    patch_parser.add_argument(
+        "--transition-advice-out",
+        type=Path,
+        help="JSONL path for shadow transition scorer advice rows",
+    )
     patch_parser.set_defaults(handler=handle_patch)
 
     fix_parser = subparsers.add_parser(
@@ -967,6 +977,16 @@ def build_parser() -> argparse.ArgumentParser:
         "--candidate-outcomes",
         type=Path,
         help="optional JSONL file with one row per tested candidate",
+    )
+    eval_parser.add_argument(
+        "--transition-scorer-shadow",
+        action="store_true",
+        help="run the transition action scorer in shadow mode without changing routing",
+    )
+    eval_parser.add_argument(
+        "--transition-advice-out",
+        type=Path,
+        help="optional JSONL file with one shadow transition scorer advice row per repair plan",
     )
     eval_parser.add_argument(
         "--quiet",

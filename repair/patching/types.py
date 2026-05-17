@@ -54,3 +54,4 @@ class PatchPlanResult:
     first_passing_index: int | None = None
     passing_candidates: tuple[CandidatePatch, ...] = ()
     selected_candidates: tuple[CandidatePatch, ...] = ()
+    transition_advice: Mapping[str, object] | None = None

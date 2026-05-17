@@ -75,6 +75,7 @@ def evaluate_tasks(
     max_steps: int = 1,
     phase: EvalPhase = "both",
     explore_after_pass: int = 0,
+    transition_scorer_shadow: bool = False,
     progress: Callable[[str], None] | None = None,
 ) -> EvalSummary:
     if phase not in {"baseline", "ranked", "both"}:
@@ -99,6 +100,7 @@ def evaluate_tasks(
                 max_candidates=max_candidates,
                 max_steps=task.max_steps if task.max_steps != 1 else max_steps,
                 explore_after_pass=explore_after_pass,
+                transition_scorer_shadow=transition_scorer_shadow,
                 progress=progress,
             )
             _emit_progress(
@@ -122,6 +124,7 @@ def evaluate_tasks(
                 max_candidates=max_candidates,
                 max_steps=task.max_steps if task.max_steps != 1 else max_steps,
                 explore_after_pass=explore_after_pass,
+                transition_scorer_shadow=transition_scorer_shadow,
                 progress=progress,
             )
             _emit_progress(
@@ -153,6 +156,7 @@ def _run_task(
     max_candidates: int,
     max_steps: int,
     explore_after_pass: int,
+    transition_scorer_shadow: bool,
     progress: Callable[[str], None] | None,
 ) -> PatchPlanResult:
     with tempfile.TemporaryDirectory(prefix="j3-eval-") as tmp:
@@ -170,6 +174,14 @@ def _run_task(
             ranker_path=ranker_path,
             use_failure_hints=use_failure_hints,
             explore_after_pass=explore_after_pass,
+            transition_scorer_shadow=transition_scorer_shadow,
+            transition_advice_context={
+                "task": task.name,
+                "task_family": task.family,
+                "source_type": task.source_type,
+                "split": task.split,
+                "phase": phase,
+            },
             progress=(
                 (lambda message: progress(f"{prefix}: {message}"))
                 if progress is not None

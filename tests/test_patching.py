@@ -24,6 +24,43 @@ def test_patch_finds_discount_fix_without_modifying_in_dry_run(tmp_path) -> None
     assert "return price * (percent / 100)" in (repo / "calculator.py").read_text(encoding="utf-8")
 
 
+def test_transition_scorer_shadow_does_not_change_patch_routing(tmp_path) -> None:
+    control_repo = tmp_path / "control"
+    shadow_repo = tmp_path / "shadow"
+    shutil.copytree("examples/greenshot_bug", control_repo)
+    shutil.copytree("examples/greenshot_bug", shadow_repo)
+
+    control = plan_and_maybe_apply_patch(
+        repo=control_repo,
+        test_command="python -m pytest tests/test_calculator.py",
+        dry_run=True,
+        timeout_seconds=10,
+    )
+    shadow = plan_and_maybe_apply_patch(
+        repo=shadow_repo,
+        test_command="python -m pytest tests/test_calculator.py",
+        dry_run=True,
+        timeout_seconds=10,
+        transition_scorer_shadow=True,
+    )
+
+    assert control.selected is not None
+    assert shadow.selected is not None
+    assert shadow.selected.action == control.selected.action
+    assert shadow.selected.patched_source == control.selected.patched_source
+    assert shadow.candidates_tested == control.candidates_tested
+
+    advice = shadow.transition_advice
+    assert advice is not None
+    assert advice["schema_version"] == "transition-scorer-advice-v1"
+    assert advice["decision"] == "shadow_only_not_wired_to_routing"
+    assert advice["candidate_count"] == shadow.candidates_generated
+    assert advice["existing_selected_candidate"]["rank_index"] == 1
+    assert advice["scorer_top_candidate"] is not None
+    assert advice["runtime"]["hosted_llm_api_calls"] == 0
+    assert advice["runtime"]["hosted_repo_context_bytes"] == 0
+
+
 def test_patch_applies_discount_fix(tmp_path) -> None:
     repo = tmp_path / "greenshot_bug"
     shutil.copytree("examples/greenshot_bug", repo)

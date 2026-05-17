@@ -2350,6 +2350,43 @@ def test_patch_command_accepts_repo_and_test(capsys, tmp_path) -> None:
     assert "status: found passing patch" in output
 
 
+def test_patch_command_writes_transition_scorer_shadow_advice(capsys, tmp_path) -> None:
+    repo = tmp_path / "greenshot_bug"
+    advice_path = tmp_path / "transition-advice.jsonl"
+    shutil.copytree("examples/greenshot_bug", repo)
+
+    assert (
+        main(
+            [
+                "patch",
+                "--repo",
+                str(repo),
+                "--test",
+                "tests/test_calculator.py",
+                "--dry-run",
+                "--transition-scorer-shadow",
+                "--transition-advice-out",
+                str(advice_path),
+            ]
+        )
+        == 0
+    )
+
+    output = capsys.readouterr().out
+    rows = _jsonl_rows(advice_path)
+
+    assert f"transition advice: {advice_path.resolve()}" in output
+    assert len(rows) == 1
+    row = rows[0]
+    assert row["schema_version"] == "transition-scorer-advice-v1"
+    assert row["mode"] == "shadow"
+    assert row["candidate_count"] > 0
+    assert row["existing_selected_candidate"]["rank_index"] == 1
+    assert row["scorer_top_candidate"] is not None
+    assert row["runtime"]["hosted_llm_api_calls"] == 0
+    assert row["usage"]["hosted_repo_context_bytes"] == 0
+
+
 def test_eval_default_progress_suppresses_candidate_lines(capsys) -> None:
     assert (
         main(

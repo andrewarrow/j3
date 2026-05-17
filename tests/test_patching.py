@@ -302,6 +302,37 @@ def test_generate_missing_keyword_argument_passthrough_candidate(tmp_path) -> No
     )
 
 
+def test_generate_missing_boolean_default_keyword_candidate(tmp_path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    package = repo / "webcookies"
+    package.mkdir()
+    (package / "__init__.py").write_text("", encoding="utf-8")
+    (package / "policy.py").write_text(
+        "def normalize_scope(host: str, path: str, include_path: bool = False) -> str:\n"
+        "    if include_path:\n"
+        "        return f'{host}{path}'\n"
+        "    return host\n\n"
+        "def cookie_scope_key(host: str, path: str) -> str:\n"
+        "    return normalize_scope(host, path)\n",
+        encoding="utf-8",
+    )
+
+    candidates = generate_candidate_patches(repo)
+
+    assert any(
+        candidate.file_path == "webcookies/policy.py"
+        and candidate.action.kind.value == "add_keyword_arg"
+        and candidate.action.params == {
+            "keyword": "include_path",
+            "value": True,
+            "callee": "normalize_scope",
+        }
+        and "normalize_scope(host, path, include_path=True)" in candidate.patched_source
+        for candidate in candidates
+    )
+
+
 def test_generate_fallback_warning_candidate_for_missing_setting(tmp_path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()
@@ -872,6 +903,29 @@ def test_patch_solves_missing_keyword_argument_passthrough(tmp_path) -> None:
         "callee": "shipping_timeout_label",
     }
     assert "shipping_timeout_label(timeout_seconds=timeout_seconds)" in result.selected.patched_source
+
+
+def test_patch_solves_cookie_scope_include_path_keyword(tmp_path) -> None:
+    repo = tmp_path / "greenshot_6"
+    shutil.copytree("examples/greenshot_6", repo)
+
+    result = plan_and_maybe_apply_patch(
+        repo=repo,
+        test_command="python -m pytest tests/test_webcookies.py::test_cookie_scope_key_includes_path_when_requested",
+        dry_run=True,
+        timeout_seconds=10,
+    )
+
+    assert result.selected is not None
+    assert result.candidates_tested == 1
+    assert result.selected.file_path == "webcookies/policy.py"
+    assert result.selected.action.kind.value == "add_keyword_arg"
+    assert result.selected.action.params == {
+        "keyword": "include_path",
+        "value": True,
+        "callee": "normalize_scope",
+    }
+    assert "normalize_scope(host, path, include_path=True)" in result.selected.patched_source
 
 
 def test_patch_solves_missing_setting_with_default_warning(tmp_path) -> None:

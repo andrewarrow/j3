@@ -302,8 +302,61 @@ Recent work:
   context: the preferred `change_operator` row is still dragged down by broad
   AST/operator-delta weights and lacks richer non-leaky predicate metadata.
   Details are in `HARD_NEGATIVES.md`.
+- The `add_keyword_arg` candidate generator now records local callee literal
+  defaults and narrowly synthesizes missing boolean default keywords by adding
+  the opposite boolean value when no outer pass-through parameter exists. This
+  generates the preferred `add_keyword_arg(include_path=True)` candidate for
+  `cookie_scope_include_path_keyword` without adding a new action family and
+  without changing existing pass-through keyword behavior.
+- Focused coverage passed for both keyword paths:
+  `pytest tests/test_patching.py::test_generate_missing_keyword_argument_passthrough_candidate tests/test_patching.py::test_generate_missing_boolean_default_keyword_candidate tests/test_patching.py::test_patch_solves_missing_keyword_argument_passthrough tests/test_patching.py::test_patch_solves_cookie_scope_include_path_keyword -q`.
+- GreenShot-6 outcomes were refreshed after the boolean keyword-generation
+  change. The persisted dataset at
+  `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` now covers 19
+  tasks and 140 tested candidates; ranked eval solved all 19 tasks with
+  pass@1=14/19 and average candidates 7.37. The cookie scope task now solves
+  with `add_keyword_arg`.
+- The GreenShot-6 `split: test` held-out ranker validation was rerun after the
+  outcome refresh. The validation stayed at solved=7/7, pass@1=6/7,
+  positive@1=5/7, and avg_first_passing_index=1.1428571428571428. The cookie
+  scope task now ranks the preferred `add_keyword_arg(include_path=True)`
+  candidate first. Remaining validation issues are
+  `cookie_default_secure_flag_dict_value`, where the false `change_dict_key`
+  candidate is again above the preferred `change_dict_value`, and
+  `http_no_store_response_with_etag`, where a non-preferred passing
+  `change_literal` ranks above the preferred `change_operator`.
 
 Last focused verification:
+
+```bash
+pytest tests/test_patching.py::test_generate_missing_keyword_argument_passthrough_candidate tests/test_patching.py::test_generate_missing_boolean_default_keyword_candidate tests/test_patching.py::test_patch_solves_missing_keyword_argument_passthrough tests/test_patching.py::test_patch_solves_cookie_scope_include_path_keyword -q
+python cli.py eval \
+  --tasks examples/greenshot_6 \
+  --checkpoint runs/apache-python-git/model.json \
+  --timeout 10 \
+  --max-candidates 80 \
+  --phase ranked \
+  --explore-after-pass 5 \
+  --diagnostics runs/apache-python-git/greenshot-6-explore-diagnostics.json \
+  --candidate-outcomes runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl \
+  --quiet
+python cli.py train-ranker \
+  --candidate-outcomes \
+    runs/apache-python-git/greenshot-5-candidate-outcomes.jsonl \
+    runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl \
+  --holdout-task \
+    apache_license_classifier_dict_value \
+    http_no_store_response_with_etag \
+    cookie_default_secure_flag_dict_value \
+    cookie_host_prefix_dict_value \
+    cookie_zero_max_age_operator_boundary \
+    cookie_pair_argument_order \
+    cookie_scope_include_path_keyword \
+  --out runs/apache-python-git/ranker-holdout-greenshot-6-test-slice
+git diff --check
+```
+
+Previous focused verification:
 
 ```bash
 pytest tests/test_candidate_ranking.py -q
@@ -384,9 +437,9 @@ GreenShot-6 outcome collection result:
 
 ```text
 ranked, runs/apache-python-git/model.json, explore-after-pass=5:
-  solved=19/19 pass@1=13/19 avg_candidates=7.42
-  rows=141 passing_rows=36 preferred_positive_rows=17
-  source_type pass@1: git_history=2/4 mutation=11/15
+  solved=19/19 pass@1=14/19 avg_candidates=7.37
+  rows=140 passing_rows=37 preferred_positive_rows=18
+  source_type pass@1: git_history=2/4 mutation=12/15
 ```
 
 Treat this as a smoke check, not a benchmark claim.
@@ -406,16 +459,15 @@ GreenShot-6 test-slice ranker validation result:
 ```text
 train-ranker, holdout-task includes all GreenShot-6 split:test tasks:
   training rows=220 passing_rows=45 tasks=32 plans=32 pairs=186
-  training_accuracy=1.000 margin_violations=4 features=558
+  training_accuracy=1.000 margin_violations=3 features=584
   validation solved=7/7 pass@1=6/7 positive@1=5/7
   validation avg_first_passing_index=1.1428571428571428
-  residual: cookie_default_secure_flag_dict_value still ranks the preferred
-  change_dict_value candidate first
-  remaining: cookie_scope_include_path_keyword misses pass@1 and still lacks
-  the preferred add_keyword_arg(include_path=True) candidate; for
-  http_no_store_response_with_etag, the non-preferred passing .get
-  swap_call_arg remains trained rank 1 while the preferred change_operator
-  repair remains rank 3
+  fixed: cookie_scope_include_path_keyword now ranks the preferred
+  add_keyword_arg(include_path=True) candidate first
+  residual: cookie_default_secure_flag_dict_value ranks the false
+  change_dict_key candidate first and the preferred change_dict_value second;
+  http_no_store_response_with_etag ranks a non-preferred passing
+  change_literal first and the preferred change_operator fifth
 ```
 
 ## Next Right Things
@@ -425,22 +477,22 @@ Keep this section as the live queue. When work is completed, move it to
 
 Immediate next sequence:
 
-1. For `cookie_scope_include_path_keyword`, treat the primary gap as missing
-   preferred-candidate signal: the tested rows still do not contain the
-   preferred `add_keyword_arg(include_path=True)` repair. If working on this
-   next, extend the existing `add_keyword_arg` family narrowly enough to
-   synthesize boolean default keywords from local callee signatures, rather
-   than adding a new action family.
-2. If adding candidate-generation support for the cookie scope gap, add focused
-   coverage showing the preferred `add_keyword_arg(include_path=True)` candidate
-   is generated and ranked without breaking existing pass-through keyword
-   behavior. Then refresh GreenShot-6 outcomes and rerun the same GreenShot-6
-   `split: test` held-out validation.
-3. If staying on the HTTP residual instead, add independent non-held-out
-   coverage for a `.get` key/default swap hard negative before changing ranker
-   weights, then inspect richer non-leaky predicate/context metadata for the
-   preferred local `change_operator` repair. Validate preferred-positive rank,
-   not pass@1 alone, because the HTTP task has multiple passing candidates.
+1. Inspect the refreshed GreenShot-6 `split: test` residuals before changing
+   weights or adding tasks. `cookie_scope_include_path_keyword` now has and
+   ranks the preferred `add_keyword_arg(include_path=True)` candidate first, so
+   the current residuals are the same-mapping cookie secure decoy and the HTTP
+   preferred-positive miss.
+2. For `cookie_default_secure_flag_dict_value`, compare the refreshed trained
+   score/features for the false `change_dict_key secure -> __Secure-` candidate
+   against the preferred `change_dict_value secure: True -> False` candidate.
+   The previous exact assertion-delta feature had fixed this once; determine
+   why the refreshed outcome/ranker mix moved it back before adding any broad
+   action or boolean weights.
+3. For `http_no_store_response_with_etag`, keep validating preferred-positive
+   rank, not pass@1 alone. Add independent non-held-out coverage for a `.get`
+   key/default swap hard negative only if staying on that residual, then inspect
+   richer non-leaky predicate/context metadata for the preferred local
+   `change_operator` repair.
 
 ### 1. Make GreenShot-6 Real
 
@@ -462,8 +514,7 @@ transition modeling.
 Next tasks:
 
 - Add independent `.get` key/default swap hard-negative coverage only if the
-  next work stays on the HTTP residual; otherwise prefer the immediate cookie
-  candidate-generation gap above.
+  next work stays on the HTTP residual.
 
 ### 3. Collect Hard Negatives
 

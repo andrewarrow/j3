@@ -19,6 +19,7 @@ from .modules import _module_name_from_path, _resolve_import_from_module
 class _FunctionSignature:
     name: str
     params: tuple[str, ...]
+    defaults: Mapping[str, object]
 
 
 def _call_signature_index(
@@ -31,18 +32,21 @@ def _call_signature_index(
         module = _module_name_from_path(Path(source.relative_path))
         if not module:
             continue
-        module_functions[module] = {
-            node.name: _FunctionSignature(
-                name=node.name,
-                params=tuple(
-                    arg.arg
-                    for arg in [*node.args.posonlyargs, *node.args.args, *node.args.kwonlyargs]
-                    if arg.arg not in {"self", "cls"}
-                ),
+        signatures: dict[str, _FunctionSignature] = {}
+        for node in tree.body:
+            if not isinstance(node, ast.FunctionDef):
+                continue
+            params = tuple(
+                arg.arg
+                for arg in [*node.args.posonlyargs, *node.args.args, *node.args.kwonlyargs]
+                if arg.arg not in {"self", "cls"}
             )
-            for node in tree.body
-            if isinstance(node, ast.FunctionDef)
-        }
+            signatures[node.name] = _FunctionSignature(
+                name=node.name,
+                params=params,
+                defaults=_function_literal_defaults(node),
+            )
+        module_functions[module] = signatures
 
     index: dict[str, dict[str, _FunctionSignature]] = {}
     for source, tree in parsed_sources:
@@ -128,18 +132,36 @@ def _add_keyword_arg_candidates(
         for arg in [*function.args.posonlyargs, *function.args.args, *function.args.kwonlyargs]
         if arg.arg not in {"self", "cls"}
     }
-    if not outer_params:
-        return []
 
     supplied_keywords = {keyword.arg for keyword in node.keywords if keyword.arg}
     supplied_by_position = set(signature.params[: len(node.args)])
     candidates: list[CandidatePatch] = []
     for param in signature.params:
-        if param not in outer_params:
-            continue
         if param in supplied_keywords or param in supplied_by_position:
             continue
-        replacement = _render_call_with_added_keyword(source, node, param)
+        if param in outer_params:
+            replacement = _render_call_with_added_keyword(source, node, param, param)
+            if replacement is None:
+                continue
+            candidates.append(
+                _candidate(
+                    file_path=file_path,
+                    source=source,
+                    node=node,
+                    kind=PatchActionKind.ADD_KEYWORD_ARG,
+                    replacement=replacement,
+                    reason=f"pass through keyword argument {param}",
+                    params={"keyword": param, "value": param, "callee": signature.name},
+                    symbol=function.name,
+                )
+            )
+            continue
+
+        default = signature.defaults.get(param)
+        if not isinstance(default, bool):
+            continue
+        value = not default
+        replacement = _render_call_with_added_keyword(source, node, param, str(value))
         if replacement is None:
             continue
         candidates.append(
@@ -149,15 +171,39 @@ def _add_keyword_arg_candidates(
                 node=node,
                 kind=PatchActionKind.ADD_KEYWORD_ARG,
                 replacement=replacement,
-                reason=f"pass through keyword argument {param}",
-                params={"keyword": param, "value": param, "callee": signature.name},
+                reason=f"set boolean keyword argument {param}",
+                params={"keyword": param, "value": value, "callee": signature.name},
                 symbol=function.name,
             )
         )
     return candidates
 
 
-def _render_call_with_added_keyword(source: str, node: ast.Call, keyword_name: str) -> str | None:
+def _function_literal_defaults(function: ast.FunctionDef) -> dict[str, object]:
+    defaults: dict[str, object] = {}
+    positional_args = [*function.args.posonlyargs, *function.args.args]
+    positional_defaults = function.args.defaults
+    defaulted_args = positional_args[len(positional_args) - len(positional_defaults) :]
+    for arg, default in zip(defaulted_args, positional_defaults, strict=True):
+        if arg.arg in {"self", "cls"}:
+            continue
+        if isinstance(default, ast.Constant):
+            defaults[arg.arg] = default.value
+
+    for arg, default in zip(function.args.kwonlyargs, function.args.kw_defaults, strict=True):
+        if arg.arg in {"self", "cls"} or default is None:
+            continue
+        if isinstance(default, ast.Constant):
+            defaults[arg.arg] = default.value
+    return defaults
+
+
+def _render_call_with_added_keyword(
+    source: str,
+    node: ast.Call,
+    keyword_name: str,
+    keyword_value: str,
+) -> str | None:
     func = ast.get_source_segment(source, node.func)
     if not func:
         return None
@@ -173,5 +219,5 @@ def _render_call_with_added_keyword(source: str, node: ast.Call, keyword_name: s
         if value is None or keyword.arg is None:
             return None
         parts.append(f"{keyword.arg}={value}")
-    parts.append(f"{keyword_name}={keyword_name}")
+    parts.append(f"{keyword_name}={keyword_value}")
     return f"{func}({', '.join(parts)})"

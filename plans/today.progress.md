@@ -146,7 +146,7 @@ Use this shape for each worker handoff:
   bench report, evidence bundle, and a suite manifest under the caller-provided
   output directory. The default checked-in task path `examples/greenshot_bugs`
   exists and is used.
-- Commit: pending.
-- Push: pending.
+- Commit: `0aae784` (`Add transition shadow suite command`).
+- Push: succeeded to `main`.
 - Next: add a V3/shadow residual report.
 - Blockers: none.

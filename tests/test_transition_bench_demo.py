@@ -36,6 +36,14 @@ def test_transition_bench_demo_runs_from_checked_in_fixtures(tmp_path: Path) -> 
         "mined_git_transition": 1,
         "prompt_repo_transition": 1,
     }
+    assert report["transition_bench"]["normalized_source_counts"] == {
+        "candidate_outcome": 2,
+        "mined_git_transition": 1,
+        "prompt_repo_transition": 1,
+    }
+    assert report["transition_bench"]["skipped_row_count"] == 0
+    assert report["transition_bench"]["skipped_source_counts"] == {}
+    assert report["transition_bench"]["skipped_rows"] == []
     assert report["action_choices"]["group_count"] == 1
     assert report["action_choices"]["candidate_count"] == 2
     assert report["action_choices"]["solved_group_count"] == 1
@@ -74,12 +82,81 @@ def test_transition_bench_demo_accepts_explicit_candidate_outcomes_only() -> Non
     assert report["action_scoring"]["top_k"] == 2
 
 
+def test_transition_bench_demo_reports_skipped_empty_mined_sources(
+    tmp_path: Path,
+) -> None:
+    mined = tmp_path / "mined.jsonl"
+    invalid_commit = "2222222222222222222222222222222222222222"
+    mined.write_text(
+        "\n".join(
+            json.dumps(row, sort_keys=True)
+            for row in [
+                {
+                    "kind": "git_transition",
+                    "repo": "demo",
+                    "commit": "1111111111111111111111111111111111111111",
+                    "parent": "0000000000000000000000000000000000000000",
+                    "file_path": "calculator.py",
+                    "before_source": "def add(left, right):\n    return left - right\n",
+                    "after_source": "def add(left, right):\n    return left + right\n",
+                },
+                {
+                    "kind": "git_transition",
+                    "repo": "demo",
+                    "commit": invalid_commit,
+                    "parent": "1111111111111111111111111111111111111111",
+                    "file_path": "calculator.py",
+                    "before_source": "def add(left, right):\n    return left - right\n",
+                    "after_source": "",
+                },
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    report = run_transition_bench_demo(
+        repo_root=tmp_path,
+        mined_transitions=[mined],
+        candidate_outcomes=[FIXTURES / "candidate_outcomes.jsonl"],
+        include_fixtures=False,
+        top_k=1,
+        embedding_dim=8,
+    )
+
+    assert report["transition_bench"]["row_count"] == 3
+    assert report["transition_bench"]["input_source_counts"] == {
+        "candidate_outcome": 2,
+        "mined_git_transition": 2,
+    }
+    assert report["transition_bench"]["normalized_source_counts"] == {
+        "candidate_outcome": 2,
+        "mined_git_transition": 1,
+    }
+    assert report["transition_bench"]["skipped_row_count"] == 1
+    assert report["transition_bench"]["skipped_source_counts"] == {
+        "mined_git_transition": 1,
+    }
+    assert report["transition_bench"]["skipped_rows"] == [
+        {
+            "source_kind": "mined_git_transition",
+            "source_path": str(mined.resolve()),
+            "row_index": 2,
+            "reason": "empty_after_source",
+            "repo": "demo",
+            "file_path": "calculator.py",
+            "commit": invalid_commit,
+        }
+    ]
+
+
 def test_transition_bench_demo_human_output_mentions_core_metrics() -> None:
     report = run_transition_bench_demo(top_k=1, embedding_dim=8)
 
     output = format_transition_bench_demo_report(report)
 
     assert "j3 demo-transition-bench complete" in output
+    assert "skipped source rows: 0" in output
     assert "groups: 1" in output
     assert "candidates: 2" in output
     assert f"{TRANSITION_ACTION_SCORER_VERSION}: pass@1=1/1" in output

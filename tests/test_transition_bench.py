@@ -12,6 +12,7 @@ from j3.transition_bench import (
     TRANSITION_BENCH_SCHEMA_VERSION,
     load_transition_bench_jsonl,
     normalize_transition_bench_jsonl,
+    normalize_transition_bench_jsonl_with_report,
     validate_transition_bench_row,
     write_transition_bench_jsonl,
 )
@@ -123,6 +124,81 @@ def test_transition_bench_validator_rejects_bad_rows() -> None:
 
     with pytest.raises(ValueError, match="before.embedding length"):
         validate_transition_bench_row(broken)
+
+
+def test_transition_bench_normalizer_skips_empty_mined_sources(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "mined.jsonl"
+    rows = [
+        {
+            "kind": "git_transition",
+            "repo": "demo",
+            "commit": "2222222222222222222222222222222222222222",
+            "parent": "1111111111111111111111111111111111111111",
+            "file_path": "calculator.py",
+            "before_source": "",
+            "after_source": "def add(left, right):\n    return left + right\n",
+        },
+        {
+            "kind": "git_transition",
+            "repo": "demo",
+            "commit": "3333333333333333333333333333333333333333",
+            "parent": "2222222222222222222222222222222222222222",
+            "file_path": "calculator.py",
+            "before_source": "def add(left, right):\n    return left - right\n",
+            "after_source": "",
+        },
+        {
+            "kind": "git_transition",
+            "repo": "demo",
+            "commit": "4444444444444444444444444444444444444444",
+            "parent": "3333333333333333333333333333333333333333",
+            "file_path": "calculator.py",
+            "before_source": "def add(left, right):\n    return left - right\n",
+            "after_source": "def add(left, right):\n    return left + right\n",
+        },
+    ]
+    source.write_text(
+        "\n".join(json.dumps(row, sort_keys=True) for row in rows) + "\n",
+        encoding="utf-8",
+    )
+
+    result = normalize_transition_bench_jsonl_with_report(
+        source,
+        source_kind=SOURCE_MINED_GIT_TRANSITION,
+        embedding_dim=8,
+    )
+
+    assert len(result.rows) == 1
+    assert result.input_row_count == 3
+    assert result.source_kind == SOURCE_MINED_GIT_TRANSITION
+    assert result.source_path == str(source.resolve())
+    assert result.skipped_rows == (
+        {
+            "source_kind": SOURCE_MINED_GIT_TRANSITION,
+            "source_path": str(source.resolve()),
+            "row_index": 1,
+            "reason": "empty_before_source",
+            "repo": "demo",
+            "file_path": "calculator.py",
+            "commit": "2222222222222222222222222222222222222222",
+        },
+        {
+            "source_kind": SOURCE_MINED_GIT_TRANSITION,
+            "source_path": str(source.resolve()),
+            "row_index": 2,
+            "reason": "empty_after_source",
+            "repo": "demo",
+            "file_path": "calculator.py",
+            "commit": "3333333333333333333333333333333333333333",
+        },
+    )
+    assert normalize_transition_bench_jsonl(
+        source,
+        source_kind=SOURCE_MINED_GIT_TRANSITION,
+        embedding_dim=8,
+    ) == result.rows
 
 
 def test_transition_bench_normalizer_rejects_unknown_source_kind() -> None:

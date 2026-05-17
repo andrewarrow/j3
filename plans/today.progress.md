@@ -6,7 +6,7 @@ This file is the live progress log for `plans/today.md`. Keep
 ## Status
 
 - Current phase: productize transition scoring without fooling ourselves.
-- Completed iterations for this reset: 0.
+- Completed iterations for this reset: 1.
 - Latest relevant commits:
   - `26cca1d` removed the old today plan files.
   - `4cca638` documented transition bench reproduction.
@@ -15,15 +15,13 @@ This file is the live progress log for `plans/today.md`. Keep
   - `3eb9c38` added transition action-choice groups.
   - `d95ebc7` defined the transition bench schema.
   - `7e3df39` added transition asset inventory.
-- Current blocker: the full local transition bench crashes on mined rows with
-  empty `after_source`; the current V1 future scorer also underperforms the
-  existing rank order on local candidate outcomes.
-- Next task: harden transition-bench normalization for real mined rows and add
-  skipped/invalid-row accounting.
+- Current blocker: the current V1 future scorer underperforms the existing rank
+  order on local candidate outcomes.
+- Next task: add product-readiness gates to transition bench reports.
 
 ## Active Task Queue
 
-- [ ] Harden real-data normalization for empty mined source rows.
+- [x] Harden real-data normalization for empty mined source rows.
 - [ ] Add product-readiness gates to transition bench reports.
 - [ ] Calibrate a V2 action scorer from candidate outcomes.
 - [ ] Add shadow transition-scorer advice to real patch/eval planning.
@@ -61,6 +59,8 @@ This file is the live progress log for `plans/today.md`. Keep
   - `data/transitions/apache-python/Netflix__metaflow.jsonl` row 46
   - `data/transitions/apache-python/Netflix__metaflow.jsonl` row 47
   - `data/transitions/apache-python/treeverse__dvc.jsonl` row 46
+- Full local bench now skips those three rows with structured skipped-row
+  accounting and completes successfully.
 
 ## Checks Run During Plan Recreation
 
@@ -110,3 +110,27 @@ Use this shape for each worker handoff:
 - Tests run: `git diff --check` passed.
 - Next: implement Step 1, real-data normalization hardening.
 - Blockers: none beyond the recorded full-bench crash.
+
+### Iteration 1: Harden real-data normalization for empty mined source rows
+
+- Worker: Codex Worker Iteration 1
+- Goal: skip invalid mined git transition rows with empty `before_source` or
+  `after_source`, report structured skipped-row details, and expose normalized
+  and skipped counts by source kind in `demo-transition-bench`.
+- Files changed: `j3/transition_bench.py`, `j3/transition_bench_demo.py`,
+  `tests/test_transition_bench.py`, `tests/test_transition_bench_demo.py`,
+  `plans/today.progress.md`.
+- Tests run:
+  - `pytest tests/test_transition_bench.py -q` passed, 5 tests.
+  - `pytest tests/test_transition_bench_demo.py -q` passed, 4 tests.
+  - `python cli.py demo-transition-bench --embedding-dim 256 --top-k 3 --mined-transitions data/transitions/apache-python/*.jsonl --candidate-outcomes runs/apache-python-git/*candidate-outcomes.jsonl --out /tmp/j3-transition-bench-local-report.json` passed with 2,485 normalized rows and 3 skipped rows.
+  - `python -m json.tool /tmp/j3-transition-bench-local-report.json >/dev/null`
+    passed.
+- Result: mined git rows with empty sources are skipped instead of crashing;
+  skipped rows include source path, row index, reason, repo, file path, and
+  commit; demo reports input, normalized, and skipped counts by source kind.
+- Commit: `Harden transition bench normalization`
+- Push: pending final worker push
+- Next: add product-readiness gates to transition bench reports.
+- Blockers: none for this slice; V1 future scorer still underperforms existing
+  rank order.

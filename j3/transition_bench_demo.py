@@ -21,7 +21,8 @@ from j3.transition_bench import (
     SOURCE_CANDIDATE_OUTCOME,
     SOURCE_MINED_GIT_TRANSITION,
     SOURCE_PROMPT_REPO_TRANSITION,
-    normalize_transition_bench_jsonl,
+    TransitionBenchNormalizationResult,
+    normalize_transition_bench_jsonl_with_report,
 )
 
 
@@ -74,34 +75,35 @@ def run_transition_bench_demo(
         repo_root=repo_root,
         prompt_corpus=prompt_corpus,
     )
-    bench_rows = [
+    normalization_results = [
         *(
-            row
-            for path in prompt_paths
-            for row in normalize_transition_bench_jsonl(
+            normalize_transition_bench_jsonl_with_report(
                 path,
                 source_kind=SOURCE_PROMPT_REPO_TRANSITION,
                 embedding_dim=embedding_dim,
             )
+            for path in prompt_paths
         ),
         *(
-            row
-            for path in mined_paths
-            for row in normalize_transition_bench_jsonl(
+            normalize_transition_bench_jsonl_with_report(
                 path,
                 source_kind=SOURCE_MINED_GIT_TRANSITION,
                 embedding_dim=embedding_dim,
             )
+            for path in mined_paths
         ),
         *(
-            row
-            for path in candidate_paths
-            for row in normalize_transition_bench_jsonl(
+            normalize_transition_bench_jsonl_with_report(
                 path,
                 source_kind=SOURCE_CANDIDATE_OUTCOME,
                 embedding_dim=embedding_dim,
             )
+            for path in candidate_paths
         ),
+    ]
+    bench_rows = [row for result in normalization_results for row in result.rows]
+    skipped_rows = [
+        row for result in normalization_results for row in result.skipped_rows
     ]
     action_choice_groups = [
         group
@@ -118,6 +120,12 @@ def run_transition_bench_demo(
     )
     source_counts = Counter(
         _mapping(row.get("source")).get("kind", "unknown") for row in bench_rows
+    )
+    input_source_counts: Counter[str] = Counter()
+    for result in normalization_results:
+        input_source_counts[result.source_kind] += result.input_row_count
+    skipped_source_counts = Counter(
+        _mapping(row).get("source_kind", "unknown") for row in skipped_rows
     )
     report_path = str(out.expanduser().resolve()) if out is not None else None
     runtime_ms = round((time.perf_counter() - started) * 1000, 3)
@@ -142,6 +150,12 @@ def run_transition_bench_demo(
             "schema_version": "transition-bench-v1",
             "row_count": len(bench_rows),
             "source_counts": dict(sorted(source_counts.items())),
+            "input_source_counts": dict(sorted(input_source_counts.items())),
+            "normalized_source_counts": dict(sorted(source_counts.items())),
+            "skipped_row_count": len(skipped_rows),
+            "skipped_source_counts": dict(sorted(skipped_source_counts.items())),
+            "skipped_rows": skipped_rows,
+            "normalization_inputs": _normalization_input_records(normalization_results),
         },
         "action_choices": {
             "schema_version": "transition-action-choice-v1",
@@ -197,6 +211,7 @@ def format_transition_bench_demo_report(report: Mapping[str, object]) -> str:
         "j3 demo-transition-bench complete",
         "mode: evaluation-only",
         f"transition bench rows: {transition_bench.get('row_count', 0)}",
+        f"skipped source rows: {transition_bench.get('skipped_row_count', 0)}",
         f"groups: {action_choices.get('group_count', 0)}",
         f"candidates: {action_choices.get('candidate_count', 0)}",
         f"top k: {scoring.get('top_k')}",
@@ -268,6 +283,21 @@ def _count_jsonl_rows(path: Path) -> int:
             if line.strip():
                 rows += 1
     return rows
+
+
+def _normalization_input_records(
+    results: Sequence[TransitionBenchNormalizationResult],
+) -> list[dict[str, object]]:
+    return [
+        {
+            "source_kind": result.source_kind,
+            "source_path": result.source_path,
+            "input_row_count": result.input_row_count,
+            "normalized_row_count": len(result.rows),
+            "skipped_row_count": len(result.skipped_rows),
+        }
+        for result in results
+    ]
 
 
 def _asset_inventory_context(inventory: Mapping[str, object]) -> dict[str, object]:

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
 from hashlib import sha256
 from pathlib import Path
 from typing import Mapping, Sequence
@@ -24,6 +25,17 @@ HOSTED_LLM_API_TOKENS = 0
 HOSTED_REPO_CONTEXT_BYTES = 0
 DEFAULT_EMBEDDING_DIM = 256
 MIN_EMBEDDING_DIM = 8
+
+
+@dataclass(frozen=True)
+class TransitionBenchNormalizationResult:
+    """Rows plus structured accounting for skipped source records."""
+
+    rows: tuple[dict[str, object], ...]
+    skipped_rows: tuple[dict[str, object], ...]
+    source_kind: str
+    source_path: str | None
+    input_row_count: int
 
 
 def load_jsonl_objects(path: Path) -> tuple[dict[str, object], ...]:
@@ -50,7 +62,22 @@ def normalize_transition_bench_jsonl(
 ) -> tuple[dict[str, object], ...]:
     """Load source JSONL rows and normalize them into transition-bench rows."""
 
-    return normalize_transition_bench_rows(
+    return normalize_transition_bench_jsonl_with_report(
+        path,
+        source_kind=source_kind,
+        embedding_dim=embedding_dim,
+    ).rows
+
+
+def normalize_transition_bench_jsonl_with_report(
+    path: Path,
+    *,
+    source_kind: str,
+    embedding_dim: int = DEFAULT_EMBEDDING_DIM,
+) -> TransitionBenchNormalizationResult:
+    """Load and normalize source JSONL rows with skipped-row accounting."""
+
+    return normalize_transition_bench_rows_with_report(
         load_jsonl_objects(path),
         source_kind=source_kind,
         source_path=path,
@@ -67,12 +94,30 @@ def normalize_transition_bench_rows(
 ) -> tuple[dict[str, object], ...]:
     """Normalize one supported source row shape into transition-bench rows."""
 
+    return normalize_transition_bench_rows_with_report(
+        rows,
+        source_kind=source_kind,
+        source_path=source_path,
+        embedding_dim=embedding_dim,
+    ).rows
+
+
+def normalize_transition_bench_rows_with_report(
+    rows: Sequence[Mapping[str, object]],
+    *,
+    source_kind: str,
+    source_path: Path | None = None,
+    embedding_dim: int = DEFAULT_EMBEDDING_DIM,
+) -> TransitionBenchNormalizationResult:
+    """Normalize supported source rows and report skipped invalid source records."""
+
     if source_kind not in SUPPORTED_SOURCE_KINDS:
         raise ValueError(f"unsupported transition bench source kind {source_kind!r}")
     if embedding_dim < MIN_EMBEDDING_DIM:
         raise ValueError(f"embedding_dim must be >= {MIN_EMBEDDING_DIM}")
 
     normalized: list[dict[str, object]] = []
+    skipped_rows: list[dict[str, object]] = []
     for index, row in enumerate(rows, start=1):
         if source_kind == SOURCE_PROMPT_REPO_TRANSITION:
             bench_row = normalize_prompt_repo_transition_row(
@@ -81,6 +126,15 @@ def normalize_transition_bench_rows(
                 source_path=source_path,
             )
         elif source_kind == SOURCE_MINED_GIT_TRANSITION:
+            skip_record = _empty_mined_source_skip_record(
+                row,
+                index=index,
+                source_kind=source_kind,
+                source_path=source_path,
+            )
+            if skip_record is not None:
+                skipped_rows.append(skip_record)
+                continue
             bench_row = normalize_mined_git_transition_row(
                 row,
                 index=index,
@@ -95,7 +149,13 @@ def normalize_transition_bench_rows(
             )
         validate_transition_bench_row(bench_row)
         normalized.append(bench_row)
-    return tuple(normalized)
+    return TransitionBenchNormalizationResult(
+        rows=tuple(normalized),
+        skipped_rows=tuple(skipped_rows),
+        source_kind=source_kind,
+        source_path=_resolved_source_path(source_path),
+        input_row_count=len(rows),
+    )
 
 
 def normalize_prompt_repo_transition_row(
@@ -468,6 +528,42 @@ def _source_record(
     if source_path is not None:
         record["path"] = str(source_path.expanduser().resolve())
     return record
+
+
+def _empty_mined_source_skip_record(
+    row: Mapping[str, object],
+    *,
+    index: int,
+    source_kind: str,
+    source_path: Path | None,
+) -> dict[str, object] | None:
+    if row.get("kind") != "git_transition":
+        return None
+    before_source = row.get("before_source")
+    after_source = row.get("after_source")
+    empty_fields: list[str] = []
+    if not isinstance(before_source, str) or not before_source:
+        empty_fields.append("before_source")
+    if not isinstance(after_source, str) or not after_source:
+        empty_fields.append("after_source")
+    if not empty_fields:
+        return None
+
+    return {
+        "source_kind": source_kind,
+        "source_path": _resolved_source_path(source_path),
+        "row_index": index,
+        "reason": "empty_" + "_and_".join(empty_fields),
+        "repo": row.get("repo"),
+        "file_path": row.get("file_path"),
+        "commit": row.get("commit"),
+    }
+
+
+def _resolved_source_path(source_path: Path | None) -> str | None:
+    if source_path is None:
+        return None
+    return str(source_path.expanduser().resolve())
 
 
 def _validation_record(

@@ -377,6 +377,29 @@
     }
   },
   {
+    "name": "humanize_gnu_ronna_suffix",
+    "family": "filesize_suffix_table",
+    "source_type": "git_history",
+    "split": "train",
+    "repo": ".",
+    "test": "python -m pytest tests/test_filesize.py::test_gnu_filesize_supports_ronna_prefix",
+    "source": {
+      "repo": "python-humanize/humanize",
+      "commit": "77112a4cf39d57e233848f15cc0520776744d087",
+      "pr": 142
+    },
+    "preferred": {
+      "file_path": "filesize/format.py",
+      "action": "change_dict_value",
+      "symbol": "suffixes",
+      "params": {
+        "key": "gnu",
+        "from": "KMGTPEZY",
+        "to": "KMGTPEZYRQ"
+      }
+    }
+  },
+  {
     "name": "cookie_default_secure_flag_dict_value",
     "family": "mapping_value",
     "source_type": "mutation",

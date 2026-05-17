@@ -585,12 +585,41 @@ Recent work:
   `minimum_python_version_operator_boundary`; every task has a tested
   preferred-positive row, and the saved test-slice ranker places every
   preferred-positive candidate at trained rank 1.
+- GreenShot-6 now includes an eighth fixture domain, `filesize`, with one
+  real-package-derived `git_history` task modeled on `python-humanize/humanize`
+  commit `77112a4cf39d57e233848f15cc0520776744d087` / PR 142. The task
+  `humanize_gnu_ronna_suffix` repairs GNU filesize suffix support by changing
+  the `suffixes["gnu"]` dictionary value from `"KMGTPEZY"` to `"KMGTPEZYRQ"`,
+  using the existing `change_dict_value` action family.
+- The `change_dict_value` generator now also covers module-level dictionary
+  assignments. This was needed because the real-derived repair is a
+  module-level suffix table; no new action family was added.
+- Focused loader/generator coverage passed for the new filesize task:
+  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks tests/test_patching.py::test_patch_solves_humanize_gnu_ronna_suffix -q`.
+- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
+  adding `filesize`. The persisted dataset at
+  `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` now covers 27
+  tasks and 194 tested candidates. Ranked eval solved all 27 tasks with
+  `pass@1=21/27` and average candidates `7.19`; the new humanize-derived task
+  solves at raw rank 1 with the preferred `change_dict_value` candidate.
+- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
+  the filesize outcome refresh. Validation is solved=7/7, pass@1=6/7,
+  positive@1=5/7, and avg_first_passing_index=1.1428571428571428. Training used
+  274 rows, 62 passing rows, 233 training pairs, 761 features, and 2 margin
+  violations.
+- Refreshed raw/trained miss inspection after adding `filesize` found no missing
+  preferred-positive rows. Raw GreenShot-6 has the same six pass@1 misses as
+  before. The trained holdout residuals are `cookie_host_prefix_dict_value`,
+  where a false `change_dict_value host: "__Host" -> "host"` now ranks above
+  the preferred `host: "__Host" -> "__Host-"`, and
+  `http_no_store_response_with_etag`, where a non-preferred passing
+  `change_literal "no-store" -> "no_store"` again ranks above the preferred
+  `change_operator not in -> in`. Details are in `HARD_NEGATIVES.md`.
 
 Last focused verification:
 
 ```bash
-pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q
-pytest tests/test_patching.py::test_patch_solves_tornado_header_newline_forbidden_regex -q
+pytest tests/test_evaluation.py::test_load_greenshot_6_tasks tests/test_patching.py::test_patch_solves_humanize_gnu_ronna_suffix -q
 python cli.py eval \
   --tasks examples/greenshot_6 \
   --checkpoint runs/apache-python-git/model.json \
@@ -621,9 +650,10 @@ python - <<'PY'
 # runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl
 PY
 python - <<'PY'
-# applied the saved
+# applied the refreshed
 # runs/apache-python-git/ranker-holdout-greenshot-6-test-slice/candidate-ranker.json
-# to refreshed GreenShot-6 rows; all preferred-positive candidates rank first
+# to refreshed GreenShot-6 rows; trained residuals are documented in
+# HARD_NEGATIVES.md
 PY
 git diff --check
 ```
@@ -742,9 +772,9 @@ GreenShot-6 outcome collection result:
 
 ```text
 ranked, runs/apache-python-git/model.json, explore-after-pass=5:
-  solved=26/26 pass@1=20/26 avg_candidates=7.23
-  rows=188 passing_rows=53 preferred_positive_rows=26
-  source_type pass@1: git_history=5/8 mutation=15/18
+  solved=27/27 pass@1=21/27 avg_candidates=7.19
+  rows=194 passing_rows=54 preferred_positive_rows=27
+  source_type pass@1: git_history=6/9 mutation=15/18
 ```
 
 Treat this as a smoke check, not a benchmark claim.
@@ -955,23 +985,20 @@ Start neural/JEPA work only when:
 
 ## Handoff Recommendation
 
-The next context window should add the next real-package-derived GreenShot-6
-task or a small fixture domain from real git-history signal, using existing
-action families where possible. The latest GreenShot-6 `split: test` holdout
-remains clean after adding the Tornado-derived `headers` task, and the fresh
-raw/trained miss inspection did not reveal a narrow ranker or outcome-quality
-gap.
+The next context window should inspect the two trained GreenShot-6 `split: test`
+holdout residuals introduced after adding the humanize-derived `filesize` task.
+Do not tune broad handcrafted weights or add pass/preferred-label features from
+this state. The new filesize task itself is clean and has a tested
+preferred-positive row at raw rank 1.
 
 Immediate next sequence:
 
-1. Pick one real-package-derived repair shape not already represented by the
-   current `pkgmeta`, `httpcache`, `webcookies`, `cliformat`, `sampling`,
-   `dateparse`, and `headers` fixture domains.
-2. Add the smallest GreenShot-6 task or fixture domain that captures that repair
-   with existing actions if possible; only add an action if the held-out repair
-   proves the candidate is missing.
-3. Run focused loader/generator tests for the new task.
-4. Refresh GreenShot-6 outcomes with `--explore-after-pass 5`.
-5. Rerun the GreenShot-6 `split: test` held-out ranker validation and inspect
-   any new raw or trained preferred-positive misses before implementing ranker
-   features.
+1. Inspect `cookie_host_prefix_dict_value`: the trained ranker now puts a false
+   same-key `change_dict_value host: "__Host" -> "host"` above the preferred
+   `host: "__Host" -> "__Host-"` repair.
+2. Inspect `http_no_store_response_with_etag`: the trained ranker again puts a
+   non-preferred passing membership-literal edit above the preferred membership
+   operator repair.
+3. Decide whether either residual needs independent non-held-out dataset
+   coverage or narrow non-leaky metadata. Prefer dataset coverage if the
+   existing feature set already describes the distinction but lacks support.

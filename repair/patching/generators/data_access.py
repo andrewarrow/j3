@@ -205,6 +205,63 @@ def _change_dict_value_candidates(
     node: ast.Dict,
     repo_string_literals: set[str],
 ) -> list[CandidatePatch]:
+    return _change_dict_value_candidates_for_symbol(
+        file_path=file_path,
+        source=source,
+        symbol=function.name,
+        node=node,
+        repo_string_literals=repo_string_literals,
+    )
+
+
+def _module_change_dict_value_candidates(
+    file_path: str,
+    source: str,
+    tree: ast.Module,
+    repo_string_literals: set[str],
+) -> list[CandidatePatch]:
+    candidates: list[CandidatePatch] = []
+    for statement in tree.body:
+        assignment = _module_dict_assignment(statement)
+        if assignment is None:
+            continue
+        symbol, node = assignment
+        candidates.extend(
+            _change_dict_value_candidates_for_symbol(
+                file_path=file_path,
+                source=source,
+                symbol=symbol,
+                node=node,
+                repo_string_literals=repo_string_literals,
+            )
+        )
+    return candidates
+
+
+def _module_dict_assignment(statement: ast.stmt) -> tuple[str, ast.Dict] | None:
+    target: ast.expr | None
+    value: ast.expr | None
+    if isinstance(statement, ast.Assign) and len(statement.targets) == 1:
+        target = statement.targets[0]
+        value = statement.value
+    elif isinstance(statement, ast.AnnAssign):
+        target = statement.target
+        value = statement.value
+    else:
+        return None
+
+    if not isinstance(target, ast.Name) or not isinstance(value, ast.Dict):
+        return None
+    return target.id, value
+
+
+def _change_dict_value_candidates_for_symbol(
+    file_path: str,
+    source: str,
+    symbol: str,
+    node: ast.Dict,
+    repo_string_literals: set[str],
+) -> list[CandidatePatch]:
     candidates: list[CandidatePatch] = []
     for key_node, value_node in zip(node.keys, node.values, strict=True):
         if value_node is None or not isinstance(value_node, ast.Constant):
@@ -224,7 +281,7 @@ def _change_dict_value_candidates(
                     file_path=file_path,
                     start_line=value_node.lineno,
                     end_line=value_node.end_lineno,
-                    symbol=function.name,
+                    symbol=symbol,
                     node_kind="Dict",
                 ),
                 params={"key": key, "from": value_node.value, "to": replacement},

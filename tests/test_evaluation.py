@@ -97,7 +97,7 @@ def test_load_greenshot_6_tasks() -> None:
     tasks = load_tasks(Path("examples/greenshot_6"))
     by_name = {task.name: task for task in tasks}
 
-    assert len(tasks) == 26
+    assert len(tasks) == 27
     assert tasks[0].name == "core_metadata_version_dict_value"
     assert tasks[0].family == "mapping_value"
     assert tasks[0].source_type == "mutation"
@@ -253,6 +253,18 @@ def test_load_greenshot_6_tasks() -> None:
         "params": {
             "from": r"[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]",
             "to": r"[\x00-\x08\x0A-\x1F\x7F]",
+        },
+    }
+    assert by_name["humanize_gnu_ronna_suffix"].split == "train"
+    assert by_name["humanize_gnu_ronna_suffix"].source_type == "git_history"
+    assert by_name["humanize_gnu_ronna_suffix"].preferred_patch == {
+        "file_path": "filesize/format.py",
+        "action": "change_dict_value",
+        "symbol": "suffixes",
+        "params": {
+            "key": "gnu",
+            "from": "KMGTPEZY",
+            "to": "KMGTPEZYRQ",
         },
     }
     assert by_name["cookie_default_secure_flag_dict_value"].split == "test"

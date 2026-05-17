@@ -307,6 +307,55 @@ Decision: do not add ranker features or broad weights from this state. The next
 useful step remains dataset growth from another real-package-derived repair
 shape.
 
+## Filesize Suffix Refresh
+
+Inspection date: 2026-05-17.
+
+Inspection source:
+
+```bash
+runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl
+runs/apache-python-git/ranker-holdout-greenshot-6-test-slice/candidate-ranker.json
+```
+
+After adding the humanize-derived `filesize` domain, raw GreenShot-6 solves all
+27 tasks with six pass@1 misses:
+
+| Task | Family | Source | Split | First passing rank | Preferred rank |
+| --- | --- | --- | --- | ---: | ---: |
+| `apache_license_classifier_dict_value` | `mapping_value` | `mutation` | `test` | 5 | 5 |
+| `dynamic_field_error_message` | `exception_message` | `git_history` | `train` | 8 | 10 |
+| `http_no_store_directive_subscript_key` | `http_cache_directive` | `mutation` | `train` | 19 | 19 |
+| `http_range_request_bypasses_cache` | `http_cache_range` | `git_history` | `train` | 2 | 2 |
+| `litgpt_zero_temperature_greedy_condition` | `sampling_condition` | `git_history` | `train` | 2 | 7 |
+| `minimum_python_version_operator_boundary` | `operator_boundary` | `mutation` | `validation` | 2 | 2 |
+
+The new `humanize_gnu_ronna_suffix` task passes at raw rank 1 with the
+preferred `change_dict_value` candidate:
+
+```text
+suffixes["gnu"]: "KMGTPEZY" -> "KMGTPEZYRQ"
+```
+
+Every refreshed GreenShot-6 task has a tested preferred-positive row. The same
+GreenShot-6 `split: test` holdout now has two trained residuals:
+
+| Task | Trained rank 1 | Preferred / first valid repair | Decision |
+| --- | --- | --- | --- |
+| `cookie_host_prefix_dict_value` | false `change_dict_value`, `host: "__Host" -> "host"` | rank 2, preferred `change_dict_value`, `host: "__Host" -> "__Host-"` | Inspect same-key string value decoys before broad weights. |
+| `http_no_store_response_with_etag` | non-preferred passing `change_literal`, `"no-store" -> "no_store"` | rank 2, preferred `change_operator`, `not in` -> `in` | Inspect membership literal-vs-operator support before feature work. |
+
+Validation after the filesize refresh:
+
+| Slice | Plans | Solved | Pass@1 | Positive@1 | Avg first passing index |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| GreenShot-6 `split: test` holdout | 7 | 7/7 | 6/7 | 5/7 | 1.1428571428571428 |
+
+Decision: do not tune broad handcrafted weights from this state. The new
+filesize task is clean and useful dataset growth, but the next work should
+inspect the two trained residuals above and decide whether independent
+non-held-out coverage or narrow non-leaky metadata is the right fix.
+
 ## Same-Mapping Metadata Follow-Up
 
 Implementation result: same-mapping asserted-key metadata is now recorded for

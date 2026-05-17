@@ -751,6 +751,29 @@ def test_patch_solves_tornado_header_newline_forbidden_regex(tmp_path) -> None:
     assert "return '[\\\\x00-\\\\x08\\\\x0A-\\\\x1F\\\\x7F]'" in result.selected.patched_source
 
 
+def test_patch_solves_humanize_gnu_ronna_suffix(tmp_path) -> None:
+    repo = tmp_path / "greenshot_6"
+    shutil.copytree("examples/greenshot_6", repo)
+
+    result = plan_and_maybe_apply_patch(
+        repo=repo,
+        test_command="python -m pytest tests/test_filesize.py::test_gnu_filesize_supports_ronna_prefix",
+        dry_run=True,
+        timeout_seconds=10,
+    )
+
+    assert result.selected is not None
+    assert result.candidates_tested == 1
+    assert result.selected.file_path == "filesize/format.py"
+    assert result.selected.action.kind.value == "change_dict_value"
+    assert result.selected.action.params == {
+        "key": "gnu",
+        "from": "KMGTPEZY",
+        "to": "KMGTPEZYRQ",
+    }
+    assert '"gnu": "KMGTPEZYRQ"' in result.selected.patched_source
+
+
 def test_generate_membership_operator_with_literal_needle_decoy(tmp_path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()

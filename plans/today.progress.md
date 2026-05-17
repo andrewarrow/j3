@@ -7,8 +7,9 @@ new implementation facts change the 24-hour plan itself. Record any
 
 ## Status
 
-- Current phase: Prompt+Repo JEPA transition V0
-- Completed iterations: 6 for this reset; Prompt-JEPA developer demo reset
+- Current phase: Transition bench and action selection V1
+- Completed iterations: 0 for this reset; Prompt+Repo JEPA transition V0
+  completed 6 iterations; Prompt-JEPA developer demo reset
   completed 5 iterations; previous Prompt-JEPA index reset completed 8
   iterations
 - Passing focused tests: `pytest tests/test_prompt_intents.py -q`;
@@ -31,18 +32,21 @@ new implementation facts change the 24-hour plan itself. Record any
   `python -m json.tool /tmp/j3-prompt-jepa-demo/transition-eval.json >/dev/null`;
   `git diff --check`
 - Latest implementation/demo commit: `1783df6` (`Wire transition artifacts into demo`)
-- Latest documentation commit: `783f6e0` (`Document prompt repo transition demo`)
+- Latest documentation commit: `ef99279` (`Rewrite README for Prompt Repo JEPA`)
 - Current blocker: none
-- Next task: watcher should choose the next Prompt+Repo JEPA slice.
+- Next task: add a transition asset inventory and manifest path that works
+  with or without ignored local data.
 
 ## Active Task Queue
 
-- [x] Add reusable repo-state encoder artifact over Python source files.
-- [x] Build `prompt-repo-transition-v1` rows from demo outcomes.
-- [x] Add a tiny evaluation-only transition predictor V0.
-- [x] Add consequence-prediction metrics and residuals.
-- [x] Wire transition rows/model/eval into `demo-prompt-jepa` report artifacts.
-- [x] Update developer docs with the state/action/target transition story.
+- [ ] Add a transition asset inventory over prompt/demo/mined/candidate
+  artifacts.
+- [ ] Define `transition-bench-v1` rows with checked-in fixtures.
+- [ ] Build `transition-action-choice-v1` groups from candidate outcomes.
+- [ ] Add an evaluation-only future scorer with pass@1/top-k/MRR metrics.
+- [ ] Add a one-command transition bench demo/report.
+- [ ] Document reproduction, ignored data boundaries, and future release
+  packaging.
 
 ## Worker Iteration Template
 
@@ -63,6 +67,33 @@ Use this shape for each worker handoff:
 ```
 
 ## 2026-05-17
+
+### Reset: Transition bench and action selection V1
+
+- Goal: review the completed Prompt+Repo transition work and reset
+  `plans/today.md` to the next slice most likely to impress JEPA developers.
+- Files changed: `plans/today.md`, `plans/today.progress.md`
+- Decision: stop expanding prompt labels and stop treating the three-row
+  Prompt+Repo demo as the main proof point. The next stronger claim is that j3
+  can score candidate future repo states and rank useful actions before
+  validation.
+- Current facts:
+  - `demo-prompt-jepa` writes transition rows, a V0 transition model,
+    transition eval metrics, residuals, and zero hosted usage fields.
+  - The demo transition set is still tiny: create calculator, add exponent,
+    and blocked auth.
+  - Local ignored assets provide scale for the next benchmark:
+    `data/transitions/apache-python` has mined git transitions, and
+    `runs/apache-python-git` has a trained source-transition run plus
+    GreenShot candidate outcome rows.
+  - Generated data should remain ignored; check in code, fixtures, manifests,
+    and reproduction instructions instead.
+- Result: `plans/today.md` now targets a Transition Bench and Action Selection
+  V1 slice: asset inventory, normalized transition-bench rows, action-choice
+  groups, a local future scorer, one-command report, and reproduction docs.
+- Tests run: `git diff --check` passed.
+- Next: implement Step 1, the transition asset inventory.
+- Blockers: none.
 
 - Rewrote `README.md` into a much smaller developer-focused JEPA pitch using
   the new Prompt+Repo transition artifacts as the core proof point. The README

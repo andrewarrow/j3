@@ -1,282 +1,315 @@
-# Today Plan: Prompt+Repo JEPA Transition V0
+# Today Plan: Transition Bench And Action Selection V1
 
-The Prompt-JEPA developer demo slice is complete: the repo now has a
-reproducible 320-row prompt corpus, a corpus inspector, a one-command local
-demo report, mixed prompt/outcome indexing, source-embedding sidecars, focused
-docs, and a cleaned root layout.
+The Prompt+Repo JEPA demo slice is complete. The repo now has:
 
-The next slice should make the project more interesting to JEPA developers by
-moving from retrieval evidence to transition prediction:
+- a reproducible 320-row prompt corpus
+- prompt corpus inspection
+- Prompt-JEPA indexing and retrieval evaluation
+- a one-command Prompt+Repo JEPA demo
+- `repo-state-v1` records
+- `prompt-repo-transition-v1` rows
+- an evaluation-only `prompt-repo-transition-predictor-v0`
+- consequence-prediction metrics and residuals
+- developer docs and a focused README pitch
+
+The next slice should make the project more compelling to JEPA developers by
+moving from a tiny three-row demo to a measurable action-selection benchmark.
+
+The important question is no longer "can j3 embed prompts?" It is:
 
 ```text
-prompt + repo_before + structured action
-  -> predicted repo_after / validation utility
-  -> compare candidate next states
-  -> choose apply / clarify / stop
+given repo_before and several candidate actions,
+can j3 predict which candidate future is worth validating first?
 ```
 
-Do not grow the prompt corpus again yet. The current corpus is enough for this
-slice. More synthetic rows will not make the project more credible until j3 can
-show a stronger world-model-shaped transition loop.
+That is the coding-agent version of a useful JEPA world model.
 
 ## Goal For The Next 24 Hours
 
-Build the first explicit Prompt+Repo JEPA transition artifact and evaluation
-loop:
+Build the first transition-benchmark and candidate-action evaluation path:
 
-- encode repo state deterministically from Python source files
-- turn prompt/spec/action/outcome rows into transition rows with:
-  - prompt context
-  - repo-before embedding
-  - structured action / outcome kind
-  - repo-after embedding or blocked clarification target
-  - validation status and cost fields
-- persist the transition dataset as stable JSONL
-- train or fit a small local V0 predictor over transition rows
-- evaluate whether prompt+repo+action predicts/ranks the right next state
-  better than prompt-only retrieval
-- add the transition metrics to the demo report and docs
+- inventory the existing local transition assets without checking generated
+  data into git
+- normalize demo transitions, mined git transitions, and repair candidate
+  outcomes into one inspectable benchmark shape
+- create candidate-action groups where one or more candidates pass validation
+  and the rest are hard negatives
+- score/rank candidate futures with local repo-state/action features
+- compare against simple baselines
+- report metrics that matter for coding agents:
+  - pass@1
+  - top-k pass rate
+  - mean reciprocal rank
+  - average candidates validated before first pass
+  - local runtime
+  - hosted LLM/API tokens: zero
+  - hosted repo-context bytes: zero
+- write residual examples that show which action choices j3 gets wrong
 
-The outcome should look like a tiny local world-model experiment, not just an
-index search.
+The outcome should be a small but credible benchmark artifact, not another
+prompt list.
 
 ## Strategic Decision
 
-Prioritize Prompt+Repo JEPA transition modeling over more prompt generation.
+Prioritize action selection over more prompt generation.
 
 Why:
 
-- JEPA developers will look for state, action, prediction, and target spaces.
-- The current demo already proves local indexing, no hosted tokens, and
-  inspectable rows.
-- The current source sidecar only records source embeddings; it does not yet
-  make source state part of the predictive problem.
-- The impressive next claim is: j3 can represent a repo state, an intended
-  action, and a target state in a way that can be scored locally before
-  validation.
+- The 320-row prompt corpus is enough for the current narrow prompt slice.
+- The Prompt+Repo demo proves the state/action/target artifact shape, but only
+  with three transition rows.
+- Local ignored assets already exist for scale:
+  - `data/transitions/apache-python/*.jsonl` has mined git transition rows in
+    this workspace
+  - `runs/apache-python-git/model.json` was trained from 10,000 synthetic repair
+    examples plus mined git transitions
+  - `runs/apache-python-git/*candidate-outcomes.jsonl` records passing and
+    failing repair candidates from GreenShot runs
+- JEPA developers will look for candidate futures, negatives, ranking margins,
+  and residuals.
 
-This remains a V0 deterministic/standard-library slice. No neural training,
-GPU, hosted embeddings, or production routing switch.
+Do not commit generated JSONL datasets or large run artifacts. Keep `data/` and
+`runs/` ignored. Check in only the code, tests, small fixtures, manifests, and
+reproduction instructions needed for another developer to rebuild the artifacts
+locally or download a packaged release artifact later.
 
 ## Existing Baseline
 
-Completed and available:
+Completed and available in git:
 
 - `tools/prompts/generate_expanded_prompt_corpus.py`
   - generates `../prompts/coding_agent_prompts_expanded_v0.jsonl`
-  - 320 rows: 80 `human_seed`, 240 `synthetic_template_v0`
 - `inspect-prompt-corpus`
-  - reports corpus shape and quality checks
 - `demo-prompt-jepa`
-  - builds label-only and mixed Prompt-JEPA indexes
-  - writes `report.json`, `outcomes.jsonl`, `index.json`,
-    `labels-index.json`, and `source-embeddings.json`
-  - records `hosted_llm_api_tokens: 0`
-  - records `hosted_repo_context_bytes: 0`
-- `j3/features.py`
-  - deterministic AST hash vectors for Python source
-- `j3/prompt_jepa.py`
-  - prompt context/target embeddings, predictor V0, retrieval eval, proposals
-- `j3/prompt_jepa_demo.py`
-  - one-command demo orchestration
-- `docs/PROMPT_JEPA_DEMO.md`
-  - developer-facing demo walkthrough
+  - writes prompt indexes, outcome rows, source embeddings, transition rows,
+    transition model, transition eval, and a report
+- `eval-prompt-repo-transitions`
+  - evaluates `prompt-repo-transition-v1` rows
+- `j3/repo_state.py`
+  - deterministic `repo-state-v1` records over Python source
+- `j3/prompt_repo_transitions.py`
+  - transition rows, V0 predictor, eval metrics, residuals
+- `j3/mining.py`
+  - mines real Python before/after file transitions from git history
+- `j3/training.py`
+  - trains the older local source-transition prototype from synthetic and mined
+    transitions
+- candidate-ranking and evaluation infrastructure
+  - candidate outcome rows
+  - trained ranker support
+  - pass@1 / candidate-count diagnostics
+- docs:
+  - `README.md`
+  - `docs/PROMPT_JEPA_DEMO.md`
+  - `docs/TRAINING.md`
+
+Observed local ignored assets in this workspace:
+
+- mined Apache Python transition JSONL files under `data/transitions/apache-python`
+- an Apache Python run under `runs/apache-python-git`
+- GreenShot candidate outcome JSONL files under `runs/apache-python-git`
+
+These local assets are useful for development, but the new code must still have
+small checked-in fixtures so CI and another developer can run the focused tests
+without those private ignored files.
 
 ## Non-Goals
 
-- No more synthetic prompt rows in this slice.
-- No production routing switch from deterministic `implement` / `change`.
-- No hosted LLM/API/embedding calls.
-- No GPU, transformer, or model download.
-- No broad Apache corpus retraining yet.
-- No claim that deterministic V0 embeddings are the final JEPA model.
-- No hiding failures: report residuals and weak cases explicitly.
+- Do not generate another large prompt corpus in this slice.
+- Do not commit `data/`, `runs/`, or generated benchmark JSONL files.
+- Do not require GitHub, network access, GPU, model downloads, or hosted LLMs.
+- Do not switch production `implement`, `change`, `patch`, or `fix` routing to
+  the new scorer yet.
+- Do not claim benchmark significance from tiny fixtures. Report scale and
+  limitations plainly.
 
 ## Step-By-Step Work Plan
 
-### Step 1: Add A Repo-State Encoder Artifact
+### Step 1: Add A Transition Asset Inventory
 
 Deliverable:
 
-- add a small module such as `j3/repo_state.py`
-- encode a repository directory into a stable record:
-  - schema version
-  - feature version
-  - embedding dimension
-  - included Python file paths
-  - file SHA-256 hashes and byte counts
-  - aggregate repo embedding
-  - empty-repo embedding support
-- use `features.embed_python_source` for per-file embeddings
-- aggregate deterministically, for example mean vector plus counts
-- keep vectors JSON-serializable and validate dimensions
+- add a small inventory path, likely `j3/transition_assets.py`
+- summarize available local assets:
+  - prompt corpus path and row count if present
+  - Prompt+Repo demo artifacts if present
+  - mined git transition files and row counts if present
+  - candidate outcome files and row counts if present
+  - trained prototype model metadata if present
+- add a CLI command such as `inspect-transition-assets`
+- make missing ignored assets a normal condition, not an error
+- include checksums or stable file summaries for reproducibility
 
 Why this matters:
 
-- it turns the current source sidecar into a reusable repo-state representation
-- it creates a concrete `s(repo)` space for JEPA transition work
+- it tells developers exactly what data-backed evidence exists locally
+- it avoids pretending ignored artifacts are part of git
+- it creates the manifest foundation for a future GitHub Release zip
 
 Verification:
 
 ```bash
-pytest tests/test_repo_state.py -q
-python -m py_compile j3/repo_state.py
-```
-
-### Step 2: Build Prompt+Repo Transition Rows
-
-Deliverable:
-
-- add a transition schema such as `prompt-repo-transition-v1`
-- build transitions from demo outcomes:
-  - create calculator repo:
-    - before state: empty repo
-    - action: create calculator app
-    - after state: generated repo source embedding
-    - validation: passed
-  - add exponent support:
-    - before state: calculator before change
-    - action: add exponent support
-    - after state: changed repo source embedding
-    - validation: passed
-  - blocked auth:
-    - before state: empty or target repo state as applicable
-    - action: ask clarification / blocked
-    - after state: no source change
-    - validation: not run / blocked
-- persist transition JSONL in the demo output, for example:
-
-```text
-/tmp/j3-prompt-jepa-demo/transitions.jsonl
-```
-
-- include prompt context embedding and Prompt-JEPA target embedding references
-  or checksums so the transition rows bridge prompt space and repo-state space
-
-Verification:
-
-```bash
-python cli.py demo-prompt-jepa \
-  --labels ../prompts/coding_agent_prompts_expanded_v0.jsonl \
-  --out /tmp/j3-prompt-jepa-demo \
-  --top-k 5
-python -m json.tool /tmp/j3-prompt-jepa-demo/report.json >/dev/null
-python - <<'PY'
-import json
-from pathlib import Path
-rows = [json.loads(line) for line in Path('/tmp/j3-prompt-jepa-demo/transitions.jsonl').read_text().splitlines()]
-assert rows
-print(len(rows), rows[0]['schema_version'])
-PY
-```
-
-### Step 3: Add A Tiny Transition Predictor V0
-
-Deliverable:
-
-- add a deterministic V0 predictor over transition rows
-- input:
-  - prompt context embedding
-  - repo-before embedding
-  - structured action kind / outcome kind features
-- target:
-  - repo-after embedding for source-changing outcomes
-  - blocked/clarification target for non-source outcomes
-- baseline can be simple and honest:
-  - nearest transition by prompt+repo+action context
-  - action-conditioned average delta
-  - or a small feature-hash vector over context/action plus repo-before delta
-- persist model metadata:
-  - schema version
-  - embedding dim
-  - train row ids
-  - predictor kind
-  - decision: evaluation-only
-
-Verification:
-
-```bash
-pytest tests/test_prompt_repo_transitions.py -q
-python -m py_compile j3/prompt_repo_transitions.py
-```
-
-### Step 4: Evaluate Consequence Prediction
-
-Deliverable:
-
-- add metrics that JEPA developers can inspect:
-  - top-1/top-k correct next outcome kind
-  - top-1/top-k validation status
-  - nearest predicted repo-after state
-  - source-changing vs blocked/clarification split
-  - residual examples with prompt, action, expected, predicted, and distance
-- compare against prompt-only retrieval where possible
-- keep the dataset tiny and honest; the point is shape and instrumentation,
-  not benchmark claims
-
-Verification:
-
-```bash
-python cli.py eval-prompt-repo-transitions \
-  --transitions /tmp/j3-prompt-jepa-demo/transitions.jsonl \
-  --top-k 3 \
-  --json
+pytest tests/test_transition_assets.py -q
 pytest tests/test_cli.py -q
+python cli.py inspect-transition-assets --json
 ```
 
-If the command name changes during implementation, update this plan and record
-why in `plans/today.progress.md`.
-
-### Step 5: Wire Transition Metrics Into The Demo Report
+### Step 2: Define A Transition Bench Schema
 
 Deliverable:
 
-- `demo-prompt-jepa` should also write:
+- add a schema such as `transition-bench-v1`
+- normalize rows from:
+  - `prompt-repo-transition-v1` demo rows
+  - mined `git_transition` before/after source rows
+  - candidate outcome rows from repair evals
+- keep source-specific fields explicit:
+  - source kind
+  - repo/file identity or task identity
+  - repo-before or file-before embedding
+  - structured action or candidate action
+  - repo-after/file-after target embedding when available
+  - validation outcome when available
+  - cost fields
+- add deterministic JSONL writer/loader/validator helpers
+- include tiny checked-in fixtures for tests
 
-```text
-/tmp/j3-prompt-jepa-demo/transitions.jsonl
-/tmp/j3-prompt-jepa-demo/transition-model.json
-/tmp/j3-prompt-jepa-demo/transition-eval.json
-```
+Why this matters:
 
-- `report.json` should include concise transition sections:
-  - transition row counts
-  - predictor kind
-  - evaluation metrics
-  - representative residuals
-  - source-state feature version
-  - explicit `evaluation_only_not_wired_to_production`
+- it connects the prompt demo, source-transition training, and repair eval
+  infrastructure into one JEPA-shaped benchmark surface
+- it lets future learned models target the same artifact instead of one-off
+  demo files
 
 Verification:
 
 ```bash
-python cli.py demo-prompt-jepa \
-  --labels ../prompts/coding_agent_prompts_expanded_v0.jsonl \
-  --out /tmp/j3-prompt-jepa-demo \
-  --top-k 5
-python -m json.tool /tmp/j3-prompt-jepa-demo/transition-eval.json >/dev/null
-python -m json.tool /tmp/j3-prompt-jepa-demo/report.json >/dev/null
+pytest tests/test_transition_bench.py -q
+python -m py_compile j3/transition_bench.py
 ```
 
-### Step 6: Update Developer-Facing Docs
+### Step 3: Build Candidate Action-Choice Groups
 
 Deliverable:
 
-- update `docs/PROMPT_JEPA_DEMO.md`
-- explain the new transition story:
+- convert candidate outcome JSONL rows into grouped action-choice records,
+  likely `transition-action-choice-v1`
+- group by task, phase, and repair plan
+- include all validated candidates in rank order:
+  - candidate action record
+  - candidate target context
+  - source/repo-before embedding
+  - candidate repo-after or patched-source embedding when available
+  - pass/fail validation result
+  - candidate rank and first-passing index
+- preserve hard negatives: failed candidates that looked plausible enough to
+  validate
 
-```text
-prompt observation + repo_before state + action
-  -> predicted repo_after state / utility
+Why this matters:
+
+- action choice is where a coding-agent world model becomes useful
+- negatives make the benchmark more credible than nearest-neighbor retrieval
+
+Verification:
+
+```bash
+pytest tests/test_transition_action_choice.py -q
 ```
 
-- show exact commands to inspect:
-  - transition rows
-  - repo-state records
-  - transition predictor metadata
-  - evaluation metrics and residuals
-- clearly state what is V0/deterministic and what remains future neural JEPA
-  work
+### Step 4: Add An Evaluation-Only Future Scorer
+
+Deliverable:
+
+- add a deterministic V1 scorer over candidate action-choice groups
+- score each candidate using local features:
+  - repo/file-before embedding
+  - candidate action kind and parameters
+  - predicted after-state delta
+  - validation/failure-hint features when present
+- compare against baselines:
+  - existing rank order
+  - random or stable lexical order
+  - prompt/source-only nearest neighbor where applicable
+  - existing candidate ranker when available
+- report:
+  - pass@1
+  - top-k pass rate
+  - MRR
+  - average first-passing rank
+  - average candidates saved vs baseline
+  - residual action-choice examples
+
+Why this matters:
+
+- this is the clearest small proof that j3 can predict useful candidate futures
+  before test validation
+
+Verification:
+
+```bash
+pytest tests/test_transition_action_choice.py -q
+pytest tests/test_candidate_ranking.py -q
+```
+
+### Step 5: Add A One-Command Bench Demo
+
+Deliverable:
+
+- add a command such as `demo-transition-bench` or `eval-transition-bench`
+- default to tiny checked-in fixtures so it works everywhere
+- optionally accept ignored local assets:
+
+```bash
+python cli.py demo-transition-bench \
+  --prompt-demo /tmp/j3-prompt-jepa-demo \
+  --mined-transitions data/transitions/apache-python \
+  --candidate-outcomes runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl \
+  --out /tmp/j3-transition-bench
+```
+
+- write:
+
+```text
+manifest.json
+transition-bench.jsonl
+action-choices.jsonl
+action-choice-eval.json
+report.json
+```
+
+- include explicit zero hosted token/context fields
+
+Why this matters:
+
+- a JEPA developer should be able to run one command and see state/action/target
+  rows, candidate negatives, metrics, and residuals
+
+Verification:
+
+```bash
+python cli.py demo-transition-bench --out /tmp/j3-transition-bench
+python -m json.tool /tmp/j3-transition-bench/report.json >/dev/null
+python -m json.tool /tmp/j3-transition-bench/action-choice-eval.json >/dev/null
+```
+
+### Step 6: Document Reproduction And Packaging
+
+Deliverable:
+
+- update `docs/PROMPT_JEPA_DEMO.md` or add a focused
+  `docs/TRANSITION_BENCH.md`
+- explain:
+  - what is checked in
+  - what is generated locally
+  - why generated JSONL files stay out of git
+  - how to rebuild from ignored local Apache data
+  - how a future release zip should be produced and verified
+- keep `README.md` small; link to the focused doc
+
+Why this matters:
+
+- another developer needs a credible reproduction path without requiring the
+  exact local workspace
 
 Verification:
 
@@ -288,37 +321,40 @@ git diff --check
 
 Minimum success:
 
-- reusable repo-state encoder exists and is tested
-- demo writes Prompt+Repo transition JSONL rows
-- transition rows include prompt, repo-before, action, repo-after or blocked
-  target, and validation/cost fields
-- a V0 transition predictor/eval path runs locally
-- demo report includes transition metrics
-- docs explain the transition artifact clearly
-- production routing remains unchanged
+- `plans/today.progress.md` tracks the new reset and task queue
+- a transition asset inventory runs with and without ignored local data
+- a checked-in fixture can produce `transition-bench-v1` rows
+- candidate action-choice groups are represented with passing and failing
+  candidates
+- an evaluation-only scorer reports pass@1, top-k, MRR, average first-passing
+  rank, and residuals
+- generated benchmark artifacts remain ignored and reproducible
+- docs explain the checked-in vs generated artifact boundary
 
 Strong success:
 
-- transition eval compares prompt-only retrieval vs prompt+repo+action context
-- report includes residuals that make failure modes visible
-- source-changing and blocked/clarification outcomes are represented
-- the demo can be run from scratch in under a minute
-- the story is compelling to JEPA developers because it has explicit state,
-  action, target, prediction, and evaluation artifacts
+- the bench can also consume the local Apache mined transitions and GreenShot
+  candidate outcomes
+- report output shows hundreds or thousands of transition/candidate rows when
+  local ignored assets are available
+- residuals make failure modes obvious
+- metrics compare j3 future scoring against at least one baseline
+- the demo highlights zero hosted LLM/API tokens and zero hosted repo-context
+  bytes
 
 ## Testing Plan
 
 Run focused checks first:
 
 ```bash
-pytest tests/test_repo_state.py -q
-pytest tests/test_prompt_repo_transitions.py -q
-pytest tests/test_prompt_jepa.py -q
+pytest tests/test_transition_assets.py -q
+pytest tests/test_transition_bench.py -q
+pytest tests/test_transition_action_choice.py -q
 pytest tests/test_cli.py -q
 python -m py_compile \
-  j3/repo_state.py \
-  j3/prompt_repo_transitions.py \
-  j3/prompt_jepa_demo.py \
+  j3/transition_assets.py \
+  j3/transition_bench.py \
+  j3/transition_action_choice.py \
   cli/handlers.py cli/parser.py cli/__init__.py
 git diff --check
 ```
@@ -326,50 +362,50 @@ git diff --check
 Manual smoke:
 
 ```bash
-python tools/prompts/generate_expanded_prompt_corpus.py
-
 python cli.py demo-prompt-jepa \
   --labels ../prompts/coding_agent_prompts_expanded_v0.jsonl \
   --out /tmp/j3-prompt-jepa-demo \
   --top-k 5
 
-python -m json.tool /tmp/j3-prompt-jepa-demo/report.json >/dev/null
-python -m json.tool /tmp/j3-prompt-jepa-demo/transitions.jsonl >/dev/null || true
-```
+python cli.py inspect-transition-assets --json
 
-For JSONL, use a line-by-line validation helper rather than `json.tool` if the
-transition file remains newline-delimited JSON.
+python cli.py demo-transition-bench \
+  --prompt-demo /tmp/j3-prompt-jepa-demo \
+  --mined-transitions data/transitions/apache-python \
+  --candidate-outcomes runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl \
+  --out /tmp/j3-transition-bench
+
+python -m json.tool /tmp/j3-transition-bench/report.json >/dev/null
+python -m json.tool /tmp/j3-transition-bench/action-choice-eval.json >/dev/null
+```
 
 Run full `pytest -q` only after broad shared changes or before a final
 integration gate.
 
 ## Open Decisions
 
-1. Module name:
-   - Proposed: `j3/prompt_repo_transitions.py`.
+1. Command names:
+   - Proposed: `inspect-transition-assets` and `demo-transition-bench`.
 
-2. CLI command name:
-   - Proposed: `eval-prompt-repo-transitions`.
+2. Module names:
+   - Proposed: `j3/transition_assets.py`, `j3/transition_bench.py`, and
+     `j3/transition_action_choice.py`.
 
-3. Transition predictor V0:
-   - Proposed: nearest-neighbor plus action-conditioned repo-state delta.
+3. Release packaging:
+   - Proposed: do not package data yet. First generate `manifest.json` with
+     stable checksums. After the artifact shape stabilizes, publish a zip as a
+     GitHub Release asset rather than committing JSONL to git.
 
-4. Blocked outcomes:
-   - Proposed: represent blocked/clarification targets as non-source outcomes
-     with unchanged or empty repo-after state plus explicit `outcome_kind`.
-
-5. Dataset size:
-   - Proposed: use current demo outcomes first, then add more structured
-     calculator outcome rows only if needed to make the eval meaningful. Do not
-     expand generic prompt labels in this slice.
+4. Model boundary:
+   - Proposed: keep all scoring evaluation-only until action-choice metrics are
+     credible on held-out tasks.
 
 ## After This Slice
 
-1. Add a second non-calculator greenfield builder, likely one-file library
-   generation, so transition eval covers more than calculator source states.
-2. Connect mined source transitions from `docs/TRAINING.md` to the same
-   transition schema.
-3. Add negative candidate actions and evaluate whether the transition model
-   rejects them before validation.
-4. Replace deterministic V0 predictors with a small learned local encoder only
-   after the transition artifacts and metrics are stable.
+1. Convert mined git transitions into repo-level before/after records instead
+   of file-level only.
+2. Add held-out split support by repository and task family.
+3. Add hard-negative mining from high-ranked failed candidates.
+4. Feed action-choice residuals back into the prompt/repo transition predictor.
+5. Only then consider a small learned local encoder to replace deterministic
+   feature hashing.

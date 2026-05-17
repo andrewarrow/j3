@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from prompt_intents import predict_prompt_intent
 from request_spec import parse_request_to_spec
 
 
@@ -91,3 +92,44 @@ def test_parser_emits_blocking_clarifications_for_unclear_rows() -> None:
         assert record["clarifications_needed"] == task["expected_spec"][
             "clarifications_needed"
         ]
+
+
+def test_request_spec_blocks_graphical_calculator_through_prompt_intent() -> None:
+    prediction = predict_prompt_intent("make me a complex graphic calc app")
+    spec = parse_request_to_spec(
+        "make me a complex graphic calc app",
+        task_name="graphic_calc",
+        intent=prediction,
+    )
+    record = spec.to_record()
+
+    assert record["domain"] == "calculator"
+    assert record["artifacts"] == []
+    assert record["features"] == []
+    assert record["interfaces"] == []
+    assert record["requested_interfaces"] == [
+        {"kind": "graphic", "confidence": 1.0}
+    ]
+    assert record["supported_interfaces"] == [{"kind": "cli", "style": "argparse"}]
+    assert record["unsupported_requirements"] == [
+        {
+            "field": "interfaces",
+            "value": "complex_scope",
+            "reason": "complex_scope",
+        },
+        {
+            "field": "interfaces",
+            "value": "graphical_interface",
+            "reason": "graphical_interface",
+        },
+    ]
+    assert record["clarifications_needed"] == [
+        {
+            "field": "interfaces",
+            "question": (
+                "This slice only supports a Python CLI calculator. Do you want a "
+                "simple CLI calculator, or should a graphical app scope/framework "
+                "be specified?"
+            ),
+        }
+    ]

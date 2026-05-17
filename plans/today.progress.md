@@ -7,19 +7,20 @@ new implementation facts change the 24-hour plan itself. Record any
 
 ## Status
 
-- Current phase: prompt-intent dataset/eval baseline added; ready for learned
-  model or request-spec integration slice
-- Completed iterations: 1
+- Current phase: prompt-intent prediction boundary wired into request-spec
+  blocking for unsupported graphical calculator requests
+- Completed iterations: 2
 - Passing focused tests:
   - `pytest tests/test_prompt_intents.py -q`
   - `pytest tests/test_prompt_intents.py tests/test_request_spec.py -q`
+  - `pytest tests/test_prompt_intents.py tests/test_request_spec.py tests/test_cli.py -q`
   - `git diff --check`
-  - `python -m py_compile prompt_intents.py`
-- Latest implementation commit: `e6b62d1162202798a67d62b6dc92e21f259bd9fa`
+  - `python -m py_compile prompt_intents.py request_spec.py cli/handlers.py`
+- Latest implementation commit: iteration 2 commit from this worker; final
+  report carries the immutable hash after commit creation
 - Current blocker: none
-- Next task: connect prompt-intent prediction objects to request-spec blocking
-  so unsupported graphical calculator prompts can be rejected without expanding
-  broad parser keyword rules
+- Next task: add the existing-repo calculator change spec/command path for
+  power/exponent support
 
 ## Worker Iteration Template
 
@@ -106,4 +107,46 @@ Use this shape for each worker handoff:
 - Next: wire an intent prediction object into request-spec construction, then
   make `make me a complex graphic calc app` block through that path while
   preserving simple CLI calculator generation.
+- Blockers: none
+
+### Iteration 2: Prompt Intent To Request-Spec Blocking
+
+- Worker: Codex
+- Goal: connect prompt-intent prediction objects to request-spec construction
+  so unsupported graphical/complex calculator prompts are rejected through the
+  new prompt-intent path while preserving supported simple CLI generation.
+- Files changed:
+  - `prompt_intents.py`
+  - `request_spec.py`
+  - `cli/handlers.py`
+  - `tests/test_prompt_intents.py`
+  - `tests/test_request_spec.py`
+  - `tests/test_cli.py`
+  - `plans/today.progress.md`
+- Tests run:
+  - `pytest tests/test_prompt_intents.py tests/test_request_spec.py tests/test_cli.py -q`
+    -> passed, 32 tests
+  - `python -m py_compile prompt_intents.py request_spec.py cli/handlers.py`
+    -> passed
+  - `git diff --check` -> passed
+  - `python cli.py implement --prompt "make me a complex graphic calc app" --out <tmp>`
+    -> exited 1, printed the CLI-only clarification, and did not write
+    `calculator.py`
+  - `python cli.py implement --prompt "make me a simple cli calc" --out <tmp> --no-validate`
+    plus `python <tmp>/calculator.py 2 + 3` -> succeeded and printed `5`
+- Result:
+  - Added a fixture-backed `PromptIntentPrediction` boundary in
+    `prompt_intents.py` that exact-matches labeled prompt-intent rows without
+    adding broad English keyword rules.
+  - Let `parse_request_to_spec(..., intent=...)` consume that prediction and
+    emit an interface clarification for unsupported graphical/complex
+    calculator intents, including requested/supported interface and unsupported
+    requirement fields in the request-spec record only when present.
+  - Wired `j3 implement` through `predict_prompt_intent`, so the graphical
+    calculator regression blocks before calculator files are written while the
+    existing simple CLI calculator path still builds.
+- Commit: created by this worker; see final report for immutable hash
+- Push: pending at log update time; see final report for result
+- Next: implement the existing-repo calculator change spec/command path for
+  exponent/power support.
 - Blockers: none

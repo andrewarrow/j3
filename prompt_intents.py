@@ -10,12 +10,14 @@ from __future__ import annotations
 import json
 from collections import Counter
 from dataclasses import dataclass, field
+from functools import lru_cache
 from pathlib import Path
 from typing import Callable, Iterable, Sequence
 
 
 PROMPT_INTENT_SCHEMA_VERSION = "prompt-intent-label-v1"
 EVAL_SCHEMA_VERSION = "prompt-intent-eval-v1"
+DEFAULT_PROMPT_INTENTS_PATH = Path("examples/prompt_intents/greenshot_7_intents.jsonl")
 TARGET_FIELDS = [
     "repo_mode",
     "task_type",
@@ -75,6 +77,28 @@ class PromptIntentRecord:
             "prompt": self.prompt,
             "target": self.target.to_record(),
             "tags": list(self.tags),
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class PromptIntentPrediction:
+    """One prompt-intent prediction at the boundary before request-spec building."""
+
+    prompt: str
+    target: PromptIntentTarget
+    source: str
+    confidence: float
+    evidence: tuple[str, ...] = ()
+    record_id: str | None = None
+
+    def to_record(self) -> dict[str, object]:
+        return {
+            "prompt": self.prompt,
+            "target": self.target.to_record(),
+            "source": self.source,
+            "confidence": self.confidence,
+            "evidence": list(self.evidence),
+            "record_id": self.record_id,
         }
 
 
@@ -155,6 +179,37 @@ def profile_prompt_intents(records: Sequence[PromptIntentRecord]) -> dict[str, o
     }
 
 
+def predict_prompt_intent(
+    prompt: str,
+    *,
+    records: Sequence[PromptIntentRecord] | None = None,
+    path: Path = DEFAULT_PROMPT_INTENTS_PATH,
+) -> PromptIntentPrediction | None:
+    """Return a fixture-backed intent prediction for exact labeled prompts.
+
+    This is a lower-bound prediction boundary, not a broad English parser. It
+    only emits targets already present in the prompt-intent fixture/eval data so
+    request-spec construction can consume the same shape as a future learned
+    predictor.
+    """
+
+    candidates = records if records is not None else _default_records(path)
+    normalized = _normalize_prompt(prompt)
+
+    for record in candidates:
+        if _normalize_prompt(record.prompt) == normalized:
+            return PromptIntentPrediction(
+                prompt=prompt,
+                target=record.target,
+                source="prompt_intent_fixture_exact_match",
+                confidence=1.0,
+                evidence=(record.row_id,),
+                record_id=record.row_id,
+            )
+
+    return None
+
+
 def evaluate_prompt_intent_predictions(
     records: Sequence[PromptIntentRecord],
     predictor: PromptIntentPredictor,
@@ -202,6 +257,11 @@ def evaluate_prompt_intent_predictions(
         field_correct=field_correct,
         mismatches=mismatches,
     )
+
+
+@lru_cache(maxsize=8)
+def _default_records(path: Path) -> tuple[PromptIntentRecord, ...]:
+    return tuple(load_prompt_intent_records(path))
 
 
 def _load_json_rows(path: Path) -> list[dict[str, object]]:
@@ -347,6 +407,10 @@ def _tuple_prediction(value: object) -> tuple[str, ...]:
 
 def _counter_record(values: Iterable[str]) -> dict[str, int]:
     return dict(sorted(Counter(values).items()))
+
+
+def _normalize_prompt(prompt: str) -> str:
+    return " ".join(prompt.lower().strip().split())
 
 
 def _json_value(value: object) -> object:

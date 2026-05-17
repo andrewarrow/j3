@@ -32,6 +32,7 @@ from greenfield import (
 from greenshot_7 import run_greenshot_7_tasks, summary_has_failures
 from mining import mine_git_transitions
 from patching import plan_and_maybe_apply_patch
+from prompt_intents import predict_prompt_intent
 from request_outcomes import append_request_repo_attempt
 from request_spec import RequestSpec, parse_request_to_spec
 from training import train_from_paths
@@ -51,7 +52,8 @@ def handle_actions(args: argparse.Namespace) -> int:
 
 
 def handle_implement(args: argparse.Namespace) -> int:
-    spec = parse_request_to_spec(args.prompt)
+    intent = predict_prompt_intent(args.prompt)
+    spec = parse_request_to_spec(args.prompt, intent=intent)
     out_dir = args.out.expanduser().resolve()
     plan = plan_calculator_repo(spec)
 

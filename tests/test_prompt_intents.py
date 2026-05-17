@@ -7,6 +7,7 @@ import pytest
 from prompt_intents import (
     evaluate_prompt_intent_predictions,
     load_prompt_intent_records,
+    predict_prompt_intent,
     profile_prompt_intents,
 )
 
@@ -83,6 +84,22 @@ def test_prompt_intent_eval_scores_future_predictors() -> None:
     assert result["field_accuracy"]["expected_action"]["correct"] == len(records) - 1  # type: ignore[index]
     assert result["field_accuracy"]["requested_interfaces"]["correct"] == len(records) - 1  # type: ignore[index]
     assert result["mismatches"][0]["id"] == "gs7-intent-0004"  # type: ignore[index]
+
+
+def test_fixture_backed_prompt_intent_prediction_is_exact_boundary() -> None:
+    prediction = predict_prompt_intent("make me a complex graphic calc app")
+
+    assert prediction is not None
+    assert prediction.source == "prompt_intent_fixture_exact_match"
+    assert prediction.record_id == "gs7-intent-0004"
+    assert prediction.target.expected_action == "ask_clarification"
+    assert prediction.target.requested_interfaces == ("graphic",)
+    assert prediction.target.unsupported_requirements == (
+        "complex_scope",
+        "graphical_interface",
+    )
+
+    assert predict_prompt_intent("make me a complex graphic spreadsheet") is None
 
 
 def test_loads_external_seed_prompt_corpus_profile() -> None:

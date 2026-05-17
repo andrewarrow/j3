@@ -6,6 +6,8 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
+from prompt_intents import PromptIntentPrediction, PromptIntentTarget
+
 
 SCHEMA_VERSION = "request-spec-v1"
 CALCULATOR_FEATURES = ["add", "subtract", "multiply", "divide"]
@@ -40,13 +42,16 @@ class RequestSpec:
     features: list[str] = field(default_factory=list)
     operation_aliases: dict[str, list[str]] = field(default_factory=dict)
     inferred_defaults: list[dict[str, Any]] = field(default_factory=list)
+    requested_interfaces: list[dict[str, object]] = field(default_factory=list)
+    supported_interfaces: list[dict[str, str]] = field(default_factory=list)
+    unsupported_requirements: list[dict[str, str]] = field(default_factory=list)
     clarifications_needed: list[dict[str, str]] = field(default_factory=list)
     validation: dict[str, object] = field(default_factory=dict)
 
     def to_record(self) -> dict[str, object]:
         """Return a JSON-serializable request-spec record."""
 
-        return {
+        record = {
             "schema_version": self.schema_version,
             "task_name": self.task_name,
             "task_type": self.task_type,
@@ -76,13 +81,40 @@ class RequestSpec:
                 "hidden_cases": bool(self.validation.get("hidden_cases", False)),
             },
         }
+        if self.requested_interfaces:
+            record["requested_interfaces"] = [
+                dict(interface) for interface in self.requested_interfaces
+            ]
+        if self.supported_interfaces:
+            record["supported_interfaces"] = [
+                dict(interface) for interface in self.supported_interfaces
+            ]
+        if self.unsupported_requirements:
+            record["unsupported_requirements"] = [
+                dict(requirement) for requirement in self.unsupported_requirements
+            ]
+        return record
 
 
-def parse_request_to_spec(prompt: str, task_name: str | None = None) -> RequestSpec:
+def parse_request_to_spec(
+    prompt: str,
+    task_name: str | None = None,
+    *,
+    intent: PromptIntentPrediction | PromptIntentTarget | None = None,
+) -> RequestSpec:
     """Parse a narrow coding-agent prompt into a request-spec-v1 record."""
 
     normalized = _normalize(prompt)
     resolved_task_name = task_name or _slug_task_name(prompt)
+    intent_target = _intent_target(intent)
+
+    if _intent_blocks_unsupported_interface(intent_target):
+        return _intent_clarification_spec(
+            prompt=prompt,
+            task_name=resolved_task_name,
+            target=intent_target,
+            confidence=_intent_confidence(intent),
+        )
 
     if _mentions_scientific_calculator(normalized):
         return _clarification_spec(
@@ -167,6 +199,69 @@ def parse_request_to_spec(prompt: str, task_name: str | None = None) -> RequestS
             "commands": list(CALCULATOR_VALIDATION["commands"]),
             "hidden_cases": CALCULATOR_VALIDATION["hidden_cases"],
         },
+    )
+
+
+def _intent_target(
+    intent: PromptIntentPrediction | PromptIntentTarget | None,
+) -> PromptIntentTarget | None:
+    if isinstance(intent, PromptIntentPrediction):
+        return intent.target
+    if isinstance(intent, PromptIntentTarget):
+        return intent
+    return None
+
+
+def _intent_confidence(
+    intent: PromptIntentPrediction | PromptIntentTarget | None,
+) -> float:
+    if isinstance(intent, PromptIntentPrediction):
+        return intent.confidence
+    return 1.0
+
+
+def _intent_blocks_unsupported_interface(target: PromptIntentTarget | None) -> bool:
+    if target is None:
+        return False
+    return (
+        target.expected_action == "ask_clarification"
+        and "interfaces" in target.clarification_fields
+        and bool(target.requested_interfaces or target.unsupported_requirements)
+    )
+
+
+def _intent_clarification_spec(
+    *,
+    prompt: str,
+    task_name: str,
+    target: PromptIntentTarget,
+    confidence: float,
+) -> RequestSpec:
+    requested_interfaces = [
+        {"kind": interface, "confidence": confidence}
+        for interface in target.requested_interfaces
+    ]
+    unsupported_requirements = [
+        {
+            "field": "interfaces",
+            "value": requirement,
+            "reason": requirement,
+        }
+        for requirement in target.unsupported_requirements
+    ]
+    return _clarification_spec(
+        prompt=prompt,
+        task_name=task_name,
+        domain=target.domain,
+        field="interfaces",
+        question=(
+            "This slice only supports a Python CLI calculator. Do you want a "
+            "simple CLI calculator, or should a graphical app scope/framework "
+            "be specified?"
+        ),
+        requested_interfaces=requested_interfaces,
+        supported_interfaces=[dict(interface) for interface in CALCULATOR_INTERFACES],
+        unsupported_requirements=unsupported_requirements,
     )
 
 
@@ -288,6 +383,9 @@ def _clarification_spec(
     domain: str,
     field: str,
     question: str,
+    requested_interfaces: list[dict[str, object]] | None = None,
+    supported_interfaces: list[dict[str, str]] | None = None,
+    unsupported_requirements: list[dict[str, str]] | None = None,
 ) -> RequestSpec:
     return RequestSpec(
         schema_version=SCHEMA_VERSION,
@@ -302,6 +400,9 @@ def _clarification_spec(
         features=[],
         operation_aliases={},
         inferred_defaults=[],
+        requested_interfaces=list(requested_interfaces or []),
+        supported_interfaces=list(supported_interfaces or []),
+        unsupported_requirements=list(unsupported_requirements or []),
         clarifications_needed=[{"field": field, "question": question}],
         validation=dict(BLOCKED_VALIDATION),
     )

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import shutil
+import subprocess
+import sys
 
 import pytest
 
@@ -234,6 +236,33 @@ def test_implement_command_blocks_clarification_without_calculator_files(
     assert "status: blocked" in output
     assert "domain: unknown" in output
     assert "Should this be a basic CLI calculator" in output
+    assert not (out_dir / "calculator.py").exists()
+    assert not (out_dir / "tests/test_calculator_cli.py").exists()
+
+
+def test_implement_script_blocks_prompt_intent_graphical_calculator(tmp_path) -> None:
+    out_dir = tmp_path / "graphic"
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "cli.py",
+            "implement",
+            "--prompt",
+            "make me a complex graphic calc app",
+            "--out",
+            str(out_dir),
+        ],
+        check=False,
+        text=True,
+        capture_output=True,
+    )
+
+    assert result.returncode == 1
+    assert "j3 implement blocked" in result.stdout
+    assert "status: blocked" in result.stdout
+    assert "domain: calculator" in result.stdout
+    assert "This slice only supports a Python CLI calculator" in result.stdout
     assert not (out_dir / "calculator.py").exists()
     assert not (out_dir / "tests/test_calculator_cli.py").exists()
 

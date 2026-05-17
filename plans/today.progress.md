@@ -13,8 +13,7 @@ new implementation facts change the 24-hour plan itself. Record any
   `pytest tests/test_prompt_jepa.py -q`;
   `python -m py_compile prompt_jepa.py cli/handlers.py cli/parser.py cli/__init__.py`;
   `git diff --check`
-- Latest implementation commit: iteration 2 CLI command commit; hash reported by
-  worker after push
+- Latest implementation commit: `8fff432`
 - Current blocker: none
 - Next task: add Prompt-JEPA retrieval evaluation metrics and focused tests
 
@@ -97,7 +96,7 @@ Use this shape for each worker handoff:
   `query-prompt-jepa-index`, persisted local prompt-intent labels to
   `j3.prompt-jepa-index.v1`, printed stable human-readable build/query
   summaries, and added CLI coverage for both commands.
-- Commit: this iteration commit; final hash reported by worker after push.
-- Push: pending at progress update time; final result reported by worker.
+- Commit: `8fff432`
+- Push: succeeded to `main`
 - Next: add Prompt-JEPA retrieval evaluation metrics over held-out splits.
 - Blockers: none.

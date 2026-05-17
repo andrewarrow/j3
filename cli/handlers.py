@@ -7,6 +7,10 @@ import json
 
 from actions import PatchActionKind
 from candidate_ranking import train_candidate_ranker
+from candidate_ranker.summary import (
+    format_outcome_dataset_summary,
+    summarize_candidate_outcomes,
+)
 from cli.progress import (
     eval_phase_solved,
     phase_summary_line,
@@ -255,6 +259,24 @@ def handle_train_ranker(args: argparse.Namespace) -> int:
                 print(f"validation calibration ece: {validation_ece:.3f}")
     print(f"ranker: {result.ranker_path}")
     print(f"metrics: {result.metrics_path}")
+    return 0
+
+
+def handle_outcome_summary(args: argparse.Namespace) -> int:
+    for path in args.candidate_outcomes:
+        resolved = path.expanduser().resolve()
+        if not resolved.exists():
+            raise SystemExit(f"candidate outcomes file does not exist: {resolved}")
+        if not resolved.is_file():
+            raise SystemExit(f"candidate outcomes path is not a file: {resolved}")
+    summary = summarize_candidate_outcomes(
+        paths=args.candidate_outcomes,
+        phase=None if args.phase == "all" else args.phase,
+    )
+    if args.json:
+        print(json.dumps(summary.as_dict(), indent=2, sort_keys=True))
+    else:
+        print(format_outcome_dataset_summary(summary))
     return 0
 
 

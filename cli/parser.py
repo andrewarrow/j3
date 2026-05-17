@@ -11,6 +11,7 @@ from cli.handlers import (
     handle_eval,
     handle_fix,
     handle_mine,
+    handle_outcome_summary,
     handle_patch,
     handle_train,
     handle_train_ranker,
@@ -299,6 +300,34 @@ def build_parser() -> argparse.ArgumentParser:
         help="pairwise perceptron learning rate (default: 0.25)",
     )
     ranker_parser.set_defaults(handler=handle_train_ranker)
+
+    outcome_summary_parser = subparsers.add_parser(
+        "outcome-summary",
+        help="summarize candidate outcome JSONL datasets",
+        description=(
+            "Summarize candidate outcome JSONL files produced by j3 eval, "
+            "including pass@1 by task family and source type."
+        ),
+    )
+    outcome_summary_parser.add_argument(
+        "--candidate-outcomes",
+        type=Path,
+        nargs="+",
+        required=True,
+        help="one or more candidate outcome JSONL files from j3 eval",
+    )
+    outcome_summary_parser.add_argument(
+        "--phase",
+        choices=("ranked", "baseline", "all"),
+        default="ranked",
+        help="phase to summarize (default: ranked)",
+    )
+    outcome_summary_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print the summary as JSON",
+    )
+    outcome_summary_parser.set_defaults(handler=handle_outcome_summary)
 
     compare_parser = subparsers.add_parser(
         "compare-diagnostics",

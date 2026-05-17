@@ -55,6 +55,9 @@ Implemented repair loop capabilities:
 - Candidate outcome rows carry compact failure hints, target context, preferred
   patch labels, task families, source types, language, scores, and pass labels.
 - Eval diagnostics aggregate pass@1 by action, task family, and source type.
+- `j3 outcome-summary` summarizes candidate outcome JSONL datasets by rows,
+  tasks, families, source types, actions, preferred positives, average
+  candidates, and pass@1 slices.
 - The patching code is split under `repair/patching/`; root `patching.py` is a
   compatibility shim.
 - The planner supports bounded multi-step repair when a candidate changes the
@@ -111,8 +114,7 @@ Recent work:
 Last focused verification:
 
 ```bash
-pytest tests/test_evaluation.py tests/test_patching.py tests/test_candidate_ranking.py -q
-python cli.py eval --tasks examples/greenshot_6 --timeout 10 --max-candidates 80 --phase ranked --quiet
+pytest tests/test_cli.py tests/test_candidate_ranking.py -q
 git diff --check
 ```
 
@@ -161,7 +163,8 @@ Next tasks:
 - Add candidate diff size and edit locality features.
 - Add before/after AST delta features.
 - Record whether candidates are equivalent or overlapping.
-- Add a command to summarize outcome datasets.
+- Add a command to summarize outcome datasets. Done: `j3 outcome-summary`
+  covers candidate outcome JSONL files.
 
 The dataset summary should report at least:
 

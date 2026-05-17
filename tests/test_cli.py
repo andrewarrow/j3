@@ -20,6 +20,7 @@ def test_help_menu_prints_project_summary(capsys) -> None:
     assert "fix" in output
     assert "train" in output
     assert "train-ranker" in output
+    assert "outcome-summary" in output
     assert "compare-diagnostics" in output
     assert "eval" in output
 
@@ -165,6 +166,92 @@ def test_train_ranker_command_accepts_candidate_outcomes(capsys, tmp_path) -> No
     assert "tasks: 1" in output
     assert "training pairs: 1" in output
     assert (out_dir / "candidate-ranker.json").exists()
+
+
+def test_outcome_summary_command_reports_dataset_shape(capsys, tmp_path) -> None:
+    outcomes = tmp_path / "candidate-outcomes.jsonl"
+    rows = [
+        {
+            "task": "boundary",
+            "task_family": "operator_boundary",
+            "source_type": "mutation",
+            "phase": "ranked",
+            "file_path": "bugs.py",
+            "action": "change_operator",
+            "symbol": "meets_minimum",
+            "params": {"from": ">", "to": "<"},
+            "reason": "try comparison operator <",
+            "passed": False,
+            "rank_index": 1,
+            "first_passing_index": 2,
+            "is_first_pass": False,
+        },
+        {
+            "task": "boundary",
+            "task_family": "operator_boundary",
+            "source_type": "mutation",
+            "phase": "ranked",
+            "file_path": "bugs.py",
+            "action": "change_operator",
+            "symbol": "meets_minimum",
+            "params": {"from": ">", "to": ">="},
+            "reason": "try comparison operator >=",
+            "passed": True,
+            "preferred": True,
+            "rank_index": 2,
+            "first_passing_index": 2,
+            "is_first_pass": True,
+        },
+        {
+            "task": "metadata",
+            "task_family": "package_metadata",
+            "source_type": "git_history",
+            "phase": "ranked",
+            "file_path": "pkgmeta/metadata.py",
+            "action": "change_dict_value",
+            "symbol": "build_metadata",
+            "params": {"key": "license", "to": "MIT"},
+            "reason": "try dict value MIT",
+            "passed": True,
+            "rank_index": 1,
+            "first_passing_index": 1,
+            "is_first_pass": True,
+        },
+        {
+            "task": "baseline_only",
+            "task_family": "ignored",
+            "source_type": "handcrafted",
+            "phase": "baseline",
+            "action": "change_literal",
+            "passed": True,
+            "rank_index": 1,
+            "is_first_pass": True,
+        },
+    ]
+    outcomes.write_text(
+        "\n".join(json.dumps(row) for row in rows) + "\n",
+        encoding="utf-8",
+    )
+
+    assert main(["outcome-summary", "--candidate-outcomes", str(outcomes)]) == 0
+
+    output = capsys.readouterr().out
+    assert "j3 outcome-summary" in output
+    assert f"  {outcomes.resolve()}" in output
+    assert "phase: ranked" in output
+    assert "rows: 3" in output
+    assert "tasks: 2" in output
+    assert "plans: 2" in output
+    assert "passing rows: 2" in output
+    assert "preferred-positive rows: 1" in output
+    assert "average candidates per task: 1.50" in output
+    assert "operator_boundary: plans=1 rows=2 solved=1/1 pass@1=0/1" in output
+    assert "package_metadata: plans=1 rows=1 solved=1/1 pass@1=1/1" in output
+    assert "git_history: plans=1 rows=1 solved=1/1 pass@1=1/1" in output
+    assert "mutation: plans=1 rows=2 solved=1/1 pass@1=0/1" in output
+    assert "change_dict_value: rows=1 passing=1" in output
+    assert "change_operator: rows=2 passing=1" in output
+    assert "baseline_only" not in output
 
 
 def test_train_ranker_command_accepts_validation_outcomes(capsys, tmp_path) -> None:

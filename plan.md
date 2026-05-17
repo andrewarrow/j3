@@ -30,8 +30,9 @@ make progress look better by adding one handcrafted task and one handcrafted
 action at a time.
 
 The next phase should shift from toy ladder growth to held-out real-repo signal.
-GreenShot-6 exists, but it is only a scaffold so far. The first GreenShot-6 task
-is package-shaped, not proof that the system handles real packages.
+GreenShot-6 is useful now, but still narrow: it has package-metadata mutations
+and one git-history-derived task inside one local `pkgmeta` fixture. Treat it as
+the start of real-derived evaluation, not evidence of broad package repair.
 
 Default next move:
 
@@ -125,6 +126,10 @@ Recent work:
 - Task manifests now support explicit `split` metadata; missing splits are
   assigned deterministically from task identity and are written to diagnostics
   and candidate outcome rows.
+- A current GreenShot-6 smoke run solves all 6 tasks, but pass@1 is 4/6. The
+  non-pass@1 tasks are useful ranking signal rather than missing-action signal:
+  inclusive operator boundary passes at rank 2, and Apache classifier
+  dictionary-value repair passes at rank 5.
 
 Last focused verification:
 
@@ -141,11 +146,11 @@ ranked, runs/apache-python-git/model.json, explore-after-pass=5:
   rows=126 passing_rows=24 preferred_positive_rows=8
 ```
 
-GreenShot-6 mutation smoke result:
+GreenShot-6 smoke result:
 
 ```text
 ranked, no candidate ranker:
-  solved=5/5 pass@1=3/5 avg_candidates=1.80
+  solved=6/6 pass@1=4/6 avg_candidates=1.83
 ```
 
 Treat this as a smoke check, not a benchmark claim.
@@ -157,11 +162,13 @@ Keep this section as the live queue. When work is completed, move it to
 
 Immediate next sequence:
 
-1. Add more git-history-derived or mutation-generated GreenShot-6 held-out
-   tasks from real repos.
-2. Run GreenShot-6 with `--explore-after-pass` and save candidate outcomes.
-3. Use `outcome-summary` to inspect hard negatives by family, source type, and
-   split.
+1. Add 3 to 5 more GreenShot-6 tasks from real git history or mutation-derived
+   real-repo changes, preferably outside the current package-metadata theme.
+2. Do not add a new action family for those tasks unless a held-out task proves
+   the right candidate is missing.
+3. Run GreenShot-6 with `--explore-after-pass 5` and save candidate outcomes.
+4. Use `outcome-summary` to inspect hard negatives by family, source type, and
+   split before changing ranker features.
 
 ### 1. Make GreenShot-6 Real
 
@@ -172,6 +179,7 @@ Next tasks:
 
 - Add more git-history-derived held-out repair tasks.
 - Add more mutation-generated held-out tasks from real repos.
+- Prefer a second fixture domain/package over more `pkgmeta` metadata tasks.
 - Continue marking every task with a task family and source type:
   `handcrafted`, `mutation`, or `git_history`.
 
@@ -191,8 +199,8 @@ Goal: train on candidates the current system actually finds tempting.
 
 Next tasks:
 
-- Run GreenShot-6 with `--explore-after-pass` after adding more real-derived
-  held-out tasks.
+- Run GreenShot-6 with `--explore-after-pass 5` after adding 3 to 5 more
+  real-derived held-out tasks.
 - Save diagnostics and candidate outcomes.
 - Summarize high-scoring failed candidates.
 - Use those rows for ranker training and validation.
@@ -321,6 +329,6 @@ Start neural/JEPA work only when:
 ## Handoff Recommendation
 
 The next context window should not add another handcrafted GreenShot task first.
-It should make GreenShot-6 real by adding mutation-generated or git-history-
-derived held-out tasks, then collect candidate outcomes with exploration and
-summarize the dataset.
+It should add several real-derived GreenShot-6 tasks, ideally in a second
+fixture domain, then collect candidate outcomes with exploration and summarize
+the dataset before adding actions or ranker features.

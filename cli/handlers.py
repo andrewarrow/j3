@@ -84,6 +84,10 @@ from j3.transition_ranking import (
     TransitionRankingGateError,
     transition_ranking_gate_decision,
 )
+from j3.transition_residuals import (
+    format_transition_residual_report,
+    report_transition_residuals,
+)
 from j3.transition_scorer_advice import (
     append_transition_scorer_advice_jsonl,
     format_transition_scorer_advice_summary,
@@ -1188,6 +1192,44 @@ def handle_run_transition_shadow_suite(args: argparse.Namespace) -> int:
         print(json.dumps(summary, indent=2, sort_keys=True))
     else:
         print(format_transition_shadow_suite_summary(summary))
+    return 0
+
+
+def handle_report_transition_residuals(args: argparse.Namespace) -> int:
+    for path in args.shadow_outcomes:
+        resolved = path.expanduser().resolve()
+        if not resolved.exists():
+            raise SystemExit(f"shadow outcome file does not exist: {resolved}")
+        if not resolved.is_file():
+            raise SystemExit(f"shadow outcome path is not a file: {resolved}")
+    resolved_report = args.shadow_scorer_report.expanduser().resolve()
+    if not resolved_report.exists():
+        raise SystemExit(f"shadow scorer report does not exist: {resolved_report}")
+    if not resolved_report.is_file():
+        raise SystemExit(f"shadow scorer report path is not a file: {resolved_report}")
+    for path in args.candidate_outcomes:
+        resolved = path.expanduser().resolve()
+        if not resolved.exists():
+            raise SystemExit(f"candidate outcomes file does not exist: {resolved}")
+        if not resolved.is_file():
+            raise SystemExit(f"candidate outcomes path is not a file: {resolved}")
+
+    try:
+        report = report_transition_residuals(
+            shadow_outcome_paths=args.shadow_outcomes,
+            shadow_scorer_report_path=args.shadow_scorer_report,
+            candidate_outcome_paths=args.candidate_outcomes,
+            embedding_dim=args.embedding_dim,
+            example_limit=args.example_limit,
+            out=args.out,
+        )
+    except (FileNotFoundError, IsADirectoryError, ValueError) as error:
+        raise SystemExit(str(error)) from error
+
+    if args.json:
+        print(json.dumps(report, indent=2, sort_keys=True))
+    else:
+        print(format_transition_residual_report(report))
     return 0
 
 

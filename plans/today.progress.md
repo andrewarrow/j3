@@ -6,8 +6,9 @@ This file is the live progress log for `plans/today.md`. Keep
 ## Status
 
 - Current phase: shadow suite and residual-driven readiness.
-- Completed iterations for this reset: 1.
+- Completed iterations for this reset: 2.
 - Latest relevant commits:
+  - pending Worker 2 residual report commit.
   - `f9ed963` recorded shadow suite completion.
   - `0aae784` added the transition shadow suite command.
   - `2664a95` documented shadow-to-gate evidence.
@@ -19,13 +20,14 @@ This file is the live progress log for `plans/today.md`. Keep
   - `f962018` closed the previous transition scoring queue.
 - Current blocker: held-out V2/V3 product gates are still the product boundary.
   Guarded ranking must remain non-default and blocked unless evidence passes.
-- Next task: add a V3/shadow residual report.
+- Next task: improve one scorer feature or action-choice metadata path from
+  residuals.
 
 ## Active Task Queue
 
 - [x] Recreate `plans/today.md` and `plans/today.progress.md`.
 - [x] Add a repeatable shadow eval suite command.
-- [ ] Add a V3/shadow residual report.
+- [x] Add a V3/shadow residual report.
 - [ ] Improve one scorer feature or action-choice metadata path from residuals.
 - [ ] Run a narrow guarded trial only if held-out gates pass.
 - [ ] Update evidence and product docs for the shadow suite.
@@ -149,4 +151,28 @@ Use this shape for each worker handoff:
 - Commit: `0aae784` (`Add transition shadow suite command`).
 - Push: succeeded to `main`.
 - Next: add a V3/shadow residual report.
+- Blockers: none.
+
+### Iteration 2: V3/shadow residual report
+
+- Worker: Worker 2
+- Goal: add `report-transition-residuals` for active Step 3.
+- Files changed: `j3/transition_residuals.py`, `cli/parser.py`,
+  `cli/handlers.py`, `cli/__init__.py`, `tests/test_transition_residuals.py`,
+  `tests/test_cli.py`, `plans/today.progress.md`
+- Tests run:
+  - `pytest tests/test_transition_residuals.py -q` passed.
+  - `python -m py_compile j3/transition_residuals.py cli/handlers.py cli/parser.py cli/__init__.py` passed.
+  - `pytest tests/test_cli.py -q` passed.
+  - `python cli.py report-transition-residuals --shadow-outcomes /tmp/j3-transition-shadow-suite/transition-shadow-outcomes.jsonl --shadow-scorer-report /tmp/j3-transition-shadow-suite/shadow-scorer-v3-report.json --candidate-outcomes /tmp/j3-transition-shadow-suite/candidate-outcomes.jsonl --json` passed.
+  - `git diff --check` passed.
+- Result: command consumes normalized shadow outcomes, the V3 shadow scorer
+  report, and candidate outcomes; groups residuals by task family, action kind,
+  source file, scorer/production top disagreement, missing feature evidence,
+  and generation-vs-ranking gap; includes bounded exact candidate summaries and
+  zero hosted usage fields.
+- Commit: pending.
+- Push: pending.
+- Next: improve one scorer feature or action-choice metadata path from the
+  residual report.
 - Blockers: none.

@@ -28,6 +28,7 @@ from cli.handlers import (
     handle_patch,
     handle_propose_from_prompt_jepa,
     handle_query_prompt_jepa_index,
+    handle_report_transition_residuals,
     handle_run_transition_shadow_suite,
     handle_summarize_transition_advice,
     handle_train,
@@ -1248,6 +1249,64 @@ def build_parser() -> argparse.ArgumentParser:
     )
     transition_shadow_suite_parser.set_defaults(
         handler=handle_run_transition_shadow_suite
+    )
+
+    transition_residuals_parser = subparsers.add_parser(
+        "report-transition-residuals",
+        help="group V3 and shadow transition residuals for follow-up",
+        description=(
+            "Consume transition-shadow-outcome-v1 rows, a held-out V3 shadow "
+            "scorer report, and candidate outcomes, then group concrete residuals "
+            "by task family, action kind, source file, scorer/production top "
+            "candidate disagreement, missing feature evidence, and generation "
+            "versus ranking gaps. The report is local-only and records zero "
+            "hosted usage."
+        ),
+    )
+    transition_residuals_parser.add_argument(
+        "--shadow-outcomes",
+        type=Path,
+        nargs="+",
+        required=True,
+        help="one or more transition-shadow-outcome-v1 JSONL files",
+    )
+    transition_residuals_parser.add_argument(
+        "--shadow-scorer-report",
+        type=Path,
+        required=True,
+        help="transition-action-future-scorer-v3 JSON report",
+    )
+    transition_residuals_parser.add_argument(
+        "--candidate-outcomes",
+        type=Path,
+        nargs="+",
+        required=True,
+        help="one or more candidate outcome JSONL files used for action choices",
+    )
+    transition_residuals_parser.add_argument(
+        "--embedding-dim",
+        type=int,
+        default=256,
+        help="local source embedding dimension for candidate groups (default: 256)",
+    )
+    transition_residuals_parser.add_argument(
+        "--example-limit",
+        type=int,
+        default=20,
+        help="maximum bounded examples to include (default: 20)",
+    )
+    transition_residuals_parser.add_argument(
+        "--out",
+        type=Path,
+        help="optional output JSON report path",
+    )
+    transition_residuals_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print the residual report as JSON",
+    )
+    transition_residuals_parser.set_defaults(
+        handler=handle_report_transition_residuals
     )
 
     compare_parser = subparsers.add_parser(

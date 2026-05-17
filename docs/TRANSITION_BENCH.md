@@ -124,6 +124,19 @@ The resulting `transition-shadow-outcome-v1` rows are the auditable record of
 what production did, what the scorer would have done, and what validation knew
 at the time.
 
+For a repeatable local suite that stitches the shadow workflow together, use
+`run-transition-shadow-suite` instead of running each command by hand:
+
+```bash
+python cli.py run-transition-shadow-suite \
+  --tasks examples/greenshot_bugs \
+  --out /tmp/j3-transition-shadow-suite
+```
+
+The command writes every generated artifact under the caller-provided output
+directory. Use `/tmp/...` for disposable evidence or an ignored `runs/...` path
+for longer local runs. Do not commit generated suite artifacts.
+
 ### Guarded Opt-In Mode
 
 Guarded mode is explicit and non-default. It is enabled with
@@ -292,6 +305,80 @@ Default `patch`, `fix`, and `eval` routing remains unchanged. Guarded ranking
 remains blocked unless the relevant product gate reports
 `ready_for_guarded_opt_in`; failed held-out V2 or V3 gates must not be bypassed
 except through the explicit experimental escape hatch used for local research.
+The current checked-in shadow suite evidence reports `ready_for_shadow_mode`,
+so no guarded production trial was run from that evidence.
+
+## Repeatable Shadow Suite
+
+`run-transition-shadow-suite` is the preferred product evidence smoke for the
+transition scorer. It runs the standard local repair task suite and writes a
+single auditable directory:
+
+```bash
+python cli.py run-transition-shadow-suite \
+  --tasks examples/greenshot_bugs \
+  --out /tmp/j3-transition-shadow-suite \
+  --json
+```
+
+The default task path is `examples/greenshot_bugs`. Pass one or more explicit
+`--tasks` paths for broader local runs. The suite is local-only, uses already
+available repo files and deterministic code, and records zero hosted usage. It
+does not enable transition ranking in production routing.
+
+Expected files:
+
+- `candidate-outcomes.jsonl`: every candidate that the repair evaluator
+  generated and validated, including task, phase, rank, action, diagnostics,
+  and pass/fail evidence.
+- `transition-advice.jsonl`: shadow scorer advice over the same candidate set;
+  it records production top choice, scorer top choice, agreement, known
+  validation comparison, and zero hosted usage.
+- `diagnostics.json`: evaluator diagnostics from the underlying repair run.
+- `advice-summary.json`: `summarize-transition-advice` output with agreement,
+  known improve/regress/no-change counts, pass@1 comparisons, candidate savings
+  or losses, and zero hosted usage totals.
+- `transition-shadow-outcomes.jsonl`: normalized
+  `transition-shadow-outcome-v1` rows joining advice to candidate outcomes while
+  preserving unjoined rows with explicit reasons.
+- `transition-shadow-outcome-summary.json`: compact join and label summary for
+  the normalized shadow outcomes.
+- `shadow-scorer-v3-report.json`: held-out V3 scorer report. The current
+  feature version is `transition-action-shadow-features-v4`, which includes
+  bounded `change_context` metadata derived from existing diff, edit, and AST
+  delta fields. Production rank remains an ablation-only feature.
+- `transition-bench-report.json`: transition bench report over the suite's
+  candidate outcomes for comparison with V1/V2 and existing rank order.
+- `evidence/`: evidence bundle with manifest, checksums, asset inventory,
+  product-readiness gate, reproduction commands, and packaged reports.
+- `manifest.json`: top-level `transition-shadow-suite-v1` suite manifest
+  listing command parameters, artifact paths, effective product gate, and zero
+  hosted usage policy.
+
+Generated outputs under `/tmp` or ignored `runs/` directories are evidence for
+local inspection, not repository source. Keep source, tests, fixtures, and docs
+in git; keep generated JSONL, reports, evidence directories, and suite outputs
+out of commits.
+
+## Residual Report
+
+Use `report-transition-residuals` after a suite run to turn held-out misses and
+shadow disagreements into bounded engineering work:
+
+```bash
+python cli.py report-transition-residuals \
+  --shadow-outcomes /tmp/j3-transition-shadow-suite/transition-shadow-outcomes.jsonl \
+  --shadow-scorer-report /tmp/j3-transition-shadow-suite/shadow-scorer-v3-report.json \
+  --candidate-outcomes /tmp/j3-transition-shadow-suite/candidate-outcomes.jsonl \
+  --json
+```
+
+The report consumes normalized shadow outcomes, the V3 report, and candidate
+outcomes. It groups residuals by task family, action kind, source file,
+scorer/production top-candidate disagreement, missing feature evidence, and
+candidate-generation versus scorer-ranking gap. Its bounded examples name exact
+candidate summaries so follow-up work can target one failure family at a time.
+It also records zero hosted usage.
 
 ## What Is Checked In
 
@@ -491,7 +578,9 @@ Useful fields:
 - `hard_negative_candidate_ranks`: failed validated candidates that were still
   plausible enough to validate.
 - `candidates`: ranked candidate action records with source context, target
-  context, candidate-after evidence when available, and validation details.
+  context, bounded `change_context` metadata from existing diff, edit, and AST
+  delta fields, candidate-after evidence when available, and validation
+  details.
 
 The grouping code uses an explicit repair-plan id when present. Existing
 candidate outcome rows may lack that id, so the fallback identity is derived
@@ -567,6 +656,8 @@ Useful fields:
 
 - `decision`: always `evaluation_only_not_wired_to_production`.
 - `scorer`: `transition-action-future-scorer-v3`.
+- `scorer.feature_version`: current local version
+  `transition-action-shadow-features-v4`.
 - `parameters`: split key, validation fraction, top-k, epochs, margin, and
   whether the production-rank ablation was enabled.
 - `shadow_outcomes`: row counts, joined known-validation counts, and matched
@@ -579,6 +670,49 @@ Useful fields:
   ranking unless it is `ready_for_guarded_opt_in`.
 - `model`: local V3 feature weights for inspection.
 - `runtime`: local runtime and zero hosted usage fields.
+
+The v4 feature surface includes bounded change metrics from candidate row
+metadata such as diff size, edit counts, and AST added/removed counts. These
+features are non-label evidence already present on candidate rows. Production
+rank is not used by default because it would turn the existing order into a
+training shortcut; `--allow-production-rank-feature` is only for ablation
+reports.
+
+### `transition-residual-report-v1`
+
+Produced by `report-transition-residuals`.
+
+Useful fields:
+
+- `inputs`: shadow outcome, V3 report, and candidate outcome paths.
+- `shadow_scorer`: V3 report schema, scorer name, availability, and gate.
+- `summary`: shadow outcome row count, candidate action-choice group count,
+  failure count, failure kinds, and gap types.
+- `groups`: residual counts by task family, action kind, source file,
+  scorer/production top-candidate disagreement, missing feature evidence, and
+  generation-versus-ranking gap.
+- `examples`: bounded candidate summaries with exact task, phase, rank, action,
+  validation, and scorer/production selection context.
+- `usage`: hosted usage fields, all expected to be zero.
+
+### `transition-shadow-suite-v1`
+
+Produced by `run-transition-shadow-suite` as `manifest.json`.
+
+Useful fields:
+
+- `commands`: original suite command plus component reproduction commands.
+- `tasks`: task paths included in the suite.
+- `artifacts`: paths to candidate outcomes, advice, diagnostics, advice
+  summary, normalized shadow outcomes, V3 report, transition bench report,
+  evidence bundle, evidence manifest, and suite manifest.
+- `transition_bench`, `advice_summary`, `transition_shadow_outcomes`,
+  `shadow_scorer_v3`, and `evidence_bundle`: compact summaries of each
+  generated evidence stage.
+- `shadow_scorer_v3.validation.product_readiness`: effective V3 gate. Guarded
+  ranking remains blocked unless this gate is `ready_for_guarded_opt_in`.
+- `usage` and `zero_hosted_usage`: local-only execution and zero hosted
+  token/context usage.
 
 ### `transition-bench-demo-report-v1`
 

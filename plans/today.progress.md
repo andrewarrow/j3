@@ -6,7 +6,7 @@ This file is the live progress log for `plans/today.md`. Keep
 ## Status
 
 - Current phase: shadow suite and residual-driven readiness.
-- Completed iterations for this reset: 3.
+- Completed iterations for this reset: 4.
 - Latest relevant commits:
   - `1c47171` improved transition scorer change features.
   - `23f37ac` added the transition residual report.
@@ -31,7 +31,7 @@ This file is the live progress log for `plans/today.md`. Keep
 - [x] Improve one scorer feature or action-choice metadata path from residuals.
 - [x] Run a narrow guarded trial only if held-out gates pass. Skipped by policy:
   the current gate remains `ready_for_shadow_mode`, not guarded-opt-in.
-- [ ] Update evidence and product docs for the shadow suite.
+- [x] Update evidence and product docs for the shadow suite.
 
 ## Current Facts
 
@@ -228,3 +228,25 @@ Use this shape for each worker handoff:
   additional product-routing test was needed because the trial was blocked.
 - Next: update evidence and product docs for the shadow suite.
 - Blockers: held-out gate is not `ready_for_guarded_opt_in`.
+
+### Iteration 4: Shadow suite evidence docs
+
+- Worker: Worker 4
+- Goal: update focused evidence and product docs for the repeatable shadow
+  suite and residual workflow.
+- Files changed: `docs/TRANSITION_BENCH.md`, `plans/today.progress.md`
+- Tests run:
+  - `git diff --check` passed.
+  - `python cli.py run-transition-shadow-suite --help` passed.
+  - `python cli.py report-transition-residuals --help` passed.
+- Result: transition bench docs now explain how to run the repeatable shadow
+  suite and residual report, where suite artifacts are written, what each
+  artifact means, the zero hosted usage expectation, the v4 bounded
+  `change_context` feature surface, the guarded-ranking gate policy, and why
+  generated `/tmp` or ignored `runs/` artifacts must not be committed.
+- Commit: current commit (`Document transition shadow suite workflow`).
+- Push: pending until this iteration is committed and pushed.
+- Next: watcher should choose the next residual-driven or GreenShot-7 task.
+- Blockers: guarded production ranking remains blocked because the checked-in
+  suite evidence is `ready_for_shadow_mode`, not
+  `ready_for_guarded_opt_in`.

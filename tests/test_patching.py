@@ -798,6 +798,28 @@ def test_patch_solves_packaging_pyemscripten_platform_config_var(tmp_path) -> No
     assert "get_config_var('PYEMSCRIPTEN_PLATFORM_VERSION')" in result.selected.patched_source
 
 
+def test_patch_solves_yfinance_market_data_error_typo(tmp_path) -> None:
+    repo = tmp_path / "greenshot_6"
+    shutil.copytree("examples/greenshot_6", repo)
+
+    result = plan_and_maybe_apply_patch(
+        repo=repo,
+        test_command="python -m pytest tests/test_marketdata.py::test_market_data_error_spells_received",
+        dry_run=True,
+        timeout_seconds=10,
+    )
+
+    assert result.selected is not None
+    assert result.candidates_tested == 1
+    assert result.selected.file_path == "marketdata/market.py"
+    assert result.selected.action.kind.value == "change_literal"
+    assert result.selected.action.params == {
+        "from": ": Failed to retrieve market data and recieved faulty data.",
+        "to": ": Failed to retrieve market data and received faulty data.",
+    }
+    assert "received faulty data" in result.selected.patched_source
+
+
 def test_generate_membership_operator_with_literal_needle_decoy(tmp_path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()

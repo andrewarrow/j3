@@ -422,6 +422,27 @@
     }
   },
   {
+    "name": "yfinance_market_data_error_typo",
+    "family": "market_data_error_message",
+    "source_type": "git_history",
+    "split": "train",
+    "repo": ".",
+    "test": "python -m pytest tests/test_marketdata.py::test_market_data_error_spells_received",
+    "source": {
+      "repo": "ranaroussi/yfinance",
+      "commit": "64bd1baa79c7c37c169b6f6d76def262fec7ca71"
+    },
+    "preferred": {
+      "file_path": "marketdata/market.py",
+      "action": "change_literal",
+      "symbol": "market_data_error",
+      "params": {
+        "from": ": Failed to retrieve market data and recieved faulty data.",
+        "to": ": Failed to retrieve market data and received faulty data."
+      }
+    }
+  },
+  {
     "name": "cookie_default_secure_flag_dict_value",
     "family": "mapping_value",
     "source_type": "mutation",

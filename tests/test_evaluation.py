@@ -99,7 +99,7 @@ def test_load_greenshot_6_tasks() -> None:
     tasks = load_tasks(Path("examples/greenshot_6"))
     by_name = {task.name: task for task in tasks}
 
-    assert len(tasks) == 28
+    assert len(tasks) == 29
     assert tasks[0].name == "core_metadata_version_dict_value"
     assert tasks[0].family == "mapping_value"
     assert tasks[0].source_type == "mutation"
@@ -278,6 +278,17 @@ def test_load_greenshot_6_tasks() -> None:
         "params": {
             "from": "PYEMSCRIPTEN_ABI_VERSION",
             "to": "PYEMSCRIPTEN_PLATFORM_VERSION",
+        },
+    }
+    assert by_name["yfinance_market_data_error_typo"].split == "train"
+    assert by_name["yfinance_market_data_error_typo"].source_type == "git_history"
+    assert by_name["yfinance_market_data_error_typo"].preferred_patch == {
+        "file_path": "marketdata/market.py",
+        "action": "change_literal",
+        "symbol": "market_data_error",
+        "params": {
+            "from": ": Failed to retrieve market data and recieved faulty data.",
+            "to": ": Failed to retrieve market data and received faulty data.",
         },
     }
     assert by_name["cookie_default_secure_flag_dict_value"].split == "test"

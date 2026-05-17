@@ -681,12 +681,36 @@ Recent work:
   `packaging_pyemscripten_platform_config_var`; every task has a tested
   preferred-positive row, and the saved test-slice ranker places every
   preferred-positive candidate at trained rank 1.
+- GreenShot-6 now includes a tenth fixture domain, `marketdata`, with one
+  real-package-derived `git_history` task modeled on `ranaroussi/yfinance`
+  commit `64bd1baa79c7c37c169b6f6d76def262fec7ca71`. The task
+  `yfinance_market_data_error_typo` repairs a market-data error f-string by
+  changing `recieved` to `received`, using the existing `change_literal` action
+  family.
+- Focused loader/generator coverage passed for the new yfinance-derived task:
+  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
+  `pytest tests/test_patching.py::test_patch_solves_yfinance_market_data_error_typo -q`.
+- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
+  adding `marketdata`. The persisted dataset at
+  `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` now covers 29
+  tasks and 212 tested candidates. Ranked eval solved all 29 tasks with
+  `pass@1=22/29` and average candidates `7.31`; the new yfinance-derived task
+  solves at raw rank 1, while its reusable preferred literal-fragment repair is
+  present and passing at raw rank 2.
+- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
+  the marketdata outcome refresh and stayed clean: solved=7/7, pass@1=7/7,
+  positive@1=7/7. Training used 292 rows, 65 passing rows, 249 training pairs,
+  705 features, and 3 margin violations.
+- Applying the saved test-slice ranker to all refreshed GreenShot-6 rows found
+  no trained preferred-positive misses. For the new yfinance-derived task, the
+  trained ranker places the preferred reusable `change_literal` repair first,
+  above the concrete whole-message passing candidate.
 
 Last focused verification:
 
 ```bash
 pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q
-pytest tests/test_patching.py::test_patch_solves_packaging_pyemscripten_platform_config_var -q
+pytest tests/test_patching.py::test_patch_solves_yfinance_market_data_error_typo -q
 python cli.py eval \
   --tasks examples/greenshot_6 \
   --checkpoint runs/apache-python-git/model.json \
@@ -833,9 +857,9 @@ GreenShot-6 outcome collection result:
 
 ```text
 ranked, runs/apache-python-git/model.json, explore-after-pass=5:
-  solved=28/28 pass@1=21/28 avg_candidates=7.36
-  rows=206 passing_rows=55 preferred_positive_rows=28
-  source_type pass@1: git_history=6/10 mutation=15/18
+  solved=29/29 pass@1=22/29 avg_candidates=7.31
+  rows=212 passing_rows=57 preferred_positive_rows=29
+  source_type pass@1: git_history=7/11 mutation=15/18
 ```
 
 Treat this as a smoke check, not a benchmark claim.
@@ -854,8 +878,8 @@ GreenShot-6 test-slice ranker validation result:
 
 ```text
 train-ranker, holdout-task includes all GreenShot-6 split:test tasks:
-  training rows=286 passing_rows=63 tasks=41 plans=41 pairs=244
-  training_accuracy=1.000 margin_violations=2 features=777
+  training rows=292 passing_rows=65 tasks=42 plans=42 pairs=249
+  training_accuracy=1.000 margin_violations=3 features=705
   validation solved=7/7 pass@1=7/7 positive@1=7/7
   validation avg_first_passing_index=1.0
 ```
@@ -1042,7 +1066,7 @@ The next context window should resume dataset growth by adding another
 real-package-derived GreenShot-6 task or small fixture domain. Do not tune
 broad handcrafted weights or add pass/preferred-label features from this state.
 The current GreenShot-6 `split: test` held-out validation is clean after the
-scalar dictionary-value assertion-delta feature.
+marketdata outcome refresh.
 
 Immediate next sequence:
 

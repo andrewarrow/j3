@@ -18,9 +18,11 @@ new implementation facts change the 24-hour plan itself. Record any
   - `git diff --check`
   - `python -m py_compile prompt_intents.py request_spec.py cli/handlers.py`
   - `python -m py_compile existing_repo_change.py cli/handlers.py cli/parser.py cli/__init__.py`
-- Latest implementation commit: pending worker iteration 3 commit
+- Latest implementation commit: `c4a71c8ef1ee326a26f45ebbecbfa3836c3519d5`
 - Current blocker: none
-- Next task: watcher to select the next active slice from `plans/today.md`
+- Next task: train or evaluate the first narrow learned prompt-intent predictor
+  from the available prompt-intent labels, with held-out metrics and no
+  production wiring unless the result is justified
 
 ## Worker Iteration Template
 
@@ -196,7 +198,10 @@ Use this shape for each worker handoff:
     aliases plus `left ** right` dispatch, updates generated tests for all
     three required CLI examples, and moves the unknown-operator case away from
     `power`.
-- Commit: pending worker iteration 3 commit
-- Push: pending
-- Next: watcher to select the next active slice from `plans/today.md`.
+- Commit: `c4a71c8ef1ee326a26f45ebbecbfa3836c3519d5`
+- Push: succeeded to `main`
+- Next: train or evaluate the first narrow learned prompt-intent predictor for
+  a concrete target such as `repo_mode` or `expected_action`, compare it against
+  the deterministic lower-bound baseline, and record whether it is ready to
+  replace any fixture-backed prediction path.
 - Blockers: none

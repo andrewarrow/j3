@@ -189,6 +189,53 @@ candidate in the current outcome rows, and it is less label-sensitive than
 trying to distinguish all accidental passing repairs in
 `http_no_store_response_with_etag`.
 
+## Sampling Condition Refresh
+
+Inspection date: 2026-05-16.
+
+Inspection source:
+
+```bash
+runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl
+runs/apache-python-git/ranker-holdout-greenshot-6-test-slice/candidate-ranker.json
+```
+
+After adding the litgpt-derived `sampling` domain, raw GreenShot-6 still solves
+all tasks but has six pass@1 misses:
+
+| Task | Family | Source | Split | First passing rank | Preferred rank |
+| --- | --- | --- | --- | ---: | ---: |
+| `apache_license_classifier_dict_value` | `mapping_value` | `mutation` | `test` | 5 | 5 |
+| `dynamic_field_error_message` | `exception_message` | `git_history` | `train` | 8 | 10 |
+| `http_no_store_directive_subscript_key` | `http_cache_directive` | `mutation` | `train` | 19 | 19 |
+| `http_range_request_bypasses_cache` | `http_cache_range` | `git_history` | `train` | 2 | 2 |
+| `litgpt_zero_temperature_greedy_condition` | `sampling_condition` | `git_history` | `train` | 2 | 7 |
+| `minimum_python_version_operator_boundary` | `operator_boundary` | `mutation` | `validation` | 2 | 2 |
+
+The new sampling task is a clean raw hard negative. The old checkpoint ranks
+local comparison-operator edits ahead of the preferred boolean-connective
+`modify_condition` repair:
+
+| Raw rank | Passed | Preferred | Action | Params |
+| ---: | --- | --- | --- | --- |
+| 1 | no | no | `change_operator` | `>` -> `<` |
+| 2 | yes | no | `change_operator` | `>` -> `<` |
+| 3 | no | no | `change_operator` | `>` -> `>=` |
+| 4 | no | no | `change_operator` | `>` -> `>=` |
+| 5 | no | no | `change_operator` | `>` -> `<=` |
+| 6 | yes | no | `change_operator` | `>` -> `<=` |
+| 7 | yes | yes | `modify_condition` | `or` -> `and` |
+
+The same GreenShot-6 `split: test` held-out ranker validation remains clean:
+solved=7/7, pass@1=7/7, positive@1=7/7. Applying the saved test-slice ranker to
+all refreshed GreenShot-6 rows also shows no trained preferred-positive misses.
+For the new sampling task, the preferred `modify_condition` row is trained rank
+1, above both accidentally passing comparison-operator edits.
+
+Decision: do not add ranker features or broad action weights from this state.
+The new task adds useful training signal, but the current trained ranker already
+uses existing features to prefer the intended boolean-connective repair.
+
 ## Same-Mapping Metadata Follow-Up
 
 Implementation result: same-mapping asserted-key metadata is now recorded for

@@ -684,6 +684,29 @@ def test_patch_solves_click_invalid_directory_filename_repr(tmp_path) -> None:
     assert "'{name} {filename!r} is a directory.'" in result.selected.patched_source
 
 
+def test_patch_solves_litgpt_zero_temperature_greedy_condition(tmp_path) -> None:
+    repo = tmp_path / "greenshot_6"
+    shutil.copytree("examples/greenshot_6", repo)
+
+    result = plan_and_maybe_apply_patch(
+        repo=repo,
+        test_command="python -m pytest tests/test_sampling.py::test_zero_temperature_forces_greedy_decoding",
+        dry_run=True,
+        timeout_seconds=10,
+    )
+
+    assert result.selected is not None
+    assert result.candidates_tested == 1
+    assert result.selected.file_path == "sampling/generate.py"
+    assert result.selected.action.kind.value == "modify_condition"
+    assert result.selected.action.params == {
+        "operation": "change_bool_operator",
+        "from": "or",
+        "to": "and",
+    }
+    assert "temperature > 0.0 and top_p > 0.0" in result.selected.patched_source
+
+
 def test_generate_membership_operator_with_literal_needle_decoy(tmp_path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()

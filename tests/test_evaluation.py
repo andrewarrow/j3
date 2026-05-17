@@ -97,7 +97,7 @@ def test_load_greenshot_6_tasks() -> None:
     tasks = load_tasks(Path("examples/greenshot_6"))
     by_name = {task.name: task for task in tasks}
 
-    assert len(tasks) == 23
+    assert len(tasks) == 24
     assert tasks[0].name == "core_metadata_version_dict_value"
     assert tasks[0].family == "mapping_value"
     assert tasks[0].source_type == "mutation"
@@ -218,6 +218,18 @@ def test_load_greenshot_6_tasks() -> None:
         "params": {
             "from": "{name} '{filename}' is a directory.",
             "to": "{name} {filename!r} is a directory.",
+        },
+    }
+    assert by_name["litgpt_zero_temperature_greedy_condition"].split == "train"
+    assert by_name["litgpt_zero_temperature_greedy_condition"].source_type == "git_history"
+    assert by_name["litgpt_zero_temperature_greedy_condition"].preferred_patch == {
+        "file_path": "sampling/generate.py",
+        "action": "modify_condition",
+        "symbol": "decode_mode",
+        "params": {
+            "operation": "change_bool_operator",
+            "from": "or",
+            "to": "and",
         },
     }
     assert by_name["cookie_default_secure_flag_dict_value"].split == "test"

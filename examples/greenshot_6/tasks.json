@@ -309,6 +309,29 @@
     }
   },
   {
+    "name": "litgpt_zero_temperature_greedy_condition",
+    "family": "sampling_condition",
+    "source_type": "git_history",
+    "split": "train",
+    "repo": ".",
+    "test": "python -m pytest tests/test_sampling.py::test_zero_temperature_forces_greedy_decoding",
+    "source": {
+      "repo": "Lightning-AI/litgpt",
+      "commit": "8c3ce130d52faa22da4a005cee3f0f6fdfe43099",
+      "issue": 2238
+    },
+    "preferred": {
+      "file_path": "sampling/generate.py",
+      "action": "modify_condition",
+      "symbol": "decode_mode",
+      "params": {
+        "operation": "change_bool_operator",
+        "from": "or",
+        "to": "and"
+      }
+    }
+  },
+  {
     "name": "cookie_default_secure_flag_dict_value",
     "family": "mapping_value",
     "source_type": "mutation",

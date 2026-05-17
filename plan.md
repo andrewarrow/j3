@@ -496,6 +496,35 @@ Recent work:
   and `minimum_python_version_operator_boundary`; every task has a tested
   preferred-positive row, and the saved test-slice ranker places every
   preferred-positive candidate at trained rank 1.
+- GreenShot-6 now includes a fifth fixture domain, `sampling`, with one
+  real-package-derived `git_history` task modeled on `Lightning-AI/litgpt`
+  commit `8c3ce130d52faa22da4a005cee3f0f6fdfe43099` / issue 2238. The task
+  `litgpt_zero_temperature_greedy_condition` repairs the zero-temperature
+  sampling gate by changing the boolean connective in
+  `temperature > 0.0 or top_p > 0.0` to `and`, using the existing
+  `modify_condition` action family.
+- `modify_condition` generation now emits a narrow boolean connective repair
+  for `BoolOp` conditions before broader condition negation. This was needed
+  because the held-out litgpt-derived repair shape was otherwise missing from
+  the existing candidate set; no new action family was added.
+- Focused loader/generator coverage passed for the new sampling task:
+  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
+  `pytest tests/test_patching.py::test_patch_solves_litgpt_zero_temperature_greedy_condition -q`.
+- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
+  adding `sampling`. The persisted dataset at
+  `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` now covers 24
+  tasks and 176 tested candidates. Ranked eval solved all 24 tasks with
+  `pass@1=18/24` and average candidates `7.33`.
+- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
+  the sampling outcome refresh and stayed clean: solved=7/7, pass@1=7/7,
+  positive@1=7/7. Training used 256 rows, 59 passing rows, 218 training pairs,
+  674 features, and 3 margin violations.
+- Refreshed raw/trained miss inspection after adding `sampling` found one new
+  raw preferred-positive miss, `litgpt_zero_temperature_greedy_condition`: raw
+  checkpoint ordering tries comparison-operator decoys before the preferred
+  boolean-connective repair. The saved test-slice ranker places every
+  GreenShot-6 preferred-positive candidate at trained rank 1, including the new
+  sampling task.
 
 Last focused verification:
 
@@ -528,13 +557,13 @@ python cli.py train-ranker \
 python cli.py outcome-summary \
   --candidate-outcomes runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl
 python - <<'PY'
-# grouped raw miss / preferred-positive rank inspection over
+# grouped raw miss / preferred-positive rank inspection over refreshed
 # runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl
 PY
 python - <<'PY'
 # applied the saved
 # runs/apache-python-git/ranker-holdout-greenshot-6-test-slice/candidate-ranker.json
-# to refreshed GreenShot-6 rows for preferred-positive rank inspection
+# to refreshed GreenShot-6 rows; all preferred-positive candidates rank first
 PY
 git diff --check
 ```
@@ -653,9 +682,9 @@ GreenShot-6 outcome collection result:
 
 ```text
 ranked, runs/apache-python-git/model.json, explore-after-pass=5:
-  solved=22/22 pass@1=17/22 avg_candidates=7.41
-  rows=163 passing_rows=47 preferred_positive_rows=22
-  source_type pass@1: git_history=2/4 mutation=15/18
+  solved=24/24 pass@1=18/24 avg_candidates=7.33
+  rows=176 passing_rows=51 preferred_positive_rows=24
+  source_type pass@1: git_history=3/6 mutation=15/18
 ```
 
 Treat this as a smoke check, not a benchmark claim.
@@ -674,8 +703,8 @@ GreenShot-6 test-slice ranker validation result:
 
 ```text
 train-ranker, holdout-task includes all GreenShot-6 split:test tasks:
-  training rows=249 passing_rows=56 tasks=36 plans=36 pairs=212
-  training_accuracy=1.000 margin_violations=3 features=653
+  training rows=256 passing_rows=59 tasks=37 plans=37 pairs=218
+  training_accuracy=1.000 margin_violations=3 features=674
   validation solved=7/7 pass@1=7/7 positive@1=7/7
   validation avg_first_passing_index=1.0
   fixed: cookie_default_secure_flag_dict_value now ranks the preferred
@@ -697,7 +726,7 @@ Immediate next sequence:
 
 1. Add the next real-package-derived GreenShot-6 task or small fixture domain
    from real git-history signal, preferring a repair shape not already covered
-   by `pkgmeta`, `httpcache`, `webcookies`, or `cliformat`.
+   by `pkgmeta`, `httpcache`, `webcookies`, `cliformat`, or `sampling`.
 2. Use existing action families where possible; only add an action if the
    held-out repair proves the candidate is missing.
 3. Run focused loader/generator tests, refresh GreenShot-6 outcomes with

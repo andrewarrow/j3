@@ -249,6 +249,27 @@ def _modify_condition_candidates(
         return []
 
     candidates: list[CandidatePatch] = []
+    if isinstance(node.test, ast.BoolOp):
+        bool_operator = _bool_operator_text(node.test.op)
+        bool_operator_replacement = _bool_operator_alternative(bool_operator)
+        if bool_operator_replacement is not None:
+            candidates.append(
+                _candidate(
+                    file_path=file_path,
+                    source=source,
+                    node=node.test,
+                    kind=PatchActionKind.MODIFY_CONDITION,
+                    replacement=_replace_bool_operator(condition, bool_operator, bool_operator_replacement),
+                    reason=f"change condition boolean operator to {bool_operator_replacement}",
+                    params={
+                        "operation": "change_bool_operator",
+                        "from": bool_operator,
+                        "to": bool_operator_replacement,
+                    },
+                    symbol=function.name,
+                )
+            )
+
     if isinstance(node.test, ast.UnaryOp) and isinstance(node.test.op, ast.Not):
         operand = ast.get_source_segment(source, node.test.operand)
         if operand:
@@ -297,6 +318,28 @@ def _modify_condition_candidates(
             )
 
     return candidates
+
+
+def _bool_operator_text(operator: ast.boolop) -> str | None:
+    if isinstance(operator, ast.And):
+        return "and"
+    if isinstance(operator, ast.Or):
+        return "or"
+    return None
+
+
+def _bool_operator_alternative(operator: str | None) -> str | None:
+    if operator == "and":
+        return "or"
+    if operator == "or":
+        return "and"
+    return None
+
+
+def _replace_bool_operator(condition: str, original: str | None, replacement: str) -> str:
+    if original is None:
+        return condition
+    return condition.replace(f" {original} ", f" {replacement} ", 1)
 
 
 def _fallback_warning_candidates(

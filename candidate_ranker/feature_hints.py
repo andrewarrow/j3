@@ -72,6 +72,13 @@ def _merge_hint_features(
         if isinstance(key_param, str) and key_param in missing_keys:
             features["hint_missing_key_matches_key"] = 1.0
             features[f"action_hint_missing_key_matches_key:{action}"] = 1.0
+    _merge_mapping_key_features(
+        features,
+        action,
+        dict(candidate.action.params),
+        keys=getattr(hint, "asserted_mapping_keys", set()),
+        prefix="asserted_mapping_key",
+    )
 
 
 def _merge_hint_record_features(
@@ -140,6 +147,39 @@ def _merge_hint_record_features(
             if isinstance(key_param, str) and key_param in missing_keys:
                 features["hint_missing_key_matches_key"] = 1.0
                 features[f"action_hint_missing_key_matches_key:{action}"] = 1.0
+    if isinstance(params, dict):
+        _merge_mapping_key_features(
+            features,
+            action,
+            params,
+            keys=set(hint.get("asserted_mapping_keys", [])),
+            prefix="asserted_mapping_key",
+        )
+
+
+def _merge_mapping_key_features(
+    features: dict[str, float],
+    action: str,
+    params: Mapping[str, object],
+    *,
+    keys: set[str],
+    prefix: str,
+) -> None:
+    if not keys:
+        return
+    features[f"hint_has_{prefix}"] = 1.0
+    original = params.get("from")
+    replacement = params.get("to")
+    key_param = params.get("key")
+    if isinstance(original, str) and original in keys:
+        features[f"hint_{prefix}_matches_from"] = 1.0
+        features[f"action_hint_{prefix}_matches_from:{action}"] = 1.0
+    if isinstance(replacement, str) and replacement in keys:
+        features[f"hint_{prefix}_matches_to"] = 1.0
+        features[f"action_hint_{prefix}_matches_to:{action}"] = 1.0
+    if isinstance(key_param, str) and key_param in keys:
+        features[f"hint_{prefix}_matches_key"] = 1.0
+        features[f"action_hint_{prefix}_matches_key:{action}"] = 1.0
 
 
 def _merge_name_set_features(
@@ -226,6 +266,7 @@ def _hint_tokens(hints: list[object] | tuple[object, ...]) -> set[str]:
             "missing_attributes",
             "missing_modules",
             "missing_keys",
+            "asserted_mapping_keys",
             "type_error_names",
             "expected_strings",
             "assertion_diff_lines",
@@ -252,6 +293,7 @@ def _hint_record_tokens(hints: list[dict[str, object]]) -> set[str]:
             "missing_attributes",
             "missing_modules",
             "missing_keys",
+            "asserted_mapping_keys",
             "type_error_names",
             "expected_strings",
             "assertion_diff_lines",

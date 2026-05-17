@@ -13,6 +13,7 @@ FAILED_TARGET_RE = re.compile(r"^FAILED\s+([^\s]+::[^\s]+)(?:\s+-\s+(.*))?")
 TRACEBACK_LOCATION_RE = re.compile(r"^(?P<file>[^\s:][^:]*\.py):(?P<line>\d+):(?:\s+(?P<context>.*))?$")
 TRACEBACK_CONTEXT_RE = re.compile(r"^in\s+([A-Za-z_]\w*)$")
 ASSERT_OP_RE = re.compile(r"^E\s+(?:AssertionError:\s+)?assert\s+(.+?)\s+(==|is|in|not in)\s+(.+)$")
+ASSERT_SUBSCRIPT_KEY_RE = re.compile(r"\[\s*(?:[rubfRUBF]*)?(['\"])(.*?)\1\s*\]")
 WHERE_CALL_RE = re.compile(r"where\s+(.+?)\s+=\s+([A-Za-z_]\w*)\(")
 CALL_RE = re.compile(r"\b([A-Za-z_]\w*)\s*\(")
 DEF_RE = re.compile(r"^\s*def\s+([A-Za-z_]\w*)\(")
@@ -87,6 +88,7 @@ class PytestFailureHint:
     missing_attributes: set[str] = field(default_factory=set)
     missing_modules: set[str] = field(default_factory=set)
     missing_keys: set[str] = field(default_factory=set)
+    asserted_mapping_keys: set[str] = field(default_factory=set)
     type_error_names: set[str] = field(default_factory=set)
     expected_strings: set[str] = field(default_factory=set)
     assertion_diff_lines: list[str] = field(default_factory=list)
@@ -189,6 +191,9 @@ def _merge_line(hint: PytestFailureHint, line: str) -> None:
             )
         )
 
+    if "assert" in stripped:
+        _collect_asserted_mapping_keys(hint, stripped)
+
     if stripped.startswith("E ") and _looks_like_assertion_diff(stripped):
         hint.assertion_diff_lines.append(stripped[2:].strip())
 
@@ -242,6 +247,12 @@ def _collect_error_details(hint: PytestFailureHint, text: str) -> None:
 
     for match in PYTEST_MATCH_RE.finditer(text):
         hint.expected_strings.add(match.group(2))
+
+
+def _collect_asserted_mapping_keys(hint: PytestFailureHint, text: str) -> None:
+    for _quote, key in ASSERT_SUBSCRIPT_KEY_RE.findall(text):
+        if key:
+            hint.asserted_mapping_keys.add(key)
 
 
 def _collect_tool_diagnostics(hint: PytestFailureHint, text: str) -> None:
@@ -308,6 +319,7 @@ def _has_signal(hint: PytestFailureHint) -> bool:
         or hint.missing_attributes
         or hint.missing_modules
         or hint.missing_keys
+        or hint.asserted_mapping_keys
         or hint.type_error_names
         or hint.expected_strings
         or hint.assertion_diff_lines

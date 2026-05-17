@@ -7,6 +7,7 @@ from candidate_ranking import CandidateRankerModel, candidate_features, train_ca
 from candidate_ranker.features import _candidate_record_features
 from failure_hints import PytestFailureHint
 from patching import CandidatePatch, prioritize_candidate_patches, rank_with_candidate_ranker
+from repair.patching.context import attach_target_context
 from synth import SourceEdit
 
 
@@ -449,6 +450,19 @@ def test_candidate_features_include_missing_key_hint_matches() -> None:
     assert features["action_hint_missing_key_matches_from:change_subscript_key"] == 1.0
 
 
+def test_candidate_features_include_asserted_mapping_key_matches() -> None:
+    candidate = _subscript_key_candidate()
+
+    features = candidate_features(
+        candidate,
+        hints=[PytestFailureHint(asserted_mapping_keys={"customer_name"})],
+    )
+
+    assert features["hint_has_asserted_mapping_key"] == 1.0
+    assert features["hint_asserted_mapping_key_matches_to"] == 1.0
+    assert features["action_hint_asserted_mapping_key_matches_to:change_subscript_key"] == 1.0
+
+
 def test_candidate_features_avoid_exact_task_specific_identity() -> None:
     candidate = _candidate(to=">=", failure_hint_score=50.0, symbol="meets_minimum")
 
@@ -688,6 +702,48 @@ def test_candidate_features_include_target_context_call_graph() -> None:
     assert features["target_is_downstream_of_hint"] == 1.0
 
 
+def test_candidate_features_connect_subscript_write_to_returned_mapping_key(tmp_path) -> None:
+    source = (
+        "def parse_header(header):\n"
+        "    directives = {\n"
+        "        'no_cache': False,\n"
+        "        'no_store': False,\n"
+        "    }\n"
+        "    if header == 'no-store':\n"
+        "        directives['no-store'] = True\n"
+        "    return directives\n"
+    )
+    repo_file = tmp_path / "policy.py"
+    repo_file.write_text(source, encoding="utf-8")
+    candidate = CandidatePatch(
+        file_path="policy.py",
+        action=PatchAction(
+            kind=PatchActionKind.CHANGE_SUBSCRIPT_KEY,
+            target=PatchTarget(
+                file_path="policy.py",
+                start_line=7,
+                end_line=7,
+                symbol="parse_header",
+                node_kind="Subscript",
+            ),
+            params={"from": "no-store", "to": "no_store"},
+        ),
+        edit=SourceEdit(start_line=7, start_col=19, end_line=7, end_col=29, replacement="'no_store'"),
+        original_source=source,
+        patched_source=source.replace("directives['no-store']", "directives['no_store']"),
+        reason="try subscript key 'no_store'",
+    )
+
+    [candidate_with_context] = attach_target_context(tmp_path, [candidate])
+    features = candidate_features(candidate_with_context)
+
+    assert candidate_with_context.target_context["subscript_write_to_returned_mapping"] is True
+    assert candidate_with_context.target_context["subscript_to_matches_returned_mapping_key"] is True
+    assert "subscript_from_matches_returned_mapping_key" not in candidate_with_context.target_context
+    assert features["subscript_write_to_returned_mapping"] == 1.0
+    assert features["action_subscript_to_matches_returned_mapping_key:change_subscript_key"] == 1.0
+
+
 def test_train_candidate_ranker_uses_target_context_from_outcomes(tmp_path) -> None:
     outcomes = tmp_path / "candidate-outcomes.jsonl"
     rows = [
@@ -738,6 +794,37 @@ def test_train_candidate_ranker_uses_target_context_from_outcomes(tmp_path) -> N
 
     assert result.training_pairs == 1
     assert ranked[0].action.target.symbol == "discounted_subtotal"
+
+
+def test_candidate_record_features_include_returned_mapping_key_context() -> None:
+    record = {
+        **_subscript_key_candidate_record(passed=True),
+        "target_context": {
+            "role": "helper",
+            "subscript_write_to_returned_mapping": True,
+            "returned_mapping_key_count": 3,
+            "subscript_to_matches_returned_mapping_key": True,
+        },
+    }
+
+    features = _candidate_record_features(record, [])
+
+    assert features["subscript_write_to_returned_mapping"] == 1.0
+    assert features["returned_mapping_key_count:2_3"] == 1.0
+    assert features["action_subscript_to_matches_returned_mapping_key:change_subscript_key"] == 1.0
+
+
+def test_candidate_record_features_include_asserted_mapping_key_matches() -> None:
+    record = _subscript_key_candidate_record(passed=True)
+
+    features = _candidate_record_features(
+        record,
+        [{"asserted_mapping_keys": ["customer_name"]}],
+    )
+
+    assert features["hint_has_asserted_mapping_key"] == 1.0
+    assert features["hint_asserted_mapping_key_matches_to"] == 1.0
+    assert features["action_hint_asserted_mapping_key_matches_to:change_subscript_key"] == 1.0
 
 
 def _candidate_record(*, to: str, passed: bool) -> dict[str, object]:

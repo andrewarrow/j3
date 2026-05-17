@@ -125,6 +125,7 @@ E       {'items': [1, 3]} != {'items': [1, 2]}
     [hint] = parse_pytest_failure_hints(output)
 
     assert hint.missing_keys == {"id"}
+    assert hint.asserted_mapping_keys == {"id"}
     assert hint.assertions[-1].actual == {"items": [1, 3]}
     assert hint.assertions[-1].expected == {"items": [1, 2]}
     assert hint.assertion_diff_lines
@@ -157,6 +158,7 @@ E         + 2.2
     [hint] = parse_pytest_failure_hints(output)
 
     assert hint.exception_type == "AssertionError"
+    assert hint.asserted_mapping_keys == {"Metadata-Version"}
     assert hint.assertions[0].actual == "2.2"
     assert hint.assertions[0].expected == "2.3"
     assert hint.assertion_diff_lines == ["- 2.3", "+ 2.2"]

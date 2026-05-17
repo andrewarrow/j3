@@ -164,11 +164,24 @@ Recent work:
   out produced 519 features and reduced margin violations from 6 to 3, but the
   held-out task still did not pass at rank 1 (`pass@1=0/1`, positive@1=0/1).
   Relation metadata alone is not enough for the HTTP `no-store` hard negative.
+- Candidate target context now records when a subscript-key candidate writes to
+  a local mapping returned by the target function, including whether the old or
+  replacement key matches an existing returned-mapping initializer key. Pytest
+  failure hints now also record asserted mapping subscript keys from assertion
+  source lines. Candidate ranker features consume both signals from live
+  candidates and persisted outcome rows. The feature version is
+  `candidate-diagnostics-v7`.
+- A fresh GreenShot-6 outcome collection with the new mapping-key observation
+  signal still solved all 11 tasks with pass@1 8/11. Training on GreenShot-5
+  plus the fresh GreenShot-6 rows with `http_cache_directive` held out produced
+  523 features and ranked the held-out HTTP `no-store` repair first
+  (`pass@1=1/1`, `positive@1=1/1`).
 
 Last focused verification:
 
 ```bash
 pytest tests/test_candidate_ranking.py -q
+pytest tests/test_failure_hints.py -q
 python cli.py eval \
   --tasks examples/greenshot_6 \
   --checkpoint runs/apache-python-git/model.json \
@@ -261,12 +274,8 @@ Keep this section as the live queue. When work is completed, move it to
 
 Immediate next sequence:
 
-1. Use the `http_no_store_directive_subscript_key` note in
-   `HARD_NEGATIVES.md` to add non-leaky observation or target-context features
-   that connect a subscript write to a returned mapping key, then validate with
-   the `http_cache_directive` held-out ranker slice.
-2. Add more real git-history tasks only after the current hard-negative/ranker
-   signal has been exhausted or this immediate sequence is changed.
+1. Add more real git-history tasks, because the current hard-negative/ranker
+   signal has been addressed by the mapping-key observation features.
 
 ### 1. Make GreenShot-6 Real
 

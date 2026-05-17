@@ -108,6 +108,9 @@ def _candidate_target_context(
     target: dict[str, object] = {
         "role": _target_role(candidate.file_path),
     }
+    subscript_context = _subscript_returned_mapping_context(candidate)
+    if subscript_context:
+        target.update(subscript_context)
     if qname is None:
         return target
 
@@ -124,6 +127,125 @@ def _candidate_target_context(
             for caller, distance in upstream
         ]
     return target
+
+
+def _subscript_returned_mapping_context(candidate: CandidatePatch) -> dict[str, object]:
+    if candidate.action.kind.value != "change_subscript_key":
+        return {}
+
+    params = candidate.action.params
+    original = params.get("from")
+    replacement = params.get("to")
+    if not isinstance(original, str) or not isinstance(replacement, str):
+        return {}
+
+    try:
+        tree = ast.parse(candidate.original_source)
+    except SyntaxError:
+        return {}
+
+    target_function = _find_target_function(
+        tree,
+        symbol=candidate.action.target.symbol,
+        start_line=candidate.action.target.start_line,
+    )
+    if target_function is None:
+        return {}
+
+    subscript = _find_target_subscript(
+        target_function,
+        key=original,
+        start_line=candidate.action.target.start_line,
+        end_line=candidate.action.target.end_line,
+    )
+    if subscript is None or not isinstance(subscript.ctx, ast.Store):
+        return {}
+    if not isinstance(subscript.value, ast.Name):
+        return {}
+
+    mapping_name = subscript.value.id
+    if not _function_returns_name(target_function, mapping_name):
+        return {}
+
+    keys = _assigned_dict_string_keys(target_function, mapping_name)
+    if not keys:
+        return {}
+
+    result: dict[str, object] = {
+        "subscript_write_to_returned_mapping": True,
+        "returned_mapping_key_count": len(keys),
+    }
+    if original in keys:
+        result["subscript_from_matches_returned_mapping_key"] = True
+    if replacement in keys:
+        result["subscript_to_matches_returned_mapping_key"] = True
+    return result
+
+
+def _find_target_function(
+    tree: ast.Module,
+    *,
+    symbol: str | None,
+    start_line: int,
+) -> ast.FunctionDef | None:
+    matches = [
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.FunctionDef)
+        and (symbol is None or node.name == symbol)
+        and node.lineno <= start_line <= (node.end_lineno or node.lineno)
+    ]
+    if matches:
+        return min(matches, key=lambda node: (node.end_lineno or node.lineno) - node.lineno)
+    return None
+
+
+def _find_target_subscript(
+    function: ast.FunctionDef,
+    *,
+    key: str,
+    start_line: int,
+    end_line: int,
+) -> ast.Subscript | None:
+    for node in ast.walk(function):
+        if not isinstance(node, ast.Subscript):
+            continue
+        if node.lineno != start_line or (node.end_lineno or node.lineno) != end_line:
+            continue
+        if isinstance(node.slice, ast.Constant) and node.slice.value == key:
+            return node
+    return None
+
+
+def _function_returns_name(function: ast.FunctionDef, name: str) -> bool:
+    return any(
+        isinstance(node, ast.Return)
+        and isinstance(node.value, ast.Name)
+        and node.value.id == name
+        for node in ast.walk(function)
+    )
+
+
+def _assigned_dict_string_keys(function: ast.FunctionDef, name: str) -> set[str]:
+    keys: set[str] = set()
+    for node in ast.walk(function):
+        if not isinstance(node, ast.AnnAssign | ast.Assign):
+            continue
+        value = node.value
+        if not isinstance(value, ast.Dict):
+            continue
+        if not _assigns_to_name(node, name):
+            continue
+        for key_node in value.keys:
+            if isinstance(key_node, ast.Constant) and isinstance(key_node.value, str):
+                keys.add(key_node.value)
+    return keys
+
+
+def _assigns_to_name(node: ast.AnnAssign | ast.Assign, name: str) -> bool:
+    if isinstance(node, ast.AnnAssign):
+        return isinstance(node.target, ast.Name) and node.target.id == name
+    return any(isinstance(target, ast.Name) and target.id == name for target in node.targets)
 
 
 def _target_role(file_path: str) -> str:

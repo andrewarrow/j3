@@ -158,6 +158,27 @@ def _add_target_context_features(
         features[f"target_callee_count:{bucket}"] = 1.0
         features[f"action_target_callee_count:{action}:{bucket}"] = 1.0
 
+    if target_context.get("subscript_write_to_returned_mapping") is True:
+        features["subscript_write_to_returned_mapping"] = 1.0
+        features[f"action_subscript_write_to_returned_mapping:{action}"] = 1.0
+
+    returned_mapping_key_count = _int_value(
+        target_context.get("returned_mapping_key_count"),
+        default=0,
+    )
+    if returned_mapping_key_count > 0:
+        bucket = _count_bucket(returned_mapping_key_count)
+        features[f"returned_mapping_key_count:{bucket}"] = 1.0
+        features[f"action_returned_mapping_key_count:{action}:{bucket}"] = 1.0
+
+    if target_context.get("subscript_from_matches_returned_mapping_key") is True:
+        features["subscript_from_matches_returned_mapping_key"] = 1.0
+        features[f"action_subscript_from_matches_returned_mapping_key:{action}"] = 1.0
+
+    if target_context.get("subscript_to_matches_returned_mapping_key") is True:
+        features["subscript_to_matches_returned_mapping_key"] = 1.0
+        features[f"action_subscript_to_matches_returned_mapping_key:{action}"] = 1.0
+
     hint_names = _hint_function_name_set(hints)
     distance = _hint_target_distance(
         symbol=symbol,

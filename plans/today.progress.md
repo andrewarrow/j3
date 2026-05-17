@@ -24,7 +24,7 @@ new implementation facts change the 24-hour plan itself. Record any
   - `python cli.py train-prompt-intents --labels examples/prompt_intents/greenshot_7_intents.jsonl --target unsupported_requirement unsupported_requirement_family --show-residuals --residual-limit 20`
   - `python -m py_compile prompt_intents.py cli/handlers.py cli/parser.py cli/__init__.py`
   - `pytest tests/test_prompt_intents.py tests/test_request_spec.py tests/test_existing_repo_change.py tests/test_cli.py -q`
-- Latest implementation commit: `376834403a2c7c7fe85638a52cc305256c388d7b`
+- Latest implementation commit: `aacd3dead78551c0b8fb60a05b76d4a87058dee6`
 - Current blocker: learned production routing remains blocked; the
   family-level target is perfect locally, but fine-grained
   `unsupported_requirement` still has a held-out residual and the fixture set
@@ -643,8 +643,8 @@ Use this shape for each worker handoff:
     subtype miss, but fine-grained learned routing is still blocked.
   - Local family-level `unsupported_requirement_family` metrics remain train
     33/33, validation 12/12, and test 14/14.
-- Commit: pending
-- Push: pending
+- Commit: `aacd3dead78551c0b8fb60a05b76d4a87058dee6`
+- Push: succeeded to `main`
 - Next: inspect the scientific graphing residual and collect or source broader
   labels before reconsidering fine-grained learned routing.
 - Blockers: fine-grained learned production routing remains blocked.

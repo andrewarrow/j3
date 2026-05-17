@@ -6,6 +6,7 @@ import hashlib
 import json
 import time
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -22,6 +23,67 @@ if TYPE_CHECKING:
 
 
 TRANSITION_SCORER_ADVICE_VERSION = "transition-scorer-advice-v1"
+TRANSITION_SCORER_ADVICE_SUMMARY_VERSION = "transition-scorer-advice-summary-v1"
+
+
+@dataclass(frozen=True, slots=True)
+class TransitionScorerAdviceSummary:
+    """Aggregate shadow advice metrics for one or more JSONL artifacts."""
+
+    paths: list[Path]
+    advice_row_count: int
+    candidate_count: int
+    scorer_production_agreement_count: int
+    scorer_production_agreement_total: int
+    known_improved_count: int
+    known_regressed_count: int
+    known_no_change_count: int
+    production_pass_at_1_count: int
+    scorer_pass_at_1_count: int
+    known_validation_count: int
+    average_candidates_saved_or_lost: float | None
+    runtime: dict[str, object]
+    usage: dict[str, object]
+
+    def as_dict(self) -> dict[str, object]:
+        agreement_rate = _rate(
+            self.scorer_production_agreement_count,
+            self.scorer_production_agreement_total,
+        )
+        return {
+            "schema_version": TRANSITION_SCORER_ADVICE_SUMMARY_VERSION,
+            "advice_paths": [str(path) for path in self.paths],
+            "advice_row_count": self.advice_row_count,
+            "candidate_count": self.candidate_count,
+            "scorer_production_agreement": {
+                "count": self.scorer_production_agreement_count,
+                "total": self.scorer_production_agreement_total,
+                "rate": agreement_rate,
+            },
+            "known_validation": {
+                "row_count": self.known_validation_count,
+                "improved_count": self.known_improved_count,
+                "regressed_count": self.known_regressed_count,
+                "no_change_count": self.known_no_change_count,
+                "production_pass_at_1_count": self.production_pass_at_1_count,
+                "production_pass_at_1_rate": _rate(
+                    self.production_pass_at_1_count,
+                    self.known_validation_count,
+                ),
+                "scorer_pass_at_1_count": self.scorer_pass_at_1_count,
+                "scorer_pass_at_1_rate": _rate(
+                    self.scorer_pass_at_1_count,
+                    self.known_validation_count,
+                ),
+                "average_candidates_saved_or_lost": (
+                    round(self.average_candidates_saved_or_lost, 6)
+                    if self.average_candidates_saved_or_lost is not None
+                    else None
+                ),
+            },
+            "runtime": dict(self.runtime),
+            "usage": dict(self.usage),
+        }
 
 
 def build_transition_scorer_advice(
@@ -195,6 +257,134 @@ def append_transition_scorer_advice_jsonl(path: Path, row: Mapping[str, object])
     with resolved.open("a", encoding="utf-8") as file:
         file.write(json.dumps(row, sort_keys=True) + "\n")
     return resolved
+
+
+def summarize_transition_scorer_advice(
+    paths: Sequence[Path],
+) -> TransitionScorerAdviceSummary:
+    """Summarize one or more transition-scorer-advice-v1 JSONL files."""
+
+    resolved_paths = [path.expanduser().resolve() for path in paths]
+    rows = _read_transition_scorer_advice_rows(resolved_paths)
+    candidate_count = sum(_int(row.get("candidate_count")) for row in rows)
+    agreement_total = 0
+    agreement_count = 0
+    known_improved_count = 0
+    known_regressed_count = 0
+    known_no_change_count = 0
+    production_pass_at_1_count = 0
+    scorer_pass_at_1_count = 0
+    known_validation_count = 0
+    saved_or_lost: list[int] = []
+
+    for row in rows:
+        selected = _mapping(row.get("existing_selected_candidate"))
+        scorer_top = _mapping(row.get("scorer_top_candidate"))
+        if selected and scorer_top:
+            agreement_total += 1
+            if _candidate_summaries_match(selected, scorer_top):
+                agreement_count += 1
+
+        comparison = _mapping(row.get("validation_comparison"))
+        if comparison.get("known") is not True:
+            continue
+        known_validation_count += 1
+        would_have = comparison.get("would_have")
+        if would_have == "improved":
+            known_improved_count += 1
+        elif would_have == "regressed":
+            known_regressed_count += 1
+        elif would_have == "same":
+            known_no_change_count += 1
+        if selected.get("passed") is True:
+            production_pass_at_1_count += 1
+        if scorer_top.get("validated") is True and scorer_top.get("passed") is True:
+            scorer_pass_at_1_count += 1
+        existing_position = _int_or_none(comparison.get("existing_first_passing_index"))
+        scorer_position = _int_or_none(
+            comparison.get("scorer_first_known_passing_position")
+        )
+        if existing_position is not None and scorer_position is not None:
+            saved_or_lost.append(existing_position - scorer_position)
+
+    usage = _usage_totals(rows)
+    runtime = {
+        "local_runtime_ms": round(
+            sum(
+                _float(_mapping(row.get("runtime")).get("local_runtime_ms"))
+                for row in rows
+            ),
+            3,
+        ),
+        **usage,
+    }
+    return TransitionScorerAdviceSummary(
+        paths=resolved_paths,
+        advice_row_count=len(rows),
+        candidate_count=candidate_count,
+        scorer_production_agreement_count=agreement_count,
+        scorer_production_agreement_total=agreement_total,
+        known_improved_count=known_improved_count,
+        known_regressed_count=known_regressed_count,
+        known_no_change_count=known_no_change_count,
+        production_pass_at_1_count=production_pass_at_1_count,
+        scorer_pass_at_1_count=scorer_pass_at_1_count,
+        known_validation_count=known_validation_count,
+        average_candidates_saved_or_lost=_average(saved_or_lost),
+        runtime=runtime,
+        usage=usage,
+    )
+
+
+def format_transition_scorer_advice_summary(
+    summary: TransitionScorerAdviceSummary,
+) -> str:
+    """Format shadow advice summary metrics for CLI output."""
+
+    record = summary.as_dict()
+    agreement = _mapping(record["scorer_production_agreement"])
+    known = _mapping(record["known_validation"])
+    lines = ["j3 summarize-transition-advice"]
+    lines.append("transition advice:")
+    for path in summary.paths:
+        lines.append(f"  {path}")
+    lines.append(f"advice rows: {summary.advice_row_count}")
+    lines.append(f"candidates: {summary.candidate_count}")
+    lines.append(
+        "scorer/production agreement: "
+        f"{agreement['count']}/{agreement['total']} "
+        f"({_format_rate(agreement.get('rate'))})"
+    )
+    lines.append(
+        "known validation: "
+        f"improved={known['improved_count']} "
+        f"regressed={known['regressed_count']} "
+        f"no_change={known['no_change_count']}"
+    )
+    lines.append(
+        "production-selected pass@1: "
+        f"{known['production_pass_at_1_count']}/{known['row_count']} "
+        f"({_format_rate(known.get('production_pass_at_1_rate'))})"
+    )
+    lines.append(
+        "scorer-top pass@1: "
+        f"{known['scorer_pass_at_1_count']}/{known['row_count']} "
+        f"({_format_rate(known.get('scorer_pass_at_1_rate'))})"
+    )
+    average = known.get("average_candidates_saved_or_lost")
+    average_text = f"{average:.2f}" if isinstance(average, float) else "-"
+    lines.append(f"average candidates saved/lost: {average_text}")
+    lines.append(f"local runtime ms: {summary.runtime['local_runtime_ms']}")
+    lines.append(f"hosted_llm_api_calls: {summary.usage['hosted_llm_api_calls']}")
+    lines.append(f"hosted_llm_prompt_tokens: {summary.usage['hosted_llm_prompt_tokens']}")
+    lines.append(
+        f"hosted_llm_completion_tokens: {summary.usage['hosted_llm_completion_tokens']}"
+    )
+    lines.append(f"hosted_api_tokens: {summary.usage['hosted_api_tokens']}")
+    lines.append(
+        f"hosted_repo_context_bytes: {summary.usage['hosted_repo_context_bytes']}"
+    )
+    return "\n".join(lines)
 
 
 def _candidate_record(
@@ -413,6 +603,98 @@ def _failure_hint_record(hint: PytestFailureHint) -> dict[str, object]:
             for assertion in hint.assertions
         ],
     }
+
+
+def _read_transition_scorer_advice_rows(paths: Sequence[Path]) -> list[dict[str, object]]:
+    rows: list[dict[str, object]] = []
+    for path in paths:
+        if not path.exists():
+            raise FileNotFoundError(f"transition advice file does not exist: {path}")
+        if not path.is_file():
+            raise IsADirectoryError(f"transition advice path is not a file: {path}")
+        lines = path.read_text(encoding="utf-8").splitlines()
+        for line_number, line in enumerate(lines, start=1):
+            if not line.strip():
+                continue
+            row = json.loads(line)
+            if not isinstance(row, dict):
+                raise ValueError(f"{path}:{line_number}: expected JSON object")
+            if row.get("schema_version") != TRANSITION_SCORER_ADVICE_VERSION:
+                raise ValueError(
+                    f"{path}:{line_number}: expected {TRANSITION_SCORER_ADVICE_VERSION}"
+                )
+            rows.append(row)
+    return rows
+
+
+def _candidate_summaries_match(
+    left: Mapping[str, object],
+    right: Mapping[str, object],
+) -> bool:
+    left_id = left.get("id")
+    right_id = right.get("id")
+    if isinstance(left_id, str) and isinstance(right_id, str):
+        return left_id == right_id
+    return left.get("rank_index") == right.get("rank_index")
+
+
+def _usage_totals(rows: Sequence[Mapping[str, object]]) -> dict[str, object]:
+    fields = (
+        "hosted_llm_api_calls",
+        "hosted_llm_prompt_tokens",
+        "hosted_llm_completion_tokens",
+        "hosted_api_tokens",
+        "hosted_repo_context_bytes",
+    )
+    totals = dict.fromkeys(fields, 0)
+    for row in rows:
+        usage = _mapping(row.get("usage"))
+        runtime = _mapping(row.get("runtime"))
+        for field in fields:
+            totals[field] += _int(usage.get(field, runtime.get(field)))
+    return totals
+
+
+def _average(values: Sequence[int]) -> float | None:
+    if not values:
+        return None
+    return sum(values) / len(values)
+
+
+def _rate(count: int, total: int) -> float | None:
+    if total <= 0:
+        return None
+    return round(count / total, 6)
+
+
+def _format_rate(value: object) -> str:
+    if not isinstance(value, int | float):
+        return "-"
+    return f"{float(value):.2%}"
+
+
+def _int(value: object) -> int:
+    if isinstance(value, bool):
+        return 0
+    if isinstance(value, int):
+        return value
+    return 0
+
+
+def _int_or_none(value: object) -> int | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    return None
+
+
+def _float(value: object) -> float:
+    if isinstance(value, bool):
+        return 0.0
+    if isinstance(value, int | float):
+        return float(value)
+    return 0.0
 
 
 def _mapping(value: object) -> Mapping[str, object]:

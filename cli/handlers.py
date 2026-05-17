@@ -75,7 +75,11 @@ from j3.transition_ranking import (
     TransitionRankingGateError,
     transition_ranking_gate_decision,
 )
-from j3.transition_scorer_advice import append_transition_scorer_advice_jsonl
+from j3.transition_scorer_advice import (
+    append_transition_scorer_advice_jsonl,
+    format_transition_scorer_advice_summary,
+    summarize_transition_scorer_advice,
+)
 
 
 REQUEST_SPEC_ARTIFACT = "request-spec.json"
@@ -992,6 +996,21 @@ def handle_outcome_summary(args: argparse.Namespace) -> int:
         print(json.dumps(summary.as_dict(), indent=2, sort_keys=True))
     else:
         print(format_outcome_dataset_summary(summary))
+    return 0
+
+
+def handle_summarize_transition_advice(args: argparse.Namespace) -> int:
+    for path in args.advice:
+        resolved = path.expanduser().resolve()
+        if not resolved.exists():
+            raise SystemExit(f"transition advice file does not exist: {resolved}")
+        if not resolved.is_file():
+            raise SystemExit(f"transition advice path is not a file: {resolved}")
+    summary = summarize_transition_scorer_advice(args.advice)
+    if args.json:
+        print(json.dumps(summary.as_dict(), indent=2, sort_keys=True))
+    else:
+        print(format_transition_scorer_advice_summary(summary))
     return 0
 
 

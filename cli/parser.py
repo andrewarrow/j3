@@ -25,6 +25,7 @@ from cli.handlers import (
     handle_patch,
     handle_propose_from_prompt_jepa,
     handle_query_prompt_jepa_index,
+    handle_summarize_transition_advice,
     handle_train,
     handle_train_prompt_intents,
     handle_train_ranker,
@@ -892,6 +893,31 @@ def build_parser() -> argparse.ArgumentParser:
         help="print the summary as JSON",
     )
     outcome_summary_parser.set_defaults(handler=handle_outcome_summary)
+
+    transition_advice_summary_parser = subparsers.add_parser(
+        "summarize-transition-advice",
+        help="summarize transition scorer shadow advice JSONL files",
+        description=(
+            "Summarize transition-scorer-advice-v1 JSONL files produced by "
+            "patch or eval shadow mode, including agreement and known "
+            "validation metrics."
+        ),
+    )
+    transition_advice_summary_parser.add_argument(
+        "--advice",
+        type=Path,
+        nargs="+",
+        required=True,
+        help="one or more transition-scorer-advice-v1 JSONL files",
+    )
+    transition_advice_summary_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print the summary as JSON",
+    )
+    transition_advice_summary_parser.set_defaults(
+        handler=handle_summarize_transition_advice
+    )
 
     compare_parser = subparsers.add_parser(
         "compare-diagnostics",

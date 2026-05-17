@@ -273,6 +273,7 @@ def test_help_menu_prints_project_summary(capsys) -> None:
     assert "eval-prompt-repo-transitions" in output
     assert "train-ranker" in output
     assert "outcome-summary" in output
+    assert "summarize-transition-advice" in output
     assert "compare-diagnostics" in output
     assert "eval" in output
 
@@ -2405,6 +2406,74 @@ def test_patch_command_writes_transition_scorer_shadow_advice(capsys, tmp_path) 
     assert row["scorer_top_candidate"] is not None
     assert row["runtime"]["hosted_llm_api_calls"] == 0
     assert row["usage"]["hosted_repo_context_bytes"] == 0
+
+
+def test_summarize_transition_advice_command_reports_json(capsys, tmp_path) -> None:
+    advice_path = tmp_path / "transition-advice.jsonl"
+    usage = {
+        "hosted_llm_api_calls": 0,
+        "hosted_llm_prompt_tokens": 0,
+        "hosted_llm_completion_tokens": 0,
+        "hosted_api_tokens": 0,
+        "hosted_repo_context_bytes": 0,
+    }
+    rows = [
+        {
+            "schema_version": "transition-scorer-advice-v1",
+            "candidate_count": 2,
+            "existing_selected_candidate": {
+                "id": "candidate-1",
+                "rank_index": 1,
+                "validated": True,
+                "passed": True,
+            },
+            "scorer_top_candidate": {
+                "id": "candidate-1",
+                "rank_index": 1,
+                "validated": True,
+                "passed": True,
+            },
+            "validation_comparison": {
+                "known": True,
+                "would_have": "same",
+                "existing_first_passing_index": 1,
+                "scorer_first_known_passing_position": 1,
+            },
+            "runtime": {"local_runtime_ms": 2.0, **usage},
+            "usage": usage,
+        }
+    ]
+    advice_path.write_text(
+        "\n".join(json.dumps(row, sort_keys=True) for row in rows) + "\n",
+        encoding="utf-8",
+    )
+
+    assert (
+        main(
+            [
+                "summarize-transition-advice",
+                "--advice",
+                str(advice_path),
+                "--json",
+            ]
+        )
+        == 0
+    )
+
+    output = json.loads(capsys.readouterr().out)
+    assert output["schema_version"] == "transition-scorer-advice-summary-v1"
+    assert output["advice_paths"] == [str(advice_path.resolve())]
+    assert output["advice_row_count"] == 1
+    assert output["candidate_count"] == 2
+    assert output["scorer_production_agreement"] == {
+        "count": 1,
+        "total": 1,
+        "rate": 1.0,
+    }
+    assert output["known_validation"]["production_pass_at_1_count"] == 1
+    assert output["known_validation"]["scorer_pass_at_1_count"] == 1
+    assert output["runtime"]["hosted_llm_api_calls"] == 0
+    assert output["usage"]["hosted_repo_context_bytes"] == 0
 
 
 def test_patch_command_refuses_transition_ranking_on_failed_gate(tmp_path) -> None:

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from ast_delta import ast_delta_feature_map, python_ast_delta_metadata
+from j3.ast_delta import ast_delta_feature_map, python_ast_delta_metadata
 
 from .feature_hints import (
     _add_hint_token_overlap_features,

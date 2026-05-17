@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 
-from training import train_from_path, train_from_paths
+from j3.training import train_from_path, train_from_paths
 
 
 def test_train_from_path_writes_model_metrics_and_examples(tmp_path) -> None:

@@ -5,7 +5,7 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-from repo import iter_python_sources
+from j3.repo import iter_python_sources
 
 from ..ast_utils import (
     _class_fields,

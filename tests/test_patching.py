@@ -3,8 +3,8 @@ from __future__ import annotations
 import json
 import shutil
 
-from patching import PatchRankingModel, generate_candidate_patches, plan_and_maybe_apply_patch, rank_candidate_patches
-from training import train_from_path
+from j3.patching import PatchRankingModel, generate_candidate_patches, plan_and_maybe_apply_patch, rank_candidate_patches
+from j3.training import train_from_path
 
 
 def test_patch_finds_discount_fix_without_modifying_in_dry_run(tmp_path) -> None:

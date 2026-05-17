@@ -2,14 +2,14 @@ from __future__ import annotations
 
 import json
 
-from actions import PatchAction, PatchActionKind, PatchTarget
-from ast_delta import python_ast_delta_metadata
-from candidate_ranking import CandidateRankerModel, candidate_features, train_candidate_ranker
+from j3.actions import PatchAction, PatchActionKind, PatchTarget
+from j3.ast_delta import python_ast_delta_metadata
+from j3.candidate_ranking import CandidateRankerModel, candidate_features, train_candidate_ranker
 from candidate_ranker.features import _candidate_record_features
-from failure_hints import AssertionComparison, PytestFailureHint
-from patching import CandidatePatch, prioritize_candidate_patches, rank_with_candidate_ranker
+from j3.failure_hints import AssertionComparison, PytestFailureHint
+from j3.patching import CandidatePatch, prioritize_candidate_patches, rank_with_candidate_ranker
 from repair.patching.context import attach_target_context
-from synth import SourceEdit
+from j3.synth import SourceEdit
 
 
 def test_train_candidate_ranker_from_diagnostics_and_rerank(tmp_path) -> None:

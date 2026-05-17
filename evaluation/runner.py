@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Callable
 
 from evaluation.models import EvalPhase, EvalSummary, RepairTask, TaskEvalResult
-from patching import PatchPlanResult, plan_and_maybe_apply_patch
+from j3.patching import PatchPlanResult, plan_and_maybe_apply_patch
 
 
 def load_tasks(path: Path) -> list[RepairTask]:

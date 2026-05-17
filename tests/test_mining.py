@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import subprocess
 
-from mining import mine_git_transitions
+from j3.mining import mine_git_transitions
 
 
 def test_mine_git_transitions_writes_jsonl(tmp_path) -> None:

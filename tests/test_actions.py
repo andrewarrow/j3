@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from actions import PatchAction, PatchActionKind, PatchTarget
+from j3.actions import PatchAction, PatchActionKind, PatchTarget
 
 
 def test_patch_action_serializes_to_record() -> None:

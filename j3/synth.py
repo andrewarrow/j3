@@ -6,7 +6,7 @@ import ast
 from dataclasses import dataclass
 from typing import Iterable
 
-from actions import PatchAction, PatchActionKind, PatchTarget
+from j3.actions import PatchAction, PatchActionKind, PatchTarget
 
 
 MAX_EXAMPLES_PER_FILE = 20

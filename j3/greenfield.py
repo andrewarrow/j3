@@ -7,7 +7,7 @@ from enum import Enum
 from pathlib import Path, PurePosixPath
 from typing import Any
 
-from request_spec import CALCULATOR_FEATURES, RequestSpec
+from j3.request_spec import CALCULATOR_FEATURES, RequestSpec
 
 
 PLAN_SCHEMA_VERSION = "greenfield-plan-v1"

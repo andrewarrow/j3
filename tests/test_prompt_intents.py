@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from prompt_intents import (
+from j3.prompt_intents import (
     PROMPT_FEATURE_SCHEMA_VERSION,
     _prompt_token_features,
     evaluate_prompt_intent_predictions,

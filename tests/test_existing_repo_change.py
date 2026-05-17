@@ -7,16 +7,16 @@ from pathlib import Path
 
 import pytest
 
-from existing_repo_change import (
+from j3.existing_repo_change import (
     ExistingRepoChangeError,
     apply_existing_repo_change,
     inspect_generated_calculator_repo,
     parse_existing_repo_change_to_spec,
     plan_existing_repo_change,
 )
-from greenfield import build_calculator_repo
-from prompt_intents import predict_prompt_intent
-from request_spec import parse_request_to_spec
+from j3.greenfield import build_calculator_repo
+from j3.prompt_intents import predict_prompt_intent
+from j3.request_spec import parse_request_to_spec
 
 
 def _generate_calculator_repo(path: Path) -> None:

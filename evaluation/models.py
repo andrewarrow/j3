@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Literal
 
 from evaluation.plan_utils import _average, _first_passing_index
-from patching import PatchPlanResult
+from j3.patching import PatchPlanResult
 
 EvalPhase = Literal["baseline", "ranked", "both"]
 

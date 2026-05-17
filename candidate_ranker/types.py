@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
-from actions import PatchAction
+from j3.actions import PatchAction
 
 
 class CandidateLike(Protocol):

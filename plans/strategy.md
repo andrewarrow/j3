@@ -170,7 +170,7 @@ Current data:
 
 - `data/transitions/apache-python/*.jsonl` contains mined Python before/after
   file transitions from the Apache-licensed local corpus described in
-  `TRAINING.md`.
+  `docs/TRAINING.md`.
 - `runs/apache-python-git/model.json` is the current prototype repair-ranking
   checkpoint trained from synthetic source transitions plus mined git
   transitions.
@@ -813,9 +813,9 @@ Do this next, before adding more GreenShot-6 literal/typo tasks:
    - Validate `../prompts/coding_agent_prompts_seed.jsonl`.
    - Add a small prompt-corpus summary/check command or test.
    - Decide whether prompt data should stay outside the repo, be referenced from
-     `TRAINING.md`, or be copied into `data/prompts/` once the schema is stable.
+     `docs/TRAINING.md`, or be copied into `data/prompts/` once the schema is stable.
 
-3. Add `REQUEST_SPEC.md`.
+3. Add `docs/REQUEST_SPEC.md`.
    - Define `request-spec-v1`.
    - Include the calculator prompt with `etc.` expanded to multiply/divide as a
      high-confidence inferred default.

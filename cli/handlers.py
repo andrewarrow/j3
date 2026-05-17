@@ -7,8 +7,8 @@ import json
 import subprocess
 from pathlib import Path
 
-from actions import PatchActionKind
-from candidate_ranking import train_candidate_ranker
+from j3.actions import PatchActionKind
+from j3.candidate_ranking import train_candidate_ranker
 from candidate_ranker.summary import (
     format_outcome_dataset_summary,
     summarize_candidate_outcomes,
@@ -20,33 +20,33 @@ from cli.progress import (
     task_phase_status,
     verbose_progress,
 )
-from diagnostics_compare import compare_diagnostics, format_diagnostics_comparison
+from j3.diagnostics_compare import compare_diagnostics, format_diagnostics_comparison
 from evaluation import evaluate_tasks, write_candidate_outcomes, write_eval_diagnostics
-from existing_repo_change import (
+from j3.existing_repo_change import (
     ExistingRepoChangeError,
     append_existing_repo_change_attempt,
     apply_existing_repo_change,
     parse_existing_repo_change_to_spec,
     plan_existing_repo_change,
 )
-from fixing import run_fix_workflow
-from greenfield import (
+from j3.fixing import run_fix_workflow
+from j3.greenfield import (
     BuildResult,
     GreenfieldPlan,
     build_calculator_repo,
     plan_calculator_repo,
 )
-from greenshot_7 import run_greenshot_7_tasks, summary_has_failures
-from mining import mine_git_transitions
-from patching import plan_and_maybe_apply_patch
-from prompt_intents import (
+from j3.greenshot_7 import run_greenshot_7_tasks, summary_has_failures
+from j3.mining import mine_git_transitions
+from j3.patching import plan_and_maybe_apply_patch
+from j3.prompt_intents import (
     inspect_prompt_corpus,
     load_prompt_intent_records,
     predict_prompt_intent,
     train_prompt_intent_token_baseline,
 )
-from prompt_jepa_demo import run_prompt_jepa_demo
-from prompt_jepa import (
+from j3.prompt_jepa_demo import run_prompt_jepa_demo
+from j3.prompt_jepa import (
     build_prompt_jepa_index_from_sources,
     compare_prompt_jepa_retrieval_modes_from_path,
     evaluate_prompt_jepa_predicted_target_retrieval_from_path,
@@ -55,9 +55,9 @@ from prompt_jepa import (
     propose_from_prompt_jepa,
     save_prompt_jepa_index,
 )
-from request_outcomes import append_request_repo_attempt
-from request_spec import RequestSpec, parse_request_to_spec
-from training import train_from_paths
+from j3.request_outcomes import append_request_repo_attempt
+from j3.request_spec import RequestSpec, parse_request_to_spec
+from j3.training import train_from_paths
 
 
 REQUEST_SPEC_ARTIFACT = "request-spec.json"

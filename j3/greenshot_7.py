@@ -7,14 +7,14 @@ import re
 import subprocess
 from pathlib import Path
 
-from greenfield import (
+from j3.greenfield import (
     BuildResult,
     GreenfieldPlan,
     build_calculator_repo,
     plan_calculator_repo,
 )
-from request_outcomes import append_request_repo_attempt
-from request_spec import RequestSpec, parse_request_to_spec
+from j3.request_outcomes import append_request_repo_attempt
+from j3.request_spec import RequestSpec, parse_request_to_spec
 
 
 SOURCE_NAME = "j3 greenshot-7"

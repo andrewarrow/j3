@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
-from patching import PatchPlanResult, plan_and_maybe_apply_patch
+from j3.patching import PatchPlanResult, plan_and_maybe_apply_patch
 
 
 FAILED_TARGET_RE = re.compile(r"^FAILED\s+([^\s]+::[^\s]+)")

@@ -10,12 +10,12 @@ reference them.
 3. Read `plans/today.progress.md` for what has already been done, current
    blockers, and the next concrete step.
 
-Do not reread or edit `plan.md` for ordinary day-to-day work. It is the broad
-project strategy and can distract from the active slice. Read `plan.md` only
+Do not reread or edit `plans/strategy.md` for ordinary day-to-day work. It is the broad
+project strategy and can distract from the active slice. Read `plans/strategy.md` only
 when the user asks for big-picture direction, the active plan is unclear, or a
 decision would change the overall roadmap.
 
-Do not edit `plan.md` during ordinary day-to-day work unless the user explicitly
+Do not edit `plans/strategy.md` during ordinary day-to-day work unless the user explicitly
 asks or the strategic roadmap has truly changed.
 
 Keep `plans/today.md` stable for routine progress. It may be updated when new
@@ -82,7 +82,7 @@ Worker flow:
 8. Push.
 9. Report commit hash, tests run, push result, and any blocker.
 
-Do not edit `plan.md` during worker iterations unless the watcher explicitly
+Do not edit `plans/strategy.md` during worker iterations unless the watcher explicitly
 assigns that strategic documentation change. Edit `plans/today.md` only if the
 assigned work discovers information that changes the 24-hour plan; record that
 plan update in `plans/today.progress.md`.

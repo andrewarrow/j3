@@ -7,8 +7,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from greenfield import BuildResult, GreenfieldPlan
-from request_spec import RequestSpec
+from j3.greenfield import BuildResult, GreenfieldPlan
+from j3.request_spec import RequestSpec
 
 
 ROW_SCHEMA_VERSION = "request-repo-attempt-v1"

@@ -7,7 +7,7 @@ import difflib
 import io
 import tokenize
 
-from synth import SourceEdit
+from j3.synth import SourceEdit
 
 
 def _node_edit(node: ast.AST, replacement: str) -> SourceEdit:

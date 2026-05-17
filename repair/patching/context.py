@@ -7,7 +7,7 @@ from collections import defaultdict, deque
 from dataclasses import dataclass, replace
 from pathlib import Path, PurePosixPath
 
-from repo import PythonSource, iter_python_sources
+from j3.repo import PythonSource, iter_python_sources
 
 from .types import CandidatePatch
 

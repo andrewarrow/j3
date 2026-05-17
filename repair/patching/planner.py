@@ -9,9 +9,9 @@ import time
 from pathlib import Path
 from typing import Any, Callable
 
-from candidate_ranking import CandidateRankerModel
-from failure_hints import PytestFailureHint, parse_pytest_failure_hints
-from repo import DEFAULT_EXCLUDE_DIRS
+from j3.candidate_ranking import CandidateRankerModel
+from j3.failure_hints import PytestFailureHint, parse_pytest_failure_hints
+from j3.repo import DEFAULT_EXCLUDE_DIRS
 
 from .context import attach_target_context
 from .generation import generate_candidate_patches

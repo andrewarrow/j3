@@ -5,8 +5,8 @@ from __future__ import annotations
 import ast
 import difflib
 
-from actions import PatchAction, PatchActionKind, PatchTarget
-from synth import SourceEdit, apply_edit
+from j3.actions import PatchAction, PatchActionKind, PatchTarget
+from j3.synth import SourceEdit, apply_edit
 
 from ..ast_utils import (
     _nearby_literals,

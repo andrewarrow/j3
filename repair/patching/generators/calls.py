@@ -7,8 +7,8 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
-from actions import PatchActionKind
-from repo import PythonSource
+from j3.actions import PatchActionKind
+from j3.repo import PythonSource
 
 from ..types import CandidatePatch
 from .common import _candidate

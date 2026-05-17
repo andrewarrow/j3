@@ -7,7 +7,7 @@ import math
 from dataclasses import dataclass
 from pathlib import Path
 
-from features import embed_python_source, vector_delta
+from j3.features import embed_python_source, vector_delta
 
 from .types import CandidatePatch
 

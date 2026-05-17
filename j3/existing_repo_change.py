@@ -11,7 +11,7 @@ from enum import Enum
 from pathlib import Path, PurePosixPath
 from typing import Any
 
-from prompt_intents import PromptIntentPrediction, PromptIntentTarget
+from j3.prompt_intents import PromptIntentPrediction, PromptIntentTarget
 
 
 CHANGE_SPEC_SCHEMA_VERSION = "existing-repo-change-spec-v1"

@@ -1,7 +1,7 @@
 # j3 Notes
 
 Durable reminders from the external repo review and goal discussion. This file
-is for project memory, not the live task queue; `plan.md` remains the source of
+is for project memory, not the live task queue; `plans/strategy.md` remains the source of
 truth for current implementation steps.
 
 ## Positioning

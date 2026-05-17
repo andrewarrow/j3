@@ -7,9 +7,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Mapping
 
-from actions import PatchAction
-from failure_hints import PytestFailureHint
-from synth import SourceEdit
+from j3.actions import PatchAction
+from j3.failure_hints import PytestFailureHint
+from j3.synth import SourceEdit
 
 
 @dataclass(frozen=True, slots=True)

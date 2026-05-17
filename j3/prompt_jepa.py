@@ -16,7 +16,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Mapping, Sequence
 
-from prompt_intents import (
+from j3.prompt_intents import (
     PromptIntentRecord,
     load_prompt_intent_records,
 )

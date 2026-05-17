@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from failure_hints import parse_pytest_failure_hints
+from j3.failure_hints import parse_pytest_failure_hints
 
 
 def test_parse_pytest_assertion_hint() -> None:

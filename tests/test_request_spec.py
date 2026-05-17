@@ -3,8 +3,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from prompt_intents import predict_prompt_intent
-from request_spec import parse_request_to_spec
+from j3.prompt_intents import predict_prompt_intent
+from j3.request_spec import parse_request_to_spec
 
 
 TASKS_PATH = Path("examples/greenshot_7/tasks.json")

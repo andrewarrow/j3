@@ -17,7 +17,7 @@ demo report
   -> timings, index size, validation results, and hosted LLM API tokens = 0
 ```
 
-Going deeper on Python source JEPA from `TRAINING.md` is still important, but it
+Going deeper on Python source JEPA from `docs/TRAINING.md` is still important, but it
 should be the second move in this slice: add a thin source-embedding bridge to
 the demo artifacts so prompt/spec/outcome rows start connecting to repo-state
 vectors. Do not disappear into a long source-model experiment before the
@@ -57,7 +57,7 @@ Why:
 - a local demo can show the concrete advantage: no hosted model call, no repo
   prompt stuffed into a context window, and structured output that is easy to
   inspect
-- the Apache-source training path from `TRAINING.md` is valuable foundation, but
+- the Apache-source training path from `docs/TRAINING.md` is valuable foundation, but
   its impact is less visible until connected to prompt/spec/outcome records
 
 The source path should stay present as a bridge, not become the active rabbit
@@ -65,7 +65,7 @@ hole today.
 
 ## Existing Building Blocks
 
-- `prompt_jepa.py` already supports:
+- `j3/prompt_jepa.py` already supports:
   - separate context and target feature-hashed embeddings
   - persisted `j3.prompt-jepa-index.v1`
   - query
@@ -78,9 +78,9 @@ hole today.
 - `../prompts/coding_agent_prompts_seed.jsonl` has 80 broader prompt rows.
 - `j3 implement --record`, `j3 change --record`, and `j3 greenshot-7 --record`
   can produce real prompt/spec/action/outcome rows.
-- `features.py` and `training.py` already provide deterministic Python source
+- `j3/features.py` and `j3/training.py` already provide deterministic Python source
   embeddings and a JEPA-shaped repair transition baseline.
-- `TRAINING.md` documents the Apache-licensed Python corpus and existing
+- `docs/TRAINING.md` documents the Apache-licensed Python corpus and existing
   source-transition training path.
 
 ## Non-Goals For Today
@@ -94,7 +94,7 @@ hole today.
 - No untagged generated prompts; every generated row must be labeled by
   provenance and split policy.
 - No new dependency unless the standard library is clearly insufficient.
-- No edits to `plan.md` unless the strategic roadmap itself changes.
+- No edits to `plans/strategy.md` unless the strategic roadmap itself changes.
 
 ## Step-By-Step Work Plan
 
@@ -288,7 +288,7 @@ Deliverable:
 Why this matters:
 
 - it visibly connects Prompt-JEPA to the source-transition machinery documented
-  in `TRAINING.md`
+  in `docs/TRAINING.md`
 - it creates the first bridge from prompt/spec/action/outcome records to
   repo-state representations
 - it sets up the later model track:
@@ -348,7 +348,7 @@ Strong success:
   machine
 - representative queries show sensible nearest evidence across supported,
   unsupported, ambiguous, and existing-repo prompts
-- source-embedding sidecar connects generated Python files to `features.py`
+- source-embedding sidecar connects generated Python files to `j3/features.py`
 - README or focused docs make the value proposition obvious to a developer:
   local, inspectable, cheap, no hosted token spend, no free-form patch sampling
 
@@ -362,7 +362,7 @@ pytest tests/test_prompt_jepa.py -q
 pytest tests/test_cli.py -q
 pytest tests/test_greenshot_7.py -q
 python -m py_compile \
-  prompt_intents.py prompt_jepa.py features.py \
+  j3/prompt_intents.py j3/prompt_jepa.py j3/features.py \
   cli/handlers.py cli/parser.py cli/__init__.py
 git diff --check
 ```
@@ -414,7 +414,7 @@ integration gate.
 1. Add the next non-calculator greenfield builder from the expanded corpus,
    likely a tiny one-file library or todo CLI.
 2. Connect prompt/repo/action records to source-transition examples from
-   `TRAINING.md`.
+   `docs/TRAINING.md`.
 3. Build a small repo-state index over generated and mined Python examples.
 4. Compare retrieval-assisted planner proposals against deterministic parser
    routes on held-out prompts.

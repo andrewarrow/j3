@@ -1,21 +1,24 @@
 # Today Progress
 
-This file is the live progress log for `plans/today.md`. Keep `plan.md` stable.
+This file is the live progress log for `plans/today.md`. Keep `plans/strategy.md` stable.
 Keep `plans/today.md` stable for routine progress, but update it narrowly when
 new implementation facts change the 24-hour plan itself. Record any
 `plans/today.md` change here with the reason.
 
 ## Status
 
-- Current phase: Prompt-JEPA developer demo documentation complete
+- Current phase: root source/doc layout cleanup complete
 - Completed iterations: 5 for this reset; previous Prompt-JEPA index reset
   completed 8 iterations
 - Passing focused tests: `pytest tests/test_prompt_intents.py -q`;
   `pytest tests/test_cli.py -q`;
   `pytest tests/test_prompt_jepa.py -q`;
-  `python -m py_compile prompt_jepa_demo.py features.py prompt_jepa.py cli/handlers.py cli/parser.py cli/__init__.py`;
+  `python -m py_compile j3/prompt_jepa_demo.py j3/features.py j3/prompt_jepa.py cli/handlers.py cli/parser.py cli/__init__.py`;
   `python cli.py demo-prompt-jepa --labels ../prompts/coding_agent_prompts_expanded_v0.jsonl --out /tmp/j3-prompt-jepa-demo --top-k 5`;
   `python -m json.tool /tmp/j3-prompt-jepa-demo/report.json >/dev/null`;
+  `python -m py_compile cli.py $(rg --files -g '*.py')`;
+  `pytest -q`;
+  `python cli.py --help`;
   `git diff --check`
 - Latest implementation commit: `1347a11`; latest documentation commit:
   `143aa47`
@@ -72,7 +75,7 @@ Use this shape for each worker handoff:
   - build a persisted JEPA-shaped index with separate context and target
     embeddings
   - keep production routing fixture-backed until retrieval/index metrics exist
-- Iteration 1 assigned next step: implement `prompt_jepa.py` or equivalent with:
+- Iteration 1 assigned next step: implement `j3/prompt_jepa.py` or equivalent with:
   - index metadata and row dataclasses
   - deterministic context encoder
   - deterministic target encoder
@@ -86,10 +89,10 @@ Use this shape for each worker handoff:
 - Goal: add the Prompt-JEPA index module with separate context and target
   encoders, JSON save/load validation, nearest-neighbor query, and focused
   tests.
-- Files changed: `prompt_jepa.py`, `tests/test_prompt_jepa.py`,
+- Files changed: `j3/prompt_jepa.py`, `tests/test_prompt_jepa.py`,
   `pyproject.toml`, `plans/today.progress.md`
 - Tests run: `pytest tests/test_prompt_jepa.py -q` passed with 6 tests;
-  `python -m py_compile prompt_jepa.py` passed; `git diff --check` passed.
+  `python -m py_compile j3/prompt_jepa.py` passed; `git diff --check` passed.
 - Result: implemented persisted `j3.prompt-jepa-index.v1` artifact support,
   deterministic feature-hashing context and target encoders, fixture index
   building, stable JSON save/load validation, nearest-neighbor query results,
@@ -109,7 +112,7 @@ Use this shape for each worker handoff:
   `tests/test_cli.py`, `plans/today.progress.md`
 - Tests run: `pytest tests/test_cli.py -q` passed with 29 tests;
   `pytest tests/test_prompt_jepa.py -q` passed with 6 tests;
-  `python -m py_compile prompt_jepa.py cli/handlers.py cli/parser.py cli/__init__.py`
+  `python -m py_compile j3/prompt_jepa.py cli/handlers.py cli/parser.py cli/__init__.py`
   passed; `git diff --check` passed; manual smoke build/query with
   `examples/prompt_intents/greenshot_7_intents.jsonl` passed.
 - Result: implemented `build-prompt-jepa-index` and
@@ -127,12 +130,12 @@ Use this shape for each worker handoff:
 - Goal: add Prompt-JEPA retrieval evaluation metrics over held-out
   validation/test splits using a train-only index, plus focused tests and a CLI
   command.
-- Files changed: `prompt_jepa.py`, `cli/parser.py`, `cli/handlers.py`,
+- Files changed: `j3/prompt_jepa.py`, `cli/parser.py`, `cli/handlers.py`,
   `tests/test_prompt_jepa.py`, `tests/test_cli.py`,
   `plans/today.progress.md`
 - Tests run: `pytest tests/test_prompt_jepa.py -q` passed with 7 tests;
   `pytest tests/test_cli.py -q` passed with 31 tests;
-  `python -m py_compile prompt_jepa.py cli/handlers.py cli/parser.py cli/__init__.py`
+  `python -m py_compile j3/prompt_jepa.py cli/handlers.py cli/parser.py cli/__init__.py`
   passed; `git diff --check` passed.
 - Metrics: local fixture
   `examples/prompt_intents/greenshot_7_intents.jsonl` with top-k 3 and 256
@@ -164,12 +167,12 @@ Use this shape for each worker handoff:
 - Worker: Codex worker iteration 4
 - Goal: add the first JEPA-style context-to-target embedding predictor, train
   it on train rows, and evaluate target-space retrieval on held-out rows.
-- Files changed: `prompt_jepa.py`, `cli/parser.py`, `cli/handlers.py`,
+- Files changed: `j3/prompt_jepa.py`, `cli/parser.py`, `cli/handlers.py`,
   `tests/test_prompt_jepa.py`, `tests/test_cli.py`,
   `plans/today.progress.md`
 - Tests run: `pytest tests/test_prompt_jepa.py -q` passed with 9 tests;
   `pytest tests/test_cli.py -q` passed with 32 tests;
-  `python -m py_compile prompt_jepa.py cli/handlers.py cli/parser.py cli/__init__.py`
+  `python -m py_compile j3/prompt_jepa.py cli/handlers.py cli/parser.py cli/__init__.py`
   passed; `git diff --check` passed.
 - Metrics: predicted-target mode on local fixture
   `examples/prompt_intents/greenshot_7_intents.jsonl` with top-k 3 and 256
@@ -203,12 +206,12 @@ Use this shape for each worker handoff:
 - Goal: compare context-neighbor and predicted-target residuals, inspect weak
   seed-domain retrieval, and improve target-space domain retrieval without
   changing production `implement` or `change` routing.
-- Files changed: `prompt_jepa.py`, `cli/parser.py`, `cli/handlers.py`,
+- Files changed: `j3/prompt_jepa.py`, `cli/parser.py`, `cli/handlers.py`,
   `tests/test_prompt_jepa.py`, `tests/test_cli.py`,
   `plans/today.progress.md`
 - Tests run: `pytest tests/test_prompt_jepa.py -q` passed with 11 tests;
   `pytest tests/test_cli.py -q` passed with 33 tests;
-  `python -m py_compile prompt_jepa.py cli/handlers.py cli/parser.py cli/__init__.py`
+  `python -m py_compile j3/prompt_jepa.py cli/handlers.py cli/parser.py cli/__init__.py`
   passed; `git diff --check` passed.
 - Inspection: `../prompts/coding_agent_prompts_seed.jsonl` has sparse exact
   domain coverage in train. Only 3/15 validation rows and 2/12 test rows have
@@ -257,11 +260,11 @@ Use this shape for each worker handoff:
 - Goal: add Prompt-JEPA indexing for real prompt/spec/action/outcome rows
   produced by `implement --record` and `change --record`, without wiring
   retrieval into production routing.
-- Files changed: `prompt_jepa.py`, `cli/parser.py`, `cli/handlers.py`,
+- Files changed: `j3/prompt_jepa.py`, `cli/parser.py`, `cli/handlers.py`,
   `tests/test_prompt_jepa.py`, `tests/test_cli.py`, `plans/today.progress.md`
 - Tests run: `pytest tests/test_prompt_jepa.py -q` passed with 12 tests;
   `pytest tests/test_cli.py -q` passed with 34 tests;
-  `python -m py_compile prompt_jepa.py cli/handlers.py cli/parser.py cli/__init__.py`
+  `python -m py_compile j3/prompt_jepa.py cli/handlers.py cli/parser.py cli/__init__.py`
   passed; `git diff --check` passed.
 - Result: added normalization for supported real outcome JSONL rows
   (`greenshot_7_request_to_repo_attempt` and
@@ -287,7 +290,7 @@ Use this shape for each worker handoff:
 - Tests run: `pytest tests/test_cli.py::test_prompt_jepa_index_command_queries_real_recorded_outcomes -q`
   passed with 1 test; `pytest tests/test_cli.py -q` passed with 35 tests;
   `pytest tests/test_prompt_jepa.py -q` passed with 12 tests;
-  `python -m py_compile prompt_jepa.py cli/handlers.py cli/parser.py cli/__init__.py`
+  `python -m py_compile j3/prompt_jepa.py cli/handlers.py cli/parser.py cli/__init__.py`
   passed; `git diff --check` passed.
 - Smoke commands: used a temporary `/tmp/j3-outcome-index-smoke.*` workspace,
   appended three real rows with `python cli.py implement --prompt "make me a
@@ -324,12 +327,12 @@ Use this shape for each worker handoff:
 - Goal: design and implement an evaluation-only retrieval-assisted planner
   proposal dry run from real outcome-index neighbors, without changing
   production `implement` or `change` routing.
-- Files changed: `prompt_jepa.py`, `cli/parser.py`, `cli/handlers.py`,
+- Files changed: `j3/prompt_jepa.py`, `cli/parser.py`, `cli/handlers.py`,
   `tests/test_prompt_jepa.py`, `tests/test_cli.py`,
   `plans/today.progress.md`
 - Tests run: `pytest tests/test_prompt_jepa.py -q` passed with 13 tests;
   `pytest tests/test_cli.py -q` passed with 35 tests;
-  `python -m py_compile prompt_jepa.py cli/handlers.py cli/parser.py cli/__init__.py`
+  `python -m py_compile j3/prompt_jepa.py cli/handlers.py cli/parser.py cli/__init__.py`
   passed; `git diff --check` passed.
 - Result: added `propose_from_prompt_jepa`, an evaluation-only
   `prompt-jepa-planner-proposal-v1` record with `mode: dry_run`,
@@ -378,8 +381,8 @@ Use this shape for each worker handoff:
 
 ### Reset: Prompt-JEPA developer demo and corpus scale-up
 
-- Goal: reread `plan.md`, `plans/today.md`, `plans/today.progress.md`,
-  `TRAINING.md`, and `../prompts` context, then reset the active 24-hour plan
+- Goal: reread `plans/strategy.md`, `plans/today.md`, `plans/today.progress.md`,
+  `docs/TRAINING.md`, and `../prompts` context, then reset the active 24-hour plan
   to the next work most likely to make the repo compelling to outside
   developers.
 - Files changed: `plans/today.md`, `plans/today.progress.md`
@@ -390,7 +393,7 @@ Use this shape for each worker handoff:
   validation, and zero hosted LLM token use.
 - Current facts: `../prompts/coding_agent_prompts_seed.jsonl` has 80 rows;
   the Prompt-JEPA index/proposal path exists; GreenShot-7 can already produce
-  real calculator request/change outcome rows; `features.py` already provides a
+  real calculator request/change outcome rows; `j3/features.py` already provides a
   deterministic Python source encoder that can be added as a demo sidecar.
 - Result: `plans/today.md` now targets an expanded 300-350 row prompt corpus,
   prompt corpus quality gate, one-command demo/report, mixed labels+records
@@ -471,12 +474,12 @@ Use this shape for each worker handoff:
 - Worker: Codex local iteration
 - Goal: add a tested `inspect-prompt-corpus` path for the expanded prompt
   corpus.
-- Files changed: `prompt_intents.py`, `cli/parser.py`, `cli/handlers.py`,
+- Files changed: `j3/prompt_intents.py`, `cli/parser.py`, `cli/handlers.py`,
   `cli/__init__.py`, `tests/test_prompt_intents.py`, `tests/test_cli.py`,
   `plans/today.progress.md`
 - Tests run: `pytest tests/test_prompt_intents.py -q` passed with 12 tests;
   `pytest tests/test_cli.py -q` passed with 36 tests; `python -m py_compile
-  prompt_intents.py cli/handlers.py cli/parser.py cli/__init__.py` passed;
+  j3/prompt_intents.py cli/handlers.py cli/parser.py cli/__init__.py` passed;
   `python cli.py inspect-prompt-corpus --labels
   ../prompts/coding_agent_prompts_expanded_v0.jsonl --json` passed; `git diff
   --check` passed.
@@ -498,12 +501,12 @@ Use this shape for each worker handoff:
 - Goal: add a one-command `demo-prompt-jepa` path with timings, artifact sizes,
   representative queries, dry-run proposals, generated calculator validation,
   blocked evidence, and hosted API tokens/context bytes `0`.
-- Files changed: `prompt_jepa_demo.py`, `cli/parser.py`, `cli/handlers.py`,
+- Files changed: `j3/prompt_jepa_demo.py`, `cli/parser.py`, `cli/handlers.py`,
   `cli/__init__.py`, `tests/test_cli.py`, `plans/today.progress.md`
 - Tests run: `pytest tests/test_cli.py::test_demo_prompt_jepa_command_writes_local_report -q`
   passed; `pytest tests/test_prompt_jepa.py -q` passed with 13 tests;
   `pytest tests/test_cli.py -q` passed with 37 tests; `python -m py_compile
-  prompt_jepa_demo.py prompt_jepa.py cli/handlers.py cli/parser.py
+  j3/prompt_jepa_demo.py j3/prompt_jepa.py cli/handlers.py cli/parser.py
   cli/__init__.py` passed; `python cli.py demo-prompt-jepa --labels
   ../prompts/coding_agent_prompts_expanded_v0.jsonl --out
   /tmp/j3-prompt-jepa-demo --top-k 5` passed; `python -m json.tool
@@ -531,11 +534,11 @@ Use this shape for each worker handoff:
 - Worker: Codex local iteration
 - Goal: add a thin Python source-embedding sidecar for generated demo repos
   using `features.embed_python_source`, without changing production routing.
-- Files changed: `prompt_jepa_demo.py`, `tests/test_cli.py`,
+- Files changed: `j3/prompt_jepa_demo.py`, `tests/test_cli.py`,
   `plans/today.progress.md`
 - Tests run: `pytest tests/test_cli.py::test_demo_prompt_jepa_command_writes_local_report -q`
   passed; `pytest tests/test_cli.py -q` passed with 37 tests;
-  `python -m py_compile prompt_jepa_demo.py features.py cli/handlers.py
+  `python -m py_compile j3/prompt_jepa_demo.py j3/features.py cli/handlers.py
   cli/parser.py cli/__init__.py` passed; `python cli.py demo-prompt-jepa
   --labels ../prompts/coding_agent_prompts_expanded_v0.jsonl --out
   /tmp/j3-prompt-jepa-demo --top-k 5` passed; `python -m json.tool
@@ -559,7 +562,7 @@ Use this shape for each worker handoff:
 - Worker: Codex worker iteration 5
 - Goal: document the Prompt-JEPA developer demo with exact commands and honest
   supported/retrieval-only boundaries.
-- Files changed: `PROMPT_JEPA_DEMO.md`, `README.md`,
+- Files changed: `docs/PROMPT_JEPA_DEMO.md`, `README.md`,
   `plans/today.progress.md`
 - Tests/checks run: `python cli.py demo-prompt-jepa --labels
   ../prompts/coding_agent_prompts_expanded_v0.jsonl --out
@@ -584,4 +587,24 @@ Use this shape for each worker handoff:
 - Push: pending until commit is created.
 - Next: active queue complete; watcher should choose the next plan slice or
   close this demo/documentation pass.
+- Blockers: none.
+
+### Root layout cleanup: move implementation and long-form docs
+
+- Worker: Codex local cleanup
+- Goal: reduce root clutter while keeping `cli.py`, `README.md`, and
+  `AGENTS.md` discoverable at the repository root.
+- Files changed: moved root implementation modules into `j3/`; moved long-form
+  markdown docs into `docs/`; moved broad strategy to `plans/strategy.md`;
+  updated imports, packaging metadata, README layout, agent handoff references,
+  plan/doc references, and tests.
+- Tests/checks run: `python -m py_compile cli.py $(rg --files -g '*.py')`
+  passed; `pytest -q` passed with 243 tests; `python cli.py --help` passed;
+  `git diff --check` passed.
+- Result: root `.py`/`.md` files are now limited to `cli.py`, `README.md`, and
+  `AGENTS.md`; generated root `__pycache__` artifacts were removed after
+  checks.
+- Commit: pending.
+- Push: pending.
+- Next: commit this layout cleanup if requested.
 - Blockers: none.

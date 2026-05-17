@@ -5,7 +5,7 @@ from __future__ import annotations
 import ast
 import difflib
 
-from actions import PatchActionKind
+from j3.actions import PatchActionKind
 
 from ..types import CandidatePatch
 from .common import BUILTIN_NAMES, _candidate

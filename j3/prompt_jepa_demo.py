@@ -19,24 +19,24 @@ from hashlib import sha256
 from pathlib import Path
 from typing import Any
 
-from existing_repo_change import (
+from j3.existing_repo_change import (
     append_existing_repo_change_attempt,
     apply_existing_repo_change,
     parse_existing_repo_change_to_spec,
     plan_existing_repo_change,
 )
-from features import FEATURE_VERSION as PYTHON_SOURCE_FEATURE_VERSION
-from features import embed_python_source
-from greenfield import build_calculator_repo, plan_calculator_repo
-from prompt_intents import load_prompt_intent_records, predict_prompt_intent
-from prompt_jepa import (
+from j3.features import FEATURE_VERSION as PYTHON_SOURCE_FEATURE_VERSION
+from j3.features import embed_python_source
+from j3.greenfield import build_calculator_repo, plan_calculator_repo
+from j3.prompt_intents import load_prompt_intent_records, predict_prompt_intent
+from j3.prompt_jepa import (
     build_prompt_jepa_index_from_sources,
     evaluate_prompt_jepa_retrieval,
     propose_from_prompt_jepa,
     save_prompt_jepa_index,
 )
-from request_outcomes import append_request_repo_attempt
-from request_spec import parse_request_to_spec
+from j3.request_outcomes import append_request_repo_attempt
+from j3.request_spec import parse_request_to_spec
 
 
 PROMPT_JEPA_DEMO_SCHEMA_VERSION = "prompt-jepa-demo-report-v1"

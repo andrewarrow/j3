@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from patching import CandidatePatch, PatchPlanResult
+from j3.patching import CandidatePatch, PatchPlanResult
 
 
 def _average(values: list[int]) -> float:

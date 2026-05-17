@@ -5,7 +5,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from greenshot_7 import run_greenshot_7_tasks
+from j3.greenshot_7 import run_greenshot_7_tasks
 
 
 TASKS_PATH = Path("examples/greenshot_7/tasks.json")

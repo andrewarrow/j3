@@ -8,9 +8,9 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
-from features import FEATURE_VERSION, embed_python_source, mean_vector, vector_delta
-from repo import iter_python_sources
-from synth import SyntheticTransition, generate_transitions
+from j3.features import FEATURE_VERSION, embed_python_source, mean_vector, vector_delta
+from j3.repo import iter_python_sources
+from j3.synth import SyntheticTransition, generate_transitions
 
 
 MODEL_FORMAT = "j3.prototype-jepa.v1"

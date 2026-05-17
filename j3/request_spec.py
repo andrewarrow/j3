@@ -6,7 +6,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-from prompt_intents import PromptIntentPrediction, PromptIntentTarget
+from j3.prompt_intents import PromptIntentPrediction, PromptIntentTarget
 
 
 SCHEMA_VERSION = "request-spec-v1"

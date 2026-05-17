@@ -6,9 +6,9 @@ import ast
 from dataclasses import dataclass
 from pathlib import Path
 
-from actions import PatchAction, PatchActionKind, PatchTarget
-from repo import PythonSource
-from synth import SourceEdit, apply_edit
+from j3.actions import PatchAction, PatchActionKind, PatchTarget
+from j3.repo import PythonSource
+from j3.synth import SourceEdit, apply_edit
 
 from ..ast_utils import _defined_names, _import_insert_line, _import_module, _imported_names
 from ..types import CandidatePatch

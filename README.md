@@ -75,7 +75,7 @@ and real `implement --record` / `change --record` outcome rows can be indexed.
 
 For the one-command developer demo, exact artifact inspection commands, and
 current supported/retrieval-only boundaries, see
-[PROMPT_JEPA_DEMO.md](PROMPT_JEPA_DEMO.md).
+[docs/PROMPT_JEPA_DEMO.md](docs/PROMPT_JEPA_DEMO.md).
 
 Try the calculator prompt index:
 
@@ -209,18 +209,21 @@ pytest
 
 ```text
 .
-├── actions.py        # structured patch actions and targets
-├── cli/              # command handlers and parser wiring
-├── cli.py            # command line interface
-├── examples/         # small local repos for demos and smoke tests
-├── features.py       # deterministic AST hashing encoder
-├── prompt_jepa.py    # prompt context/target encoders, index, eval, proposals
-├── request_spec.py   # request-spec-v1 parsing and validation
-├── repo.py           # repository discovery helpers
-├── synth.py          # synthetic break/fix transition generation
-├── training.py       # prototype local trainer
-├── tests/            # pytest suite
-├── pyproject.toml    # packaging, CLI entry point, test config
+├── cli.py          # root script wrapper
+├── cli/            # command handlers and parser wiring
+├── j3/             # core implementation package
+│   ├── actions.py
+│   ├── features.py
+│   ├── prompt_jepa.py
+│   ├── request_spec.py
+│   ├── repo.py
+│   ├── synth.py
+│   └── training.py
+├── docs/           # focused long-form docs
+├── examples/       # small local repos for demos and smoke tests
+├── plans/          # active plan, progress log, and strategy
+├── tests/          # pytest suite
+├── pyproject.toml  # packaging, CLI entry point, test config
 └── README.md
 ```
 
@@ -259,7 +262,7 @@ This gives the next step something concrete to consume: `patch` can load
 `model.json`, score candidate structured edits, and make the first patch attempt.
 
 For the larger Apache-licensed Python corpus and reproduction commands, see
-[TRAINING.md](TRAINING.md).
+[docs/TRAINING.md](docs/TRAINING.md).
 
 `j3 mine` can also extract real Python file transitions from git history:
 
@@ -436,4 +439,4 @@ Prompt-JEPA index over prompt/spec/action/outcome rows without using an LLM.
 
 ## FAQ
 
-See [FAQ.md](FAQ.md).
+See [docs/FAQ.md](docs/FAQ.md).

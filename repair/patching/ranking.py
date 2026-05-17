@@ -5,9 +5,9 @@ from __future__ import annotations
 import re
 from dataclasses import replace
 
-from actions import PatchActionKind
-from candidate_ranking import CandidateRankerModel
-from failure_hints import PytestFailureHint
+from j3.actions import PatchActionKind
+from j3.candidate_ranking import CandidateRankerModel
+from j3.failure_hints import PytestFailureHint
 
 from .model import PatchRankingModel
 from .types import CandidatePatch

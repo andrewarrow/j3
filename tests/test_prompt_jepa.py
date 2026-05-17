@@ -5,9 +5,9 @@ from pathlib import Path
 
 import pytest
 
-from existing_repo_change import parse_existing_repo_change_to_spec
-from prompt_intents import load_prompt_intent_records, predict_prompt_intent
-from prompt_jepa import (
+from j3.existing_repo_change import parse_existing_repo_change_to_spec
+from j3.prompt_intents import load_prompt_intent_records, predict_prompt_intent
+from j3.prompt_jepa import (
     PROMPT_JEPA_INDEX_FORMAT,
     build_prompt_jepa_index,
     build_prompt_jepa_outcome_index_from_path,
@@ -25,7 +25,7 @@ from prompt_jepa import (
     save_prompt_jepa_index,
     train_prompt_jepa_predictor,
 )
-from request_spec import parse_request_to_spec
+from j3.request_spec import parse_request_to_spec
 
 
 GREENSHOT_7_INTENTS = Path("examples/prompt_intents/greenshot_7_intents.jsonl")

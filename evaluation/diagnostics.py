@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterable
 
-from ast_delta import python_ast_delta_metadata
+from j3.ast_delta import python_ast_delta_metadata
 from evaluation.models import EvalSummary, RepairTask
 from evaluation.plan_utils import (
     _average,
@@ -18,7 +18,7 @@ from evaluation.plan_utils import (
     _first_passing_index,
     _passing_candidates,
 )
-from patching import CandidatePatch, PatchPlanResult
+from j3.patching import CandidatePatch, PatchPlanResult
 
 
 def write_eval_diagnostics(summary: EvalSummary, path: Path) -> Path:

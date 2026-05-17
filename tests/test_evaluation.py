@@ -4,7 +4,7 @@ from pathlib import Path
 
 import json
 
-from actions import PatchAction, PatchActionKind, PatchTarget
+from j3.actions import PatchAction, PatchActionKind, PatchTarget
 from candidate_ranker.features import _candidate_record_features
 from evaluation import (
     EvalSummary,
@@ -15,11 +15,11 @@ from evaluation import (
     write_candidate_outcomes,
     write_eval_diagnostics,
 )
-from failure_hints import AssertionComparison, PytestFailureHint
-from patching import CandidatePatch, PatchPlanResult
+from j3.failure_hints import AssertionComparison, PytestFailureHint
+from j3.patching import CandidatePatch, PatchPlanResult
 from repair.patching.context import attach_target_context
-from synth import SourceEdit
-from training import train_from_path
+from j3.synth import SourceEdit
+from j3.training import train_from_path
 
 
 def test_load_tasks_from_directory() -> None:

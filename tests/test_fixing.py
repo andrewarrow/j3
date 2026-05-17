@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import shutil
 
-from fixing import parse_pytest_failures, run_fix_workflow
+from j3.fixing import parse_pytest_failures, run_fix_workflow
 
 
 def test_parse_pytest_failures() -> None:

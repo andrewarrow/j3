@@ -8,7 +8,7 @@ This file is the live progress log for `plans/today.md`. Keep
 - Current phase: shadow suite and residual-driven readiness.
 - Completed iterations for this reset: 2.
 - Latest relevant commits:
-  - pending Worker 2 residual report commit.
+  - `23f37ac` added the transition residual report.
   - `f9ed963` recorded shadow suite completion.
   - `0aae784` added the transition shadow suite command.
   - `2664a95` documented shadow-to-gate evidence.
@@ -171,8 +171,8 @@ Use this shape for each worker handoff:
   source file, scorer/production top disagreement, missing feature evidence,
   and generation-vs-ranking gap; includes bounded exact candidate summaries and
   zero hosted usage fields.
-- Commit: pending.
-- Push: pending.
+- Commit: `23f37ac` (`Add transition residual report`).
+- Push: succeeded to `main`.
 - Next: improve one scorer feature or action-choice metadata path from the
   residual report.
 - Blockers: none.

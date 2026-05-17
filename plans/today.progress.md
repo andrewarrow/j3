@@ -7,9 +7,10 @@ new implementation facts change the 24-hour plan itself. Record any
 
 ## Status
 
-- Current phase: root source/doc layout cleanup complete
-- Completed iterations: 5 for this reset; previous Prompt-JEPA index reset
-  completed 8 iterations
+- Current phase: Prompt+Repo JEPA transition V0
+- Completed iterations: 0 for this reset; Prompt-JEPA developer demo reset
+  completed 5 iterations; previous Prompt-JEPA index reset completed 8
+  iterations
 - Passing focused tests: `pytest tests/test_prompt_intents.py -q`;
   `pytest tests/test_cli.py -q`;
   `pytest tests/test_prompt_jepa.py -q`;
@@ -20,25 +21,19 @@ new implementation facts change the 24-hour plan itself. Record any
   `pytest -q`;
   `python cli.py --help`;
   `git diff --check`
-- Latest implementation commit: `1347a11`; latest documentation commit:
-  `143aa47`
+- Latest implementation/demo commit: `37164fc`
 - Current blocker: none
-- Next task: active queue complete; watcher should choose the next plan slice
-  or close this demo/documentation pass.
+- Next task: add a reusable repo-state encoder artifact using deterministic
+  Python source embeddings.
 
 ## Active Task Queue
 
-- [x] Add reproducible expanded prompt corpus under `../prompts` with clear
-  provenance, stable splits, and roughly 300 to 350 total rows.
-- [x] Add a prompt corpus quality/profile command or equivalent tested path.
-- [x] Add a one-command Prompt-JEPA demo/report path with timings, artifact
-  sizes, representative queries, dry-run proposals, and hosted API tokens `0`.
-- [x] Generate real calculator outcome rows and build a mixed labels+records
-  Prompt-JEPA demo index.
-- [x] Add a thin Python source-embedding sidecar for generated demo repos using
-  `features.embed_python_source`.
-- [x] Document the demo in README or a focused demo doc with exact commands and
-  honest supported/retrieval-only boundaries.
+- [ ] Add reusable repo-state encoder artifact over Python source files.
+- [ ] Build `prompt-repo-transition-v1` rows from demo outcomes.
+- [ ] Add a tiny evaluation-only transition predictor V0.
+- [ ] Add consequence-prediction metrics and residuals.
+- [ ] Wire transition rows/model/eval into `demo-prompt-jepa` report artifacts.
+- [ ] Update developer docs with the state/action/target transition story.
 
 ## Worker Iteration Template
 
@@ -607,4 +602,27 @@ Use this shape for each worker handoff:
 - Commit: pending.
 - Push: pending.
 - Next: commit this layout cleanup if requested.
+- Blockers: none.
+
+### Reset: Prompt+Repo JEPA transition V0
+
+- Goal: review the completed Prompt-JEPA demo work and reset `plans/today.md`
+  to the next slice that will make the repo more compelling to JEPA developers.
+- Files changed: `plans/today.md`, `plans/today.progress.md`
+- Decision: stop expanding prompts for now. The 320-row corpus, inspector,
+  demo report, mixed outcome index, and source-embedding sidecar are enough
+  evidence for the local/no-token story. The next higher-value work is an
+  explicit transition artifact:
+  `prompt + repo_before + structured_action -> predicted repo_after /
+  validation utility`.
+- Current facts: `demo-prompt-jepa` already writes a local report, real
+  calculator outcome rows, mixed indexes, and source embeddings. It does not
+  yet produce transition rows, train/evaluate a transition predictor, or compare
+  prompt-only retrieval against prompt+repo+action consequence prediction.
+- Result: `plans/today.md` now targets a Prompt+Repo JEPA Transition V0 slice:
+  reusable repo-state encoder, `prompt-repo-transition-v1` JSONL rows, tiny
+  evaluation-only transition predictor, consequence-prediction metrics,
+  demo-report integration, and docs.
+- Tests run: `git diff --check` passed.
+- Next: implement Step 1, the reusable repo-state encoder artifact.
 - Blockers: none.

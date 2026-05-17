@@ -1,325 +1,282 @@
-# Today Plan: Prompt-JEPA Developer Demo And Corpus Scale-Up
+# Today Plan: Prompt+Repo JEPA Transition V0
 
-This 24-hour plan replaces the now-complete Prompt-JEPA index implementation
-slice with a developer-facing demo slice.
+The Prompt-JEPA developer demo slice is complete: the repo now has a
+reproducible 320-row prompt corpus, a corpus inspector, a one-command local
+demo report, mixed prompt/outcome indexing, source-embedding sidecars, focused
+docs, and a cleaned root layout.
 
-The right next move is not a deep Apache-source training run yet. The repo first
-needs a compelling, reproducible story another developer can run in minutes:
+The next slice should make the project more interesting to JEPA developers by
+moving from retrieval evidence to transition prediction:
 
 ```text
-many coding-agent prompts
-  -> local Prompt-JEPA context vectors
-structured specs / actions / outcomes
-  -> local target vectors
-mixed labels + real outcome rows
-  -> nearest evidence and dry-run planner proposals
-demo report
-  -> timings, index size, validation results, and hosted LLM API tokens = 0
+prompt + repo_before + structured action
+  -> predicted repo_after / validation utility
+  -> compare candidate next states
+  -> choose apply / clarify / stop
 ```
 
-Going deeper on Python source JEPA from `docs/TRAINING.md` is still important, but it
-should be the second move in this slice: add a thin source-embedding bridge to
-the demo artifacts so prompt/spec/outcome rows start connecting to repo-state
-vectors. Do not disappear into a long source-model experiment before the
-prompt-to-repo demo is easy to understand.
+Do not grow the prompt corpus again yet. The current corpus is enough for this
+slice. More synthetic rows will not make the project more credible until j3 can
+show a stronger world-model-shaped transition loop.
 
 ## Goal For The Next 24 Hours
 
-Build a fast, cheap, local Prompt-JEPA demo that makes the project direction
-obvious:
+Build the first explicit Prompt+Repo JEPA transition artifact and evaluation
+loop:
 
-- expand `../prompts` from the current 80-row seed into a larger tagged prompt
-  corpus suitable for retrieval and held-out prompt evaluation
-- keep generated prompt rows clearly marked by provenance
-- build and validate a mixed Prompt-JEPA index from prompt labels and real
-  `implement --record` / `change --record` outcome rows
-- add a one-command demo/report path that prints:
-  - corpus size and split counts
-  - index build time, query latency, and index size
-  - top-k evidence for representative prompts
-  - dry-run planner proposal summaries
-  - generated repo validation results for supported calculator prompts
-  - hosted LLM API token usage: `0`
-  - repo text sent to a hosted model: `0 bytes`
-- add a small source-encoding sidecar for generated Python files using the
-  existing `features.embed_python_source` path, without starting a large neural
-  training run
+- encode repo state deterministically from Python source files
+- turn prompt/spec/action/outcome rows into transition rows with:
+  - prompt context
+  - repo-before embedding
+  - structured action / outcome kind
+  - repo-after embedding or blocked clarification target
+  - validation status and cost fields
+- persist the transition dataset as stable JSONL
+- train or fit a small local V0 predictor over transition rows
+- evaluate whether prompt+repo+action predicts/ranks the right next state
+  better than prompt-only retrieval
+- add the transition metrics to the demo report and docs
+
+The outcome should look like a tiny local world-model experiment, not just an
+index search.
 
 ## Strategic Decision
 
-Prioritize the demo and corpus before deeper source training.
+Prioritize Prompt+Repo JEPA transition modeling over more prompt generation.
 
 Why:
 
-- external developers need to see the loop run, not only read a roadmap
-- the current 80-row `../prompts` corpus is too small and sparse for compelling
-  retrieval claims
-- a local demo can show the concrete advantage: no hosted model call, no repo
-  prompt stuffed into a context window, and structured output that is easy to
-  inspect
-- the Apache-source training path from `docs/TRAINING.md` is valuable foundation, but
-  its impact is less visible until connected to prompt/spec/outcome records
+- JEPA developers will look for state, action, prediction, and target spaces.
+- The current demo already proves local indexing, no hosted tokens, and
+  inspectable rows.
+- The current source sidecar only records source embeddings; it does not yet
+  make source state part of the predictive problem.
+- The impressive next claim is: j3 can represent a repo state, an intended
+  action, and a target state in a way that can be scored locally before
+  validation.
 
-The source path should stay present as a bridge, not become the active rabbit
-hole today.
+This remains a V0 deterministic/standard-library slice. No neural training,
+GPU, hosted embeddings, or production routing switch.
 
-## Existing Building Blocks
+## Existing Baseline
 
-- `j3/prompt_jepa.py` already supports:
-  - separate context and target feature-hashed embeddings
-  - persisted `j3.prompt-jepa-index.v1`
-  - query
-  - held-out retrieval eval
-  - context-to-target predictor eval
-  - mixed label/outcome indexing
-  - evaluation-only planner proposals
-- `examples/prompt_intents/greenshot_7_intents.jsonl` has focused calculator
-  labels for supported, unsupported, and clarification paths.
-- `../prompts/coding_agent_prompts_seed.jsonl` has 80 broader prompt rows.
-- `j3 implement --record`, `j3 change --record`, and `j3 greenshot-7 --record`
-  can produce real prompt/spec/action/outcome rows.
-- `j3/features.py` and `j3/training.py` already provide deterministic Python source
-  embeddings and a JEPA-shaped repair transition baseline.
-- `docs/TRAINING.md` documents the Apache-licensed Python corpus and existing
-  source-transition training path.
+Completed and available:
 
-## Non-Goals For Today
+- `tools/prompts/generate_expanded_prompt_corpus.py`
+  - generates `../prompts/coding_agent_prompts_expanded_v0.jsonl`
+  - 320 rows: 80 `human_seed`, 240 `synthetic_template_v0`
+- `inspect-prompt-corpus`
+  - reports corpus shape and quality checks
+- `demo-prompt-jepa`
+  - builds label-only and mixed Prompt-JEPA indexes
+  - writes `report.json`, `outcomes.jsonl`, `index.json`,
+    `labels-index.json`, and `source-embeddings.json`
+  - records `hosted_llm_api_tokens: 0`
+  - records `hosted_repo_context_bytes: 0`
+- `j3/features.py`
+  - deterministic AST hash vectors for Python source
+- `j3/prompt_jepa.py`
+  - prompt context/target embeddings, predictor V0, retrieval eval, proposals
+- `j3/prompt_jepa_demo.py`
+  - one-command demo orchestration
+- `docs/PROMPT_JEPA_DEMO.md`
+  - developer-facing demo walkthrough
 
-- No production switch from deterministic `implement` / `change` routing to
-  retrieval-assisted routing.
-- No hosted LLM, embedding API, GPU, or model download.
-- No claim that synthetic prompt rows prove broad generalization.
-- No broad source-model rewrite or long Apache corpus retraining as the first
-  task.
-- No untagged generated prompts; every generated row must be labeled by
-  provenance and split policy.
-- No new dependency unless the standard library is clearly insufficient.
-- No edits to `plans/strategy.md` unless the strategic roadmap itself changes.
+## Non-Goals
+
+- No more synthetic prompt rows in this slice.
+- No production routing switch from deterministic `implement` / `change`.
+- No hosted LLM/API/embedding calls.
+- No GPU, transformer, or model download.
+- No broad Apache corpus retraining yet.
+- No claim that deterministic V0 embeddings are the final JEPA model.
+- No hiding failures: report residuals and weak cases explicitly.
 
 ## Step-By-Step Work Plan
 
-### Step 1: Expand The Prompt Corpus Deliberately
-
-Status: complete for this slice at 320 total rows. Do not keep expanding the
-synthetic corpus until Step 2 adds a quality/profile gate and Step 3 shows the
-demo report; more rows without better measurement will make the signal harder
-to understand.
+### Step 1: Add A Repo-State Encoder Artifact
 
 Deliverable:
 
-- add a reproducible, checked-in generator at
-  `tools/prompts/generate_expanded_prompt_corpus.py` that writes a larger prompt
-  corpus under `../prompts` without overwriting the hand-authored seed
-- target roughly 300 to 350 total rows for this slice
-- keep rows compatible with `load_prompt_intent_records`
-- include stable `id`, `split`, `source_type`, `task_type`, `repo_mode`,
-  `domain`, `prompt`, `expected`, and `tags`
-- use provenance such as `human_seed`, `synthetic_template_v0`, and
-  `manual_reviewed_synthetic` rather than pretending all rows are human-written
-- preserve train/validation/test splits by prompt family, not by near-duplicate
-  paraphrase
+- add a small module such as `j3/repo_state.py`
+- encode a repository directory into a stable record:
+  - schema version
+  - feature version
+  - embedding dimension
+  - included Python file paths
+  - file SHA-256 hashes and byte counts
+  - aggregate repo embedding
+  - empty-repo embedding support
+- use `features.embed_python_source` for per-file embeddings
+- aggregate deterministically, for example mean vector plus counts
+- keep vectors JSON-serializable and validate dimensions
 
-Coverage priorities:
+Why this matters:
 
-- calculator CLI create/change/clarification prompts
-- general CLI apps: todo, notes, password generator, CSV tool, file renamer,
-  expense tracker, timer, quiz, offline weather stub
-- one-file Python libraries: strings, stats, validation, dates, cache, config,
-  parsers, paths, money, collections
-- existing-repo feature additions: CLI flags, API endpoints, serialization,
-  pagination, logging, auth, config, export
-- bugfix prompts with edge cases and preferred-patch hints
-- tests-only prompts
-- refactor prompts
-- ambiguous prompts where `ask_clarification` is correct
-- hard negatives where tempting domain inference would be wrong
+- it turns the current source sidecar into a reusable repo-state representation
+- it creates a concrete `s(repo)` space for JEPA transition work
 
 Verification:
 
 ```bash
-python cli.py train-prompt-intents \
-  --labels ../prompts/coding_agent_prompts_seed.jsonl \
-  --target expected_action repo_mode task_type domain requires_clarification \
-  --show-residuals
+pytest tests/test_repo_state.py -q
+python -m py_compile j3/repo_state.py
 ```
 
-After the expanded file exists, run the same command against it and record row
-counts, split counts, and residual themes.
-
-### Step 2: Add A Prompt Corpus Quality Gate
+### Step 2: Build Prompt+Repo Transition Rows
 
 Deliverable:
 
-- add a small profile/check path, such as `j3 inspect-prompt-corpus`, or extend
-  existing prompt-intent tooling if that fits better
-- report:
-  - total rows
-  - split counts
-  - task type, repo mode, domain, expected action, and clarification counts
-  - duplicate normalized prompts
-  - near-duplicate family leakage across splits when a family field/tag exists
-  - missing required fields
-  - unsupported or unknown scalar labels
-- JSON output for docs and regression tests
-
-Verification:
-
-```bash
-pytest tests/test_prompt_intents.py -q
-pytest tests/test_cli.py -q
-python cli.py inspect-prompt-corpus \
-  --labels ../prompts/coding_agent_prompts_expanded_v0.jsonl \
-  --json
-```
-
-If the command name changes during implementation, update this plan and record
-the reason in `plans/today.progress.md`.
-
-### Step 3: Build The One-Command Prompt-JEPA Demo
-
-Deliverable:
-
-- add an evaluation/demo command or script, for example:
-
-```bash
-python cli.py demo-prompt-jepa \
-  --labels ../prompts/coding_agent_prompts_expanded_v0.jsonl \
-  --out /tmp/j3-prompt-jepa-demo \
-  --top-k 5
-```
-
-- the demo should:
-  - build a Prompt-JEPA index
-  - run held-out retrieval eval
-  - run representative queries
-  - run dry-run planner proposals
-  - create and validate at least one supported calculator repo
-  - record blocked evidence for at least one unsupported/ambiguous prompt
-  - print timings and artifact sizes
-  - print `hosted_llm_api_tokens: 0`
-  - print `hosted_repo_context_bytes: 0`
-
-Representative prompts:
+- add a transition schema such as `prompt-repo-transition-v1`
+- build transitions from demo outcomes:
+  - create calculator repo:
+    - before state: empty repo
+    - action: create calculator app
+    - after state: generated repo source embedding
+    - validation: passed
+  - add exponent support:
+    - before state: calculator before change
+    - action: add exponent support
+    - after state: changed repo source embedding
+    - validation: passed
+  - blocked auth:
+    - before state: empty or target repo state as applicable
+    - action: ask clarification / blocked
+    - after state: no source change
+    - validation: not run / blocked
+- persist transition JSONL in the demo output, for example:
 
 ```text
-make me a simple cli calc
-make me a complex calc for spaceships
-add exponent support
-build a small todo cli where I can add tasks and mark them done
-add auth
+/tmp/j3-prompt-jepa-demo/transitions.jsonl
 ```
 
-The non-calculator prompts can be retrieval/proposal-only until their structured
-builders exist. The demo must be honest about what is supported, blocked, and
-retrieval-only.
+- include prompt context embedding and Prompt-JEPA target embedding references
+  or checksums so the transition rows bridge prompt space and repo-state space
 
 Verification:
 
 ```bash
-pytest tests/test_prompt_jepa.py -q
-pytest tests/test_cli.py -q
 python cli.py demo-prompt-jepa \
   --labels ../prompts/coding_agent_prompts_expanded_v0.jsonl \
   --out /tmp/j3-prompt-jepa-demo \
   --top-k 5
 python -m json.tool /tmp/j3-prompt-jepa-demo/report.json >/dev/null
+python - <<'PY'
+import json
+from pathlib import Path
+rows = [json.loads(line) for line in Path('/tmp/j3-prompt-jepa-demo/transitions.jsonl').read_text().splitlines()]
+assert rows
+print(len(rows), rows[0]['schema_version'])
+PY
 ```
 
-### Step 4: Build A Mixed Outcome Index For The Demo
+### Step 3: Add A Tiny Transition Predictor V0
 
 Deliverable:
 
-- generate real outcome rows in a temp demo directory:
-
-```bash
-python cli.py greenshot-7 \
-  --out /tmp/j3-prompt-jepa-demo/greenshot-7 \
-  --record /tmp/j3-prompt-jepa-demo/outcomes.jsonl
-
-python cli.py implement \
-  --prompt "make me a simple cli calc" \
-  --out /tmp/j3-prompt-jepa-demo/simple-calc \
-  --record /tmp/j3-prompt-jepa-demo/outcomes.jsonl
-
-python cli.py change \
-  --repo /tmp/j3-prompt-jepa-demo/simple-calc \
-  --prompt "add exponent support" \
-  --record /tmp/j3-prompt-jepa-demo/outcomes.jsonl
-```
-
-- build a mixed index from labels plus records:
-
-```bash
-python cli.py build-prompt-jepa-index \
-  --labels ../prompts/coding_agent_prompts_expanded_v0.jsonl \
-  --records /tmp/j3-prompt-jepa-demo/outcomes.jsonl \
-  --out /tmp/j3-prompt-jepa-demo/index.json
-```
-
-- query/propose from the mixed index and show that real outcome metadata is
-  present in the evidence
+- add a deterministic V0 predictor over transition rows
+- input:
+  - prompt context embedding
+  - repo-before embedding
+  - structured action kind / outcome kind features
+- target:
+  - repo-after embedding for source-changing outcomes
+  - blocked/clarification target for non-source outcomes
+- baseline can be simple and honest:
+  - nearest transition by prompt+repo+action context
+  - action-conditioned average delta
+  - or a small feature-hash vector over context/action plus repo-before delta
+- persist model metadata:
+  - schema version
+  - embedding dim
+  - train row ids
+  - predictor kind
+  - decision: evaluation-only
 
 Verification:
 
 ```bash
-python -m json.tool /tmp/j3-prompt-jepa-demo/index.json >/dev/null
-python cli.py propose-from-prompt-jepa \
-  --index /tmp/j3-prompt-jepa-demo/index.json \
-  --prompt "add power operator to the calculator" \
-  --top-k 5
+pytest tests/test_prompt_repo_transitions.py -q
+python -m py_compile j3/prompt_repo_transitions.py
 ```
 
-### Step 5: Add A Thin Python Source Encoding Bridge
+### Step 4: Evaluate Consequence Prediction
 
 Deliverable:
 
-- for generated demo repos, encode Python files with `features.embed_python_source`
-- store source-embedding metadata in the demo report or a sidecar JSON artifact:
-  - feature version
-  - embedding dimension
-  - file path
-  - vector dimension
-  - vector norm or compact checksum
-  - before/after availability when a change action was applied
-- do not store huge vectors in README output
-- do not retrain the Apache corpus model in this slice unless all demo work is
-  already done
+- add metrics that JEPA developers can inspect:
+  - top-1/top-k correct next outcome kind
+  - top-1/top-k validation status
+  - nearest predicted repo-after state
+  - source-changing vs blocked/clarification split
+  - residual examples with prompt, action, expected, predicted, and distance
+- compare against prompt-only retrieval where possible
+- keep the dataset tiny and honest; the point is shape and instrumentation,
+  not benchmark claims
 
-Why this matters:
+Verification:
 
-- it visibly connects Prompt-JEPA to the source-transition machinery documented
-  in `docs/TRAINING.md`
-- it creates the first bridge from prompt/spec/action/outcome records to
-  repo-state representations
-- it sets up the later model track:
+```bash
+python cli.py eval-prompt-repo-transitions \
+  --transitions /tmp/j3-prompt-jepa-demo/transitions.jsonl \
+  --top-k 3 \
+  --json
+pytest tests/test_cli.py -q
+```
+
+If the command name changes during implementation, update this plan and record
+why in `plans/today.progress.md`.
+
+### Step 5: Wire Transition Metrics Into The Demo Report
+
+Deliverable:
+
+- `demo-prompt-jepa` should also write:
 
 ```text
-prompt context embedding
-  + repo source embedding
-  + structured action
-  -> predicted target repo-state embedding
+/tmp/j3-prompt-jepa-demo/transitions.jsonl
+/tmp/j3-prompt-jepa-demo/transition-model.json
+/tmp/j3-prompt-jepa-demo/transition-eval.json
 ```
+
+- `report.json` should include concise transition sections:
+  - transition row counts
+  - predictor kind
+  - evaluation metrics
+  - representative residuals
+  - source-state feature version
+  - explicit `evaluation_only_not_wired_to_production`
 
 Verification:
 
 ```bash
-python -m json.tool /tmp/j3-prompt-jepa-demo/source-embeddings.json >/dev/null
+python cli.py demo-prompt-jepa \
+  --labels ../prompts/coding_agent_prompts_expanded_v0.jsonl \
+  --out /tmp/j3-prompt-jepa-demo \
+  --top-k 5
+python -m json.tool /tmp/j3-prompt-jepa-demo/transition-eval.json >/dev/null
+python -m json.tool /tmp/j3-prompt-jepa-demo/report.json >/dev/null
 ```
 
-### Step 6: Document The Demo In A Developer-Facing Way
+### Step 6: Update Developer-Facing Docs
 
 Deliverable:
 
-- add or update a focused demo document, such as `docs/PROMPT_JEPA_DEMO.md` if a
-  docs directory is introduced, or a compact README section if not
-- include:
-  - exact run commands
-  - sample output
-  - what is real today
-  - what is retrieval-only
-  - why token/API cost is zero
-  - why this is JEPA-shaped despite using deterministic V0 encoders
-  - next source-JEPA step
+- update `docs/PROMPT_JEPA_DEMO.md`
+- explain the new transition story:
+
+```text
+prompt observation + repo_before state + action
+  -> predicted repo_after state / utility
+```
+
+- show exact commands to inspect:
+  - transition rows
+  - repo-state records
+  - transition predictor metadata
+  - evaluation metrics and residuals
+- clearly state what is V0/deterministic and what remains future neural JEPA
+  work
 
 Verification:
 
@@ -331,91 +288,88 @@ git diff --check
 
 Minimum success:
 
-- expanded prompt corpus exists under `../prompts` and validates
-- corpus profile/check output is available
-- Prompt-JEPA build/query/eval works on the expanded corpus
-- demo command or script produces a JSON report with timings, row counts,
-  selected evidence, and `hosted_llm_api_tokens: 0`
-- demo records at least one successful calculator repo build and one blocked or
-  clarification outcome
-- mixed labels+records index works
-- production `implement` / `change` routing remains deterministic
+- reusable repo-state encoder exists and is tested
+- demo writes Prompt+Repo transition JSONL rows
+- transition rows include prompt, repo-before, action, repo-after or blocked
+  target, and validation/cost fields
+- a V0 transition predictor/eval path runs locally
+- demo report includes transition metrics
+- docs explain the transition artifact clearly
+- production routing remains unchanged
 
 Strong success:
 
-- around 250 to 300 prompt rows with clear provenance and stable splits
-- demo completes from a clean temp directory in under a minute on the local
-  machine
-- representative queries show sensible nearest evidence across supported,
-  unsupported, ambiguous, and existing-repo prompts
-- source-embedding sidecar connects generated Python files to `j3/features.py`
-- README or focused docs make the value proposition obvious to a developer:
-  local, inspectable, cheap, no hosted token spend, no free-form patch sampling
+- transition eval compares prompt-only retrieval vs prompt+repo+action context
+- report includes residuals that make failure modes visible
+- source-changing and blocked/clarification outcomes are represented
+- the demo can be run from scratch in under a minute
+- the story is compelling to JEPA developers because it has explicit state,
+  action, target, prediction, and evaluation artifacts
 
 ## Testing Plan
 
 Run focused checks first:
 
 ```bash
-pytest tests/test_prompt_intents.py -q
+pytest tests/test_repo_state.py -q
+pytest tests/test_prompt_repo_transitions.py -q
 pytest tests/test_prompt_jepa.py -q
 pytest tests/test_cli.py -q
-pytest tests/test_greenshot_7.py -q
 python -m py_compile \
-  j3/prompt_intents.py j3/prompt_jepa.py j3/features.py \
+  j3/repo_state.py \
+  j3/prompt_repo_transitions.py \
+  j3/prompt_jepa_demo.py \
   cli/handlers.py cli/parser.py cli/__init__.py
 git diff --check
 ```
 
-Manual smoke after implementation:
+Manual smoke:
 
 ```bash
-python cli.py train-prompt-intents \
-  --labels ../prompts/coding_agent_prompts_expanded_v0.jsonl \
-  --target expected_action repo_mode task_type domain requires_clarification \
-  --show-residuals
-
-python cli.py eval-prompt-jepa-index \
-  --labels ../prompts/coding_agent_prompts_expanded_v0.jsonl \
-  --mode compare
+python tools/prompts/generate_expanded_prompt_corpus.py
 
 python cli.py demo-prompt-jepa \
   --labels ../prompts/coding_agent_prompts_expanded_v0.jsonl \
   --out /tmp/j3-prompt-jepa-demo \
   --top-k 5
+
+python -m json.tool /tmp/j3-prompt-jepa-demo/report.json >/dev/null
+python -m json.tool /tmp/j3-prompt-jepa-demo/transitions.jsonl >/dev/null || true
 ```
+
+For JSONL, use a line-by-line validation helper rather than `json.tool` if the
+transition file remains newline-delimited JSON.
 
 Run full `pytest -q` only after broad shared changes or before a final
 integration gate.
 
 ## Open Decisions
 
-1. Expanded corpus filename:
-   - Proposed: `../prompts/coding_agent_prompts_expanded_v0.jsonl`.
+1. Module name:
+   - Proposed: `j3/prompt_repo_transitions.py`.
 
-2. Generated prompt provenance:
-   - Proposed: `synthetic_template_v0` for raw generated rows and
-     `manual_reviewed_synthetic` only after human review.
+2. CLI command name:
+   - Proposed: `eval-prompt-repo-transitions`.
 
-3. Demo command name:
-   - Proposed: `demo-prompt-jepa`.
+3. Transition predictor V0:
+   - Proposed: nearest-neighbor plus action-conditioned repo-state delta.
 
-4. Cost metric wording:
-   - Proposed: report exact local facts, not speculative savings:
-     `hosted_llm_api_tokens: 0`, `hosted_repo_context_bytes: 0`, index size,
-     row count, build time, query time, and validation time.
+4. Blocked outcomes:
+   - Proposed: represent blocked/clarification targets as non-source outcomes
+     with unchanged or empty repo-after state plus explicit `outcome_kind`.
 
-5. Source work depth:
-   - Proposed: add source-embedding sidecar only. Defer Apache corpus retraining
-     until the demo is runnable and documented.
+5. Dataset size:
+   - Proposed: use current demo outcomes first, then add more structured
+     calculator outcome rows only if needed to make the eval meaningful. Do not
+     expand generic prompt labels in this slice.
 
 ## After This Slice
 
-1. Add the next non-calculator greenfield builder from the expanded corpus,
-   likely a tiny one-file library or todo CLI.
-2. Connect prompt/repo/action records to source-transition examples from
-   `docs/TRAINING.md`.
-3. Build a small repo-state index over generated and mined Python examples.
-4. Compare retrieval-assisted planner proposals against deterministic parser
-   routes on held-out prompts.
-5. Only then start a deeper source-JEPA training pass over the Apache corpus.
+1. Add a second non-calculator greenfield builder, likely one-file library
+   generation, so transition eval covers more than calculator source states.
+2. Connect mined source transitions from `docs/TRAINING.md` to the same
+   transition schema.
+3. Add negative candidate actions and evaluate whether the transition model
+   rejects them before validation.
+4. Replace deterministic V0 predictors with a small learned local encoder only
+   after the transition artifacts and metrics are stable.

@@ -53,6 +53,13 @@ def should_store_response(headers: dict[str, str]) -> bool:
     return "etag" in headers
 
 
+def should_revalidate_response(headers: dict[str, str]) -> bool:
+    cache_control = headers.get("cache-control", "").lower()
+    if "no-cache" not in cache_control:
+        return False
+    return "etag" in headers
+
+
 def cached_response_for_request(
     cache: dict[str, str],
     url: str,

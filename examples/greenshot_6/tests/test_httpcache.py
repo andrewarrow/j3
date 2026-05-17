@@ -5,6 +5,7 @@ from httpcache.api import (
     is_cacheable_status,
     parse_request_cache_control,
     response_vary_members,
+    should_revalidate_response,
     should_store_response,
 )
 
@@ -40,6 +41,10 @@ def test_vary_members_can_preserve_header_case() -> None:
 
 def test_no_store_response_is_not_stored_with_etag() -> None:
     assert should_store_response({"cache-control": "no-store", "etag": "abc123"}) is False
+
+
+def test_no_cache_response_requires_revalidation_with_etag() -> None:
+    assert should_revalidate_response({"cache-control": "no-cache", "etag": "abc123"}) is False
 
 
 def test_range_request_bypasses_cached_response() -> None:

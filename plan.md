@@ -377,6 +377,27 @@ Recent work:
   coverage has positive membership-literal signal and failing membership-operator
   flips, so more independent predicate/operator hard-negative coverage is the
   next clean step before any broad weight changes.
+- Added independent non-held-out HTTP membership-predicate coverage with
+  `http_no_cache_revalidation_with_etag` (`split: train`). It uses the existing
+  `change_operator` action for a local `"no-cache" not in cache_control` branch
+  repair and includes a tempting existing `change_literal` needle edit
+  `"no-cache" -> "no_cache"` in the tested rows. No broad action/string/boolean
+  weights or pass/preferred-label features were changed.
+- Focused loader/generator coverage passed for the new task:
+  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
+  `pytest tests/test_patching.py::test_generate_membership_operator_with_literal_needle_decoy -q`.
+- GreenShot-6 outcomes were refreshed after adding the independent HTTP
+  coverage. The persisted dataset at
+  `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` now covers 21
+  tasks and 152 tested candidates. Ranked eval solved all 21 tasks with
+  `pass@1=16/21` and average candidates `7.24`.
+- The GreenShot-6 `split: test` held-out ranker validation was rerun after the
+  outcome refresh. Validation is solved=7/7, pass@1=6/7, positive@1=5/7, and
+  avg_first_passing_index=1.1428571428571428. The new training coverage moved
+  `http_no_store_response_with_etag`'s preferred `change_operator` candidate to
+  trained rank 2, but a non-preferred passing `change_literal`
+  `"no-store" -> "no_store"` still ranks first. The cookie secure task remains
+  fixed in this slice.
 
 Last focused verification:
 
@@ -488,9 +509,9 @@ GreenShot-6 outcome collection result:
 
 ```text
 ranked, runs/apache-python-git/model.json, explore-after-pass=5:
-  solved=20/20 pass@1=15/20 avg_candidates=7.30
-  rows=146 passing_rows=38 preferred_positive_rows=19
-  source_type pass@1: git_history=2/4 mutation=13/16
+  solved=21/21 pass@1=16/21 avg_candidates=7.24
+  rows=152 passing_rows=44 preferred_positive_rows=20
+  source_type pass@1: git_history=2/4 mutation=14/17
 ```
 
 Treat this as a smoke check, not a benchmark claim.
@@ -509,10 +530,10 @@ GreenShot-6 test-slice ranker validation result:
 
 ```text
 train-ranker, holdout-task includes all GreenShot-6 split:test tasks:
-  training rows=226 passing_rows=46 tasks=33 plans=33 pairs=191
-  training_accuracy=1.000 margin_violations=3 features=645
-  validation solved=7/7 pass@1=7/7 positive@1=6/7
-  validation avg_first_passing_index=1.0
+  training rows=232 passing_rows=52 tasks=34 plans=34 pairs=196
+  training_accuracy=1.000 margin_violations=4 features=663
+  validation solved=7/7 pass@1=6/7 positive@1=5/7
+  validation avg_first_passing_index=1.1428571428571428
   fixed: cookie_default_secure_flag_dict_value now ranks the preferred
   change_dict_value candidate first after adding independent same-mapping
   boolean value-vs-key-rename coverage.
@@ -531,13 +552,16 @@ Immediate next sequence:
 
 1. Stay on the remaining GreenShot-6 `split: test` residual:
    `http_no_store_response_with_etag`.
-2. Add independent non-held-out coverage for the same hard-negative shape before
-   tuning weights: a local boolean membership predicate where the preferred
-   repair is a `change_operator` flip and a tempting `change_literal` changes
-   the membership needle to disable the branch accidentally.
-3. Refresh GreenShot-6 outcomes and rerun the same `split: test` held-out
-   validation. Continue validating preferred-positive rank, not pass@1 alone.
-   Do not change broad action, string, boolean, or pass/preferred-label weights.
+2. Inspect the refreshed membership-predicate feature support and learned
+   weights after adding `http_no_cache_revalidation_with_etag`. The preferred
+   HTTP candidate now ranks second behind the literal needle edit, so validate
+   preferred-positive rank and not pass@1 alone.
+3. Decide on the next narrow non-leaky signal before tuning weights. Likely
+   options are either another independent non-held-out membership predicate
+   hard negative with a failing literal-needle decoy, or richer branch-effect
+   metadata that distinguishes flipping the membership predicate from changing
+   the membership needle to make the branch unreachable. Do not change broad
+   action, string, boolean, or pass/preferred-label weights.
 
 ### 1. Make GreenShot-6 Real
 
@@ -696,9 +720,9 @@ Start neural/JEPA work only when:
 
 ## Handoff Recommendation
 
-The next context window should not add another handcrafted GreenShot task first.
-It should choose between the two documented residual signals: independent
-same-mapping boolean value-vs-key-rename coverage for the cookie secure decoy,
-or narrow membership-predicate context metadata for the HTTP preferred-operator
-miss. Keep scope to one signal, refresh outcome rows only after implementation,
-and rerun the same GreenShot-6 `split: test` held-out validation slice.
+The next context window should not tune broad handcrafted weights first. It
+should inspect the refreshed membership-predicate support after the independent
+HTTP coverage addition, then choose one narrow non-leaky signal for the
+remaining HTTP preferred-positive miss. Keep scope to one signal, refresh
+outcome rows only after implementation, and rerun the same GreenShot-6
+`split: test` held-out validation slice.

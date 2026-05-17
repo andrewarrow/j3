@@ -613,6 +613,46 @@ def test_generate_string_literal_candidate_from_repo_string_literals(tmp_path) -
     )
 
 
+def test_generate_membership_operator_with_literal_needle_decoy(tmp_path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "policy.py").write_text(
+        "def parse_request_cache_control(header: str) -> dict[str, bool]:\n"
+        "    return {'no_cache': 'no-cache' in header}\n\n"
+        "def should_revalidate_response(headers: dict[str, str]) -> bool:\n"
+        "    cache_control = headers.get('cache-control', '').lower()\n"
+        "    if 'no-cache' not in cache_control:\n"
+        "        return False\n"
+        "    return 'etag' in headers\n",
+        encoding="utf-8",
+    )
+    tests = repo / "tests"
+    tests.mkdir()
+    (tests / "test_policy.py").write_text(
+        "from policy import should_revalidate_response\n\n"
+        "def test_no_cache_revalidates() -> None:\n"
+        "    assert should_revalidate_response({'cache-control': 'no-cache', 'etag': 'abc123'}) is False\n",
+        encoding="utf-8",
+    )
+
+    candidates = generate_candidate_patches(repo)
+
+    assert any(
+        candidate.action.kind.value == "change_operator"
+        and candidate.action.target.symbol == "should_revalidate_response"
+        and candidate.action.params == {"from": "not in", "to": "in"}
+        and "'no-cache' in cache_control" in candidate.patched_source
+        for candidate in candidates
+    )
+    assert any(
+        candidate.action.kind.value == "change_literal"
+        and candidate.action.target.symbol == "should_revalidate_response"
+        and candidate.action.params == {"from": "no-cache", "to": "no_cache"}
+        and "'no_cache' not in cache_control" in candidate.patched_source
+        for candidate in candidates
+    )
+
+
 def test_generate_module_constant_candidate(tmp_path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()

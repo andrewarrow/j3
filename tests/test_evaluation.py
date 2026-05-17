@@ -97,7 +97,7 @@ def test_load_greenshot_6_tasks() -> None:
     tasks = load_tasks(Path("examples/greenshot_6"))
     by_name = {task.name: task for task in tasks}
 
-    assert len(tasks) == 20
+    assert len(tasks) == 21
     assert tasks[0].name == "core_metadata_version_dict_value"
     assert tasks[0].family == "mapping_value"
     assert tasks[0].source_type == "mutation"
@@ -175,6 +175,16 @@ def test_load_greenshot_6_tasks() -> None:
         "file_path": "httpcache/policy.py",
         "action": "change_operator",
         "symbol": "should_store_response",
+        "params": {
+            "from": "not in",
+            "to": "in",
+        },
+    }
+    assert by_name["http_no_cache_revalidation_with_etag"].split == "train"
+    assert by_name["http_no_cache_revalidation_with_etag"].preferred_patch == {
+        "file_path": "httpcache/policy.py",
+        "action": "change_operator",
+        "symbol": "should_revalidate_response",
         "params": {
             "from": "not in",
             "to": "in",

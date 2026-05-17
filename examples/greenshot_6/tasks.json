@@ -225,6 +225,27 @@
     }
   },
   {
+    "name": "http_no_cache_revalidation_with_etag",
+    "family": "http_cache_storage",
+    "source_type": "mutation",
+    "split": "train",
+    "repo": ".",
+    "test": "python -m pytest tests/test_httpcache.py::test_no_cache_response_requires_revalidation_with_etag",
+    "source": {
+      "repo": "psf/cachecontrol",
+      "fixture": "no-cache revalidation predicate mutation"
+    },
+    "preferred": {
+      "file_path": "httpcache/policy.py",
+      "action": "change_operator",
+      "symbol": "should_revalidate_response",
+      "params": {
+        "from": "not in",
+        "to": "in"
+      }
+    }
+  },
+  {
     "name": "http_range_request_bypasses_cache",
     "family": "http_cache_range",
     "source_type": "git_history",

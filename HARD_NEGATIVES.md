@@ -722,3 +722,52 @@ edits and negative signal to membership operator flips. The next clean step is
 independent non-held-out coverage for the same predicate/operator hard-negative
 shape before changing broad action, string, boolean, or pass/preferred-label
 weights.
+
+### Independent HTTP Membership Coverage Follow-Up
+
+Implementation result: added independent non-held-out coverage for the HTTP
+membership-predicate hard-negative shape with
+`http_no_cache_revalidation_with_etag` (`split: train`). The task uses the
+existing `change_operator` action for a local
+`"no-cache" not in cache_control` branch repair and includes a tempting
+`change_literal` candidate changing the membership needle
+`"no-cache" -> "no_cache"`, which disables the branch accidentally.
+
+Focused verification passed:
+
+```bash
+pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q
+pytest tests/test_patching.py::test_generate_membership_operator_with_literal_needle_decoy -q
+```
+
+GreenShot-6 outcome refresh:
+
+| Slice | Tasks | Solved | Pass@1 | Avg candidates | Rows | Preferred-positive rows |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| GreenShot-6 ranked explore | 21 | 21/21 | 16/21 | 7.24 | 152 | 20 |
+
+Validation result after refreshing GreenShot-6 outcomes and rerunning the same
+GreenShot-6 `split: test` holdout:
+
+| Slice | Plans | Solved | Pass@1 | Positive@1 | Avg first passing index |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| GreenShot-6 `split: test` holdout | 7 | 7/7 | 6/7 | 5/7 | 1.1428571428571428 |
+
+The new training task has the intended raw candidate shape:
+
+| Candidate | Original rank | Passed | Preferred |
+| --- | ---: | --- | --- |
+| `change_operator`, `"no-cache" not in cache_control` -> `"no-cache" in cache_control` | 1 | yes | yes |
+| `change_literal`, `"no-cache" -> "no_cache"` | 5 | yes | no |
+
+The held-out HTTP residual improved but is not fixed:
+
+| Trained rank | Original rank | Passed | Preferred | Candidate |
+| ---: | ---: | --- | --- | --- |
+| 1 | 5 | yes | no | `change_literal`, `"no-store" -> "no_store"` |
+| 2 | 1 | yes | yes | `change_operator`, `"no-store" not in cache_control` -> `"no-store" in cache_control` |
+
+Continue to treat this as preferred-positive ranking signal, not pass@1. The
+next clean step is to inspect the refreshed membership feature weights and then
+choose a narrow non-leaky signal; do not change broad action, string, boolean,
+or pass/preferred-label weights.

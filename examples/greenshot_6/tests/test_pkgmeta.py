@@ -1,10 +1,14 @@
+import pytest
+
 from pkgmeta.api import (
     build_project_urls,
     build_wheel_metadata,
+    check_readme_file,
     describe_readme,
     is_python_version_supported,
     trove_license_classifier,
 )
+from pkgmeta.metadata import MetadataValidationError
 
 
 def test_core_metadata_uses_current_metadata_version() -> None:
@@ -38,3 +42,10 @@ def test_apache_license_classifier_uses_trove_classifier() -> None:
         trove_license_classifier("Apache-2.0")
         == "License :: OSI Approved :: Apache Software License"
     )
+
+
+def test_missing_readme_error_points_to_readme_file_key() -> None:
+    with pytest.raises(MetadataValidationError) as exc_info:
+        check_readme_file("README.md", {"LICENSE"})
+
+    assert exc_info.value.key == "project.readme.file"

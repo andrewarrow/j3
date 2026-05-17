@@ -4,6 +4,7 @@ from .metadata import (
     project_url_headers,
     readme_content_type,
     supports_python_version,
+    validate_readme_file,
 )
 
 
@@ -25,3 +26,7 @@ def is_python_version_supported(version: tuple[int, int], minimum: tuple[int, in
 
 def trove_license_classifier(license_id: str) -> str:
     return license_classifier(license_id)
+
+
+def check_readme_file(filename: str, available_files: set[str]) -> None:
+    validate_readme_file(filename, available_files)

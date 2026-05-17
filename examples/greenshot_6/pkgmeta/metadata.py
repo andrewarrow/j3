@@ -1,3 +1,9 @@
+class MetadataValidationError(Exception):
+    def __init__(self, message: str, *, key: str) -> None:
+        super().__init__(message)
+        self.key = key
+
+
 def default_project_metadata(project_name: str, version: str) -> dict[str, str]:
     return {
         "metadata_version": "2.2",
@@ -40,3 +46,11 @@ def license_classifier(license_id: str) -> str:
         "Apache-2.0": "License :: OSI Approved :: Apache License",
     }
     return classifiers[license_id]
+
+
+def validate_readme_file(filename: str, available_files: set[str]) -> None:
+    if filename not in available_files:
+        raise MetadataValidationError(
+            f'Readme file not found ("{filename}")',
+            key="project.license.file",
+        )

@@ -94,7 +94,7 @@ def test_load_greenshot_5_tasks() -> None:
 def test_load_greenshot_6_tasks() -> None:
     tasks = load_tasks(Path("examples/greenshot_6"))
 
-    assert len(tasks) == 5
+    assert len(tasks) == 6
     assert tasks[0].name == "core_metadata_version_dict_value"
     assert tasks[0].family == "mapping_value"
     assert tasks[0].source_type == "mutation"
@@ -108,8 +108,8 @@ def test_load_greenshot_6_tasks() -> None:
             "to": "2.3",
         },
     }
-    assert tasks[-1].name == "apache_license_classifier_dict_value"
-    assert tasks[-1].preferred_patch == {
+    assert tasks[-2].name == "apache_license_classifier_dict_value"
+    assert tasks[-2].preferred_patch == {
         "file_path": "pkgmeta/metadata.py",
         "action": "change_dict_value",
         "symbol": "license_classifier",
@@ -117,6 +117,18 @@ def test_load_greenshot_6_tasks() -> None:
             "key": "Apache-2.0",
             "from": "License :: OSI Approved :: Apache License",
             "to": "License :: OSI Approved :: Apache Software License",
+        },
+    }
+    assert tasks[-1].name == "readme_missing_file_exception_key"
+    assert tasks[-1].family == "exception_context"
+    assert tasks[-1].source_type == "git_history"
+    assert tasks[-1].preferred_patch == {
+        "file_path": "pkgmeta/metadata.py",
+        "action": "change_literal",
+        "symbol": "validate_readme_file",
+        "params": {
+            "from": "project.license.file",
+            "to": "project.readme.file",
         },
     }
 

@@ -81,5 +81,25 @@
         "to": "License :: OSI Approved :: Apache Software License"
       }
     }
+  },
+  {
+    "name": "readme_missing_file_exception_key",
+    "family": "exception_context",
+    "source_type": "git_history",
+    "repo": ".",
+    "test": "python -m pytest tests/test_pkgmeta.py::test_missing_readme_error_points_to_readme_file_key",
+    "source": {
+      "repo": "pypa/pyproject-metadata",
+      "commit": "604d3889880043831299c1a8fffaaa5d67e2ff8c"
+    },
+    "preferred": {
+      "file_path": "pkgmeta/metadata.py",
+      "action": "change_literal",
+      "symbol": "validate_readme_file",
+      "params": {
+        "from": "project.license.file",
+        "to": "project.readme.file"
+      }
+    }
   }
 ]

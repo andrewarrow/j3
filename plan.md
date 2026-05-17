@@ -103,6 +103,9 @@ Recent work:
 - GreenShot-5 reached 20 tasks.
 - GreenShot-6 now has 5 package-metadata mutation tasks using existing action
   families.
+- GreenShot-6 now includes its first git-history-derived held-out repair task,
+  modeled on `pypa/pyproject-metadata` commit `604d388`, for a wrong
+  `project.readme.file` validation error key.
 - Task manifests support `source_type`, defaulting to `handcrafted`.
 - `change_dict_value` now covers dictionary literal value repairs.
 - String literal alternatives now handle structured shared prefixes such as
@@ -142,11 +145,12 @@ Keep this section as the live queue. When work is completed, move it to
 
 Immediate next sequence:
 
-1. Add the first git-history-derived GreenShot-6 held-out repair task.
-2. Run GreenShot-5 with `--explore-after-pass` and save candidate outcomes.
-3. Use `outcome-summary` to inspect high-scoring failed candidates from that
+1. Run GreenShot-5 with `--explore-after-pass` and save candidate outcomes.
+2. Use `outcome-summary` to inspect high-scoring failed candidates from that
    run.
-4. Add stable split metadata to outcome rows or a sidecar split file.
+3. Add stable split metadata to outcome rows or a sidecar split file.
+4. Add more git-history-derived or mutation-generated GreenShot-6 held-out
+   tasks from real repos.
 
 ### 1. Make GreenShot-6 Real
 
@@ -155,7 +159,7 @@ fixtures, not invented toy modules.
 
 Next tasks:
 
-- Add git-history-derived held-out repair tasks.
+- Add more git-history-derived held-out repair tasks.
 - Add more mutation-generated held-out tasks from real repos.
 - Continue marking every task with a task family and source type:
   `handcrafted`, `mutation`, or `git_history`.

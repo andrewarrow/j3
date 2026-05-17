@@ -615,6 +615,29 @@
     }
   },
   {
+    "name": "chainlit_oauth_state_logging_percent_format",
+    "family": "logging_format_string",
+    "source_type": "git_history",
+    "split": "train",
+    "repo": ".",
+    "test": "python -m pytest tests/test_logformat.py::test_oauth_state_logging_uses_valid_percent_format",
+    "source": {
+      "repo": "Chainlit/chainlit",
+      "commit": "cead389b7d5ef5307dedb47c4ce7dffb29242c7d",
+      "pr": 2841,
+      "issue": 2692
+    },
+    "preferred": {
+      "file_path": "logformat/oauth.py",
+      "action": "change_literal",
+      "symbol": "oauth_state_log_template",
+      "params": {
+        "from": "Unable to validate oauth state: %1",
+        "to": "Unable to validate oauth state: %s"
+      }
+    }
+  },
+  {
     "name": "cookie_default_secure_flag_dict_value",
     "family": "mapping_value",
     "source_type": "mutation",

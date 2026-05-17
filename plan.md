@@ -889,12 +889,36 @@ Recent work:
   Raw GreenShot-6 now has 12 pass@1 misses, but every task has a tested
   preferred-positive row and the saved test-slice ranker places every
   preferred-positive candidate at trained rank 1.
+- GreenShot-6 now includes a nineteenth fixture domain, `logformat`, with one
+  real-package-derived `git_history` task modeled on `Chainlit/chainlit` PR
+  2841 / commit `cead389b7d5ef5307dedb47c4ce7dffb29242c7d`. The task
+  `chainlit_oauth_state_logging_percent_format` repairs OAuth state validation
+  logging by changing the invalid percent-format specifier from `%1` to `%s`,
+  using the existing `change_literal` action family.
+- Focused loader/generator coverage passed for the new Chainlit-derived task:
+  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
+  `pytest tests/test_patching.py::test_patch_solves_chainlit_oauth_state_logging_percent_format -q`.
+- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
+  adding `logformat`. The persisted dataset at
+  `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` now covers 38
+  tasks and 284 tested candidates. Ranked eval solved all 38 tasks with
+  `pass@1=26/38` and average candidates `7.47`; the new Chainlit-derived task
+  solves at raw rank 1 with the preferred `change_literal` candidate.
+- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
+  the logformat outcome refresh and stayed clean: solved=7/7, pass@1=7/7,
+  positive@1=7/7, avg_first_passing_index=1.0. Training used 364 rows, 74
+  passing rows, 312 training pairs, 794 features, and 4 margin violations.
+- Refreshed raw/trained miss inspection after adding `logformat` found no
+  missing preferred-positive rows and no trained preferred-positive misses.
+  Raw GreenShot-6 still has 12 pass@1 misses, but every task has a tested
+  preferred-positive row and the saved test-slice ranker places every
+  preferred-positive candidate at trained rank 1.
 
 Last focused verification:
 
 ```bash
 pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q
-pytest tests/test_patching.py::test_patch_solves_posting_escaped_path_param_regex -q
+pytest tests/test_patching.py::test_patch_solves_chainlit_oauth_state_logging_percent_format -q
 python cli.py eval \
   --tasks examples/greenshot_6 \
   --checkpoint runs/apache-python-git/model.json \
@@ -921,8 +945,8 @@ python cli.py train-ranker \
 python cli.py outcome-summary \
   --candidate-outcomes runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl
 python - <<'PY'
-# Applied the refreshed test-slice ranker to all refreshed GreenShot-6 rows;
-# no trained preferred-positive residuals were found across 37 tasks.
+# Applied the refreshed test-slice ranker to all refreshed GreenShot-6 rows:
+# raw_pass1_misses=12, trained_preferred_positive_misses=0 across 38 tasks.
 PY
 git diff --check
 ```
@@ -1041,9 +1065,9 @@ GreenShot-6 outcome collection result:
 
 ```text
 ranked, runs/apache-python-git/model.json, explore-after-pass=5:
-  solved=33/33 pass@1=23/33 avg_candidates=7.36
-  rows=243 passing_rows=61 preferred_positive_rows=33
-  source_type pass@1: git_history=8/15 mutation=15/18
+  solved=38/38 pass@1=26/38 avg_candidates=7.47
+  rows=284 passing_rows=66 preferred_positive_rows=38
+  source_type pass@1: git_history=11/20 mutation=15/18
 ```
 
 Treat this as a smoke check, not a benchmark claim.
@@ -1062,8 +1086,8 @@ GreenShot-6 test-slice ranker validation result:
 
 ```text
 train-ranker, holdout-task includes all GreenShot-6 split:test tasks:
-  training rows=323 passing_rows=69 tasks=46 plans=46 pairs=276
-  training_accuracy=0.996 margin_violations=4 features=814
+  training rows=364 passing_rows=74 tasks=51 plans=51 pairs=312
+  training_accuracy=1.000 margin_violations=4 features=794
   validation solved=7/7 pass@1=7/7 positive@1=7/7
   validation avg_first_passing_index=1.0
 ```
@@ -1250,7 +1274,7 @@ The next context window should continue dataset growth by adding another
 real-package-derived GreenShot-6 task or small fixture domain. Do not tune broad
 handcrafted weights or add pass/preferred-label features from this state. The
 current GreenShot-6 `split: test` held-out validation is clean after the
-pathparams outcome refresh.
+logformat outcome refresh.
 
 Immediate next sequence:
 

@@ -99,7 +99,7 @@ def test_load_greenshot_6_tasks() -> None:
     tasks = load_tasks(Path("examples/greenshot_6"))
     by_name = {task.name: task for task in tasks}
 
-    assert len(tasks) == 37
+    assert len(tasks) == 38
     assert tasks[0].name == "core_metadata_version_dict_value"
     assert tasks[0].family == "mapping_value"
     assert tasks[0].source_type == "mutation"
@@ -182,6 +182,22 @@ def test_load_greenshot_6_tasks() -> None:
         "params": {
             "from": "Control plane APIs for programatically building/deploying Chalice apps.",
             "to": "Control plane APIs for programmatically building/deploying Chalice apps.",
+        },
+    }
+    assert by_name["chainlit_oauth_state_logging_percent_format"].family == (
+        "logging_format_string"
+    )
+    assert by_name["chainlit_oauth_state_logging_percent_format"].source_type == (
+        "git_history"
+    )
+    assert by_name["chainlit_oauth_state_logging_percent_format"].split == "train"
+    assert by_name["chainlit_oauth_state_logging_percent_format"].preferred_patch == {
+        "file_path": "logformat/oauth.py",
+        "action": "change_literal",
+        "symbol": "oauth_state_log_template",
+        "params": {
+            "from": "Unable to validate oauth state: %1",
+            "to": "Unable to validate oauth state: %s",
         },
     }
     assert by_name["http_no_store_directive_subscript_key"].preferred_patch == {

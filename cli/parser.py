@@ -11,6 +11,7 @@ from cli.handlers import (
     handle_change,
     handle_compare_diagnostics,
     handle_demo_prompt_jepa,
+    handle_demo_transition_bench,
     handle_eval_prompt_jepa_index,
     handle_eval_prompt_repo_transitions,
     handle_eval,
@@ -443,6 +444,83 @@ def build_parser() -> argparse.ArgumentParser:
     inspect_transition_assets_parser.set_defaults(
         handler=handle_inspect_transition_assets
     )
+
+    transition_bench_demo_parser = subparsers.add_parser(
+        "demo-transition-bench",
+        help="run the local transition action-selection bench demo",
+        description=(
+            "Normalize checked-in and optional local transition fixtures, build "
+            "candidate action-choice groups, evaluate the local future scorer "
+            "against simple baselines, and report zero hosted LLM/API usage."
+        ),
+    )
+    transition_bench_demo_parser.add_argument(
+        "--repo-root",
+        type=Path,
+        default=Path("."),
+        help="repository root to inspect for local transition assets",
+    )
+    transition_bench_demo_parser.add_argument(
+        "--prompt-corpus",
+        type=Path,
+        default=Path("../prompts/coding_agent_prompts_expanded_v0.jsonl"),
+        help="prompt corpus JSONL path to include in asset inventory context",
+    )
+    transition_bench_demo_parser.add_argument(
+        "--prompt-repo-transitions",
+        type=Path,
+        nargs="*",
+        default=[],
+        help="optional prompt-repo-transition-v1 JSONL files to include",
+    )
+    transition_bench_demo_parser.add_argument(
+        "--mined-transitions",
+        type=Path,
+        nargs="*",
+        default=[],
+        help="optional mined git-transition JSONL files to include",
+    )
+    transition_bench_demo_parser.add_argument(
+        "--candidate-outcomes",
+        type=Path,
+        nargs="*",
+        default=[],
+        help="optional candidate outcome JSONL files to group and score",
+    )
+    transition_bench_demo_parser.add_argument(
+        "--no-fixtures",
+        action="store_true",
+        help="skip the tiny checked-in fixtures and use only explicit input paths",
+    )
+    transition_bench_demo_parser.add_argument(
+        "--top-k",
+        type=int,
+        default=3,
+        help="candidate scoring cutoff for top-k pass rate (default: 3)",
+    )
+    transition_bench_demo_parser.add_argument(
+        "--embedding-dim",
+        type=int,
+        default=256,
+        help="hashed source embedding dimension for normalized rows (default: 256)",
+    )
+    transition_bench_demo_parser.add_argument(
+        "--residual-limit",
+        type=int,
+        default=10,
+        help="maximum residual action-choice examples to retain (default: 10)",
+    )
+    transition_bench_demo_parser.add_argument(
+        "--out",
+        type=Path,
+        help="optional JSON report path to write",
+    )
+    transition_bench_demo_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print the full demo report as JSON",
+    )
+    transition_bench_demo_parser.set_defaults(handler=handle_demo_transition_bench)
 
     prompt_jepa_demo_parser = subparsers.add_parser(
         "demo-prompt-jepa",

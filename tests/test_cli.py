@@ -244,6 +244,7 @@ def test_help_menu_prints_project_summary(capsys) -> None:
     assert "train-prompt-intents" in output
     assert "inspect-prompt-corpus" in output
     assert "inspect-transition-assets" in output
+    assert "demo-transition-bench" in output
     assert "demo-prompt-jepa" in output
     assert "build-prompt-jepa-index" in output
     assert "query-prompt-jepa-index" in output
@@ -553,6 +554,90 @@ def test_inspect_transition_assets_command_reports_json_manifest(
     assert output["candidate_outcomes"]["file_count"] == 0
     assert output["prototype_models"]["model_count"] == 0
     assert output["totals"]["prompt_corpus_rows"] == 1
+
+
+def test_demo_transition_bench_command_reports_json_and_writes_report(
+    capsys,
+    tmp_path,
+) -> None:
+    report_path = tmp_path / "transition-bench-report.json"
+
+    assert (
+        main(
+            [
+                "demo-transition-bench",
+                "--repo-root",
+                str(tmp_path),
+                "--prompt-corpus",
+                "examples/transition_bench/candidate_outcomes.jsonl",
+                "--embedding-dim",
+                "8",
+                "--top-k",
+                "1",
+                "--out",
+                str(report_path),
+                "--json",
+            ]
+        )
+        == 0
+    )
+
+    output = json.loads(capsys.readouterr().out)
+    written = json.loads(report_path.read_text(encoding="utf-8"))
+    assert output == written
+    assert output["schema_version"] == "transition-bench-demo-report-v1"
+    assert output["report"] == str(report_path.resolve())
+    assert output["transition_bench"]["row_count"] == 4
+    assert output["action_choices"]["group_count"] == 1
+    assert output["action_choices"]["candidate_count"] == 2
+    metrics = output["action_scoring"]["metrics"]
+    scorer = metrics["transition-action-future-scorer-v1"]
+    existing = metrics["existing-rank-order"]
+    assert scorer["pass_at_1_count"] == 1
+    assert scorer["top_k_pass_count"] == 1
+    assert scorer["mean_reciprocal_rank"] == 1.0
+    assert existing["pass_at_1_count"] == 0
+    assert output["runtime"]["hosted_llm_api_calls"] == 0
+    assert output["runtime"]["hosted_repo_context_bytes"] == 0
+
+
+def test_demo_transition_bench_command_prints_human_summary(
+    capsys,
+    tmp_path,
+) -> None:
+    report_path = tmp_path / "transition-bench-report.json"
+
+    assert (
+        main(
+            [
+                "demo-transition-bench",
+                "--repo-root",
+                str(tmp_path),
+                "--prompt-corpus",
+                "examples/transition_bench/candidate_outcomes.jsonl",
+                "--embedding-dim",
+                "8",
+                "--top-k",
+                "1",
+                "--out",
+                str(report_path),
+            ]
+        )
+        == 0
+    )
+
+    output = capsys.readouterr().out
+    assert "j3 demo-transition-bench complete" in output
+    assert "groups: 1" in output
+    assert "candidates: 2" in output
+    assert "transition-action-future-scorer-v1: pass@1=1/1" in output
+    assert "existing-rank-order: pass@1=0/1" in output
+    assert "top-k=1/1" in output
+    assert "mrr=1.000000" in output
+    assert "local runtime ms:" in output
+    assert "hosted_llm_api_calls: 0" in output
+    assert "hosted_repo_context_bytes: 0" in output
+    assert f"report: {report_path.resolve()}" in output
 
 
 def test_demo_prompt_jepa_command_writes_local_report(capsys, tmp_path) -> None:

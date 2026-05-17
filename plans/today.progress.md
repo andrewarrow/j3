@@ -8,7 +8,7 @@ new implementation facts change the 24-hour plan itself. Record any
 ## Status
 
 - Current phase: Transition bench and action selection V1
-- Completed iterations: 4 for this reset; Prompt+Repo JEPA transition V0
+- Completed iterations: 5 for this reset; Prompt+Repo JEPA transition V0
   completed 6 iterations; Prompt-JEPA developer demo reset
   completed 5 iterations; previous Prompt-JEPA index reset completed 8
   iterations
@@ -39,11 +39,17 @@ new implementation facts change the 24-hour plan itself. Record any
   `pytest tests/test_transition_action_scoring.py -q`;
   `python -m py_compile j3/transition_action_choice.py`;
   `python -m py_compile j3/transition_action_scoring.py`;
+  `pytest tests/test_transition_bench_demo.py -q`;
+  `python -m py_compile j3/transition_bench_demo.py cli/handlers.py cli/parser.py cli/__init__.py`;
+  `pytest tests/test_cli.py -q`;
+  `python cli.py demo-transition-bench --json`;
+  `python cli.py demo-transition-bench --embedding-dim 8 --top-k 1 --out /tmp/j3-transition-bench-report.json`;
+  `python -m json.tool /private/tmp/j3-transition-bench-report.json >/dev/null`;
   `git diff --check`
-- Latest implementation/demo commit: `534545d` (`Add transition action scorer`)
+- Latest implementation/demo commit: this commit (`Add transition bench demo`)
 - Latest documentation commit: `ef99279` (`Rewrite README for Prompt Repo JEPA`)
 - Current blocker: none
-- Next task: add a one-command transition bench demo/report.
+- Next task: document reproduction, ignored data boundaries, and future release packaging.
 
 ## Active Task Queue
 
@@ -52,7 +58,7 @@ new implementation facts change the 24-hour plan itself. Record any
 - [x] Define `transition-bench-v1` rows with checked-in fixtures.
 - [x] Build `transition-action-choice-v1` groups from candidate outcomes.
 - [x] Add an evaluation-only future scorer with pass@1/top-k/MRR metrics.
-- [ ] Add a one-command transition bench demo/report.
+- [x] Add a one-command transition bench demo/report.
 - [ ] Document reproduction, ignored data boundaries, and future release
   packaging.
 
@@ -197,6 +203,40 @@ Use this shape for each worker handoff:
 - Commit: `534545d` (`Add transition action scorer`)
 - Push: succeeded to `main`.
 - Next: add a one-command transition bench demo/report.
+- Blockers: none.
+
+### Iteration 5: Transition bench demo/report
+
+- Worker: Codex worker iteration 5
+- Goal: add a one-command transition bench demo/report that runs from tiny
+  checked-in fixtures and can include optional local transition assets.
+- Files changed: `j3/transition_bench_demo.py`, `cli/parser.py`,
+  `cli/handlers.py`, `cli/__init__.py`,
+  `examples/transition_bench/prompt_repo_transitions.jsonl`,
+  `examples/transition_bench/mined_git_transitions.jsonl`,
+  `examples/transition_bench/candidate_outcomes.jsonl`,
+  `tests/test_transition_bench_demo.py`, `tests/test_cli.py`,
+  `plans/today.progress.md`
+- Tests run: `pytest tests/test_transition_bench_demo.py -q` passed with 3
+  tests; `pytest tests/test_cli.py -q` passed with 42 tests;
+  `python -m py_compile j3/transition_bench_demo.py cli/handlers.py cli/parser.py cli/__init__.py`
+  passed; `python cli.py demo-transition-bench --json` passed;
+  `python cli.py demo-transition-bench --embedding-dim 8 --top-k 1 --out /tmp/j3-transition-bench-report.json`
+  passed and wrote `/private/tmp/j3-transition-bench-report.json`;
+  `python -m json.tool /private/tmp/j3-transition-bench-report.json >/dev/null`
+  passed; `git diff --check` passed.
+- Result: added `demo-transition-bench`, an evaluation-only one-command demo
+  that inventories local transition assets, normalizes checked-in and optional
+  prompt-repo/mined-git/candidate-outcome JSONL sources into
+  `transition-bench-v1`, builds `transition-action-choice-v1` groups from
+  candidate outcomes, evaluates the local future scorer against existing-rank,
+  lexical, and deterministic-random baselines, prints human metrics for group
+  count, candidate count, pass@1, top-k, MRR, local runtime, and zero hosted
+  token/context usage, and writes stable sorted JSON when `--out` is supplied.
+- Commit: this commit (`Add transition bench demo`)
+- Push: succeeded to `main`.
+- Next: document reproduction, ignored data boundaries, and future release
+  packaging.
 - Blockers: none.
 
 - Rewrote `README.md` into a much smaller developer-focused JEPA pitch using

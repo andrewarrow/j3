@@ -67,6 +67,10 @@ from j3.transition_assets import (
     inspect_transition_assets,
     write_transition_asset_manifest,
 )
+from j3.transition_bench_demo import (
+    format_transition_bench_demo_report,
+    run_transition_bench_demo,
+)
 
 
 REQUEST_SPEC_ARTIFACT = "request-spec.json"
@@ -568,6 +572,28 @@ def handle_demo_prompt_jepa(args: argparse.Namespace) -> int:
     print(f"hosted_llm_api_tokens: {report['hosted_llm_api_tokens']}")
     print(f"hosted_repo_context_bytes: {report['hosted_repo_context_bytes']}")
     print(f"report: {report['report']}")
+    return 0
+
+
+def handle_demo_transition_bench(args: argparse.Namespace) -> int:
+    report = run_transition_bench_demo(
+        repo_root=args.repo_root,
+        prompt_corpus=args.prompt_corpus,
+        prompt_repo_transitions=args.prompt_repo_transitions,
+        mined_transitions=args.mined_transitions,
+        candidate_outcomes=args.candidate_outcomes,
+        include_fixtures=not args.no_fixtures,
+        top_k=args.top_k,
+        embedding_dim=args.embedding_dim,
+        residual_limit=args.residual_limit,
+        out=args.out,
+    )
+
+    if args.json:
+        print(json.dumps(report, indent=2, sort_keys=True))
+        return 0
+
+    print(format_transition_bench_demo_report(report))
     return 0
 
 

@@ -14,7 +14,7 @@ This file is the live progress log for `plans/today.md`. Keep
   - `23f37ac` added the transition residual report.
   - `0aae784` added the transition shadow suite command.
   - `2664a95` documented shadow-to-gate evidence.
-  - `8217ec6` documented transition shadow matrix workflow.
+  - `3244bd3` documented transition shadow matrix workflow.
 - Current blocker: the checked-in shadow suite reports
   `ready_for_shadow_mode`, not `ready_for_guarded_opt_in`; guarded production
   ranking remains blocked unless broader matrix evidence passes product gates.
@@ -272,8 +272,8 @@ Use this shape for each worker handoff:
   `build-transition-evidence-bundle --matrix`, and
   `decide-transition-guarded-trial --matrix`, plus the related matrix schemas
   and conservative guarded-trial boundary.
-- Commit: `8217ec6` (`Document transition shadow matrix workflow`)
-- Push: pending.
+- Commit: `3244bd3` (`Document transition shadow matrix workflow`)
+- Push: pushed to `origin/main`.
 - Next: watcher to choose the next bounded slice.
 - Blockers: guarded opt-in remains blocked for the current one-suite smoke
   matrix.

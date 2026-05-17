@@ -18,7 +18,7 @@ new implementation facts change the 24-hour plan itself. Record any
   `python -m json.tool /tmp/j3-prompt-jepa-demo/report.json >/dev/null`;
   `git diff --check`
 - Latest implementation commit: `1347a11`; latest documentation commit:
-  current Iteration 5 commit
+  `143aa47`
 - Current blocker: none
 - Next task: active queue complete; watcher should choose the next plan slice
   or close this demo/documentation pass.

@@ -4,6 +4,7 @@ import json
 
 from actions import PatchAction, PatchActionKind, PatchTarget
 from candidate_ranking import CandidateRankerModel, candidate_features, train_candidate_ranker
+from candidate_ranker.features import _candidate_record_features
 from failure_hints import PytestFailureHint
 from patching import CandidatePatch, prioritize_candidate_patches, rank_with_candidate_ranker
 from synth import SourceEdit
@@ -541,6 +542,43 @@ def test_candidate_features_include_import_locality() -> None:
 
     assert features["import_module_same_target_package"] == 1.0
     assert features["action_import_module_same_target_package:add_import"] == 1.0
+
+
+def test_candidate_features_include_edit_size_and_locality() -> None:
+    features = candidate_features(_candidate(to=">=", failure_hint_score=50.0))
+
+    assert features["diff_changed_lines:2_3"] == 1.0
+    assert features["action_diff_changed_lines:change_operator:2_3"] == 1.0
+    assert features["edit_line_span:1"] == 1.0
+    assert features["edit_replacement_lines:1"] == 1.0
+    assert features["edit_line_delta:same"] == 1.0
+    assert features["edit_target_line_distance:0"] == 1.0
+    assert features["edit_within_target_span"] == 1.0
+    assert features["edit_is_single_line"] == 1.0
+
+
+def test_candidate_record_features_include_edit_size_and_locality() -> None:
+    record = {
+        **_candidate_record(to=">=", passed=True),
+        "diff_changed_lines": 2,
+        "edit_line_span": 1,
+        "edit_replacement_lines": 1,
+        "edit_line_delta": 0,
+        "edit_target_line_distance": 0,
+        "edit_within_target_span": True,
+        "edit_is_single_line": True,
+    }
+
+    features = _candidate_record_features(record, [])
+
+    assert features["diff_changed_lines:2_3"] == 1.0
+    assert features["action_diff_changed_lines:change_operator:2_3"] == 1.0
+    assert features["edit_line_span:1"] == 1.0
+    assert features["edit_replacement_lines:1"] == 1.0
+    assert features["edit_line_delta:same"] == 1.0
+    assert features["edit_target_line_distance:0"] == 1.0
+    assert features["edit_within_target_span"] == 1.0
+    assert features["edit_is_single_line"] == 1.0
 
 
 def test_candidate_features_include_target_context_call_graph() -> None:

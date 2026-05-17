@@ -69,6 +69,67 @@ def _add_import_locality_features(
         features["action_import_module_shares_target_package_prefix:add_import"] = 1.0
 
 
+def _add_edit_metadata_features(
+    features: dict[str, float],
+    action: str,
+    *,
+    diff_changed_lines: int,
+    edit_line_span: int,
+    edit_replacement_lines: int,
+    edit_line_delta: int,
+    edit_target_line_distance: int,
+    edit_within_target_span: bool | None,
+    edit_is_single_line: bool | None,
+) -> None:
+    if diff_changed_lines > 0:
+        bucket = _line_count_bucket(diff_changed_lines)
+        features[f"diff_changed_lines:{bucket}"] = 1.0
+        features[f"action_diff_changed_lines:{action}:{bucket}"] = 1.0
+        features["diff_changed_lines_scaled"] = min(diff_changed_lines, 20) / 20.0
+        features[f"action_diff_changed_lines_scaled:{action}"] = features[
+            "diff_changed_lines_scaled"
+        ]
+
+    if edit_line_span > 0:
+        bucket = _line_count_bucket(edit_line_span)
+        features[f"edit_line_span:{bucket}"] = 1.0
+        features[f"action_edit_line_span:{action}:{bucket}"] = 1.0
+
+    if edit_replacement_lines >= 0:
+        bucket = _line_count_bucket(edit_replacement_lines)
+        features[f"edit_replacement_lines:{bucket}"] = 1.0
+        features[f"action_edit_replacement_lines:{action}:{bucket}"] = 1.0
+
+    if edit_line_delta > 0:
+        features["edit_line_delta:increase"] = 1.0
+        features[f"action_edit_line_delta:{action}:increase"] = 1.0
+    elif edit_line_delta < 0:
+        features["edit_line_delta:decrease"] = 1.0
+        features[f"action_edit_line_delta:{action}:decrease"] = 1.0
+    else:
+        features["edit_line_delta:same"] = 1.0
+        features[f"action_edit_line_delta:{action}:same"] = 1.0
+
+    if edit_target_line_distance >= 0:
+        bucket = _distance_bucket(edit_target_line_distance)
+        features[f"edit_target_line_distance:{bucket}"] = 1.0
+        features[f"action_edit_target_line_distance:{action}:{bucket}"] = 1.0
+
+    if edit_within_target_span is True:
+        features["edit_within_target_span"] = 1.0
+        features[f"action_edit_within_target_span:{action}"] = 1.0
+    elif edit_within_target_span is False:
+        features["edit_outside_target_span"] = 1.0
+        features[f"action_edit_outside_target_span:{action}"] = 1.0
+
+    if edit_is_single_line is True:
+        features["edit_is_single_line"] = 1.0
+        features[f"action_edit_is_single_line:{action}"] = 1.0
+    elif edit_is_single_line is False:
+        features["edit_is_multi_line"] = 1.0
+        features[f"action_edit_is_multi_line:{action}"] = 1.0
+
+
 def _add_target_context_features(
     features: dict[str, float],
     *,
@@ -160,6 +221,12 @@ def _count_bucket(count: int) -> str:
     if count <= 3:
         return "2_3"
     return "4_plus"
+
+
+def _line_count_bucket(count: int) -> str:
+    if count <= 0:
+        return "0"
+    return _count_bucket(count)
 
 
 def _distance_bucket(distance: int) -> str:

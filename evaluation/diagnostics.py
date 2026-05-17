@@ -125,6 +125,7 @@ def _candidate_diagnostics(
         "ranker_score": candidate.ranker_score,
         "target_context": dict(candidate.target_context),
         "passed": passed,
+        **_candidate_edit_metadata(candidate),
     }
     if rank_index is not None:
         diagnostics["rank_index"] = rank_index
@@ -176,6 +177,7 @@ def _candidate_outcome_rows(summary: EvalSummary) -> Iterable[dict[str, object]]
                     "passing_candidates": passing_count,
                     "other_candidates_also_passed": passing_count > 1,
                     "failure_hints": failure_hints,
+                    **_candidate_edit_metadata(candidate),
                 }
 
 
@@ -229,6 +231,51 @@ def _candidate_hints_by_rank(plan: PatchPlanResult) -> tuple[tuple[object, ...],
     if len(plan.tested_candidate_hints) == len(plan.tested_candidates):
         return tuple(plan.tested_candidate_hints)
     return tuple(plan.failure_hints for _candidate in plan.tested_candidates)
+
+
+def _candidate_edit_metadata(candidate: CandidatePatch) -> dict[str, object]:
+    added_lines, removed_lines = _diff_line_counts(candidate.diff())
+    edit = candidate.edit
+    target = candidate.action.target
+    edit_line_span = max(1, edit.end_line - edit.start_line + 1)
+    replacement_lines = _replacement_line_count(edit.replacement)
+    return {
+        "diff_added_lines": added_lines,
+        "diff_removed_lines": removed_lines,
+        "diff_changed_lines": added_lines + removed_lines,
+        "edit_line_span": edit_line_span,
+        "edit_replacement_lines": replacement_lines,
+        "edit_line_delta": replacement_lines - edit_line_span,
+        "edit_start_col": edit.start_col,
+        "edit_end_col": edit.end_col,
+        "edit_target_line_distance": min(
+            abs(edit.start_line - target.start_line),
+            abs(edit.end_line - target.end_line),
+        ),
+        "edit_within_target_span": (
+            target.start_line <= edit.start_line and edit.end_line <= target.end_line
+        ),
+        "edit_is_single_line": edit.start_line == edit.end_line and replacement_lines <= 1,
+    }
+
+
+def _diff_line_counts(diff_text: str) -> tuple[int, int]:
+    added = 0
+    removed = 0
+    for line in diff_text.splitlines():
+        if line.startswith("+++") or line.startswith("---"):
+            continue
+        if line.startswith("+"):
+            added += 1
+        elif line.startswith("-"):
+            removed += 1
+    return added, removed
+
+
+def _replacement_line_count(replacement: str) -> int:
+    if not replacement:
+        return 0
+    return max(1, len(replacement.splitlines()))
 
 
 def _aggregate_plan_summaries(

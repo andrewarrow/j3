@@ -53,7 +53,8 @@ Implemented repair loop capabilities:
 - `train-ranker` supports held-out task names and task families from the same
   input sources.
 - Candidate outcome rows carry compact failure hints, target context, preferred
-  patch labels, task families, source types, language, scores, and pass labels.
+  patch labels, task families, source types, language, scores, pass labels,
+  diff-size fields, and edit-locality fields.
 - Eval diagnostics aggregate pass@1 by action, task family, and source type.
 - `j3 outcome-summary` summarizes candidate outcome JSONL datasets by rows,
   tasks, families, source types, actions, preferred positives, average
@@ -114,7 +115,8 @@ Recent work:
 Last focused verification:
 
 ```bash
-pytest tests/test_cli.py tests/test_candidate_ranking.py -q
+pytest tests/test_evaluation.py tests/test_candidate_ranking.py -q
+pytest tests/test_cli.py -q
 git diff --check
 ```
 
@@ -160,7 +162,10 @@ Next tasks:
 
 - Add stable split metadata to outcome rows or a sidecar split file.
 - Add `language` to candidate outcome rows.
-- Add candidate diff size and edit locality features.
+- Add candidate diff size and edit locality features. Done: outcome rows now
+  record diff line counts, edit line spans/deltas, replacement lines, and target
+  locality; ranker features consume the same metadata from live candidates and
+  persisted rows.
 - Add before/after AST delta features.
 - Record whether candidates are equivalent or overlapping.
 - Add a command to summarize outcome datasets. Done: `j3 outcome-summary`

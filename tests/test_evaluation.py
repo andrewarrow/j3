@@ -366,8 +366,19 @@ def test_write_candidate_outcomes_jsonl_records_one_row_per_tested_candidate(tmp
         "failure_hint_score",
         "ranker_score",
         "target_context",
+        "diff_added_lines",
+        "diff_removed_lines",
+        "diff_changed_lines",
+        "edit_line_span",
+        "edit_replacement_lines",
+        "edit_line_delta",
+        "edit_target_line_distance",
+        "edit_within_target_span",
+        "edit_is_single_line",
         "preferred",
     }.issubset(rows[0])
+    assert all(row["diff_changed_lines"] >= 1 for row in rows)
+    assert all(row["edit_line_span"] >= 1 for row in rows)
 
 
 def _candidate_patch(*, ranker_score: float | None) -> CandidatePatch:

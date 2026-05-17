@@ -11,12 +11,13 @@ from .feature_hints import (
     _merge_hint_record_features,
 )
 from .feature_params import (
+    _add_edit_metadata_features,
     _add_import_locality_features,
     _add_param_features,
     _add_target_context_features,
 )
 from .types import CandidateLike
-from .values import _float_value
+from .values import _float_value, _int_value
 
 
 def candidate_features(
@@ -43,6 +44,9 @@ def candidate_features(
 
     _add_param_features(features, action, params)
     _add_import_locality_features(features, action, candidate.file_path, params)
+    edit_metadata = _live_candidate_edit_metadata(candidate)
+    if edit_metadata is not None:
+        _add_edit_metadata_features(features, action, **edit_metadata)
 
     for hint in hints:
         _merge_hint_features(features, candidate, action, hint)
@@ -98,6 +102,9 @@ def _candidate_record_features(candidate: dict[str, object], hints: object) -> d
             str(candidate.get("file_path", "")),
             params,
         )
+    edit_metadata = _record_edit_metadata(candidate)
+    if edit_metadata is not None:
+        _add_edit_metadata_features(features, action, **edit_metadata)
 
     if isinstance(hints, list):
         for hint in hints:
@@ -123,3 +130,98 @@ def _candidate_record_features(candidate: dict[str, object], hints: object) -> d
         symbol=candidate.get("symbol"),
     )
     return features
+
+
+def _live_candidate_edit_metadata(candidate: CandidateLike) -> dict[str, object] | None:
+    edit = getattr(candidate, "edit", None)
+    action = getattr(candidate, "action", None)
+    target = getattr(action, "target", None)
+    if edit is None or target is None:
+        return None
+
+    replacement = getattr(edit, "replacement", "")
+    replacement_lines = _replacement_line_count(replacement if isinstance(replacement, str) else "")
+    edit_line_span = max(
+        1,
+        _int_value(getattr(edit, "end_line", 0), default=0)
+        - _int_value(getattr(edit, "start_line", 0), default=0)
+        + 1,
+    )
+    diff_changed_lines = 0
+    diff = getattr(candidate, "diff", None)
+    if callable(diff):
+        added, removed = _diff_line_counts(str(diff()))
+        diff_changed_lines = added + removed
+
+    return {
+        "diff_changed_lines": diff_changed_lines,
+        "edit_line_span": edit_line_span,
+        "edit_replacement_lines": replacement_lines,
+        "edit_line_delta": replacement_lines - edit_line_span,
+        "edit_target_line_distance": min(
+            abs(
+                _int_value(getattr(edit, "start_line", 0), default=0)
+                - _int_value(getattr(target, "start_line", 0), default=0)
+            ),
+            abs(
+                _int_value(getattr(edit, "end_line", 0), default=0)
+                - _int_value(getattr(target, "end_line", 0), default=0)
+            ),
+        ),
+        "edit_within_target_span": (
+            _int_value(getattr(target, "start_line", 0), default=0)
+            <= _int_value(getattr(edit, "start_line", 0), default=0)
+            and _int_value(getattr(edit, "end_line", 0), default=0)
+            <= _int_value(getattr(target, "end_line", 0), default=0)
+        ),
+        "edit_is_single_line": (
+            _int_value(getattr(edit, "start_line", 0), default=0)
+            == _int_value(getattr(edit, "end_line", 0), default=0)
+            and replacement_lines <= 1
+        ),
+    }
+
+
+def _record_edit_metadata(candidate: dict[str, object]) -> dict[str, object] | None:
+    if "diff_changed_lines" not in candidate and "edit_line_span" not in candidate:
+        return None
+    return {
+        "diff_changed_lines": _int_value(candidate.get("diff_changed_lines"), default=0),
+        "edit_line_span": _int_value(candidate.get("edit_line_span"), default=0),
+        "edit_replacement_lines": _int_value(
+            candidate.get("edit_replacement_lines"),
+            default=0,
+        ),
+        "edit_line_delta": _int_value(candidate.get("edit_line_delta"), default=0),
+        "edit_target_line_distance": _int_value(
+            candidate.get("edit_target_line_distance"),
+            default=0,
+        ),
+        "edit_within_target_span": _bool_value(candidate.get("edit_within_target_span")),
+        "edit_is_single_line": _bool_value(candidate.get("edit_is_single_line")),
+    }
+
+
+def _diff_line_counts(diff_text: str) -> tuple[int, int]:
+    added = 0
+    removed = 0
+    for line in diff_text.splitlines():
+        if line.startswith("+++") or line.startswith("---"):
+            continue
+        if line.startswith("+"):
+            added += 1
+        elif line.startswith("-"):
+            removed += 1
+    return added, removed
+
+
+def _replacement_line_count(replacement: str) -> int:
+    if not replacement:
+        return 0
+    return max(1, len(replacement.splitlines()))
+
+
+def _bool_value(value: object) -> bool | None:
+    if isinstance(value, bool):
+        return value
+    return None

@@ -8,17 +8,17 @@ new implementation facts change the 24-hour plan itself. Record any
 ## Status
 
 - Current phase: Prompt-JEPA developer demo and prompt corpus scale-up
-- Completed iterations: 3 for this reset; previous Prompt-JEPA index reset
+- Completed iterations: 4 for this reset; previous Prompt-JEPA index reset
   completed 8 iterations
 - Passing focused tests: `pytest tests/test_prompt_intents.py -q`;
   `pytest tests/test_cli.py -q`;
   `pytest tests/test_prompt_jepa.py -q`;
-  `python -m py_compile prompt_jepa_demo.py prompt_jepa.py cli/handlers.py cli/parser.py cli/__init__.py`;
+  `python -m py_compile prompt_jepa_demo.py features.py prompt_jepa.py cli/handlers.py cli/parser.py cli/__init__.py`;
   `git diff --check`
-- Latest implementation commit: `74aa004`
+- Latest implementation commit: `1347a11`
 - Current blocker: none
-- Next task: add a thin Python source-embedding sidecar for generated demo repos
-  using `features.embed_python_source`.
+- Next task: document the demo in README or a focused demo doc with exact
+  commands and honest supported/retrieval-only boundaries.
 
 ## Active Task Queue
 
@@ -29,7 +29,7 @@ new implementation facts change the 24-hour plan itself. Record any
   sizes, representative queries, dry-run proposals, and hosted API tokens `0`.
 - [x] Generate real calculator outcome rows and build a mixed labels+records
   Prompt-JEPA demo index.
-- [ ] Add a thin Python source-embedding sidecar for generated demo repos using
+- [x] Add a thin Python source-embedding sidecar for generated demo repos using
   `features.embed_python_source`.
 - [ ] Document the demo in README or a focused demo doc with exact commands and
   honest supported/retrieval-only boundaries.
@@ -545,8 +545,8 @@ Use this shape for each worker handoff:
   `calculator.py` and `tests/test_calculator_cli.py` with source byte counts,
   SHA-256 hashes, embedding lengths, and vectors. Production `implement`,
   `change`, and Prompt-JEPA routing remain unchanged.
-- Commit: pending local worker commit.
-- Push: pending.
+- Commit: `1347a11`
+- Push: succeeded to `main`
 - Next: document the demo in README or a focused demo doc with exact commands
   and honest supported/retrieval-only boundaries.
 - Blockers: none.

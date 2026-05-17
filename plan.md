@@ -257,6 +257,21 @@ Recent work:
   `cookie_scope_include_path_keyword` is still a pass@1 miss, and
   `http_no_store_response_with_etag` still has a non-preferred passing
   `swap_call_arg` candidate at rank 1 while the preferred repair is rank 3.
+- The two remaining GreenShot-6 `split: test` held-out issues were inspected in
+  the saved outcome rows and trained ranker scores. Details are in
+  `HARD_NEGATIVES.md`. `cookie_scope_include_path_keyword` is primarily missing
+  preferred-candidate signal: the preferred `add_keyword_arg(include_path=True)`
+  is not present in the tested rows, and the only passing tested row is an
+  accidental helper-level `modify_condition` repair. The tested-candidate
+  ranking also shows weak call-target metadata because a false `swap_call_arg`
+  at the hinted function outranks the downstream helper edit. For
+  `http_no_store_response_with_etag`, all tested candidates pass; the issue is
+  accidental-pass/preferred-positive ranking, where a `swap_call_arg` of
+  `headers.get("cache-control", "")` outranks the preferred local
+  `change_operator` repair. The smallest non-leaky next metadata signal is
+  call-site argument-role metadata for `swap_call_arg`, including whether a
+  swap breaks callee parameter-name alignment or swaps mapping `.get` key and
+  default roles.
 
 Last focused verification:
 
@@ -377,22 +392,19 @@ Keep this section as the live queue. When work is completed, move it to
 
 Immediate next sequence:
 
-1. Inspect the remaining GreenShot-6 `split: test` holdout misses in the saved
-   outcome rows and trained ranker scores:
-   `cookie_scope_include_path_keyword` pass@1 miss, plus
-   `http_no_store_response_with_etag` ranking a non-preferred passing candidate
-   first while the preferred repair is rank 3.
-2. For `cookie_scope_include_path_keyword`, determine whether this is missing
-   preferred-candidate signal, bad ranking among generated candidates, or weak
-   call-target/locality metadata. Do not add an action family unless the
-   inspected rows show the preferred repair is absent.
-3. For `http_no_store_response_with_etag`, inspect why the accidental
-   `swap_call_arg` pass outranks the preferred `change_operator` repair, and
-   prefer non-leaky metadata that distinguishes preferred local repairs from
-   accidental passing broader edits.
-4. Keep the next implementation narrow and ranker-focused. Do not add tasks,
-   action families, or broad handcrafted weights until the residual misses are
-   explained from held-out rows.
+1. Implement the narrow non-leaky call-site metadata identified from the
+   residual held-out inspection: for `swap_call_arg` candidates, record whether
+   the swap preserves or breaks callee parameter-name alignment, and record
+   mapping `.get` key/default role swaps when detectable.
+2. Feed that metadata into candidate-ranker features from both live candidates
+   and persisted outcome rows. Avoid broad `swap_call_arg` weights and avoid
+   using pass/preferred labels as features.
+3. Add focused candidate-ranking and candidate-outcome coverage for the metadata
+   using small fixtures around a correct name-aligned call, a broken
+   name-aligned swap, and a mapping `.get` key/default swap.
+4. Refresh GreenShot-6 outcomes and rerun the GreenShot-6 `split: test` held-out
+   ranker validation. Report solved, pass@1, positive@1, average first passing
+   index, and whether the HTTP preferred-positive rank improves.
 
 ### 1. Make GreenShot-6 Real
 
@@ -413,10 +425,8 @@ transition modeling.
 
 Next tasks:
 
-- Inspect whether the remaining GreenShot-6 `split: test` holdout misses need
-  additional non-leaky outcome metadata, starting with call-target/locality for
-  `cookie_scope_include_path_keyword` and accidental-pass distinction for
-  `http_no_store_response_with_etag`.
+- Add the call-site argument-role metadata described in the immediate next
+  sequence before collecting another broad outcome refresh.
 
 ### 3. Collect Hard Negatives
 
@@ -554,6 +564,7 @@ Start neural/JEPA work only when:
 ## Handoff Recommendation
 
 The next context window should not add another handcrafted GreenShot task first.
-It should use the refreshed GreenShot-6 outcome rows to choose and run a
-held-out ranker validation slice for the `webcookies` additions, then inspect
-the remaining pass@1 misses before adding actions or ranker features.
+It should implement the narrow call-site argument-role metadata from the
+GreenShot-6 `split: test` residual inspection, then refresh the outcome rows and
+rerun the same held-out validation slice before adding tasks, action families,
+or broad ranker weights.

@@ -315,3 +315,119 @@ preferred-candidate signal or weak call-target/locality metadata. For
 `http_no_store_response_with_etag`, inspect non-leaky metadata that can
 distinguish the preferred local operator repair from a broader accidentally
 passing call-argument edit.
+
+### Residual Test-Slice Inspection
+
+Inspection date: 2026-05-16.
+
+Inspection source:
+
+```bash
+runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl
+runs/apache-python-git/greenshot-6-explore-diagnostics.json
+runs/apache-python-git/ranker-holdout-greenshot-6-test-slice/candidate-ranker.json
+```
+
+The remaining held-out issues have different causes.
+
+#### `cookie_scope_include_path_keyword`
+
+This is primarily missing preferred-candidate signal, with a secondary bad
+ranking among the candidates that were tested.
+
+The preferred manifest repair is an existing `add_keyword_arg` action at the
+`cookie_scope_key` call site:
+
+```text
+normalize_scope(host, path) -> normalize_scope(host, path, include_path=True)
+```
+
+No tested row contains that preferred candidate. The only passing tested row is
+an accidental helper-level `modify_condition` repair in `normalize_scope` that
+changes `if include_path:` to `if not (include_path):`.
+
+Trained ranking on the tested rows:
+
+| Trained rank | Original rank | Passed | Preferred | Candidate | Score |
+| ---: | ---: | --- | --- | --- | ---: |
+| 1 | 1 | no | no | `swap_call_arg` in `cookie_scope_key`, args `0 <-> 1` | 11.606667 |
+| 2 | 2 | yes | no | `modify_condition` in `normalize_scope`, `include_path` -> `not (include_path)` | 3.050271 |
+
+Why the false swap wins:
+
+- The failure hint names `cookie_scope_key`, so the swap gets exact-symbol
+  features: `hint_symbol_match`, `hint_call_graph_distance:0`, and
+  `target_is_hinted_symbol`.
+- The passing helper edit is only one upstream call away from the hinted
+  function. It gets useful `target_is_downstream_of_hint` and
+  `hint_call_graph_distance:1` features, but those do not overcome the exact
+  symbol match plus the learned generic swap-call features.
+- The current target context records only symbol-level call graph locality. It
+  does not record whether a `swap_call_arg` candidate preserves or breaks the
+  callee signature's argument-name alignment. In this case the original call
+  already maps `host -> host` and `path -> path`; the swap would map
+  `path -> host` and `host -> path`.
+- The existing `add_keyword_arg` generator only passes through an outer
+  parameter with the same name as the callee parameter. `cookie_scope_key` has
+  no `include_path` parameter, so the preferred constant keyword
+  `include_path=True` is not represented in the tested rows.
+
+Smallest non-leaky next signal for ranking tested candidates: record call-site
+argument-role metadata for call mutations, especially whether `swap_call_arg`
+preserves or breaks name-to-parameter alignment against the known callee
+signature. That would distinguish the false swap from the downstream helper
+candidate without using pass labels. It would not, by itself, create the
+preferred `include_path=True` candidate.
+
+Smallest candidate-signal gap if this task is prioritized: extend the existing
+`add_keyword_arg` family to synthesize narrow boolean default keywords from the
+callee signature, such as adding `include_path=True` when a missing defaulted
+boolean parameter gates the observed behavior. That is candidate-generation
+work, not a ranker-only fix.
+
+#### `http_no_store_response_with_etag`
+
+This is not a missing-action problem. Every tested candidate passes, including
+the preferred local operator repair, but the trained ranker puts an accidental
+call-argument swap first.
+
+Trained ranking on the tested rows:
+
+| Trained rank | Original rank | Passed | Preferred | Candidate | Score |
+| ---: | ---: | --- | --- | --- | ---: |
+| 1 | 3 | yes | no | `swap_call_arg` in `should_store_response`, args `0 <-> 1` | 11.606667 |
+| 2 | 5 | yes | no | `change_literal`, `"no-store"` -> `"no_store"` | 10.514705 |
+| 3 | 1 | yes | yes | `change_operator`, `"no-store" not in cache_control` -> `"no-store" in cache_control` | 9.788554 |
+| 4 | 6 | yes | no | `change_literal`, `"no-store"` -> `"max-age=0, no-store"` | 9.749080 |
+| 5 | 2 | yes | no | `change_operator`, `"etag" in headers` -> `"etag" not in headers` | 9.242534 |
+| 6 | 4 | yes | no | `modify_condition`, negate the no-store condition | 6.317404 |
+
+Why the accidental swap wins:
+
+- The top swap and preferred operator candidate both edit
+  `should_store_response` and receive the same exact-symbol and call-graph
+  features from the failure hint.
+- The swap has no before/after AST delta, so it avoids the current negative
+  learned weights on the preferred operator's added/removed `In`/`NotIn` AST
+  delta features.
+- The preferred operator is helped by overlap metadata and token overlap, but
+  not enough to offset the swap's generic action/symbol features and the
+  operator-specific negative weights learned from sparse data.
+- Existing target context does not describe the call being swapped. The ranker
+  cannot tell that the swap changes `headers.get("cache-control", "")` into
+  `headers.get("", "cache-control")`, which accidentally makes the no-store
+  branch pass by reading the wrong mapping key/default rather than repairing the
+  predicate.
+
+Smallest non-leaky next metadata/ranker signal: record call-site role metadata
+for `swap_call_arg` candidates. For known method calls like mapping `.get`,
+capture the callee name and the argument roles being swapped, for example
+`mapping_get_key_default_swapped`. More generally, record whether a swap moves
+literal/default-like arguments into key/name positions or breaks a callee
+signature's parameter-name alignment. This is narrower than broad action
+weights, does not use pass/preferred labels, and also applies to the cookie
+false-swap case.
+
+Avoid treating this task as solved by pass@1 alone. It is a
+multiple-passing-candidate case where preferred-positive rank remains the useful
+signal.

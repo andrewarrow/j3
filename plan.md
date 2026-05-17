@@ -1061,12 +1061,36 @@ Recent work:
 - Applying the saved test-slice ranker to all refreshed GreenShot-6 rows found
   no trained preferred-positive misses across 44 tasks. Raw GreenShot-6 has 13
   pass@1 misses, but every task has a tested preferred-positive row.
+- GreenShot-6 now includes a twenty-sixth real-package-derived fixture domain,
+  `requestdocs`, with one `git_history` task modeled on `psf/requests` PR 7395
+  / commit `27e0981962d355b9532256f4dcb3d42f64b04d9c`. The task
+  `requests_prepared_request_docline_typo` repairs a Requests adapter
+  documentation typo by changing `PreparedReqest` to `PreparedRequest`, using
+  the existing `change_literal` action family.
+- Focused loader/generator coverage passed for the Requests-derived task:
+  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
+  `pytest tests/test_patching.py::test_patch_solves_requests_prepared_request_docline_typo -q`.
+- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
+  adding `requestdocs`. The persisted dataset at
+  `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` now covers 45
+  tasks and 332 tested candidates. Ranked eval solved all 45 tasks with
+  `pass@1=32/45` and average candidates `7.38`; the new Requests-derived task
+  solves at raw rank 1 with the preferred `change_literal` candidate.
+- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
+  the requestdocs outcome refresh and stayed clean: solved=7/7, pass@1=7/7,
+  positive@1=7/7, avg_first_passing_index=1.0. Training used 412 rows, 81
+  passing rows, 353 training pairs, 834 features, and 5 margin violations.
+- No fresh hard-negative or missing preferred-positive gap was found in this
+  refresh. Do not tune broad ranker weights or add pass/preferred-label
+  features from this state. The next useful step remains dataset growth from
+  another real-package-derived repair using an existing action family where
+  possible.
 
 Last focused verification:
 
 ```bash
 pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q
-pytest tests/test_patching.py::test_patch_solves_scrapy_playwright_download_log_typo -q
+pytest tests/test_patching.py::test_patch_solves_requests_prepared_request_docline_typo -q
 python cli.py eval \
   --tasks examples/greenshot_6 \
   --checkpoint runs/apache-python-git/model.json \
@@ -1092,10 +1116,6 @@ python cli.py train-ranker \
   --out runs/apache-python-git/ranker-holdout-greenshot-6-test-slice
 python cli.py outcome-summary \
   --candidate-outcomes runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl
-python - <<'PY'
-# Applied the refreshed test-slice ranker to all refreshed GreenShot-6 rows:
-# raw_pass1_misses=13, trained_preferred_positive_misses=0 across 44 tasks.
-PY
 git diff --check
 ```
 
@@ -1213,9 +1233,9 @@ GreenShot-6 outcome collection result:
 
 ```text
 ranked, runs/apache-python-git/model.json, explore-after-pass=5:
-  solved=44/44 pass@1=31/44 avg_candidates=7.36
-  rows=324 passing_rows=72 preferred_positive_rows=44
-  source_type pass@1: git_history=16/26 mutation=15/18
+  solved=45/45 pass@1=32/45 avg_candidates=7.38
+  rows=332 passing_rows=73 preferred_positive_rows=45
+  source_type pass@1: git_history=17/27 mutation=15/18
 ```
 
 Treat this as a smoke check, not a benchmark claim.
@@ -1234,8 +1254,8 @@ GreenShot-6 test-slice ranker validation result:
 
 ```text
 train-ranker, holdout-task includes all GreenShot-6 split:test tasks:
-  training rows=404 passing_rows=80 tasks=57 plans=57 pairs=346
-  training_accuracy=1.000 margin_violations=3 features=819
+  training rows=412 passing_rows=81 tasks=58 plans=58 pairs=353
+  training_accuracy=1.000 margin_violations=5 features=834
   validation solved=7/7 pass@1=7/7 positive@1=7/7
   validation avg_first_passing_index=1.0
 ```

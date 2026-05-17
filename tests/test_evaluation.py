@@ -99,7 +99,7 @@ def test_load_greenshot_6_tasks() -> None:
     tasks = load_tasks(Path("examples/greenshot_6"))
     by_name = {task.name: task for task in tasks}
 
-    assert len(tasks) == 44
+    assert len(tasks) == 45
     assert tasks[0].name == "core_metadata_version_dict_value"
     assert tasks[0].family == "mapping_value"
     assert tasks[0].source_type == "mutation"
@@ -484,6 +484,17 @@ def test_load_greenshot_6_tasks() -> None:
         "params": {
             "from": "Waiting on dowload to finish for %s",
             "to": "Waiting on download to finish for %s",
+        },
+    }
+    assert by_name["requests_prepared_request_docline_typo"].split == "train"
+    assert by_name["requests_prepared_request_docline_typo"].source_type == "git_history"
+    assert by_name["requests_prepared_request_docline_typo"].preferred_patch == {
+        "file_path": "requestdocs/adapters.py",
+        "action": "change_literal",
+        "symbol": "request_parameter_description",
+        "params": {
+            "from": "The PreparedReqest being sent over the connection.",
+            "to": "The PreparedRequest being sent over the connection.",
         },
     }
     assert by_name["cookie_default_secure_flag_dict_value"].split == "test"

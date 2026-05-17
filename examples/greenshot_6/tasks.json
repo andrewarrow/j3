@@ -771,6 +771,28 @@
     }
   },
   {
+    "name": "requests_prepared_request_docline_typo",
+    "family": "adapter_doc_text",
+    "source_type": "git_history",
+    "split": "train",
+    "repo": ".",
+    "test": "python -m pytest tests/test_requestdocs.py::test_adapter_docline_spells_prepared_request",
+    "source": {
+      "repo": "psf/requests",
+      "commit": "27e0981962d355b9532256f4dcb3d42f64b04d9c",
+      "pr": 7395
+    },
+    "preferred": {
+      "file_path": "requestdocs/adapters.py",
+      "action": "change_literal",
+      "symbol": "request_parameter_description",
+      "params": {
+        "from": "The PreparedReqest being sent over the connection.",
+        "to": "The PreparedRequest being sent over the connection."
+      }
+    }
+  },
+  {
     "name": "cookie_default_secure_flag_dict_value",
     "family": "mapping_value",
     "source_type": "mutation",

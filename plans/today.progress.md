@@ -7,8 +7,8 @@ new implementation facts change the 24-hour plan itself. Record any
 
 ## Status
 
-- Current phase: learned prompt-intent baseline evaluated
-- Completed iterations: 4
+- Current phase: held-out prompt-intent residuals inspected
+- Completed iterations: 5
 - Passing focused tests:
   - `pytest tests/test_prompt_intents.py -q`
   - `pytest tests/test_prompt_intents.py tests/test_request_spec.py -q`
@@ -22,9 +22,10 @@ new implementation facts change the 24-hour plan itself. Record any
 - `python -m py_compile prompt_intents.py cli/handlers.py cli/parser.py cli/__init__.py`
 - Latest implementation commit: `fc9dc87a9b734234e9ebdcbd883147f9dea3d7f7`
 - Current blocker: none
-- Next task: decide the next learned prompt-understanding target after reviewing
-  the token-perceptron residuals; do not replace fixture-backed production
-  intent prediction yet
+- Next task: add targeted labels or a second-stage target for ambiguous
+  clarification and existing-repo config/refactor routing before considering
+  learned production routing; do not replace fixture-backed production intent
+  prediction yet
 
 ## Worker Iteration Template
 
@@ -258,4 +259,56 @@ Use this shape for each worker handoff:
 - Push: succeeded to `main`
 - Next: inspect held-out residuals and add stronger labeled prompt-intent rows
   or feature targets before considering learned production routing.
+- Blockers: none
+
+### Iteration 5: Prompt-Intent Residual Reporting
+
+- Worker: Codex
+- Goal: inspect held-out residuals from the learned prompt-intent baseline and
+  decide the next narrow data/target improvement before production routing.
+- Files changed:
+  - `prompt_intents.py`
+  - `cli/handlers.py`
+  - `cli/parser.py`
+  - `tests/test_prompt_intents.py`
+  - `tests/test_cli.py`
+  - `plans/today.progress.md`
+- Tests run:
+  - `pytest tests/test_prompt_intents.py -q` -> passed, 7 tests
+  - `pytest tests/test_cli.py -q` -> passed, 26 tests
+  - `pytest tests/test_prompt_intents.py tests/test_request_spec.py tests/test_existing_repo_change.py tests/test_cli.py -q`
+    -> passed, 43 tests
+  - `python -m py_compile prompt_intents.py cli/handlers.py cli/parser.py cli/__init__.py`
+    -> passed
+  - `git diff --check` -> passed
+  - `python cli.py train-prompt-intents --labels ../prompts/coding_agent_prompts_seed.jsonl --target expected_action repo_mode --show-residuals`
+    -> passed
+- Residual findings:
+  - `expected_action` validation misses: `seed-0015` greenfield library
+    predicted as existing-repo change; `seed-0059` refactor and `seed-0067`
+    CI config predicted as new-repo requests; `seed-0074` and `seed-0078`
+    vague clarification prompts predicted as concrete existing-repo changes.
+  - `expected_action` test misses: `seed-0065` ruff config predicted as a
+    new-repo request; `seed-0076` and `seed-0080` vague/implicit-scope
+    clarification prompts predicted as concrete existing-repo changes.
+  - `repo_mode` misses: `seed-0015` greenfield library predicted as
+    existing-repo; `seed-0062` package refactor and `seed-0065` ruff config
+    predicted as new-repo.
+  - Misses cluster around ambiguous clarification safety and source/config/
+    refactor artifact routing, not around the calculator graphical regression.
+- Result:
+  - Added learned-baseline residual records to split metrics and JSON output.
+  - Added `j3 train-prompt-intents --show-residuals` plus
+    `--residual-limit` for human inspection of misclassified rows.
+  - Extracted existing `expected.artifacts` labels into prompt-intent targets
+    and profile counts so future eval can separate source, tests, docs,
+    config, package, and CI-oriented requests.
+  - Production routing remains fixture-backed and conservative; no learned
+    model is wired into request-spec or change-spec behavior.
+- Commit: pending; reported by worker final
+- Push: pending; reported by worker final
+- Next: add targeted train/validation/test labels or a second-stage target for
+  `ask_clarification` vs concrete existing-repo work and for config/refactor/
+  package artifact routing. Keep graphical/unsupported-interface labels as a
+  separate gap before learned production routing.
 - Blockers: none

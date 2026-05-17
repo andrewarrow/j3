@@ -106,6 +106,55 @@ def test_train_prompt_intents_command_reports_json_metrics(capsys, tmp_path) -> 
     assert output[0]["metrics"]["test"]["accuracy"] == 1.0
 
 
+def test_train_prompt_intents_command_can_print_residuals(capsys, tmp_path) -> None:
+    labels = tmp_path / "prompt-labels.jsonl"
+    labels.write_text(
+        "\n".join(
+            [
+                (
+                    '{"id":"train-create","split":"train","source_type":"test",'
+                    '"task_type":"create_app","repo_mode":"new_repo","domain":"calculator",'
+                    '"prompt":"create a new calculator cli","expected":{"action":"emit_request_spec"}}'
+                ),
+                (
+                    '{"id":"train-change","split":"train","source_type":"test",'
+                    '"task_type":"add_feature","repo_mode":"existing_repo","domain":"calculator",'
+                    '"prompt":"change the existing calculator","expected":'
+                    '{"action":"emit_existing_repo_change_spec"}}'
+                ),
+                (
+                    '{"id":"validation-clarify","split":"validation","source_type":"test",'
+                    '"task_type":"clarify","repo_mode":"unknown","domain":"math",'
+                    '"prompt":"validation only vague math thing","expected":'
+                    '{"action":"ask_clarification"},"tags":["ambiguous","clarification"]}'
+                ),
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    assert (
+        main(
+            [
+                "train-prompt-intents",
+                "--labels",
+                str(labels),
+                "--target",
+                "expected_action",
+                "--show-residuals",
+            ]
+        )
+        == 0
+    )
+
+    output = capsys.readouterr().out
+    assert "validation residuals: 1" in output
+    assert "validation-clarify: expected=ask_clarification predicted=" in output
+    assert "prompt: validation only vague math thing" in output
+    assert "tags: ambiguous, clarification" in output
+
+
 def test_implement_command_builds_repo_and_request_spec_artifact(capsys, tmp_path) -> None:
     out_dir = tmp_path / "calc"
 

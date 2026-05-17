@@ -398,6 +398,22 @@ def handle_train_prompt_intents(args: argparse.Namespace) -> int:
                 f"majority={metrics.baseline_correct}/{metrics.total} "
                 f"({metrics.baseline_accuracy:.3f})"
             )
+            if args.show_residuals and metrics.residuals:
+                limit = max(args.residual_limit, 0)
+                shown = metrics.residuals[:limit]
+                print(f"  {split} residuals: {len(metrics.residuals)}")
+                for residual in shown:
+                    print(
+                        "    "
+                        f"{residual.row_id}: expected={residual.expected} "
+                        f"predicted={residual.predicted}"
+                    )
+                    print(f"      prompt: {residual.prompt}")
+                    if residual.tags:
+                        print(f"      tags: {', '.join(residual.tags)}")
+                omitted = len(metrics.residuals) - len(shown)
+                if omitted > 0:
+                    print(f"      ... {omitted} more")
     return 0
 
 

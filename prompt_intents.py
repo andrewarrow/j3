@@ -27,6 +27,7 @@ TARGET_FIELDS = [
     "expected_action",
     "requested_interfaces",
     "features",
+    "artifacts",
     "clarification_fields",
 ]
 SCALAR_TARGET_FIELDS = ("repo_mode", "task_type", "domain", "expected_action")
@@ -43,6 +44,7 @@ class PromptIntentTarget:
     expected_action: str
     requested_interfaces: tuple[str, ...] = ()
     features: tuple[str, ...] = ()
+    artifacts: tuple[str, ...] = ()
     unsupported_requirements: tuple[str, ...] = ()
     clarification_fields: tuple[str, ...] = ()
     target_files: tuple[str, ...] = ()
@@ -55,6 +57,7 @@ class PromptIntentTarget:
             "expected_action": self.expected_action,
             "requested_interfaces": list(self.requested_interfaces),
             "features": list(self.features),
+            "artifacts": list(self.artifacts),
             "unsupported_requirements": list(self.unsupported_requirements),
             "clarification_fields": list(self.clarification_fields),
             "target_files": list(self.target_files),
@@ -138,6 +141,36 @@ class PromptIntentEvalResult:
 
 
 @dataclass(frozen=True, slots=True)
+class PromptIntentLabelResidual:
+    """One held-out scalar label miss from the learned prompt-intent baseline."""
+
+    target_field: str
+    row_id: str
+    split: str
+    source_type: str
+    prompt: str
+    expected: str
+    predicted: str
+    baseline_label: str
+    baseline_correct: bool
+    tags: tuple[str, ...] = ()
+
+    def to_record(self) -> dict[str, object]:
+        return {
+            "target_field": self.target_field,
+            "id": self.row_id,
+            "split": self.split,
+            "source_type": self.source_type,
+            "prompt": self.prompt,
+            "expected": self.expected,
+            "predicted": self.predicted,
+            "baseline_label": self.baseline_label,
+            "baseline_correct": self.baseline_correct,
+            "tags": list(self.tags),
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class PromptIntentLabelMetrics:
     """Held-out scalar-label metrics for a prompt-intent classifier."""
 
@@ -147,6 +180,7 @@ class PromptIntentLabelMetrics:
     baseline_label: str
     baseline_correct: int
     confusion: dict[str, dict[str, int]]
+    residuals: tuple[PromptIntentLabelResidual, ...] = ()
 
     @property
     def accuracy(self) -> float:
@@ -168,6 +202,7 @@ class PromptIntentLabelMetrics:
                 "accuracy": self.baseline_accuracy,
             },
             "confusion": self.confusion,
+            "residuals": [residual.to_record() for residual in self.residuals],
         }
 
 
@@ -273,6 +308,9 @@ def profile_prompt_intents(records: Sequence[PromptIntentRecord]) -> dict[str, o
             interface
             for record in records
             for interface in record.target.requested_interfaces
+        ),
+        "artifact_counts": _counter_record(
+            artifact for record in records for artifact in record.target.artifacts
         ),
         "tag_counts": _counter_record(tag for record in records for tag in record.tags),
         "clarification_count": sum(
@@ -465,6 +503,7 @@ def evaluate_prompt_intent_label_model(
     correct = 0
     baseline_correct = 0
     confusion: dict[str, dict[str, int]] = {}
+    residuals: list[PromptIntentLabelResidual] = []
 
     for record in records:
         expected = _scalar_target_value(record, model.target_field)
@@ -473,6 +512,21 @@ def evaluate_prompt_intent_label_model(
         confusion[expected][predicted] = confusion[expected].get(predicted, 0) + 1
         if predicted == expected:
             correct += 1
+        else:
+            residuals.append(
+                PromptIntentLabelResidual(
+                    target_field=model.target_field,
+                    row_id=record.row_id,
+                    split=record.split,
+                    source_type=record.source_type,
+                    prompt=record.prompt,
+                    expected=expected,
+                    predicted=predicted,
+                    baseline_label=baseline_label,
+                    baseline_correct=baseline_label == expected,
+                    tags=record.tags,
+                )
+            )
         if baseline_label == expected:
             baseline_correct += 1
 
@@ -486,6 +540,7 @@ def evaluate_prompt_intent_label_model(
             expected: dict(sorted(predictions.items()))
             for expected, predictions in sorted(confusion.items())
         },
+        residuals=tuple(residuals),
     )
 
 
@@ -535,7 +590,16 @@ def _record_from_row(row: dict[str, object], *, index: int) -> PromptIntentRecor
             field="expected.interfaces",
             index=index,
         ),
-        features=_tuple_strs(expected.get("features", []), field="expected.features", index=index),
+        features=_tuple_strs(
+            expected.get("features", []),
+            field="expected.features",
+            index=index,
+        ),
+        artifacts=_tuple_strs(
+            expected.get("artifacts", []),
+            field="expected.artifacts",
+            index=index,
+        ),
         unsupported_requirements=_tuple_strs(
             expected.get("unsupported_requirements", []),
             field="expected.unsupported_requirements",
@@ -594,6 +658,7 @@ def _target_from_prediction(
             prediction.get("requested_interfaces", expected.requested_interfaces)
         ),
         features=_tuple_prediction(prediction.get("features", expected.features)),
+        artifacts=_tuple_prediction(prediction.get("artifacts", expected.artifacts)),
         unsupported_requirements=_tuple_prediction(
             prediction.get("unsupported_requirements", expected.unsupported_requirements)
         ),

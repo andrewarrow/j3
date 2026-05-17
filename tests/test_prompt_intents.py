@@ -116,6 +116,8 @@ def test_loads_external_seed_prompt_corpus_profile() -> None:
     assert profile["split_counts"]["test"] > 0  # type: ignore[index]
     assert profile["repo_mode_counts"]["existing_repo"] > 0  # type: ignore[index]
     assert profile["repo_mode_counts"]["new_repo"] > 0  # type: ignore[index]
+    assert profile["artifact_counts"]["module"] > 0  # type: ignore[index]
+    assert profile["artifact_counts"]["pyproject"] > 0  # type: ignore[index]
     assert profile["clarification_count"] > 0
     assert profile["existing_repo_change_count"] > 0
 
@@ -191,6 +193,18 @@ def test_trains_token_baseline_only_from_train_split(tmp_path: Path) -> None:
     assert result.metrics["train"].accuracy == 1.0
     assert result.metrics["validation"].total == 1
     assert result.metrics["validation"].correct == 0
+    assert result.metrics["validation"].residuals[0].to_record() == {
+        "target_field": "expected_action",
+        "id": "validation-unseen",
+        "split": "validation",
+        "source_type": "test",
+        "prompt": "validation only vague math thing",
+        "expected": "ask_clarification",
+        "predicted": "emit_request_spec",
+        "baseline_label": "emit_existing_repo_change_spec",
+        "baseline_correct": False,
+        "tags": [],
+    }
 
 
 def test_seed_corpus_learned_baseline_reports_held_out_metrics() -> None:
@@ -225,5 +239,24 @@ def test_seed_corpus_learned_baseline_reports_held_out_metrics() -> None:
         > repo_mode.metrics["validation"].baseline_accuracy
     )
     assert repo_mode.metrics["test"].accuracy > repo_mode.metrics["test"].baseline_accuracy
+    assert [residual.row_id for residual in expected_action.metrics["validation"].residuals] == [
+        "seed-0015",
+        "seed-0059",
+        "seed-0067",
+        "seed-0074",
+        "seed-0078",
+    ]
+    assert [residual.row_id for residual in expected_action.metrics["test"].residuals] == [
+        "seed-0065",
+        "seed-0076",
+        "seed-0080",
+    ]
+    assert [residual.row_id for residual in repo_mode.metrics["validation"].residuals] == [
+        "seed-0015",
+        "seed-0062",
+    ]
+    assert [residual.row_id for residual in repo_mode.metrics["test"].residuals] == [
+        "seed-0065",
+    ]
     assert expected_action.decision == "evaluation_only_not_wired_to_production"
     assert repo_mode.decision == "evaluation_only_not_wired_to_production"

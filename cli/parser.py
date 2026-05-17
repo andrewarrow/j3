@@ -357,6 +357,17 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="print full metrics and model weights as JSON",
     )
+    prompt_intents_parser.add_argument(
+        "--show-residuals",
+        action="store_true",
+        help="print misclassified examples for each evaluated split",
+    )
+    prompt_intents_parser.add_argument(
+        "--residual-limit",
+        type=int,
+        default=20,
+        help="maximum residual examples to print per split and target (default: 20)",
+    )
     prompt_intents_parser.set_defaults(handler=handle_train_prompt_intents)
 
     ranker_parser = subparsers.add_parser(

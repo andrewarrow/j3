@@ -20,6 +20,7 @@ from j3.transition_action_scoring import (
     evaluate_transition_action_choices,
     rank_transition_action_candidates,
     score_transition_action_candidate,
+    score_transition_action_candidate_v3,
 )
 
 
@@ -209,6 +210,54 @@ def test_v2_calibration_supports_source_file_validation_split() -> None:
         "stable-lexical-order",
         "deterministic-random-order",
     }
+
+
+def test_v3_scorer_features_include_candidate_change_context_deltas() -> None:
+    row = _candidate_row(
+        rank_index=1,
+        passed=True,
+        repair_plan_id="plan-change-context",
+        params={"to": "+"},
+        model_score=0.1,
+        ranker_score=0.2,
+        failure_hint_score=0.3,
+        patched_source="def add(left, right):\n    return left + right\n",
+    )
+    row.update(
+        {
+            "diff_added_lines": 2,
+            "diff_removed_lines": 1,
+            "diff_changed_lines": 3,
+            "edit_is_single_line": True,
+            "edit_within_target_span": True,
+            "edit_line_span": 1,
+            "edit_replacement_lines": 1,
+            "edit_target_line_distance": 0,
+            "ast_parse_ok": True,
+            "ast_delta_added_count": 4,
+            "ast_delta_removed_count": 2,
+            "ast_delta_net_count": 2,
+            "ast_delta_added_features": {"node:BinOp": 1, "binop:Add": 1},
+            "ast_delta_removed_features": {"binop:Sub": 1},
+        }
+    )
+    groups = build_transition_action_choice_groups([row], embedding_dim=8)
+    candidate = groups[0]["candidates"][0]
+
+    assert candidate["change_context"]["available"] is True
+    score = score_transition_action_candidate_v3(
+        candidate,
+        group=groups[0],
+        model={"weights": {}, "allow_production_rank_feature": False},
+    )
+    features = score["features"]
+
+    assert features["change_context_available"] == 1.0
+    assert features["change:diff_changed_lines:scaled"] == pytest.approx(0.15)
+    assert features["change:edit_is_single_line"] == 1.0
+    assert features["change:ast_parse_ok"] == 1.0
+    assert features["change_ast_added:node:BinOp"] == pytest.approx(0.2)
+    assert features["change_ast_removed:binop:Sub"] == pytest.approx(0.2)
 
 
 def test_residual_examples_capture_wrong_top_action_choice() -> None:

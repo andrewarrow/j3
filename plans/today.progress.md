@@ -6,7 +6,7 @@ This file is the live progress log for `plans/today.md`. Keep
 ## Status
 
 - Current phase: shadow suite and residual-driven readiness.
-- Completed iterations for this reset: 2.
+- Completed iterations for this reset: 3.
 - Latest relevant commits:
   - `23f37ac` added the transition residual report.
   - `f9ed963` recorded shadow suite completion.
@@ -20,15 +20,14 @@ This file is the live progress log for `plans/today.md`. Keep
   - `f962018` closed the previous transition scoring queue.
 - Current blocker: held-out V2/V3 product gates are still the product boundary.
   Guarded ranking must remain non-default and blocked unless evidence passes.
-- Next task: improve one scorer feature or action-choice metadata path from
-  residuals.
+- Next task: run a narrow guarded trial only if held-out gates pass.
 
 ## Active Task Queue
 
 - [x] Recreate `plans/today.md` and `plans/today.progress.md`.
 - [x] Add a repeatable shadow eval suite command.
 - [x] Add a V3/shadow residual report.
-- [ ] Improve one scorer feature or action-choice metadata path from residuals.
+- [x] Improve one scorer feature or action-choice metadata path from residuals.
 - [ ] Run a narrow guarded trial only if held-out gates pass.
 - [ ] Update evidence and product docs for the shadow suite.
 
@@ -176,3 +175,39 @@ Use this shape for each worker handoff:
 - Next: improve one scorer feature or action-choice metadata path from the
   residual report.
 - Blockers: none.
+
+### Iteration 3: Candidate change-context scorer features
+
+- Worker: Worker 3
+- Goal: improve one scorer feature or action-choice metadata path from active
+  Step 4 residual evidence.
+- Residual family chosen: missing candidate-after delta/source-change evidence.
+  The small shadow residual report had zero failures, but real candidate rows
+  carried `diff_*`, `edit_*`, and `ast_delta_*` fields while action-choice
+  groups dropped them and reported unavailable candidate-after embeddings.
+- Files changed: `j3/transition_action_choice.py`,
+  `j3/transition_action_scoring.py`, `tests/test_transition_action_scoring.py`,
+  `plans/today.progress.md`
+- Tests run:
+  - `pytest tests/test_transition_action_scoring.py -q` passed.
+  - `pytest tests/test_transition_shadow_scorer.py -q` passed.
+  - `python -m py_compile j3/transition_action_choice.py j3/transition_action_scoring.py` passed.
+  - `python cli.py run-transition-shadow-suite --tasks examples/greenshot_bugs --out /tmp/j3-transition-shadow-suite-after` passed.
+  - `python cli.py report-transition-residuals --shadow-outcomes /tmp/j3-transition-shadow-suite-after/transition-shadow-outcomes.jsonl --shadow-scorer-report /tmp/j3-transition-shadow-suite-after/shadow-scorer-v3-report.json --candidate-outcomes /tmp/j3-transition-shadow-suite-after/candidate-outcomes.jsonl --json` passed.
+  - `git diff --check` passed.
+- Result: action-choice candidates now retain bounded non-label
+  `change_context` metadata from existing row-level diff/edit/AST delta fields.
+  V3 scorer features now include scaled change metrics and capped AST added/
+  removed feature indicators. Production rank remains an explicit ablation only.
+  Before suite: V3 feature version `transition-action-shadow-features-v3`, 35
+  learned features, gate `ready_for_shadow_mode`, pass@1 1/1. After suite: V3
+  feature version `transition-action-shadow-features-v4`, 41 learned features
+  including `change_ast_*`, gate `ready_for_shadow_mode`, pass@1 1/1.
+- Commit: pending.
+- Push: pending.
+- Next: because the gate remains shadow-mode only and guarded opt-in is still
+  not eligible, skip guarded production use and update evidence/docs or choose
+  another residual-driven feature slice.
+- Blockers: no failing residuals were exposed by the small checked-in shadow
+  suite; the improvement is based on missing non-label metadata observed in the
+  same candidate outcomes.

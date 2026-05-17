@@ -201,6 +201,12 @@ def validate_transition_action_choice_group(group: Mapping[str, object]) -> None
                 field="candidate.candidate_after",
             )
         )
+        _validate_change_context(
+            _mapping(
+                candidate_record.get("change_context"),
+                field="candidate.change_context",
+            )
+        )
         validation = _mapping(
             candidate_record.get("validation"),
             field="candidate.validation",
@@ -313,6 +319,7 @@ def _candidate_choice(
         "target_context": _json_copy(_mapping_or_empty(row.get("target_context"))),
         "source_context": _source_context(row, embedding_dim=embedding_dim),
         "candidate_after": _candidate_after(row, embedding_dim=embedding_dim),
+        "change_context": _change_context(row),
         "validation": {
             "validated": True,
             "status": "passed" if passed else "failed",
@@ -339,6 +346,49 @@ def _candidate_choice(
                 row.get("overlapping_passing_candidate_ranks")
             ),
         },
+    }
+
+
+def _change_context(row: Mapping[str, object]) -> dict[str, object]:
+    numeric_fields = (
+        "diff_added_lines",
+        "diff_removed_lines",
+        "diff_changed_lines",
+        "edit_line_span",
+        "edit_replacement_lines",
+        "edit_line_delta",
+        "edit_target_line_distance",
+        "ast_delta_added_count",
+        "ast_delta_removed_count",
+        "ast_delta_net_count",
+    )
+    boolean_fields = (
+        "edit_is_single_line",
+        "edit_within_target_span",
+        "ast_parse_ok",
+    )
+    numeric = {
+        field: row.get(field)
+        for field in numeric_fields
+        if _number_or_none(row.get(field)) is not None
+    }
+    boolean = {
+        field: row.get(field)
+        for field in boolean_fields
+        if isinstance(row.get(field), bool)
+    }
+    ast_features = {
+        "added": _numeric_mapping(row.get("ast_delta_added_features")),
+        "removed": _numeric_mapping(row.get("ast_delta_removed_features")),
+    }
+    available = bool(
+        numeric or boolean or ast_features["added"] or ast_features["removed"]
+    )
+    return {
+        "available": available,
+        "numeric": _json_copy(numeric),
+        "boolean": _json_copy(boolean),
+        "ast_features": _json_copy(ast_features),
     }
 
 
@@ -581,6 +631,32 @@ def _validate_candidate_after(record: Mapping[str, object]) -> None:
             raise ValueError("unavailable candidate_after.embedding must be null")
 
 
+def _validate_change_context(record: Mapping[str, object]) -> None:
+    available = record.get("available")
+    if not isinstance(available, bool):
+        raise ValueError("change_context.available must be a bool")
+    numeric = _mapping(record.get("numeric"), field="change_context.numeric")
+    for value in numeric.values():
+        if _number_or_none(value) is None:
+            raise ValueError("change_context.numeric values must be numeric")
+    boolean = _mapping(record.get("boolean"), field="change_context.boolean")
+    for value in boolean.values():
+        if not isinstance(value, bool):
+            raise ValueError("change_context.boolean values must be bools")
+    ast_features = _mapping(
+        record.get("ast_features"),
+        field="change_context.ast_features",
+    )
+    for side in ("added", "removed"):
+        values = _mapping(
+            ast_features.get(side),
+            field=f"change_context.ast_features.{side}",
+        )
+        for value in values.values():
+            if _number_or_none(value) is None:
+                raise ValueError("change_context.ast_features values must be numeric")
+
+
 def _validate_optional_embedding(record: Mapping[str, object], *, label: str) -> None:
     embedding_available = record.get("embedding_available")
     if not isinstance(embedding_available, bool):
@@ -694,6 +770,22 @@ def _int_list_or_empty(value: object) -> list[int]:
         for item in value
         if isinstance(item, int) and not isinstance(item, bool)
     ]
+
+
+def _number_or_none(value: object) -> int | float | None:
+    if isinstance(value, bool) or not isinstance(value, int | float):
+        return None
+    return value
+
+
+def _numeric_mapping(value: object) -> dict[str, int | float]:
+    if not isinstance(value, Mapping):
+        return {}
+    return {
+        str(key): numeric
+        for key, item in value.items()
+        if (numeric := _number_or_none(item)) is not None
+    }
 
 
 def _float_list(value: object) -> list[float]:

@@ -17,7 +17,7 @@ TRANSITION_ACTION_SCORER_V2_VERSION = "transition-action-future-scorer-v2"
 TRANSITION_ACTION_SCORER_V3_VERSION = "transition-action-future-scorer-v3"
 TRANSITION_ACTION_SCORER_FEATURE_VERSION = "transition-action-local-features-v1"
 TRANSITION_ACTION_SCORER_V2_FEATURE_VERSION = "transition-action-local-features-v2"
-TRANSITION_ACTION_SCORER_V3_FEATURE_VERSION = "transition-action-shadow-features-v3"
+TRANSITION_ACTION_SCORER_V3_FEATURE_VERSION = "transition-action-shadow-features-v4"
 TRANSITION_ACTION_SCORER_V2_CALIBRATION_VERSION = (
     "transition-action-future-scorer-v2-calibration-v1"
 )
@@ -1095,6 +1095,7 @@ def _candidate_v3_features(
     target_context = _mapping(candidate.get("target_context"))
     source_context = _mapping(candidate.get("source_context"))
     candidate_after = _mapping(candidate.get("candidate_after"))
+    change_context = _mapping(candidate.get("change_context"))
     shadow = _mapping(group.get("shadow_outcome"))
     shadow_candidate = _shadow_candidate_for_rank(
         shadow,
@@ -1133,10 +1134,22 @@ def _candidate_v3_features(
     source_embedding = _float_list_or_empty(source_context.get("embedding"))
     after_embedding = _float_list_or_empty(candidate_after.get("embedding"))
     if source_embedding and after_embedding and len(source_embedding) == len(after_embedding):
-        deltas = [abs(after - source) for source, after in zip(source_embedding, after_embedding, strict=True)]
-        _add_feature(features, "embedding_delta_l1_scaled", min(sum(deltas), 50.0) / 50.0)
+        deltas = [
+            abs(after - source)
+            for source, after in zip(source_embedding, after_embedding, strict=True)
+        ]
+        _add_feature(
+            features,
+            "embedding_delta_l1_scaled",
+            min(sum(deltas), 50.0) / 50.0,
+        )
         _add_feature(features, "embedding_delta_mean_abs", sum(deltas) / len(deltas))
-        _add_feature(features, "embedding_cosine_similarity", _cosine_similarity(source_embedding, after_embedding))
+        _add_feature(
+            features,
+            "embedding_cosine_similarity",
+            _cosine_similarity(source_embedding, after_embedding),
+        )
+    _add_change_context_features(features, change_context)
 
     scorer_position = _positive_int_or_none(shadow_candidate.get("scorer_rank_position"))
     if scorer_position is not None:
@@ -1154,6 +1167,55 @@ def _candidate_v3_features(
             if production_position == 1:
                 _add_feature(features, "ablation_production_rank_first", 1.0)
     return features
+
+
+def _add_change_context_features(
+    features: dict[str, float],
+    change_context: Mapping[str, object],
+) -> None:
+    if change_context.get("available") is not True:
+        return
+    _add_feature(features, "change_context_available", 1.0)
+    numeric = _mapping(change_context.get("numeric"))
+    boolean = _mapping(change_context.get("boolean"))
+    ast_features = _mapping(change_context.get("ast_features"))
+
+    for field in (
+        "diff_added_lines",
+        "diff_removed_lines",
+        "diff_changed_lines",
+        "edit_line_span",
+        "edit_replacement_lines",
+        "edit_line_delta",
+        "edit_target_line_distance",
+        "ast_delta_added_count",
+        "ast_delta_removed_count",
+        "ast_delta_net_count",
+    ):
+        value = _float_or_none(numeric.get(field))
+        if value is not None:
+            _add_feature(
+                features,
+                f"change:{field}:scaled",
+                _signed_scaled(value, 20.0),
+            )
+    for field in (
+        "edit_is_single_line",
+        "edit_within_target_span",
+        "ast_parse_ok",
+    ):
+        if boolean.get(field) is True:
+            _add_feature(features, f"change:{field}", 1.0)
+
+    added = _float_mapping(_mapping(ast_features.get("added")))
+    removed = _float_mapping(_mapping(ast_features.get("removed")))
+    for side, values in (("added", added), ("removed", removed)):
+        for name, value in sorted(values.items())[:8]:
+            _add_feature(
+                features,
+                f"change_ast_{side}:{name}",
+                min(max(value, 0.0), 5.0) / 5.0,
+            )
 
 
 def _v2_training_pairs(
@@ -1764,6 +1826,12 @@ def _cosine_similarity(left: Sequence[float], right: Sequence[float]) -> float:
     if left_norm <= 1e-12 or right_norm <= 1e-12:
         return 0.0
     return round(dot / (left_norm * right_norm), 12)
+
+
+def _signed_scaled(value: float, cap: float) -> float:
+    if cap <= 0.0:
+        return 0.0
+    return max(min(value, cap), -cap) / cap
 
 
 def _bool_float(value: object) -> float:

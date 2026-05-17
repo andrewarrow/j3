@@ -468,6 +468,15 @@ def build_parser() -> argparse.ArgumentParser:
         help="retrieval cutoff for top-k exact-match metrics (default: 3)",
     )
     prompt_jepa_eval_parser.add_argument(
+        "--mode",
+        choices=("context", "predicted-target"),
+        default="context",
+        help=(
+            "evaluate context-neighbor retrieval or context-to-target "
+            "prediction followed by target-space retrieval (default: context)"
+        ),
+    )
+    prompt_jepa_eval_parser.add_argument(
         "--target",
         nargs="+",
         default=[

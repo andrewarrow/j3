@@ -46,6 +46,7 @@ from prompt_intents import (
 )
 from prompt_jepa import (
     build_prompt_jepa_index_from_path,
+    evaluate_prompt_jepa_predicted_target_retrieval_from_path,
     evaluate_prompt_jepa_retrieval_from_path,
     load_prompt_jepa_index,
     save_prompt_jepa_index,
@@ -479,13 +480,22 @@ def handle_query_prompt_jepa_index(args: argparse.Namespace) -> int:
 
 
 def handle_eval_prompt_jepa_index(args: argparse.Namespace) -> int:
-    result = evaluate_prompt_jepa_retrieval_from_path(
-        args.labels,
-        embedding_dim=args.embedding_dim,
-        top_k=args.top_k,
-        fields=args.target,
-        miss_limit=args.miss_limit,
-    )
+    if args.mode == "predicted-target":
+        result = evaluate_prompt_jepa_predicted_target_retrieval_from_path(
+            args.labels,
+            embedding_dim=args.embedding_dim,
+            top_k=args.top_k,
+            fields=args.target,
+            miss_limit=args.miss_limit,
+        )
+    else:
+        result = evaluate_prompt_jepa_retrieval_from_path(
+            args.labels,
+            embedding_dim=args.embedding_dim,
+            top_k=args.top_k,
+            fields=args.target,
+            miss_limit=args.miss_limit,
+        )
 
     if args.json:
         print(json.dumps(result.to_record(), indent=2, sort_keys=True))
@@ -493,6 +503,7 @@ def handle_eval_prompt_jepa_index(args: argparse.Namespace) -> int:
 
     print("j3 eval-prompt-jepa-index complete")
     print(f"labels: {args.labels.expanduser().resolve()}")
+    print(f"mode: {args.mode}")
     print(f"train rows: {result.train_rows}")
     print(f"embedding dim: {result.embedding_dim}")
     print(f"top k: {result.top_k}")

@@ -360,6 +360,39 @@ def test_eval_prompt_jepa_index_command_reports_json_metrics(capsys) -> None:
     )
 
 
+def test_eval_prompt_jepa_index_command_reports_predicted_target_metrics(
+    capsys,
+) -> None:
+    labels = "examples/prompt_intents/greenshot_7_intents.jsonl"
+
+    assert (
+        main(
+            [
+                "eval-prompt-jepa-index",
+                "--labels",
+                labels,
+                "--embedding-dim",
+                "64",
+                "--top-k",
+                "3",
+                "--mode",
+                "predicted-target",
+                "--json",
+            ]
+        )
+        == 0
+    )
+
+    output = json.loads(capsys.readouterr().out)
+    assert output["schema_version"] == "prompt-jepa-predicted-target-eval-v1"
+    assert output["mode"] == "predicted-target"
+    assert output["predictor"]["kind"] == "nearest_context_delta"
+    assert output["train_rows"] > 0
+    assert set(output["splits"]) == {"validation", "test"}
+    validation = output["splits"]["validation"]
+    assert validation["field_metrics"]["expected_action"]["total"] == validation["total"]
+
+
 def test_eval_prompt_jepa_index_command_can_print_misses(capsys) -> None:
     labels = "examples/prompt_intents/greenshot_7_intents.jsonl"
 

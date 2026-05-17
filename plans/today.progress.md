@@ -8,15 +8,15 @@ new implementation facts change the 24-hour plan itself. Record any
 ## Status
 
 - Current phase: reset to Prompt-JEPA encoder and index implementation
-- Completed iterations: 3 for this reset
+- Completed iterations: 4 for this reset
 - Passing focused tests: `pytest tests/test_cli.py -q`;
   `pytest tests/test_prompt_jepa.py -q`;
   `python -m py_compile prompt_jepa.py cli/handlers.py cli/parser.py cli/__init__.py`;
   `git diff --check`
-- Latest implementation commit: `8c26fe8`
+- Latest implementation commit: pending iteration 4 commit
 - Current blocker: none
-- Next task: add the first JEPA-style context-to-target embedding predictor,
-  train it on train rows, and evaluate target-space retrieval on held-out rows.
+- Next task: compare context-neighbor and predicted-target residuals, then
+  improve target-space domain retrieval without changing production routing.
 
 ## Worker Iteration Template
 
@@ -138,4 +138,42 @@ Use this shape for each worker handoff:
 - Push: succeeded to `main`
 - Next: add the first JEPA-style context-to-target embedding predictor, train
   it on train rows, and evaluate target-space retrieval on held-out rows.
+- Blockers: none.
+
+### Iteration 4: Prompt-JEPA context-to-target predictor
+
+- Worker: Codex worker iteration 4
+- Goal: add the first JEPA-style context-to-target embedding predictor, train
+  it on train rows, and evaluate target-space retrieval on held-out rows.
+- Files changed: `prompt_jepa.py`, `cli/parser.py`, `cli/handlers.py`,
+  `tests/test_prompt_jepa.py`, `tests/test_cli.py`,
+  `plans/today.progress.md`
+- Tests run: `pytest tests/test_prompt_jepa.py -q` passed with 9 tests;
+  `pytest tests/test_cli.py -q` passed with 32 tests;
+  `python -m py_compile prompt_jepa.py cli/handlers.py cli/parser.py cli/__init__.py`
+  passed; `git diff --check` passed.
+- Metrics: predicted-target mode on local fixture
+  `examples/prompt_intents/greenshot_7_intents.jsonl` with top-k 3 and 256
+  dimensions used 53 train rows. Validation: expected_action 16/16 top1 and
+  top3, repo_mode 16/16 top1 and top3, domain 16/16 top1 and top3,
+  unsupported_requirement_family 16/16 top1 and top3. Test: expected_action
+  18/18 top1 and top3, repo_mode 18/18 top1 and top3, domain 18/18 top1 and
+  top3, unsupported_requirement_family 17/18 top1 and top3.
+- Metrics: predicted-target mode on `../prompts/coding_agent_prompts_seed.jsonl`
+  was available and ran with top-k 3 and 256 dimensions using 53 train rows.
+  Validation: expected_action 8/15 top1 and 9/15 top3, repo_mode 10/15 top1 and
+  11/15 top3, domain 1/15 top1 and 2/15 top3,
+  unsupported_requirement_family 15/15 top1 and top3. Test: expected_action
+  9/12 top1 and top3, repo_mode 10/12 top1 and top3, domain 0/12 top1 and
+  top3, unsupported_requirement_family 12/12 top1 and top3.
+- Result: implemented explicit `j3.prompt-jepa-predictor.v0` artifacts using
+  nearest-context delta prediction from context embeddings into target
+  embeddings, save/load validation, target-space retrieval over train target
+  embeddings, predicted-target evaluation metrics, and
+  `eval-prompt-jepa-index --mode predicted-target`. Production `implement` and
+  `change` behavior remains unchanged.
+- Commit: pending; final worker report will include the created commit hash.
+- Push: pending.
+- Next: compare context-neighbor and predicted-target residuals, then improve
+  domain retrieval in target space without wiring retrieval into production.
 - Blockers: none.

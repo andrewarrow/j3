@@ -12,9 +12,14 @@ from prompt_jepa import (
     build_prompt_jepa_index,
     encode_prompt_context,
     encode_prompt_target,
+    evaluate_prompt_jepa_predicted_target_retrieval,
     evaluate_prompt_jepa_retrieval,
+    load_prompt_jepa_predictor,
     load_prompt_jepa_index,
+    query_prompt_jepa_predicted_target,
+    save_prompt_jepa_predictor,
     save_prompt_jepa_index,
+    train_prompt_jepa_predictor,
 )
 from request_spec import parse_request_to_spec
 
@@ -175,6 +180,66 @@ def test_prompt_jepa_retrieval_eval_scores_held_out_splits() -> None:
     assert test.field_metrics["repo_mode"].total == test.total
     assert all(miss.nearest_neighbor_id for miss in test.misses)
     assert all(miss.expected for miss in test.misses)
+
+
+def test_prompt_jepa_predictor_round_trips_and_queries_target_space(
+    tmp_path: Path,
+) -> None:
+    records = load_prompt_intent_records(GREENSHOT_7_INTENTS)
+    index = build_prompt_jepa_index(records, embedding_dim=64)
+    predictor = train_prompt_jepa_predictor(index, train_split="train")
+    path = tmp_path / "prompt-jepa-predictor.json"
+
+    save_prompt_jepa_predictor(predictor, path)
+    loaded = load_prompt_jepa_predictor(path)
+    results = query_prompt_jepa_predicted_target(
+        index,
+        loaded,
+        "make me a simple cli calc",
+        top_k=3,
+    )
+
+    assert loaded.to_record() == predictor.to_record()
+    assert loaded.to_record()["format"] == "j3.prompt-jepa-predictor.v0"
+    assert loaded.to_record()["kind"] == "nearest_context_delta"
+    assert loaded.to_record()["train_rows"] == sum(
+        1 for row in records if row.split == "train"
+    )
+    assert results[0].split == "train"
+    assert results[0].target_metadata["expected_action"] == "emit_request_spec"
+    assert len(
+        loaded.predict_target_embedding(
+            index.rows[0].context_embedding,
+            index=index,
+        )
+    ) == 64
+
+
+def test_prompt_jepa_predicted_target_eval_scores_held_out_splits() -> None:
+    records = load_prompt_intent_records(GREENSHOT_7_INTENTS)
+
+    result = evaluate_prompt_jepa_predicted_target_retrieval(
+        records,
+        embedding_dim=128,
+        top_k=3,
+        miss_limit=5,
+    )
+    record = result.to_record()
+
+    assert record["schema_version"] == "prompt-jepa-predicted-target-eval-v1"
+    assert record["mode"] == "predicted-target"
+    assert record["predictor"]["format"] == "j3.prompt-jepa-predictor.v0"
+    assert record["predictor"]["kind"] == "nearest_context_delta"
+    assert result.train_rows == sum(1 for row in records if row.split == "train")
+    assert set(result.split_results) == {"validation", "test"}
+
+    validation = result.split_results["validation"]
+    expected_action = validation.field_metrics["expected_action"]
+    assert validation.total == sum(1 for row in records if row.split == "validation")
+    assert expected_action.total == validation.total
+    assert 0 <= expected_action.top_1_correct <= expected_action.total
+    assert expected_action.top_1_correct <= expected_action.top_k_correct
+    assert expected_action.top_k_correct <= expected_action.total
 
 
 def test_prompt_jepa_target_encoder_accepts_structured_spec_records() -> None:

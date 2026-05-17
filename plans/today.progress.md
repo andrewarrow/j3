@@ -8,6 +8,7 @@ This file is the live progress log for `plans/today.md`. Keep
 - Current phase: shadow-to-gate transition scoring.
 - Completed iterations for this reset: 3.
 - Latest relevant commits:
+  - `e65e38d` added the transition shadow outcome training surface.
   - `a85b258` documented and smoked the real shadow eval loop.
   - `f962018` closed the previous transition scoring queue.
   - `106e1ed` documented transition bench product modes.
@@ -203,7 +204,7 @@ Use this shape for each worker handoff:
   improve/regress/same labels, source traceability, and zero hosted usage
   fields. Advice-only and outcome-only groups are retained with explicit
   unjoined reasons.
-- Commit: pending in this worker report.
-- Push: pending in this worker report.
+- Commit: `e65e38d` (`Add transition shadow outcomes`).
+- Push: pushed to `origin/main` (`e65e38d`).
 - Next: train/evaluate a held-out V3 scorer from shadow outcomes.
 - Blockers: none.

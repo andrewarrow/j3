@@ -1480,3 +1480,47 @@ Decision: no ranker feature or action expansion is justified by this refresh.
 Continue dataset growth with another real-package-derived repair shape from a
 new or underrepresented fixture domain, then refresh outcomes and rerun the
 same held-out validation before ranker work.
+
+### Post-Dotenv Dataset Growth Inspection
+
+Inspection date: 2026-05-17.
+
+New source:
+
+- Fixture domain: `envwrite`
+- Task: `dotenv_auto_quote_alnum_value`
+- Source: `theskumar/python-dotenv` PR 330 / commit `b3c3195`
+- Repair shape: `quote_mode="auto"` should leave alphanumeric values unquoted,
+  matching the real `set_key` behavior change.
+- Action: existing `change_dict_value`; no new action family was needed.
+
+GreenShot-6 outcome refresh:
+
+| Slice | Tasks | Solved | Pass@1 | Rows | Passing rows | Preferred-positive rows |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| GreenShot-6 ranked explore | 46 | 46/46 | 32/46 | 367 | 74 | 46 |
+
+The new dotenv-derived task is a raw hard negative: it solves with the
+preferred `change_dict_value auto_alnum: True -> False` row, but only after
+earlier unrelated candidates in raw checkpoint order.
+
+Validation result after rerunning the same GreenShot-6 `split: test` holdout:
+
+| Slice | Plans | Solved | Pass@1 | Positive@1 | Avg first passing index |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| GreenShot-6 `split: test` holdout | 7 | 7/7 | 6/7 | 6/7 | 1.14 |
+
+Residual held-out miss:
+
+| Task | Trained rank 1 | Preferred / first valid repair | Gap |
+| --- | --- | --- | --- |
+| `cookie_host_prefix_dict_value` | false `change_literal`, `host` -> `__Host-` | rank 2 preferred `change_dict_value`, `host: "__Host"` -> `"__Host-"` | literal token-overlap and call-graph features outweigh the scalar dictionary-value assertion-delta signal. |
+
+The preferred row still has the exact scalar assertion-delta features, but the
+false literal row gets strong generic hint/token/call-graph rewards. This is a
+fresh ranking residual, not a missing-action or preferred-positive-row gap.
+
+Decision: do not tune broad action/string/boolean weights from this single
+refresh. The next step should inspect whether there is a narrow non-leaky
+signal or independent non-held-out coverage for literal-vs-dictionary-value
+decoys in the same API surface before changing ranker features.

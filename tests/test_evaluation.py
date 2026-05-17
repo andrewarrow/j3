@@ -99,7 +99,7 @@ def test_load_greenshot_6_tasks() -> None:
     tasks = load_tasks(Path("examples/greenshot_6"))
     by_name = {task.name: task for task in tasks}
 
-    assert len(tasks) == 45
+    assert len(tasks) == 46
     assert tasks[0].name == "core_metadata_version_dict_value"
     assert tasks[0].family == "mapping_value"
     assert tasks[0].source_type == "mutation"
@@ -495,6 +495,18 @@ def test_load_greenshot_6_tasks() -> None:
         "params": {
             "from": "The PreparedReqest being sent over the connection.",
             "to": "The PreparedRequest being sent over the connection.",
+        },
+    }
+    assert by_name["dotenv_auto_quote_alnum_value"].split == "train"
+    assert by_name["dotenv_auto_quote_alnum_value"].source_type == "git_history"
+    assert by_name["dotenv_auto_quote_alnum_value"].preferred_patch == {
+        "file_path": "envwrite/writer.py",
+        "action": "change_dict_value",
+        "symbol": "quote_policy",
+        "params": {
+            "key": "auto_alnum",
+            "from": True,
+            "to": False,
         },
     }
     assert by_name["cookie_default_secure_flag_dict_value"].split == "test"

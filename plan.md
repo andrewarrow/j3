@@ -1085,12 +1085,39 @@ Recent work:
   features from this state. The next useful step remains dataset growth from
   another real-package-derived repair using an existing action family where
   possible.
+- GreenShot-6 now includes a twenty-seventh real-package-derived fixture
+  domain, `envwrite`, with one `git_history` task modeled on
+  `theskumar/python-dotenv` PR 330 / commit `b3c3195`. The task
+  `dotenv_auto_quote_alnum_value` repairs auto quote-mode behavior so
+  alphanumeric values remain unquoted, using the existing `change_dict_value`
+  action family.
+- Focused loader/generator coverage passed for the python-dotenv-derived task:
+  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
+  `pytest tests/test_patching.py::test_patch_solves_dotenv_auto_quote_alnum_value -q`.
+- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
+  adding `envwrite`. The persisted dataset at
+  `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` now covers 46
+  tasks and 367 tested candidates. Ranked eval solved all 46 tasks with
+  `pass@1=32/46` and average candidates `7.98`; the new dotenv-derived task is
+  a raw hard negative that solves with the preferred `change_dict_value`
+  candidate after earlier unrelated candidates.
+- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
+  the envwrite outcome refresh. Validation is solved=7/7, pass@1=6/7,
+  positive@1=6/7, and avg_first_passing_index=1.1428571428571428. Training used
+  447 rows, 82 passing rows, 387 training pairs, 811 features, and 6 margin
+  violations.
+- The refreshed held-out residual was inspected and summarized in
+  `HARD_NEGATIVES.md`. The reopened miss is
+  `cookie_host_prefix_dict_value`: a false `change_literal host -> __Host-`
+  ranks above the preferred `change_dict_value host: "__Host" -> "__Host-"`
+  repair. This is ranking signal, not a missing-action or preferred-positive
+  row gap. Do not tune broad action/string/boolean weights from this state.
 
 Last focused verification:
 
 ```bash
 pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q
-pytest tests/test_patching.py::test_patch_solves_requests_prepared_request_docline_typo -q
+pytest tests/test_patching.py::test_patch_solves_dotenv_auto_quote_alnum_value -q
 python cli.py eval \
   --tasks examples/greenshot_6 \
   --checkpoint runs/apache-python-git/model.json \
@@ -1233,9 +1260,9 @@ GreenShot-6 outcome collection result:
 
 ```text
 ranked, runs/apache-python-git/model.json, explore-after-pass=5:
-  solved=45/45 pass@1=32/45 avg_candidates=7.38
-  rows=332 passing_rows=73 preferred_positive_rows=45
-  source_type pass@1: git_history=17/27 mutation=15/18
+  solved=46/46 pass@1=32/46 avg_candidates=7.98
+  rows=367 passing_rows=74 preferred_positive_rows=46
+  source_type pass@1: git_history=17/28 mutation=15/18
 ```
 
 Treat this as a smoke check, not a benchmark claim.
@@ -1254,10 +1281,10 @@ GreenShot-6 test-slice ranker validation result:
 
 ```text
 train-ranker, holdout-task includes all GreenShot-6 split:test tasks:
-  training rows=412 passing_rows=81 tasks=58 plans=58 pairs=353
-  training_accuracy=1.000 margin_violations=5 features=834
-  validation solved=7/7 pass@1=7/7 positive@1=7/7
-  validation avg_first_passing_index=1.0
+  training rows=447 passing_rows=82 tasks=59 plans=59 pairs=387
+  training_accuracy=0.992 margin_violations=6 features=811
+  validation solved=7/7 pass@1=6/7 positive@1=6/7
+  validation avg_first_passing_index=1.1428571428571428
 ```
 
 ## Next Right Things
@@ -1267,15 +1294,15 @@ Keep this section as the live queue. When work is completed, move it to
 
 Immediate next sequence:
 
-1. Add another real-package-derived GreenShot-6 task or small fixture domain.
-   Prefer a repair shape that uses an existing action family and creates useful
-   ranking or outcome-quality signal.
-2. Add focused loader/generator coverage for the new task, then refresh
-   GreenShot-6 outcomes with `--explore-after-pass 5`.
-3. Rerun the same GreenShot-6 `split: test` held-out ranker validation and
-   inspect any raw or trained residuals before adding metadata, tasks, or broad
-   weights. Do not tune broad action/string/boolean weights or add
-   pass/preferred-label features from the current clean holdout state.
+1. Inspect the reopened `cookie_host_prefix_dict_value` held-out residual in
+   the refreshed outcome rows and saved ranker scores. The current shape is a
+   false `change_literal host -> __Host-` above the preferred
+   `change_dict_value host: "__Host" -> "__Host-"`.
+2. Prefer a narrow non-leaky signal or independent non-held-out coverage for
+   literal-vs-dictionary-value decoys only if the inspection justifies it.
+3. If no narrow fix is justified, continue dataset growth with another
+   real-package-derived GreenShot-6 task using an existing action family, then
+   refresh outcomes and rerun the same `split: test` held-out validation.
 
 ### 1. Make GreenShot-6 Real
 
@@ -1438,17 +1465,18 @@ Start neural/JEPA work only when:
 
 ## Handoff Recommendation
 
-The next context window should continue dataset growth by adding another
-real-package-derived GreenShot-6 task or small fixture domain. Do not tune broad
-handcrafted weights or add pass/preferred-label features from this state. The
-current GreenShot-6 `split: test` held-out validation is clean after the
-playwrightlog outcome refresh.
+The next context window should start from the current envwrite refresh, not the
+older playwrightlog/requestdocs state. GreenShot-6 now has 46 tasks and the
+same `split: test` held-out validation is solved but no longer clean:
+pass@1=6/7 and positive@1=6/7. Do not tune broad handcrafted weights or add
+pass/preferred-label features from this state.
 
 Immediate next sequence:
 
-1. Add the next real-package-derived GreenShot-6 task using an existing action
-   family where possible.
-2. Run focused loader/generator tests, refresh GreenShot-6 outcomes, and rerun
-   the same `split: test` held-out ranker validation.
-3. Inspect any new residuals and prefer narrow non-leaky metadata or independent
-   coverage over broad weight tuning.
+1. Inspect the `cookie_host_prefix_dict_value` residual and decide whether a
+   narrow non-leaky signal or independent coverage is warranted for the false
+   literal-vs-preferred-dictionary-value shape.
+2. If making a narrow change, run focused ranker/outcome tests, refresh
+   GreenShot-6 outcomes, and rerun the same `split: test` validation.
+3. If not making a narrow change, continue dataset growth with another
+   real-package-derived task using an existing action family where possible.

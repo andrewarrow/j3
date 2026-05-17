@@ -1209,6 +1209,31 @@ def test_patch_solves_requests_prepared_request_docline_typo(tmp_path) -> None:
     assert "PreparedRequest being sent over the connection" in result.selected.patched_source
 
 
+def test_patch_solves_dotenv_auto_quote_alnum_value(tmp_path) -> None:
+    repo = tmp_path / "greenshot_6"
+    shutil.copytree("examples/greenshot_6", repo)
+
+    result = plan_and_maybe_apply_patch(
+        repo=repo,
+        test_command=(
+            "python -m pytest "
+            "tests/test_envwrite.py::test_auto_quote_mode_leaves_alphanumeric_values_unquoted"
+        ),
+        dry_run=True,
+        timeout_seconds=10,
+    )
+
+    assert result.selected is not None
+    assert result.selected.file_path == "envwrite/writer.py"
+    assert result.selected.action.kind.value == "change_dict_value"
+    assert result.selected.action.params == {
+        "key": "auto_alnum",
+        "from": True,
+        "to": False,
+    }
+    assert '"auto_alnum": False' in result.selected.patched_source
+
+
 def test_generate_membership_operator_with_literal_needle_decoy(tmp_path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()

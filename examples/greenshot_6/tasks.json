@@ -793,6 +793,29 @@
     }
   },
   {
+    "name": "dotenv_auto_quote_alnum_value",
+    "family": "env_file_quoting",
+    "source_type": "git_history",
+    "split": "train",
+    "repo": ".",
+    "test": "python -m pytest tests/test_envwrite.py::test_auto_quote_mode_leaves_alphanumeric_values_unquoted",
+    "source": {
+      "repo": "theskumar/python-dotenv",
+      "commit": "b3c3195",
+      "pr": 330
+    },
+    "preferred": {
+      "file_path": "envwrite/writer.py",
+      "action": "change_dict_value",
+      "symbol": "quote_policy",
+      "params": {
+        "key": "auto_alnum",
+        "from": true,
+        "to": false
+      }
+    }
+  },
+  {
     "name": "cookie_default_secure_flag_dict_value",
     "family": "mapping_value",
     "source_type": "mutation",

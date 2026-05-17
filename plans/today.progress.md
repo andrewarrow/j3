@@ -8,16 +8,16 @@ new implementation facts change the 24-hour plan itself. Record any
 ## Status
 
 - Current phase: reset to Prompt-JEPA encoder and index implementation
-- Completed iterations: 6 for this reset
+- Completed iterations: 7 for this reset
 - Passing focused tests: `pytest tests/test_cli.py -q`;
   `pytest tests/test_prompt_jepa.py -q`;
   `python -m py_compile prompt_jepa.py cli/handlers.py cli/parser.py cli/__init__.py`;
   `git diff --check`
-- Latest implementation commit: `4df56c1`
+- Latest implementation commit: this iteration commit
 - Current blocker: none
-- Next task: build an outcome index from accumulated real `--record` rows and
-  inspect nearest-neighbor quality before considering any retrieval-assisted
-  planner proposal path.
+- Next task: design an evaluation-only retrieval-assisted planner proposal
+  dry run from real outcome-index neighbors, without changing production
+  `implement` or `change` routing.
 
 ## Worker Iteration Template
 
@@ -257,4 +257,45 @@ Use this shape for each worker handoff:
 - Next: build an outcome index from accumulated real `--record` rows and
   inspect nearest-neighbor quality before considering any retrieval-assisted
   planner proposal path.
+- Blockers: none.
+
+### Iteration 7: Real outcome index quality smoke
+
+- Worker: Codex worker iteration 7
+- Goal: build an outcome index from accumulated real `--record` rows and
+  inspect nearest-neighbor quality before considering any retrieval-assisted
+  planner proposal path.
+- Files changed: `tests/test_cli.py`, `plans/today.progress.md`
+- Tests run: `pytest tests/test_cli.py::test_prompt_jepa_index_command_queries_real_recorded_outcomes -q`
+  passed with 1 test; `pytest tests/test_cli.py -q` passed with 35 tests;
+  `pytest tests/test_prompt_jepa.py -q` passed with 12 tests;
+  `python -m py_compile prompt_jepa.py cli/handlers.py cli/parser.py cli/__init__.py`
+  passed; `git diff --check` passed.
+- Smoke commands: used a temporary `/tmp/j3-outcome-index-smoke.*` workspace,
+  appended three real rows with `python cli.py implement --prompt "make me a
+  simple cli calc" --out "$tmpdir/calc" --record "$records"` exit 0,
+  `python cli.py implement --prompt "make me a complex graphic calc app" --out
+  "$tmpdir/blocked-graphic" --record "$records"` expected exit 1, and
+  `python cli.py change --repo "$tmpdir/calc" --prompt "add exponent support"
+  --record "$records"` exit 0. Built the index with
+  `python cli.py build-prompt-jepa-index --records "$records" --out "$index"
+  --embedding-dim 128`; `python -m json.tool "$index" >/dev/null` passed.
+- Query observations: `build a simple command line calculator` returned
+  `request-repo-attempt-0001` first with score 0.275073; `add power operator to
+  the calculator` returned `existing-repo-change-attempt-0003` first with score
+  0.131788; `build a graphical calculator app` returned the blocked graphical
+  `request-repo-attempt-0002` first with score 0.264297. The indexed rows
+  preserved outcome status and pass/fail tags: built/passed for the simple
+  calculator row, blocked/failed for the graphical row, and validated/passed
+  for the exponent change row.
+- Result: added a focused CLI integration test that creates real
+  `implement/change --record` outcome rows in a temp directory, builds a
+  Prompt-JEPA outcome index, and asserts nearest-neighbor quality for create,
+  change, and blocked graphical prompts. No generated repos, temp paths, or
+  index fixtures were committed. Production routing remains unchanged.
+- Commit: this iteration commit
+- Push: succeeded to `main`
+- Next: design an evaluation-only retrieval-assisted planner proposal dry run
+  from real outcome-index neighbors, without changing production `implement` or
+  `change` routing.
 - Blockers: none.

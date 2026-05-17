@@ -382,6 +382,141 @@ def test_build_prompt_jepa_index_command_accepts_outcome_records(
     )
 
 
+def test_prompt_jepa_index_command_queries_real_recorded_outcomes(
+    capsys,
+    tmp_path,
+) -> None:
+    repo_path = tmp_path / "calc"
+    blocked_path = tmp_path / "graphic"
+    records_path = tmp_path / "real-outcomes.jsonl"
+    index_path = tmp_path / "real-outcome-index.json"
+
+    assert (
+        main(
+            [
+                "implement",
+                "--prompt",
+                "make me a simple cli calc",
+                "--out",
+                str(repo_path),
+                "--record",
+                str(records_path),
+            ]
+        )
+        == 0
+    )
+    capsys.readouterr()
+
+    assert (
+        main(
+            [
+                "implement",
+                "--prompt",
+                "make me a complex graphic calc app",
+                "--out",
+                str(blocked_path),
+                "--record",
+                str(records_path),
+            ]
+        )
+        == 1
+    )
+    capsys.readouterr()
+
+    assert (
+        main(
+            [
+                "change",
+                "--repo",
+                str(repo_path),
+                "--prompt",
+                "add exponent support",
+                "--record",
+                str(records_path),
+            ]
+        )
+        == 0
+    )
+    capsys.readouterr()
+
+    rows = _jsonl_rows(records_path)
+    assert [row["record_kind"] for row in rows] == [
+        "greenshot_7_request_to_repo_attempt",
+        "greenshot_7_request_to_repo_attempt",
+        "greenshot_7_existing_repo_change_attempt",
+    ]
+    assert [row["passed"] for row in rows] == [True, False, True]
+    assert rows[1]["build_result"]["status"] == "blocked"
+
+    assert (
+        main(
+            [
+                "build-prompt-jepa-index",
+                "--records",
+                str(records_path),
+                "--out",
+                str(index_path),
+                "--embedding-dim",
+                "128",
+            ]
+        )
+        == 0
+    )
+
+    output = capsys.readouterr().out
+    index_data = json.loads(index_path.read_text(encoding="utf-8"))
+    assert "rows: 3" in output
+    assert [row["id"] for row in index_data["rows"]] == [
+        "request-repo-attempt-0001",
+        "request-repo-attempt-0002",
+        "existing-repo-change-attempt-0003",
+    ]
+    assert index_data["rows"][1]["target"]["outcome_status"] == "blocked"
+    assert index_data["rows"][1]["target"]["passed"] is False
+
+    cases = [
+        (
+            "build a simple command line calculator",
+            "request-repo-attempt-0001",
+            "emit_request_spec",
+        ),
+        (
+            "add power operator to the calculator",
+            "existing-repo-change-attempt-0003",
+            "emit_existing_repo_change_spec",
+        ),
+        (
+            "build a graphical calculator app",
+            "request-repo-attempt-0002",
+            "emit_request_spec",
+        ),
+    ]
+    for prompt, expected_id, expected_action in cases:
+        assert (
+            main(
+                [
+                    "query-prompt-jepa-index",
+                    "--index",
+                    str(index_path),
+                    "--prompt",
+                    prompt,
+                    "--top-k",
+                    "3",
+                ]
+            )
+            == 0
+        )
+        query_output = capsys.readouterr().out
+        first_result = next(
+            line.strip()
+            for line in query_output.splitlines()
+            if line.strip().startswith("1. ")
+        )
+        assert f"id={expected_id}" in first_result
+        assert f"expected_action={expected_action}" in first_result
+        assert "domain=calculator" in first_result
+
+
 def test_query_prompt_jepa_index_command_prints_top_rows(capsys, tmp_path) -> None:
     labels = "examples/prompt_intents/greenshot_7_intents.jsonl"
     out_path = tmp_path / "prompt-jepa-index.json"

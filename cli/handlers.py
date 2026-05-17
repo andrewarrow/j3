@@ -22,6 +22,13 @@ from cli.progress import (
 )
 from diagnostics_compare import compare_diagnostics, format_diagnostics_comparison
 from evaluation import evaluate_tasks, write_candidate_outcomes, write_eval_diagnostics
+from existing_repo_change import (
+    ExistingRepoChangeError,
+    append_existing_repo_change_attempt,
+    apply_existing_repo_change,
+    parse_existing_repo_change_to_spec,
+    plan_existing_repo_change,
+)
 from fixing import run_fix_workflow
 from greenfield import (
     BuildResult,
@@ -123,6 +130,53 @@ def handle_implement(args: argparse.Namespace) -> int:
 
     if validation["status"] == "failed":
         return int(validation["exit_code"]) or 1
+    return 0
+
+
+def handle_change(args: argparse.Namespace) -> int:
+    repo = args.repo.expanduser().resolve()
+    intent = predict_prompt_intent(args.prompt)
+
+    try:
+        spec = parse_existing_repo_change_to_spec(args.prompt, intent=intent)
+        plan = plan_existing_repo_change(spec, repo)
+        result = apply_existing_repo_change(
+            plan,
+            repo,
+            validate=not args.no_validate,
+        )
+    except ExistingRepoChangeError as error:
+        print("j3 change blocked")
+        print("status: blocked")
+        print(f"repo: {repo}")
+        print(f"reason: {error}")
+        return 1
+
+    if args.record:
+        append_existing_repo_change_attempt(
+            args.record,
+            raw_prompt=args.prompt,
+            spec=spec,
+            plan=plan,
+            result=result,
+        )
+
+    print("j3 change complete")
+    print(f"task type: {spec.task_type}")
+    print(f"status: {result.status}")
+    print(f"domain: {spec.domain}")
+    print(f"repo: {repo}")
+    print(f"features added: {', '.join(spec.features_to_add)}")
+    print("files changed:")
+    if result.files_changed:
+        for path in result.files_changed:
+            print(f"  {path}")
+    else:
+        print("  none")
+    print(_format_validation_result(result.validation))
+
+    if result.validation["status"] == "failed":
+        return int(result.validation["exit_code"]) or 1
     return 0
 
 

@@ -7,6 +7,7 @@ from pathlib import Path
 
 from cli.handlers import (
     handle_actions,
+    handle_change,
     handle_compare_diagnostics,
     handle_eval,
     handle_fix,
@@ -80,6 +81,38 @@ def build_parser() -> argparse.ArgumentParser:
         help="append one prompt/spec/action/outcome JSONL row to this path",
     )
     implement_parser.set_defaults(handler=handle_implement)
+
+    change_parser = subparsers.add_parser(
+        "change",
+        help="modify a supported existing repo from a prompt",
+        description=(
+            "Parse a supported existing-repo prompt into "
+            "existing-repo-change-spec-v1, apply structured calculator actions, "
+            "and validate the changed project."
+        ),
+    )
+    change_parser.add_argument(
+        "--repo",
+        type=Path,
+        required=True,
+        help="generated calculator repo to inspect and modify",
+    )
+    change_parser.add_argument(
+        "--prompt",
+        required=True,
+        help='coding-agent change prompt, for example "add exponent support"',
+    )
+    change_parser.add_argument(
+        "--no-validate",
+        action="store_true",
+        help="apply the change without running the repo pytest validation",
+    )
+    change_parser.add_argument(
+        "--record",
+        type=Path,
+        help="append one existing-repo prompt/spec/action/outcome JSONL row",
+    )
+    change_parser.set_defaults(handler=handle_change)
 
     greenshot_7_parser = subparsers.add_parser(
         "greenshot-7",

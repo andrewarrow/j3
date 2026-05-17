@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from cli.handlers import (
     handle_actions,
+    handle_change,
     handle_compare_diagnostics,
     handle_eval,
     handle_fix,
@@ -20,6 +21,7 @@ from cli.parser import build_parser
 __all__ = [
     "build_parser",
     "handle_actions",
+    "handle_change",
     "handle_compare_diagnostics",
     "handle_eval",
     "handle_fix",

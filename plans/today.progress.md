@@ -7,19 +7,20 @@ new implementation facts change the 24-hour plan itself. Record any
 
 ## Status
 
-- Current phase: prompt-intent prediction boundary wired into request-spec
-  blocking for unsupported graphical calculator requests
-- Completed iterations: 2
+- Current phase: existing-repo calculator power change path implemented
+- Completed iterations: 3
 - Passing focused tests:
   - `pytest tests/test_prompt_intents.py -q`
   - `pytest tests/test_prompt_intents.py tests/test_request_spec.py -q`
   - `pytest tests/test_prompt_intents.py tests/test_request_spec.py tests/test_cli.py -q`
+  - `pytest tests/test_existing_repo_change.py -q`
+  - `pytest tests/test_prompt_intents.py tests/test_request_spec.py tests/test_existing_repo_change.py tests/test_cli.py -q`
   - `git diff --check`
   - `python -m py_compile prompt_intents.py request_spec.py cli/handlers.py`
-- Latest implementation commit: `7f7b73d44b49d5c2fee9c09987572544b2324d1e`
+  - `python -m py_compile existing_repo_change.py cli/handlers.py cli/parser.py cli/__init__.py`
+- Latest implementation commit: pending worker iteration 3 commit
 - Current blocker: none
-- Next task: add the existing-repo calculator change spec/command path for
-  power/exponent support
+- Next task: watcher to select the next active slice from `plans/today.md`
 
 ## Worker Iteration Template
 
@@ -148,4 +149,54 @@ Use this shape for each worker handoff:
 - Push: succeeded to `main`
 - Next: implement the existing-repo calculator change spec/command path for
   exponent/power support.
+- Blockers: none
+
+### Iteration 3: Existing-Repo Calculator Power Change
+
+- Worker: Codex
+- Goal: add the existing-repo calculator change spec/command path for
+  exponent/power support.
+- Files changed:
+  - `existing_repo_change.py`
+  - `cli/handlers.py`
+  - `cli/parser.py`
+  - `cli/__init__.py`
+  - `pyproject.toml`
+  - `tests/test_existing_repo_change.py`
+  - `tests/test_cli.py`
+  - `plans/today.progress.md`
+- Tests run:
+  - `pytest tests/test_existing_repo_change.py -q` -> passed, 5 tests
+  - `pytest tests/test_cli.py -q` -> passed, 24 tests
+  - `pytest tests/test_prompt_intents.py tests/test_request_spec.py tests/test_existing_repo_change.py tests/test_cli.py -q`
+    -> passed, 39 tests
+  - `python -m py_compile existing_repo_change.py cli/handlers.py cli/parser.py cli/__init__.py`
+    -> passed
+  - `git diff --check` -> passed
+  - Temp repo smoke:
+    - `python cli.py implement --prompt "make me a simple cli calc" --out <tmp>/repo`
+      -> passed and validated generated tests
+    - `python cli.py change --repo <tmp>/repo --prompt "add exponent support"`
+      -> passed and validated generated tests
+    - `python <tmp>/repo/calculator.py 2 ^ 3` -> printed `8`
+    - `python <tmp>/repo/calculator.py 2 power 3` -> printed `8`
+    - argument-vector smoke for `["2", "**", "3"]` -> printed `8`
+    - `python <tmp>/repo/calculator.py 2 '**' 3` -> printed `8`
+    - `python -m pytest tests/test_calculator_cli.py -q` in the changed repo
+      -> passed, 2 tests
+- Result:
+  - Added `existing-repo-change-spec-v1`, structured action plan, result, and
+    JSONL attempt rows for the narrow calculator power feature.
+  - Added `j3 change --repo <repo> --prompt "add exponent support"` and
+    `--no-validate`/`--record` support.
+  - The command consumes prompt-intent predictions for labeled existing-repo
+    calculator power prompts, rejects unsupported prompts, and rejects repos
+    that do not match the generated calculator shape.
+  - The change updates `calculator.py` with `power`, `pow`, `^`, and `**`
+    aliases plus `left ** right` dispatch, updates generated tests for all
+    three required CLI examples, and moves the unknown-operator case away from
+    `power`.
+- Commit: pending worker iteration 3 commit
+- Push: pending
+- Next: watcher to select the next active slice from `plans/today.md`.
 - Blockers: none

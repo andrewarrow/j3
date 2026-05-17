@@ -27,6 +27,7 @@ def test_help_menu_prints_project_summary(capsys) -> None:
     output = capsys.readouterr().out
     assert "local-first JEPA coding agent" in output
     assert "implement" in output
+    assert "change" in output
     assert "greenshot-7" in output
     assert "patch" in output
     assert "fix" in output
@@ -238,6 +239,103 @@ def test_implement_command_blocks_clarification_without_calculator_files(
     assert "Should this be a basic CLI calculator" in output
     assert not (out_dir / "calculator.py").exists()
     assert not (out_dir / "tests/test_calculator_cli.py").exists()
+
+
+def test_change_command_adds_power_to_generated_calculator_repo(capsys, tmp_path) -> None:
+    out_dir = tmp_path / "calc"
+    record_path = tmp_path / "change-records.jsonl"
+
+    assert (
+        main(
+            [
+                "implement",
+                "--prompt",
+                "make me a simple cli calc",
+                "--out",
+                str(out_dir),
+                "--no-validate",
+            ]
+        )
+        == 0
+    )
+    capsys.readouterr()
+
+    assert (
+        main(
+            [
+                "change",
+                "--repo",
+                str(out_dir),
+                "--prompt",
+                "add exponent support",
+                "--record",
+                str(record_path),
+            ]
+        )
+        == 0
+    )
+
+    output = capsys.readouterr().out
+    assert "j3 change complete" in output
+    assert "task type: modify_app" in output
+    assert "status: validated" in output
+    assert "features added: power" in output
+    assert "  calculator.py" in output
+    assert "  tests/test_calculator_cli.py" in output
+    assert "validation: passed (python -m pytest tests/test_calculator_cli.py -q)" in output
+
+    for operator in ["^", "power", "**"]:
+        result = subprocess.run(
+            [sys.executable, str(out_dir / "calculator.py"), "2", operator, "3"],
+            check=False,
+            text=True,
+            capture_output=True,
+        )
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.strip() == "8"
+
+    row = _jsonl_rows(record_path)[0]
+    assert row["schema_version"] == "existing-repo-change-attempt-v1"
+    assert row["record_kind"] == "greenshot_7_existing_repo_change_attempt"
+    assert row["existing_repo_change_spec"]["schema_version"] == (  # type: ignore[index]
+        "existing-repo-change-spec-v1"
+    )
+    assert row["existing_repo_change_spec"]["features_to_add"] == ["power"]  # type: ignore[index]
+    assert [action["kind"] for action in row["existing_repo_actions"]] == [  # type: ignore[index]
+        "inspect_repo",
+        "parse_existing_calculator",
+        "add_operator_aliases",
+        "add_operator_dispatch",
+        "add_cli_behavior_tests",
+        "validate",
+    ]
+    assert row["change_result"]["status"] == "validated"  # type: ignore[index]
+    assert row["validation"]["status"] == "passed"  # type: ignore[index]
+    assert row["passed"] is True
+
+
+def test_change_command_rejects_unrelated_repo(capsys, tmp_path) -> None:
+    (tmp_path / "calculator.py").write_text("print('not generated')\n", encoding="utf-8")
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "tests/test_calculator_cli.py").write_text("", encoding="utf-8")
+
+    assert (
+        main(
+            [
+                "change",
+                "--repo",
+                str(tmp_path),
+                "--prompt",
+                "add exponent support",
+            ]
+        )
+        == 1
+    )
+
+    output = capsys.readouterr().out
+    assert "j3 change blocked" in output
+    assert "status: blocked" in output
+    assert "known generated calculator" in output
 
 
 def test_implement_script_blocks_prompt_intent_graphical_calculator(tmp_path) -> None:

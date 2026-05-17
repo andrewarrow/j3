@@ -6,7 +6,9 @@ from cli import main
 from j3.transition_action_choice import build_transition_action_choice_groups_jsonl
 from j3.transition_action_scoring import evaluate_transition_shadow_scorer_v3
 from j3.transition_residuals import (
+    TRANSITION_RESIDUAL_MATRIX_REPORT_VERSION,
     TRANSITION_RESIDUAL_REPORT_VERSION,
+    report_transition_residual_matrix,
     report_transition_residuals,
 )
 from j3.transition_shadow_outcomes import (
@@ -82,6 +84,61 @@ def test_report_transition_residuals_cli_prints_json(capsys, tmp_path) -> None:
     assert output["runtime"]["hosted_api_tokens"] == 0
 
 
+def test_transition_residual_matrix_report_groups_across_suites(tmp_path) -> None:
+    matrix = _write_matrix_inputs(tmp_path)
+
+    report = report_transition_residual_matrix(
+        matrix_dir=matrix,
+        embedding_dim=8,
+        example_limit=2,
+    )
+
+    assert report["schema_version"] == TRANSITION_RESIDUAL_MATRIX_REPORT_VERSION
+    assert report["matrix"]["zero_hosted_usage"] is True
+    assert report["summary"]["suite_count"] == 1
+    assert report["summary"]["failure_count"] >= 2
+    failure_count = report["summary"]["failure_count"]
+    assert {"value": "greenshot_bugs", "count": failure_count} in report["groups"][
+        "suite_id"
+    ]
+    assert {"value": "ready_for_shadow_mode", "count": failure_count} in report[
+        "groups"
+    ]["gate_result"]
+    assert report["groups"]["gap_type"]
+    assert report["groups"]["missing_feature_evidence"]
+    assert report["examples"]
+    assert report["examples"][0]["suite_id"] == "greenshot_bugs"
+    assert report["examples"][0]["gate_result"] == "ready_for_shadow_mode"
+    assert report["usage"]["hosted_api_tokens"] == 0
+    assert report["runtime"]["hosted_repo_context_bytes"] == 0
+
+
+def test_report_transition_residuals_cli_prints_matrix_json(capsys, tmp_path) -> None:
+    matrix = _write_matrix_inputs(tmp_path)
+
+    assert (
+        main(
+            [
+                "report-transition-residuals",
+                "--matrix",
+                str(matrix),
+                "--embedding-dim",
+                "8",
+                "--example-limit",
+                "2",
+                "--json",
+            ]
+        )
+        == 0
+    )
+
+    output = json.loads(capsys.readouterr().out)
+    assert output["schema_version"] == TRANSITION_RESIDUAL_MATRIX_REPORT_VERSION
+    assert output["summary"]["suite_count"] == 1
+    assert output["groups"]["suite_id"][0]["value"] == "greenshot_bugs"
+    assert output["usage"]["hosted_llm_api_calls"] == 0
+
+
 def _write_residual_inputs(tmp_path):
     candidate_outcomes = tmp_path / "candidate-outcomes.jsonl"
     advice = tmp_path / "advice.jsonl"
@@ -122,6 +179,78 @@ def _write_residual_inputs(tmp_path):
         encoding="utf-8",
     )
     return candidate_outcomes, shadow_outcomes, v3_report
+
+
+def _write_matrix_inputs(tmp_path):
+    suite = tmp_path / "matrix" / "suite" / "greenshot_bugs"
+    suite.mkdir(parents=True)
+    candidate_outcomes, shadow_outcomes, v3_report = _write_residual_inputs(suite)
+    manifest = suite / "manifest.json"
+    artifacts = {
+        "candidate_outcomes": str(candidate_outcomes),
+        "transition_shadow_outcomes": str(shadow_outcomes),
+        "shadow_scorer_v3_report": str(v3_report),
+    }
+    manifest.write_text(
+        json.dumps(
+            {
+                "schema_version": "transition-shadow-suite-v1",
+                "out": str(suite),
+                "artifacts": artifacts,
+                "usage": {
+                    "hosted_llm_api_calls": 0,
+                    "hosted_llm_prompt_tokens": 0,
+                    "hosted_llm_completion_tokens": 0,
+                    "hosted_api_tokens": 0,
+                    "hosted_repo_context_bytes": 0,
+                },
+                "zero_hosted_usage": True,
+            },
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    matrix = tmp_path / "matrix"
+    (matrix / "matrix-summary.json").write_text(
+        json.dumps(
+            {
+                "schema_version": "transition-shadow-matrix-run-v1",
+                "suites": [
+                    {
+                        "id": "greenshot_bugs",
+                        "manifest": str(manifest),
+                        "out": str(suite),
+                        "task_count": 4,
+                        "ranked_solved": 3,
+                    }
+                ],
+                "totals": {
+                    "suite_count": 1,
+                    "task_count": 4,
+                    "residual_count": 2,
+                },
+                "evidence": {
+                    "manifest": str(matrix / "evidence" / "manifest.json"),
+                    "checksums": str(matrix / "evidence" / "checksums.sha256"),
+                },
+                "usage": {
+                    "hosted_llm_api_calls": 0,
+                    "hosted_llm_prompt_tokens": 0,
+                    "hosted_llm_completion_tokens": 0,
+                    "hosted_api_tokens": 0,
+                    "hosted_repo_context_bytes": 0,
+                },
+                "zero_hosted_usage": True,
+            },
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    return matrix
 
 
 def _candidate_pair(

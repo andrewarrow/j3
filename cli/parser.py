@@ -1304,23 +1304,25 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     transition_residuals_parser.add_argument(
+        "--matrix",
+        type=Path,
+        help="transition shadow matrix output directory to aggregate",
+    )
+    transition_residuals_parser.add_argument(
         "--shadow-outcomes",
         type=Path,
         nargs="+",
-        required=True,
         help="one or more transition-shadow-outcome-v1 JSONL files",
     )
     transition_residuals_parser.add_argument(
         "--shadow-scorer-report",
         type=Path,
-        required=True,
         help="transition-action-future-scorer-v3 JSON report",
     )
     transition_residuals_parser.add_argument(
         "--candidate-outcomes",
         type=Path,
         nargs="+",
-        required=True,
         help="one or more candidate outcome JSONL files used for action choices",
     )
     transition_residuals_parser.add_argument(

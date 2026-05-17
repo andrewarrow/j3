@@ -6,7 +6,7 @@ This file is the live progress log for `plans/today.md`. Keep
 ## Status
 
 - Current phase: evidence matrix and guarded product trial.
-- Completed iterations for this reset: 2.
+- Completed iterations for this reset: 3.
 - Latest relevant commits:
   - `c6dbe26` closed the shadow suite loop.
   - `aedb04a` documented the transition shadow suite workflow.
@@ -17,14 +17,14 @@ This file is the live progress log for `plans/today.md`. Keep
 - Current blocker: the checked-in shadow suite reports
   `ready_for_shadow_mode`, not `ready_for_guarded_opt_in`; guarded production
   ranking remains blocked unless broader matrix evidence passes product gates.
-- Next task: add cross-suite residual reporting.
+- Next task: produce a release-quality matrix evidence bundle.
 
 ## Active Task Queue
 
 - [x] Recreate `plans/today.md` and `plans/today.progress.md`.
 - [x] Define a checked-in shadow matrix manifest.
 - [x] Add a matrix runner over standard shadow suites.
-- [ ] Add cross-suite residual reporting.
+- [x] Add cross-suite residual reporting.
 - [ ] Produce a release-quality matrix evidence bundle.
 - [ ] Decide guarded trial eligibility from matrix gates.
 - [ ] Update docs and README only if needed.
@@ -164,3 +164,32 @@ Use this shape for each worker handoff:
 - Push: pushed to `origin/main`.
 - Next: add cross-suite residual reporting.
 - Blockers: none.
+
+### Iteration 3: Cross-suite transition residual reporting
+
+- Worker: Codex worker iteration 3
+- Goal: let `report-transition-residuals` consume one
+  `run-transition-shadow-matrix` output directory and aggregate residual
+  evidence across suites.
+- Files changed: `j3/transition_residuals.py`, `cli/handlers.py`,
+  `cli/parser.py`, `tests/test_transition_residuals.py`,
+  `plans/today.progress.md`
+- Tests run:
+  - `pytest tests/test_transition_residuals.py -q` passed.
+  - `pytest tests/test_transition_shadow_matrix.py -q` passed.
+  - `pytest tests/test_cli.py -q` passed.
+  - `python cli.py run-transition-shadow-matrix --matrix examples/transition_shadow_matrix.json --out /tmp/j3-transition-shadow-matrix --only greenshot_bugs --force` passed.
+  - `python cli.py report-transition-residuals --matrix /tmp/j3-transition-shadow-matrix --json` passed.
+  - `git diff --check` passed.
+- Result: added `transition-residual-matrix-report-v1`, `--matrix` input
+  support for `report-transition-residuals`, cross-suite grouping by suite id,
+  task family, action kind, source file, gate result, scorer/production
+  comparison, missing feature evidence, and generation/ranking gap type.
+  Bounded failing examples include suite id and gate result. Hosted usage
+  totals are copied from `matrix-summary.json` when available.
+- Commit: pending.
+- Push: pending.
+- Next: produce a release-quality matrix evidence bundle.
+- Blockers: none. The fresh `greenshot_bugs` smoke matrix had zero residual
+  failures, so it produced no failing examples; the focused fixture covers
+  bounded failing examples.

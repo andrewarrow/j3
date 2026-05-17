@@ -22,6 +22,7 @@ from j3.transition_shadow_outcomes import (
 
 
 TRANSITION_RESIDUAL_REPORT_VERSION = "transition-residual-report-v1"
+TRANSITION_RESIDUAL_MATRIX_REPORT_VERSION = "transition-residual-matrix-report-v1"
 
 
 def report_transition_residuals(
@@ -172,8 +173,175 @@ def report_transition_residuals(
     return report
 
 
+def report_transition_residual_matrix(
+    *,
+    matrix_dir: Path,
+    embedding_dim: int = 256,
+    example_limit: int = 20,
+    out: Path | None = None,
+) -> dict[str, object]:
+    """Build a cross-suite residual report from a shadow matrix output."""
+
+    if example_limit < 0:
+        raise ValueError("example_limit must be >= 0")
+    started = time.perf_counter()
+    matrix = matrix_dir.expanduser().resolve()
+    if not matrix.exists():
+        raise FileNotFoundError(f"matrix output directory does not exist: {matrix}")
+    if not matrix.is_dir():
+        raise NotADirectoryError(f"matrix output path is not a directory: {matrix}")
+
+    matrix_summary_path = matrix / "matrix-summary.json"
+    matrix_summary = _load_json_object(
+        matrix_summary_path,
+        label="matrix summary",
+    )
+    suites = _list(matrix_summary.get("suites"))
+    if not suites:
+        raise ValueError("matrix summary does not contain suites")
+
+    suite_reports: list[dict[str, object]] = []
+    suite_examples: list[dict[str, object]] = []
+    suite_counts: Counter[str] = Counter()
+    gate_counts: Counter[str] = Counter()
+    failure_counts: Counter[str] = Counter()
+    task_family_counts: Counter[str] = Counter()
+    action_kind_counts: Counter[str] = Counter()
+    source_file_counts: Counter[str] = Counter()
+    top_comparison_counts: Counter[str] = Counter()
+    missing_feature_counts: Counter[str] = Counter()
+    gap_counts: Counter[str] = Counter()
+
+    for suite in suites:
+        suite_record = _mapping(suite)
+        suite_id = _string(suite_record.get("id"), "unknown")
+        suite_manifest = _load_suite_manifest(matrix, suite_record)
+        artifacts = _mapping(suite_manifest.get("artifacts"))
+        suite_report = report_transition_residuals(
+            shadow_outcome_paths=[
+                _artifact_path(artifacts, "transition_shadow_outcomes", suite_id)
+            ],
+            shadow_scorer_report_path=_artifact_path(
+                artifacts,
+                "shadow_scorer_v3_report",
+                suite_id,
+            ),
+            candidate_outcome_paths=[
+                _artifact_path(artifacts, "candidate_outcomes", suite_id)
+            ],
+            embedding_dim=embedding_dim,
+            example_limit=example_limit,
+        )
+        suite_summary = _mapping(suite_report.get("summary"))
+        suite_scorer = _mapping(suite_report.get("shadow_scorer"))
+        failure_count = _int(suite_summary.get("failure_count"))
+        gate_result = _string(suite_scorer.get("gate_result"), "unknown")
+        if failure_count:
+            suite_counts[suite_id] += failure_count
+            gate_counts[gate_result] += failure_count
+        _merge_counter_records(task_family_counts, suite_report, "task_family")
+        _merge_counter_records(action_kind_counts, suite_report, "action_kind")
+        _merge_counter_records(source_file_counts, suite_report, "source_file")
+        _merge_counter_records(
+            top_comparison_counts,
+            suite_report,
+            "scorer_top_vs_production",
+        )
+        _merge_counter_records(
+            missing_feature_counts,
+            suite_report,
+            "missing_feature_evidence",
+        )
+        _merge_counter_records(gap_counts, suite_report, "gap_type")
+        for kind, count in _mapping(suite_summary.get("failure_kinds")).items():
+            failure_counts[str(kind)] += _int(count)
+        for example in _list(suite_report.get("examples")):
+            if isinstance(example, Mapping):
+                suite_examples.append(
+                    {
+                        **dict(example),
+                        "suite_id": suite_id,
+                        "gate_result": gate_result,
+                    }
+                )
+        suite_reports.append(
+            {
+                "suite_id": suite_id,
+                "task_count": suite_record.get("task_count"),
+                "ranked_solved": suite_record.get("ranked_solved"),
+                "gate_result": gate_result,
+                "failure_count": failure_count,
+                "gap_types": suite_summary.get("gap_types"),
+                "examples_included": len(_list(suite_report.get("examples"))),
+                "artifacts": {
+                    "manifest": str(_suite_manifest_path(matrix, suite_record)),
+                    "candidate_outcomes": artifacts.get("candidate_outcomes"),
+                    "transition_shadow_outcomes": artifacts.get(
+                        "transition_shadow_outcomes"
+                    ),
+                    "shadow_scorer_v3_report": artifacts.get(
+                        "shadow_scorer_v3_report"
+                    ),
+                },
+            }
+        )
+
+    matrix_usage = _mapping(matrix_summary.get("usage"))
+    usage = {
+        field: _int(matrix_usage.get(field))
+        for field in HOSTED_USAGE_FIELDS
+    }
+
+    report = {
+        "schema_version": TRANSITION_RESIDUAL_MATRIX_REPORT_VERSION,
+        "matrix": {
+            "out": str(matrix),
+            "summary": str(matrix_summary_path),
+            "schema_version": matrix_summary.get("schema_version"),
+            "zero_hosted_usage": matrix_summary.get("zero_hosted_usage") is True,
+            "totals": matrix_summary.get("totals"),
+            "evidence": matrix_summary.get("evidence"),
+        },
+        "summary": {
+            "suite_count": len(suite_reports),
+            "failure_count": sum(failure_counts.values()),
+            "failure_kinds": dict(sorted(failure_counts.items())),
+            "gap_types": dict(sorted(gap_counts.items())),
+        },
+        "groups": {
+            "suite_id": _counter_records(suite_counts),
+            "task_family": _counter_records(task_family_counts),
+            "action_kind": _counter_records(action_kind_counts),
+            "source_file": _counter_records(source_file_counts),
+            "gate_result": _counter_records(gate_counts),
+            "scorer_top_vs_production": _counter_records(top_comparison_counts),
+            "missing_feature_evidence": _counter_records(missing_feature_counts),
+            "gap_type": _counter_records(gap_counts),
+        },
+        "suites": suite_reports,
+        "examples": suite_examples,
+        "runtime": {
+            "local_runtime_ms": round((time.perf_counter() - started) * 1000, 3),
+            **usage,
+        },
+        "usage": usage,
+    }
+    if out is not None:
+        resolved = out.expanduser().resolve()
+        resolved.parent.mkdir(parents=True, exist_ok=True)
+        report = {**report, "report": str(resolved)}
+        resolved.write_text(
+            json.dumps(report, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+    return report
+
+
 def format_transition_residual_report(report: Mapping[str, object]) -> str:
     """Format a transition residual report for terminal output."""
+
+    if report.get("schema_version") == TRANSITION_RESIDUAL_MATRIX_REPORT_VERSION:
+        return _format_transition_residual_matrix_report(report)
 
     summary = _mapping(report.get("summary"))
     groups = _mapping(report.get("groups"))
@@ -187,6 +355,33 @@ def format_transition_residual_report(report: Mapping[str, object]) -> str:
         f"candidate groups: {summary.get('candidate_action_choice_groups', 0)}",
         f"failures: {summary.get('failure_count', 0)}",
         f"gap types: {_format_counter(_mapping(summary.get('gap_types')))}",
+        f"task families: {_format_group_counts(groups.get('task_family'))}",
+        f"action kinds: {_format_group_counts(groups.get('action_kind'))}",
+        f"source files: {_format_group_counts(groups.get('source_file'))}",
+        "missing feature evidence: "
+        f"{_format_group_counts(groups.get('missing_feature_evidence'))}",
+        f"local runtime ms: {runtime.get('local_runtime_ms', 0)}",
+    ]
+    for field in HOSTED_USAGE_FIELDS:
+        lines.append(f"{field}: {runtime.get(field, 0)}")
+    if report.get("report"):
+        lines.append(f"report: {report['report']}")
+    return "\n".join(lines)
+
+
+def _format_transition_residual_matrix_report(report: Mapping[str, object]) -> str:
+    summary = _mapping(report.get("summary"))
+    groups = _mapping(report.get("groups"))
+    runtime = _mapping(report.get("runtime"))
+    matrix = _mapping(report.get("matrix"))
+    lines = [
+        "j3 report-transition-residuals complete",
+        f"matrix: {matrix.get('out')}",
+        f"suites: {summary.get('suite_count', 0)}",
+        f"failures: {summary.get('failure_count', 0)}",
+        f"gap types: {_format_counter(_mapping(summary.get('gap_types')))}",
+        f"gates: {_format_group_counts(groups.get('gate_result'))}",
+        f"suite ids: {_format_group_counts(groups.get('suite_id'))}",
         f"task families: {_format_group_counts(groups.get('task_family'))}",
         f"action kinds: {_format_group_counts(groups.get('action_kind'))}",
         f"source files: {_format_group_counts(groups.get('source_file'))}",
@@ -363,6 +558,67 @@ def _load_shadow_scorer_report(path: Path) -> dict[str, object]:
     if value.get("schema_version") != TRANSITION_ACTION_SCORER_V3_REPORT_VERSION:
         raise ValueError(f"expected {TRANSITION_ACTION_SCORER_V3_REPORT_VERSION}")
     return value
+
+
+def _load_json_object(path: Path, *, label: str) -> dict[str, object]:
+    resolved = path.expanduser().resolve()
+    if not resolved.exists():
+        raise FileNotFoundError(f"{label} does not exist: {resolved}")
+    if not resolved.is_file():
+        raise IsADirectoryError(f"{label} path is not a file: {resolved}")
+    value = json.loads(resolved.read_text(encoding="utf-8"))
+    if not isinstance(value, dict):
+        raise ValueError(f"{label} must be a JSON object")
+    return value
+
+
+def _load_suite_manifest(
+    matrix: Path,
+    suite_record: Mapping[str, object],
+) -> dict[str, object]:
+    return _load_json_object(
+        _suite_manifest_path(matrix, suite_record),
+        label=f"matrix suite {suite_record.get('id')} manifest",
+    )
+
+
+def _suite_manifest_path(
+    matrix: Path,
+    suite_record: Mapping[str, object],
+) -> Path:
+    manifest = suite_record.get("manifest")
+    if isinstance(manifest, str) and manifest:
+        return Path(manifest)
+    out = suite_record.get("out")
+    if isinstance(out, str) and out:
+        return Path(out) / "manifest.json"
+    suite_id = _string(suite_record.get("id"), "")
+    if suite_id:
+        return matrix / "suite" / suite_id / "manifest.json"
+    raise ValueError("matrix suite record is missing manifest, out, and id")
+
+
+def _artifact_path(
+    artifacts: Mapping[str, object],
+    name: str,
+    suite_id: str,
+) -> Path:
+    value = artifacts.get(name)
+    if not isinstance(value, str) or not value:
+        raise ValueError(f"suite {suite_id} manifest is missing artifact {name}")
+    return Path(value)
+
+
+def _merge_counter_records(
+    counter: Counter[str],
+    report: Mapping[str, object],
+    group_name: str,
+) -> None:
+    groups = _mapping(report.get("groups"))
+    for row in _list(groups.get(group_name)):
+        if not isinstance(row, Mapping):
+            continue
+        counter[_string(row.get("value"), "unknown")] += _int(row.get("count"))
 
 
 def _counter_records(counter: Counter[str]) -> list[dict[str, object]]:

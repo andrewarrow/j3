@@ -86,6 +86,7 @@ from j3.transition_ranking import (
 )
 from j3.transition_residuals import (
     format_transition_residual_report,
+    report_transition_residual_matrix,
     report_transition_residuals,
 )
 from j3.transition_scorer_advice import (
@@ -1224,6 +1225,40 @@ def handle_run_transition_shadow_matrix(args: argparse.Namespace) -> int:
 
 
 def handle_report_transition_residuals(args: argparse.Namespace) -> int:
+    if args.matrix is not None:
+        resolved_matrix = args.matrix.expanduser().resolve()
+        if not resolved_matrix.exists():
+            raise SystemExit(f"matrix output directory does not exist: {resolved_matrix}")
+        if not resolved_matrix.is_dir():
+            raise SystemExit(f"matrix output path is not a directory: {resolved_matrix}")
+        try:
+            report = report_transition_residual_matrix(
+                matrix_dir=args.matrix,
+                embedding_dim=args.embedding_dim,
+                example_limit=args.example_limit,
+                out=args.out,
+            )
+        except (
+            FileNotFoundError,
+            IsADirectoryError,
+            NotADirectoryError,
+            ValueError,
+        ) as error:
+            raise SystemExit(str(error)) from error
+
+        if args.json:
+            print(json.dumps(report, indent=2, sort_keys=True))
+        else:
+            print(format_transition_residual_report(report))
+        return 0
+
+    if not args.shadow_outcomes:
+        raise SystemExit("--shadow-outcomes is required unless --matrix is provided")
+    if args.shadow_scorer_report is None:
+        raise SystemExit("--shadow-scorer-report is required unless --matrix is provided")
+    if not args.candidate_outcomes:
+        raise SystemExit("--candidate-outcomes is required unless --matrix is provided")
+
     for path in args.shadow_outcomes:
         resolved = path.expanduser().resolve()
         if not resolved.exists():

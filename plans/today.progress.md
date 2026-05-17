@@ -187,8 +187,8 @@ Use this shape for each worker handoff:
   comparison, missing feature evidence, and generation/ranking gap type.
   Bounded failing examples include suite id and gate result. Hosted usage
   totals are copied from `matrix-summary.json` when available.
-- Commit: pending.
-- Push: pending.
+- Commit: `34dd5d9` (`Add matrix transition residual reporting`)
+- Push: pushed to `origin/main`.
 - Next: produce a release-quality matrix evidence bundle.
 - Blockers: none. The fresh `greenshot_bugs` smoke matrix had zero residual
   failures, so it produced no failing examples; the focused fixture covers

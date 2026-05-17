@@ -662,6 +662,28 @@ def test_generate_fstring_fragment_literal_candidate_from_concrete_message(tmp_p
     )
 
 
+def test_patch_solves_click_invalid_directory_filename_repr(tmp_path) -> None:
+    repo = tmp_path / "greenshot_6"
+    shutil.copytree("examples/greenshot_6", repo)
+
+    result = plan_and_maybe_apply_patch(
+        repo=repo,
+        test_command="python -m pytest tests/test_cliformat.py::test_invalid_directory_message_escapes_newline_in_filename",
+        dry_run=True,
+        timeout_seconds=10,
+    )
+
+    assert result.selected is not None
+    assert result.candidates_tested == 1
+    assert result.selected.file_path == "cliformat/types.py"
+    assert result.selected.action.kind.value == "change_literal"
+    assert result.selected.action.params == {
+        "from": "{name} '{filename}' is a directory.",
+        "to": "{name} {filename!r} is a directory.",
+    }
+    assert "'{name} {filename!r} is a directory.'" in result.selected.patched_source
+
+
 def test_generate_membership_operator_with_literal_needle_decoy(tmp_path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()

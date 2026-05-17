@@ -470,10 +470,61 @@ Recent work:
   state. The next useful work should be adding the next real-package-derived
   GreenShot-6 task or small fixture domain, then refreshing outcomes and
   rerunning the same held-out validation.
+- GreenShot-6 now includes a fourth fixture domain, `cliformat`, with one
+  real-package-derived `git_history` task modeled on `pallets/click` PR 2728 /
+  merge commit `c021f05c838c1d0401ebc340d1de9b663c7fb578`. The task
+  `click_invalid_directory_filename_repr` repairs Click-style invalid path
+  formatting by changing the template from direct single-quoted `{filename}` to
+  `{filename!r}`, using the existing `change_literal` action.
+- Focused loader/generator coverage passed for the new task:
+  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
+  `pytest tests/test_patching.py::test_patch_solves_click_invalid_directory_filename_repr -q`.
+- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
+  adding `cliformat`. The persisted dataset at
+  `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` now covers 23
+  tasks and 169 tested candidates. Ranked eval solved all 23 tasks with
+  `pass@1=18/23` and average candidates `7.35`; the new Click-derived task
+  solves at raw rank 1 with the preferred `change_literal` candidate.
+- The GreenShot-6 `split: test` held-out ranker validation was rerun after the
+  outcome refresh and stayed clean: solved=7/7, pass@1=7/7, positive@1=7/7.
+  Training used 249 rows, 56 passing rows, 212 training pairs, 653 features,
+  and 3 margin violations.
+- Refreshed raw/trained miss inspection after adding `cliformat` found no new
+  gap. Raw GreenShot-6 still has the same five pass@1 misses:
+  `apache_license_classifier_dict_value`, `dynamic_field_error_message`,
+  `http_no_store_directive_subscript_key`, `http_range_request_bypasses_cache`,
+  and `minimum_python_version_operator_boundary`; every task has a tested
+  preferred-positive row, and the saved test-slice ranker places every
+  preferred-positive candidate at trained rank 1.
 
 Last focused verification:
 
 ```bash
+pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q
+pytest tests/test_patching.py::test_patch_solves_click_invalid_directory_filename_repr -q
+python cli.py eval \
+  --tasks examples/greenshot_6 \
+  --checkpoint runs/apache-python-git/model.json \
+  --timeout 10 \
+  --max-candidates 80 \
+  --phase ranked \
+  --explore-after-pass 5 \
+  --diagnostics runs/apache-python-git/greenshot-6-explore-diagnostics.json \
+  --candidate-outcomes runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl \
+  --quiet
+python cli.py train-ranker \
+  --candidate-outcomes \
+    runs/apache-python-git/greenshot-5-candidate-outcomes.jsonl \
+    runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl \
+  --holdout-task \
+    apache_license_classifier_dict_value \
+    http_no_store_response_with_etag \
+    cookie_default_secure_flag_dict_value \
+    cookie_host_prefix_dict_value \
+    cookie_zero_max_age_operator_boundary \
+    cookie_pair_argument_order \
+    cookie_scope_include_path_keyword \
+  --out runs/apache-python-git/ranker-holdout-greenshot-6-test-slice
 python cli.py outcome-summary \
   --candidate-outcomes runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl
 python - <<'PY'
@@ -623,8 +674,8 @@ GreenShot-6 test-slice ranker validation result:
 
 ```text
 train-ranker, holdout-task includes all GreenShot-6 split:test tasks:
-  training rows=243 passing_rows=55 tasks=35 plans=35 pairs=207
-  training_accuracy=1.000 margin_violations=3 features=650
+  training rows=249 passing_rows=56 tasks=36 plans=36 pairs=212
+  training_accuracy=1.000 margin_violations=3 features=653
   validation solved=7/7 pass@1=7/7 positive@1=7/7
   validation avg_first_passing_index=1.0
   fixed: cookie_default_secure_flag_dict_value now ranks the preferred
@@ -644,13 +695,14 @@ Keep this section as the live queue. When work is completed, move it to
 
 Immediate next sequence:
 
-1. Inspect the refreshed GreenShot-6 raw pass@1 misses and preferred-positive
-   ranks before adding more features or tasks. The `split: test` holdout is
-   clean, so the next useful work should come from a fresh hard-negative
-   inspection rather than broad ranker tuning.
-2. If the inspection does not expose a narrow candidate/outcome-quality gap,
-   prefer adding the next real-package-derived GreenShot-6 task or fixture
-   domain over adding another handcrafted ranking feature.
+1. Add the next real-package-derived GreenShot-6 task or small fixture domain
+   from real git-history signal, preferring a repair shape not already covered
+   by `pkgmeta`, `httpcache`, `webcookies`, or `cliformat`.
+2. Use existing action families where possible; only add an action if the
+   held-out repair proves the candidate is missing.
+3. Run focused loader/generator tests, refresh GreenShot-6 outcomes with
+   `--explore-after-pass 5`, rerun the same `split: test` holdout, and inspect
+   any new raw or trained preferred-positive misses before ranker feature work.
 
 ### 1. Make GreenShot-6 Real
 
@@ -815,15 +867,16 @@ Start neural/JEPA work only when:
 
 The next context window should add the next real-package-derived GreenShot-6
 task or a small fixture domain from real git-history signal, using existing
-action families where possible. The latest GreenShot-6 `split: test` holdout is
-clean, `dynamic_field_error_message` now has a matching preferred-positive
-f-string fragment row, and the fresh raw-miss inspection did not reveal a
-narrow ranker or outcome-quality gap.
+action families where possible. The latest GreenShot-6 `split: test` holdout
+remains clean after adding the Click-derived `cliformat` task, and the fresh
+raw/trained miss inspection did not reveal a narrow ranker or outcome-quality
+gap.
 
 Immediate next sequence:
 
 1. Pick one real-package-derived repair shape not already represented by the
-   current `pkgmeta`, `httpcache`, and `webcookies` fixture domains.
+   current `pkgmeta`, `httpcache`, `webcookies`, and `cliformat` fixture
+   domains.
 2. Add the smallest GreenShot-6 task or fixture domain that captures that repair
    with existing actions if possible; only add an action if the held-out repair
    proves the candidate is missing.

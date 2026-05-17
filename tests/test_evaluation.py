@@ -97,7 +97,7 @@ def test_load_greenshot_6_tasks() -> None:
     tasks = load_tasks(Path("examples/greenshot_6"))
     by_name = {task.name: task for task in tasks}
 
-    assert len(tasks) == 22
+    assert len(tasks) == 23
     assert tasks[0].name == "core_metadata_version_dict_value"
     assert tasks[0].family == "mapping_value"
     assert tasks[0].source_type == "mutation"
@@ -207,6 +207,17 @@ def test_load_greenshot_6_tasks() -> None:
         "params": {
             "from": "Content-Range",
             "to": "Range",
+        },
+    }
+    assert by_name["click_invalid_directory_filename_repr"].split == "train"
+    assert by_name["click_invalid_directory_filename_repr"].source_type == "git_history"
+    assert by_name["click_invalid_directory_filename_repr"].preferred_patch == {
+        "file_path": "cliformat/types.py",
+        "action": "change_literal",
+        "symbol": "invalid_directory_message",
+        "params": {
+            "from": "{name} '{filename}' is a directory.",
+            "to": "{name} {filename!r} is a directory.",
         },
     }
     assert by_name["cookie_default_secure_flag_dict_value"].split == "test"

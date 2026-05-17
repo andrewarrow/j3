@@ -1063,3 +1063,56 @@ git-history repair, using existing action families where possible. Prefer a
 new held-out source shape over another handcrafted ranking feature. After adding
 the task/domain, refresh GreenShot-6 outcomes and rerun the same `split: test`
 holdout before deciding whether there is a new hard negative.
+
+### Post-Cliformat Dataset Growth Inspection
+
+Inspection date: 2026-05-17.
+
+New source:
+
+- Fixture domain: `cliformat`
+- Task: `click_invalid_directory_filename_repr`
+- Source: `pallets/click` PR 2728 / merge commit
+  `c021f05c838c1d0401ebc340d1de9b663c7fb578`
+- Repair shape: invalid `Path` directory error formatting should use
+  `{filename!r}` rather than direct single quotes around `{filename}`, so
+  filenames containing escape sequences remain represented on one line.
+- Action: existing `change_literal`; no new action family was needed.
+
+Focused coverage passed:
+
+```bash
+pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q
+pytest tests/test_patching.py::test_patch_solves_click_invalid_directory_filename_repr -q
+```
+
+GreenShot-6 outcome refresh:
+
+| Slice | Tasks | Solved | Pass@1 | Rows | Passing rows | Preferred-positive rows |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| GreenShot-6 ranked explore | 23 | 23/23 | 18/23 | 169 | 48 | 23 |
+
+Validation result after rerunning the same GreenShot-6 `split: test` holdout:
+
+| Slice | Plans | Solved | Pass@1 | Positive@1 |
+| --- | ---: | ---: | ---: | ---: |
+| GreenShot-6 `split: test` holdout | 7 | 7/7 | 7/7 | 7/7 |
+
+Raw pass@1 misses are unchanged from the previous inspection:
+
+| Task | Source | Split | Raw first pass | Raw preferred-positive rank |
+| --- | --- | --- | ---: | ---: |
+| `apache_license_classifier_dict_value` | `mutation` | `test` | 5 | 5 |
+| `dynamic_field_error_message` | `git_history` | `train` | 8 | 10 |
+| `http_no_store_directive_subscript_key` | `mutation` | `train` | 19 | 19 |
+| `http_range_request_bypasses_cache` | `git_history` | `train` | 2 | 2 |
+| `minimum_python_version_operator_boundary` | `mutation` | `validation` | 2 | 2 |
+
+Applying the saved test-slice ranker to all refreshed GreenShot-6 rows found no
+trained preferred-positive misses. The new `cliformat` task is not a hard
+negative: it passes at raw rank 1 with the preferred literal repair.
+
+Decision: no ranker feature or action expansion is justified by this refresh.
+Continue dataset growth with another real-package-derived repair shape from a
+new or underrepresented fixture domain, then refresh outcomes and rerun the
+same held-out validation before ranker work.

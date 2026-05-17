@@ -287,6 +287,28 @@
     }
   },
   {
+    "name": "click_invalid_directory_filename_repr",
+    "family": "cli_path_error_message",
+    "source_type": "git_history",
+    "split": "train",
+    "repo": ".",
+    "test": "python -m pytest tests/test_cliformat.py::test_invalid_directory_message_escapes_newline_in_filename",
+    "source": {
+      "repo": "pallets/click",
+      "commit": "c021f05c838c1d0401ebc340d1de9b663c7fb578",
+      "pr": 2728
+    },
+    "preferred": {
+      "file_path": "cliformat/types.py",
+      "action": "change_literal",
+      "symbol": "invalid_directory_message",
+      "params": {
+        "from": "{name} '{filename}' is a directory.",
+        "to": "{name} {filename!r} is a directory."
+      }
+    }
+  },
+  {
     "name": "cookie_default_secure_flag_dict_value",
     "family": "mapping_value",
     "source_type": "mutation",

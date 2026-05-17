@@ -99,7 +99,7 @@ def test_load_greenshot_6_tasks() -> None:
     tasks = load_tasks(Path("examples/greenshot_6"))
     by_name = {task.name: task for task in tasks}
 
-    assert len(tasks) == 49
+    assert len(tasks) == 50
     assert tasks[0].name == "core_metadata_version_dict_value"
     assert tasks[0].family == "mapping_value"
     assert tasks[0].source_type == "mutation"
@@ -121,6 +121,15 @@ def test_load_greenshot_6_tasks() -> None:
             "key": "Apache-2.0",
             "from": "License :: OSI Approved :: Apache License",
             "to": "License :: OSI Approved :: Apache Software License",
+        },
+    }
+    assert by_name["pytest_expected_exception_message_sentence"].preferred_patch == {
+        "file_path": "raisemsg/expected.py",
+        "action": "change_literal",
+        "symbol": "invalid_string_expected_exception_error",
+        "params": {
+            "from": "expected exception must be a BaseException type, not 'str'",
+            "to": "Expected a BaseException type, but got 'str'",
         },
     }
     assert by_name["readme_rst_content_type_dict_value"].split == "train"

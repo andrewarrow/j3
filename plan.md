@@ -1154,12 +1154,32 @@ Recent work:
   the SciPy outcome refresh and stayed clean: solved=7/7, pass@1=7/7,
   positive@1=7/7. Training used 466 rows, 87 passing rows, 403 training pairs,
   816 features, and 4 margin violations.
+- GreenShot-6 now includes a twenty-ninth real-package-derived fixture domain,
+  `raisemsg`, with one `git_history` task modeled on `pytest-dev/pytest` PR
+  13861 / commit `e3facc0f8115a52606151c436ab3cb0816dbc0c3`. The task
+  `pytest_expected_exception_message_sentence` repairs pytest-style expected
+  exception wording by changing
+  `expected exception must be a BaseException type, not 'str'` to
+  `Expected a BaseException type, but got 'str'`, using the existing
+  `change_literal` action family.
+- Focused loader/generator coverage passed for the pytest-derived task:
+  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
+  `pytest tests/test_patching.py::test_patch_solves_pytest_expected_exception_message_sentence -q`.
+- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
+  adding `raisemsg`. The persisted dataset now covers 50 tasks and 392 tested
+  candidates. Ranked eval solved all 50 tasks with `pass@1=35/50` and average
+  candidates `7.84`; the new pytest-derived task solves at raw rank 1 with the
+  preferred `change_literal` candidate.
+- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
+  the pytest outcome refresh and stayed clean: solved=7/7, pass@1=7/7,
+  positive@1=7/7, avg_first_passing_index=1.0. Training used 472 rows, 88
+  passing rows, 408 training pairs, 862 features, and 4 margin violations.
 
 Last focused verification:
 
 ```bash
 pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q
-pytest tests/test_patching.py::test_generate_rename_symbol_candidate_for_builtin_exception_typo tests/test_patching.py::test_patch_solves_scipy_quad_runtime_error_typo -q
+pytest tests/test_patching.py::test_patch_solves_pytest_expected_exception_message_sentence -q
 python cli.py eval \
   --tasks examples/greenshot_6 \
   --checkpoint runs/apache-python-git/model.json \
@@ -1302,9 +1322,9 @@ GreenShot-6 outcome collection result:
 
 ```text
 ranked, runs/apache-python-git/model.json, explore-after-pass=5:
-  solved=49/49 pass@1=34/49 avg_candidates=7.88
-  rows=386 passing_rows=79 preferred_positive_rows=49
-  source_type pass@1: git_history=17/29 mutation=17/20
+  solved=50/50 pass@1=35/50 avg_candidates=7.84
+  rows=392 passing_rows=80 preferred_positive_rows=50
+  source_type pass@1: git_history=18/30 mutation=17/20
 ```
 
 Treat this as a smoke check, not a benchmark claim.
@@ -1323,10 +1343,10 @@ GreenShot-6 test-slice ranker validation result:
 
 ```text
 train-ranker, holdout-task includes all GreenShot-6 split:test tasks:
-  training rows=466 passing_rows=87 tasks=62 plans=62 pairs=403
-  training_accuracy=1.000 margin_violations=4 features=816
+  training rows=472 passing_rows=88 tasks=63 plans=63 pairs=408
+  training_accuracy=0.998 margin_violations=4 features=862
   validation solved=7/7 pass@1=7/7 positive@1=7/7
-  validation avg_first_passing_index=1.0
+  validation rows=46 avg_first_passing_index=1.0
 ```
 
 ## Next Right Things
@@ -1505,11 +1525,12 @@ Start neural/JEPA work only when:
 
 ## Handoff Recommendation
 
-The next context window should start from the post-scipyquad dataset growth,
-not the older envwrite or v13 literal-key residual state. GreenShot-6 now has
-49 tasks. The same `split: test` held-out validation is clean again:
-solved=7/7, pass@1=7/7, and positive@1=7/7. Do not tune broad handcrafted
-weights or add pass/preferred-label features from this state.
+The next context window should start from the post-raisemsg dataset growth, not
+the older envwrite, v13 literal-key, or scipyquad states. GreenShot-6 now has
+50 tasks. The same `split: test` held-out validation is clean again:
+solved=7/7, pass@1=7/7, positive@1=7/7, and avg_first_passing_index=1.0. Do not
+tune broad handcrafted weights or add pass/preferred-label features from this
+state.
 
 Immediate next sequence:
 

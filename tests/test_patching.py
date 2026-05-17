@@ -1338,6 +1338,30 @@ def test_patch_solves_scipy_quad_runtime_error_typo(tmp_path) -> None:
     assert "raise RuntimeError" in result.selected.patched_source
 
 
+def test_patch_solves_pytest_expected_exception_message_sentence(tmp_path) -> None:
+    repo = tmp_path / "greenshot_6"
+    shutil.copytree("examples/greenshot_6", repo)
+
+    result = plan_and_maybe_apply_patch(
+        repo=repo,
+        test_command=(
+            "python -m pytest "
+            "tests/test_raisemsg.py::test_expected_exception_type_error_message_uses_clear_sentence"
+        ),
+        dry_run=True,
+        timeout_seconds=10,
+    )
+
+    assert result.selected is not None
+    assert result.selected.file_path == "raisemsg/expected.py"
+    assert result.selected.action.kind.value == "change_literal"
+    assert result.selected.action.params == {
+        "from": "expected exception must be a BaseException type, not 'str'",
+        "to": "Expected a BaseException type, but got 'str'",
+    }
+    assert "Expected a BaseException type, but got 'str'" in result.selected.patched_source
+
+
 def test_generate_membership_operator_with_literal_needle_decoy(tmp_path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()

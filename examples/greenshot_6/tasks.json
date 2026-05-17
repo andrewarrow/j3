@@ -859,6 +859,28 @@
     }
   },
   {
+    "name": "pytest_expected_exception_message_sentence",
+    "family": "exception_message",
+    "source_type": "git_history",
+    "split": "train",
+    "repo": ".",
+    "test": "python -m pytest tests/test_raisemsg.py::test_expected_exception_type_error_message_uses_clear_sentence",
+    "source": {
+      "repo": "pytest-dev/pytest",
+      "commit": "e3facc0f8115a52606151c436ab3cb0816dbc0c3",
+      "pr": 13861
+    },
+    "preferred": {
+      "file_path": "raisemsg/expected.py",
+      "action": "change_literal",
+      "symbol": "invalid_string_expected_exception_error",
+      "params": {
+        "from": "expected exception must be a BaseException type, not 'str'",
+        "to": "Expected a BaseException type, but got 'str'"
+      }
+    }
+  },
+  {
     "name": "cookie_default_secure_flag_dict_value",
     "family": "mapping_value",
     "source_type": "mutation",

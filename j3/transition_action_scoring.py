@@ -13,9 +13,18 @@ from j3.transition_action_choice import validate_transition_action_choice_group
 
 TRANSITION_ACTION_SCORING_EVAL_VERSION = "transition-action-scoring-eval-v1"
 TRANSITION_ACTION_SCORER_VERSION = "transition-action-future-scorer-v1"
+TRANSITION_ACTION_SCORER_V2_VERSION = "transition-action-future-scorer-v2"
 TRANSITION_ACTION_SCORER_FEATURE_VERSION = "transition-action-local-features-v1"
+TRANSITION_ACTION_SCORER_V2_FEATURE_VERSION = "transition-action-local-features-v2"
+TRANSITION_ACTION_SCORER_V2_CALIBRATION_VERSION = (
+    "transition-action-future-scorer-v2-calibration-v1"
+)
 TRANSITION_PRODUCT_READINESS_VERSION = "transition-product-readiness-v1"
 DEFAULT_TOP_K = 3
+DEFAULT_V2_VALIDATION_FRACTION = 0.25
+DEFAULT_V2_EPOCHS = 30
+DEFAULT_V2_LEARNING_RATE = 0.1
+DEFAULT_V2_MARGIN = 1.0
 
 GATE_NOT_READY_UNDERPERFORMS = "not_ready_underperforms_existing_rank_order"
 GATE_READY_FOR_SHADOW_MODE = "ready_for_shadow_mode"
@@ -55,10 +64,32 @@ def score_transition_action_candidate(
     }
 
 
+def score_transition_action_candidate_v2(
+    candidate: Mapping[str, object],
+    *,
+    group: Mapping[str, object],
+    model: Mapping[str, object],
+) -> dict[str, object]:
+    """Score one candidate with an evaluation-only fitted V2 model."""
+
+    weights = _float_mapping(_mapping(model.get("weights")))
+    bias = _float_or_default(model.get("bias"), 0.0)
+    features = _candidate_v2_features(candidate, group=group)
+    score = bias + sum(weights.get(name, 0.0) * value for name, value in features.items())
+    return {
+        "scorer_version": TRANSITION_ACTION_SCORER_V2_VERSION,
+        "feature_version": TRANSITION_ACTION_SCORER_V2_FEATURE_VERSION,
+        "score": round(score, 12),
+        "features": features,
+        "tie_breaker": _candidate_order_key(candidate),
+    }
+
+
 def rank_transition_action_candidates(
     group: Mapping[str, object],
     *,
     strategy: str = TRANSITION_ACTION_SCORER_VERSION,
+    scorer_model: Mapping[str, object] | None = None,
 ) -> tuple[dict[str, object], ...]:
     """Return candidates in deterministic evaluation order for one strategy."""
 
@@ -71,6 +102,29 @@ def rank_transition_action_candidates(
                 "evaluation_score": score_transition_action_candidate(
                     candidate,
                     group=group,
+                ),
+            }
+            for candidate in candidates
+        ]
+        return tuple(
+            sorted(
+                scored,
+                key=lambda item: (
+                    -float(_mapping(item["evaluation_score"])["score"]),
+                    _candidate_order_key(item),
+                ),
+            )
+        )
+    if strategy == TRANSITION_ACTION_SCORER_V2_VERSION:
+        if scorer_model is None:
+            raise ValueError("transition-action-future-scorer-v2 requires scorer_model")
+        scored = [
+            {
+                **candidate,
+                "evaluation_score": score_transition_action_candidate_v2(
+                    candidate,
+                    group=group,
+                    model=scorer_model,
                 ),
             }
             for candidate in candidates
@@ -108,6 +162,12 @@ def evaluate_transition_action_choices(
     top_k: int = DEFAULT_TOP_K,
     residual_limit: int = 10,
     include_random_baseline: bool = True,
+    include_v2: bool = True,
+    v2_split_by: str = "task_family",
+    v2_validation_fraction: float = DEFAULT_V2_VALIDATION_FRACTION,
+    v2_epochs: int = DEFAULT_V2_EPOCHS,
+    v2_learning_rate: float = DEFAULT_V2_LEARNING_RATE,
+    v2_margin: float = DEFAULT_V2_MARGIN,
 ) -> dict[str, object]:
     """Evaluate local action-choice scoring against simple baselines."""
 
@@ -115,6 +175,8 @@ def evaluate_transition_action_choices(
         raise ValueError("top_k must be >= 1")
     if residual_limit < 0:
         raise ValueError("residual_limit must be >= 0")
+    if include_v2 and not 0.0 < v2_validation_fraction < 1.0:
+        raise ValueError("v2_validation_fraction must be > 0 and < 1")
 
     started = time.perf_counter()
     validated_groups = [dict(group) for group in groups]
@@ -151,6 +213,43 @@ def evaluate_transition_action_choices(
                 )
             )
 
+    v2_calibration: dict[str, object] | None = None
+    if include_v2:
+        v2_calibration = calibrate_transition_action_scorer_v2(
+            validated_groups,
+            top_k=top_k,
+            split_by=v2_split_by,
+            validation_fraction=v2_validation_fraction,
+            epochs=v2_epochs,
+            learning_rate=v2_learning_rate,
+            margin=v2_margin,
+        )
+        if v2_calibration.get("available") is True:
+            model = _mapping(v2_calibration.get("model"))
+            strategy_names.append(TRANSITION_ACTION_SCORER_V2_VERSION)
+            rank_records[TRANSITION_ACTION_SCORER_V2_VERSION] = []
+            for group in validated_groups:
+                baseline_record = _group_rank_record(
+                    group,
+                    rank_transition_action_candidates(
+                        group,
+                        strategy=EXISTING_RANK_ORDER_BASELINE,
+                    ),
+                    top_k=top_k,
+                )
+                rank_records[TRANSITION_ACTION_SCORER_V2_VERSION].append(
+                    _group_rank_record(
+                        group,
+                        rank_transition_action_candidates(
+                            group,
+                            strategy=TRANSITION_ACTION_SCORER_V2_VERSION,
+                            scorer_model=model,
+                        ),
+                        top_k=top_k,
+                        baseline_first_pass_rank=baseline_record["first_pass_rank"],
+                    )
+                )
+
     metrics = {
         strategy: _metrics_from_rank_records(records)
         for strategy, records in rank_records.items()
@@ -167,6 +266,25 @@ def evaluate_transition_action_choices(
             "name": TRANSITION_ACTION_SCORER_VERSION,
             "feature_version": TRANSITION_ACTION_SCORER_FEATURE_VERSION,
         },
+        "scorers": [
+            {
+                "name": TRANSITION_ACTION_SCORER_VERSION,
+                "feature_version": TRANSITION_ACTION_SCORER_FEATURE_VERSION,
+            },
+            *(
+                [
+                    {
+                        "name": TRANSITION_ACTION_SCORER_V2_VERSION,
+                        "feature_version": TRANSITION_ACTION_SCORER_V2_FEATURE_VERSION,
+                        "calibration_version": (
+                            TRANSITION_ACTION_SCORER_V2_CALIBRATION_VERSION
+                        ),
+                    }
+                ]
+                if v2_calibration and v2_calibration.get("available") is True
+                else []
+            ),
+        ],
         "top_k": top_k,
         "group_count": len(validated_groups),
         "solved_group_count": sum(
@@ -176,6 +294,7 @@ def evaluate_transition_action_choices(
             int(group.get("candidate_count", 0)) for group in validated_groups
         ),
         "metrics": metrics,
+        "calibration": v2_calibration,
         "residual_examples": residuals,
         "runtime": {
             "local_runtime_ms": runtime_ms,
@@ -185,6 +304,128 @@ def evaluate_transition_action_choices(
             "hosted_api_tokens": 0,
             "hosted_repo_context_bytes": 0,
         },
+    }
+
+
+def calibrate_transition_action_scorer_v2(
+    groups: Sequence[Mapping[str, object]],
+    *,
+    top_k: int = DEFAULT_TOP_K,
+    split_by: str = "task_family",
+    validation_fraction: float = DEFAULT_V2_VALIDATION_FRACTION,
+    epochs: int = DEFAULT_V2_EPOCHS,
+    learning_rate: float = DEFAULT_V2_LEARNING_RATE,
+    margin: float = DEFAULT_V2_MARGIN,
+) -> dict[str, object]:
+    """Fit and validate an evaluation-only V2 scorer from candidate outcomes."""
+
+    if split_by not in {"task_family", "source_file"}:
+        raise ValueError("split_by must be task_family or source_file")
+    if top_k < 1:
+        raise ValueError("top_k must be >= 1")
+    if not 0.0 < validation_fraction < 1.0:
+        raise ValueError("validation_fraction must be > 0 and < 1")
+    if epochs < 1:
+        raise ValueError("epochs must be >= 1")
+    if learning_rate <= 0.0:
+        raise ValueError("learning_rate must be positive")
+    if margin <= 0.0:
+        raise ValueError("margin must be positive")
+
+    validated_groups = [dict(group) for group in groups]
+    for group in validated_groups:
+        validate_transition_action_choice_group(group)
+
+    train_groups, validation_groups, split = _split_groups_for_v2(
+        validated_groups,
+        split_by=split_by,
+        validation_fraction=validation_fraction,
+    )
+    pairs = _v2_training_pairs(train_groups)
+    if not pairs:
+        return {
+            "schema_version": TRANSITION_ACTION_SCORER_V2_CALIBRATION_VERSION,
+            "available": False,
+            "scorer": TRANSITION_ACTION_SCORER_V2_VERSION,
+            "feature_version": TRANSITION_ACTION_SCORER_V2_FEATURE_VERSION,
+            "reason": "training split had no solved groups with failed candidates",
+            "split": split,
+            "training": {
+                "group_count": len(train_groups),
+                "pair_count": 0,
+            },
+        }
+
+    weights, mistakes = _fit_v2_pairwise_weights(
+        pairs,
+        epochs=epochs,
+        learning_rate=learning_rate,
+        margin=margin,
+    )
+    model = {
+        "schema_version": "transition-action-future-scorer-v2-model-v1",
+        "name": TRANSITION_ACTION_SCORER_V2_VERSION,
+        "feature_version": TRANSITION_ACTION_SCORER_V2_FEATURE_VERSION,
+        "bias": 0.0,
+        "weights": dict(sorted(weights.items())),
+    }
+    validation_metrics = _evaluate_v2_validation(
+        validation_groups,
+        model=model,
+        top_k=top_k,
+    )
+    readiness_report = {
+        "metrics": validation_metrics,
+        "solved_group_count": sum(
+            1 for group in validation_groups if _passing_rank_set(group)
+        ),
+        "candidate_count": sum(
+            int(group.get("candidate_count", 0)) for group in validation_groups
+        ),
+        "top_k": top_k,
+    }
+    validation_readiness = evaluate_transition_product_readiness(
+        readiness_report,
+        scorer_name=TRANSITION_ACTION_SCORER_V2_VERSION,
+        baseline_name=EXISTING_RANK_ORDER_BASELINE,
+    )
+    if split.get("held_out") is not True:
+        validation_readiness = {
+            **validation_readiness,
+            "eligible_for_guarded_opt_in": False,
+            "guarded_opt_in_blocked_reason": "validation split is not held out",
+        }
+
+    return {
+        "schema_version": TRANSITION_ACTION_SCORER_V2_CALIBRATION_VERSION,
+        "available": True,
+        "scorer": TRANSITION_ACTION_SCORER_V2_VERSION,
+        "feature_version": TRANSITION_ACTION_SCORER_V2_FEATURE_VERSION,
+        "split": split,
+        "parameters": {
+            "top_k": top_k,
+            "epochs": epochs,
+            "learning_rate": learning_rate,
+            "margin": margin,
+        },
+        "training": {
+            "group_count": len(train_groups),
+            "candidate_count": sum(
+                int(group.get("candidate_count", 0)) for group in train_groups
+            ),
+            "pair_count": len(pairs),
+            "features": len(weights),
+            "mistakes": mistakes,
+        },
+        "validation": {
+            "group_count": len(validation_groups),
+            "candidate_count": sum(
+                int(group.get("candidate_count", 0)) for group in validation_groups
+            ),
+            "metrics": validation_metrics,
+            "product_readiness": validation_readiness,
+        },
+        "model": model,
     }
 
 
@@ -460,6 +701,248 @@ def _candidate_score_features(
     }
 
 
+def _candidate_v2_features(
+    candidate: Mapping[str, object],
+    *,
+    group: Mapping[str, object],
+) -> dict[str, float]:
+    base = _candidate_score_features(candidate, group=group)
+    action = _mapping(candidate.get("action"))
+    params = _mapping(action.get("params"))
+    target_context = _mapping(candidate.get("target_context"))
+    action_kind = str(base.get("action_kind", ""))
+    rank_index = max(float(base.get("rank_index", 0.0)), 1.0)
+    v1_score = score_transition_action_candidate(candidate, group=group)["score"]
+
+    features: dict[str, float] = {
+        "bias": 1.0,
+        "v1_score": float(v1_score),
+        "source_embedding_available": float(base["source_embedding_available"]),
+        "candidate_after_embedding_available": float(
+            base["candidate_after_embedding_available"]
+        ),
+        "candidate_after_available": float(base["candidate_after_available"]),
+        "action_has_params": float(base["action_has_params"]),
+        "target_context_available": float(base["target_context_available"]),
+        "model_score": float(base["model_score"]),
+        "ranker_score": float(base["ranker_score"]),
+        "failure_hint_score": float(base["failure_hint_score"]),
+        "failure_hint_count": min(float(base["failure_hint_count"]), 5.0),
+        "failure_hint_assertion_count": min(
+            float(base["failure_hint_assertion_count"]),
+            8.0,
+        ),
+        "group_candidate_count_scaled": float(base["group_candidate_count"]) / 10.0,
+        "rank_index_inverse": 1.0 / rank_index,
+        "rank_index_negative_scaled": -rank_index / 10.0,
+        "rank_index_first": 1.0 if rank_index == 1.0 else 0.0,
+        "rank_index_second": 1.0 if rank_index == 2.0 else 0.0,
+    }
+    _add_feature(features, f"action:{action_kind}", 1.0)
+
+    for field in ("file_path", "symbol", "node_kind", "source_type"):
+        value = action.get(field)
+        if _simple_feature_value(value):
+            _add_feature(features, f"action_{field}:{value}", 1.0)
+
+    for key, value in sorted(params.items()):
+        _add_feature(features, f"param_key:{action_kind}:{key}", 1.0)
+        if _simple_feature_value(value):
+            _add_feature(features, f"param_value:{action_kind}:{key}:{value}", 1.0)
+
+    for key, value in sorted(target_context.items()):
+        if _simple_feature_value(value):
+            _add_feature(features, f"target:{key}:{value}", 1.0)
+
+    grouping = _mapping(group.get("grouping"))
+    for key in ("task_family", "source_type", "language", "phase"):
+        value = grouping.get(key)
+        if _simple_feature_value(value):
+            _add_feature(features, f"group_{key}:{value}", 1.0)
+
+    return features
+
+
+def _v2_training_pairs(
+    groups: Sequence[Mapping[str, object]],
+) -> list[tuple[dict[str, float], dict[str, float]]]:
+    pairs: list[tuple[dict[str, float], dict[str, float]]] = []
+    for group in sorted(groups, key=lambda item: str(item.get("id", ""))):
+        passing_ranks = _passing_rank_set(group)
+        if not passing_ranks:
+            continue
+        candidates = _candidate_list(group)
+        positive = [
+            candidate
+            for candidate in candidates
+            if int(candidate["rank_index"]) in passing_ranks
+        ]
+        negative = [
+            candidate
+            for candidate in candidates
+            if int(candidate["rank_index"]) not in passing_ranks
+        ]
+        for passed in positive:
+            passed_features = _candidate_v2_features(passed, group=group)
+            for failed in negative:
+                pairs.append(
+                    (
+                        passed_features,
+                        _candidate_v2_features(failed, group=group),
+                    )
+                )
+    return pairs
+
+
+def _fit_v2_pairwise_weights(
+    pairs: Sequence[tuple[Mapping[str, float], Mapping[str, float]]],
+    *,
+    epochs: int,
+    learning_rate: float,
+    margin: float,
+) -> tuple[dict[str, float], int]:
+    weights: dict[str, float] = {}
+    mistakes = 0
+    for _epoch in range(epochs):
+        for positive, negative in pairs:
+            positive_score = _linear_score(positive, weights)
+            negative_score = _linear_score(negative, weights)
+            if positive_score <= negative_score + margin:
+                mistakes += 1
+                for name in sorted(set(positive) | set(negative)):
+                    delta = positive.get(name, 0.0) - negative.get(name, 0.0)
+                    if delta:
+                        weights[name] = weights.get(name, 0.0) + learning_rate * delta
+    return (
+        {
+            name: round(value, 12)
+            for name, value in weights.items()
+            if abs(value) > 1e-12
+        },
+        mistakes,
+    )
+
+
+def _evaluate_v2_validation(
+    groups: Sequence[Mapping[str, object]],
+    *,
+    model: Mapping[str, object],
+    top_k: int,
+) -> dict[str, object]:
+    strategy_models: dict[str, Mapping[str, object] | None] = {
+        TRANSITION_ACTION_SCORER_V2_VERSION: model,
+        TRANSITION_ACTION_SCORER_VERSION: None,
+        EXISTING_RANK_ORDER_BASELINE: None,
+        "stable-lexical-order": None,
+        "deterministic-random-order": None,
+    }
+    records: dict[str, list[dict[str, object]]] = {
+        strategy: [] for strategy in strategy_models
+    }
+    for group in groups:
+        baseline_record = _group_rank_record(
+            group,
+            rank_transition_action_candidates(
+                group,
+                strategy=EXISTING_RANK_ORDER_BASELINE,
+            ),
+            top_k=top_k,
+        )
+        for strategy, scorer_model in strategy_models.items():
+            records[strategy].append(
+                _group_rank_record(
+                    group,
+                    rank_transition_action_candidates(
+                        group,
+                        strategy=strategy,
+                        scorer_model=scorer_model,
+                    ),
+                    top_k=top_k,
+                    baseline_first_pass_rank=baseline_record["first_pass_rank"],
+                )
+            )
+    return {
+        strategy: _metrics_from_rank_records(strategy_records)
+        for strategy, strategy_records in records.items()
+    }
+
+
+def _split_groups_for_v2(
+    groups: Sequence[Mapping[str, object]],
+    *,
+    split_by: str,
+    validation_fraction: float,
+) -> tuple[list[dict[str, object]], list[dict[str, object]], dict[str, object]]:
+    buckets: dict[str, list[dict[str, object]]] = {}
+    for group in groups:
+        key = _v2_split_key(group, split_by=split_by)
+        buckets.setdefault(key, []).append(dict(group))
+
+    train_keys: list[str] = []
+    validation_keys: list[str] = []
+    for key in sorted(buckets):
+        fraction = _stable_fraction(f"{split_by}:{key}")
+        if fraction < validation_fraction:
+            validation_keys.append(key)
+        else:
+            train_keys.append(key)
+
+    held_out = True
+    if not validation_keys and train_keys:
+        validation_keys.append(train_keys.pop(0))
+    if not train_keys and validation_keys:
+        if len(validation_keys) == 1:
+            train_keys = list(validation_keys)
+            held_out = False
+        else:
+            train_keys.append(validation_keys.pop())
+
+    train_groups = [group for key in train_keys for group in buckets[key]]
+    validation_groups = [group for key in validation_keys for group in buckets[key]]
+    return train_groups, validation_groups, {
+        "split_by": split_by,
+        "validation_fraction": validation_fraction,
+        "bucket_count": len(buckets),
+        "training_bucket_count": len(set(train_keys)),
+        "validation_bucket_count": len(set(validation_keys)),
+        "training_group_count": len(train_groups),
+        "validation_group_count": len(validation_groups),
+        "held_out": held_out and bool(train_keys) and bool(validation_keys),
+        "validation_keys": sorted(set(validation_keys)),
+    }
+
+
+def _v2_split_key(group: Mapping[str, object], *, split_by: str) -> str:
+    if split_by == "source_file":
+        source = _mapping(group.get("source"))
+        value = source.get("path")
+        if isinstance(value, str) and value:
+            return value
+    grouping = _mapping(group.get("grouping"))
+    value = grouping.get("task_family")
+    if isinstance(value, str) and value:
+        return value
+    return str(group.get("id", "unknown"))
+
+
+def _linear_score(
+    features: Mapping[str, float],
+    weights: Mapping[str, float],
+) -> float:
+    return sum(weights.get(name, 0.0) * value for name, value in features.items())
+
+
+def _add_feature(features: dict[str, float], name: str, value: float) -> None:
+    features[name] = features.get(name, 0.0) + value
+
+
+def _simple_feature_value(value: object) -> bool:
+    return (
+        isinstance(value, (str, int, float, bool))
+        and not (isinstance(value, str) and not value)
+    ) or value is None
+
+
 def _candidate_summary(candidate: Mapping[str, object] | None) -> dict[str, object] | None:
     if candidate is None:
         return None
@@ -508,6 +991,11 @@ def _stable_random_key(group_id: str, candidate: Mapping[str, object]) -> str:
     return hashlib.sha256(digest_input).hexdigest()
 
 
+def _stable_fraction(value: str) -> float:
+    digest = hashlib.sha256(value.encode("utf-8")).hexdigest()
+    return int(digest[:16], 16) / float(0xFFFFFFFFFFFFFFFF)
+
+
 def _action_prior(action_kind: str) -> float:
     priors = {
         "change_operator": 0.10,
@@ -552,6 +1040,14 @@ def _mapping(value: object) -> Mapping[str, object]:
     if isinstance(value, Mapping):
         return value
     return {}
+
+
+def _float_mapping(value: Mapping[str, object]) -> dict[str, float]:
+    result: dict[str, float] = {}
+    for key, item in value.items():
+        if isinstance(item, (int, float)) and not isinstance(item, bool):
+            result[str(key)] = float(item)
+    return result
 
 
 def _list(value: object) -> list[object]:
@@ -668,6 +1164,12 @@ def _int_metric(value: object) -> int:
 def _float_or_none(value: object) -> float | None:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         return None
+    return float(value)
+
+
+def _float_or_default(value: object, default: float) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return default
     return float(value)
 
 

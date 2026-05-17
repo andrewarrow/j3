@@ -6,8 +6,10 @@ This file is the live progress log for `plans/today.md`. Keep
 ## Status
 
 - Current phase: productize transition scoring without fooling ourselves.
-- Completed iterations for this reset: 2.
+- Completed iterations for this reset: 3.
 - Latest relevant commits:
+  - current iteration commit calibrates a V2 transition action scorer from
+    candidate outcomes.
   - `86ce6c2` added transition bench product-readiness gates.
   - `26cca1d` removed the old today plan files.
   - `4cca638` documented transition bench reproduction.
@@ -16,15 +18,16 @@ This file is the live progress log for `plans/today.md`. Keep
   - `3eb9c38` added transition action-choice groups.
   - `d95ebc7` defined the transition bench schema.
   - `7e3df39` added transition asset inventory.
-- Current blocker: the current V1 future scorer still underperforms the existing
-  rank order on local candidate outcomes and is not ready for guarded opt-in.
-- Next task: calibrate a V2 action scorer from candidate outcomes.
+- Current blocker: V2 beats V1 on the full local candidate bench, but the
+  held-out validation gate still underperforms existing rank order and is not
+  ready for guarded opt-in.
+- Next task: add shadow transition-scorer advice to real patch/eval planning.
 
 ## Active Task Queue
 
 - [x] Harden real-data normalization for empty mined source rows.
 - [x] Add product-readiness gates to transition bench reports.
-- [ ] Calibrate a V2 action scorer from candidate outcomes.
+- [x] Calibrate a V2 action scorer from candidate outcomes.
 - [ ] Add shadow transition-scorer advice to real patch/eval planning.
 - [ ] Add guarded, non-default opt-in ranking with gate enforcement.
 - [ ] Update product docs for demo, benchmark, shadow, and guarded modes.
@@ -56,6 +59,10 @@ This file is the live progress log for `plans/today.md`. Keep
   - product readiness gate:
     `not_ready_underperforms_existing_rank_order`
   - V1 future scorer residual count: 58
+  - V2 calibrated future scorer pass@1: 78/88
+  - V2 calibrated future scorer MRR: 0.925004919323
+  - V2 held-out validation split: task_family, 60 train groups, 28 validation
+    groups, gate `not_ready_underperforms_existing_rank_order`
   - zero hosted token/context usage
 - full local bench with mined transitions used to fail with
   `ValueError: git_transition.after_source must be a non-empty string`; this
@@ -164,3 +171,30 @@ Use this shape for each worker handoff:
 - Next: calibrate a V2 action scorer from candidate outcomes.
 - Blockers: none for this slice; the product gate correctly records the V1
   scorer as not ready for guarded opt-in.
+
+### Iteration 3: Calibrate a V2 action scorer from candidate outcomes
+
+- Worker: Codex Worker Iteration 3
+- Goal: add an evaluation-only `transition-action-future-scorer-v2` calibrated
+  from candidate outcome/action-choice groups and compare it with V1, existing
+  rank order, stable lexical order, and deterministic random order.
+- Files changed: `j3/transition_action_scoring.py`,
+  `j3/transition_bench_demo.py`, `tests/test_transition_action_scoring.py`,
+  `plans/today.progress.md`.
+- Tests run:
+  - `pytest tests/test_transition_action_scoring.py -q` passed, 10 tests.
+  - `pytest tests/test_transition_bench_demo.py -q` passed, 4 tests.
+  - `python cli.py demo-transition-bench --no-fixtures --embedding-dim 256 --top-k 3 --candidate-outcomes runs/apache-python-git/*candidate-outcomes.jsonl --out /tmp/j3-transition-bench-candidates-report.json` passed with V2 pass@1 `78/88`, V2 MRR `0.925004919323`, V1 pass@1 `30/88`, V1 MRR `0.510515059653`, and held-out V2 gate `not_ready_underperforms_existing_rank_order`.
+  - `python -m json.tool /tmp/j3-transition-bench-candidates-report.json >/dev/null`
+    passed.
+- Result: V2 now fits deterministic pairwise weights from local features,
+  supports task-family and source-file validation splits, persists calibration
+  metadata/model/validation metrics inside the demo report, and remains
+  evaluation-only. V2 beats V1 on the full local candidate bench, but held-out
+  validation does not beat existing rank order, so guarded opt-in remains
+  blocked.
+- Commit: current iteration commit (`Calibrate transition action scorer v2`)
+- Push: succeeded to `main`.
+- Next: add shadow transition-scorer advice to real patch/eval planning.
+- Blockers: guarded opt-in remains blocked until a held-out scorer beats
+  existing rank order.

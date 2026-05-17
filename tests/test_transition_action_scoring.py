@@ -11,8 +11,11 @@ from j3.transition_action_scoring import (
     GATE_READY_FOR_GUARDED_OPT_IN,
     GATE_READY_FOR_SHADOW_MODE,
     TRANSITION_ACTION_SCORER_VERSION,
+    TRANSITION_ACTION_SCORER_V2_CALIBRATION_VERSION,
+    TRANSITION_ACTION_SCORER_V2_VERSION,
     TRANSITION_ACTION_SCORING_EVAL_VERSION,
     TRANSITION_PRODUCT_READINESS_VERSION,
+    calibrate_transition_action_scorer_v2,
     evaluate_transition_product_readiness,
     evaluate_transition_action_choices,
     rank_transition_action_candidates,
@@ -99,6 +102,113 @@ def test_baseline_orders_are_stable_and_distinct() -> None:
     assert [candidate["rank_index"] for candidate in random_once] == [
         candidate["rank_index"] for candidate in random_twice
     ]
+
+
+def test_v2_scorer_calibrates_from_action_choice_outcomes() -> None:
+    rows: list[dict[str, object]] = []
+    for index, family in enumerate(
+        ("operator_fix", "operator_fix", "operator_holdout"),
+        start=1,
+    ):
+        plan = f"plan-v2-{index}"
+        rows.extend(
+            [
+                _candidate_row(
+                    rank_index=1,
+                    passed=False,
+                    repair_plan_id=plan,
+                    task=f"task_{index}",
+                    task_family=family,
+                    params={"to": "*"},
+                    model_score=1.0,
+                    ranker_score=1.0,
+                    failure_hint_score=1.0,
+                    patched_source="def add(left, right):\n    return left * right\n",
+                ),
+                _candidate_row(
+                    rank_index=2,
+                    passed=True,
+                    repair_plan_id=plan,
+                    task=f"task_{index}",
+                    task_family=family,
+                    params={"to": "+"},
+                    model_score=0.0,
+                    ranker_score=0.0,
+                    failure_hint_score=0.0,
+                    patched_source="def add(left, right):\n    return left + right\n",
+                ),
+            ]
+        )
+    groups = build_transition_action_choice_groups(rows, embedding_dim=8)
+
+    report = evaluate_transition_action_choices(
+        groups,
+        top_k=1,
+        include_random_baseline=False,
+        v2_validation_fraction=0.5,
+    )
+
+    calibration = report["calibration"]
+    assert calibration["schema_version"] == TRANSITION_ACTION_SCORER_V2_CALIBRATION_VERSION
+    assert calibration["available"] is True
+    assert calibration["split"]["split_by"] == "task_family"
+    assert calibration["training"]["pair_count"] > 0
+    assert calibration["validation"]["product_readiness"]["baseline"] == "existing-rank-order"
+    v1_metrics = report["metrics"][TRANSITION_ACTION_SCORER_VERSION]
+    v2_metrics = report["metrics"][TRANSITION_ACTION_SCORER_V2_VERSION]
+    assert v2_metrics["pass_at_1_count"] > v1_metrics["pass_at_1_count"]
+    assert v2_metrics["mean_reciprocal_rank"] > v1_metrics["mean_reciprocal_rank"]
+
+
+def test_v2_calibration_supports_source_file_validation_split() -> None:
+    groups = build_transition_action_choice_groups(
+        _fixture_candidate_rows(),
+        source_path=Path("first-candidate-outcomes.jsonl"),
+        embedding_dim=8,
+    ) + build_transition_action_choice_groups(
+        [
+            _candidate_row(
+                rank_index=1,
+                passed=False,
+                repair_plan_id="second-plan",
+                params={"to": "*"},
+                model_score=1.0,
+                ranker_score=1.0,
+                failure_hint_score=1.0,
+                patched_source="def add(left, right):\n    return left * right\n",
+            ),
+            _candidate_row(
+                rank_index=2,
+                passed=True,
+                repair_plan_id="second-plan",
+                params={"to": "+"},
+                model_score=0.0,
+                ranker_score=0.0,
+                failure_hint_score=0.0,
+                patched_source="def add(left, right):\n    return left + right\n",
+            ),
+        ],
+        source_path=Path("second-candidate-outcomes.jsonl"),
+        embedding_dim=8,
+    )
+
+    calibration = calibrate_transition_action_scorer_v2(
+        groups,
+        split_by="source_file",
+        validation_fraction=0.5,
+    )
+
+    assert calibration["available"] is True
+    assert calibration["split"]["split_by"] == "source_file"
+    assert calibration["split"]["training_bucket_count"] == 1
+    assert calibration["split"]["validation_bucket_count"] == 1
+    assert set(calibration["validation"]["metrics"]) >= {
+        TRANSITION_ACTION_SCORER_V2_VERSION,
+        TRANSITION_ACTION_SCORER_VERSION,
+        "existing-rank-order",
+        "stable-lexical-order",
+        "deterministic-random-order",
+    }
 
 
 def test_residual_examples_capture_wrong_top_action_choice() -> None:
@@ -300,6 +410,8 @@ def _candidate_row(
     passed: bool,
     repair_plan_id: str,
     params: dict[str, object],
+    task: str = "calculator_add",
+    task_family: str = "operator_fix",
     first_passing_index: int = 2,
     model_score: float,
     ranker_score: float,
@@ -307,8 +419,8 @@ def _candidate_row(
     patched_source: str,
 ) -> dict[str, object]:
     return {
-        "task": "calculator_add",
-        "task_family": "operator_fix",
+        "task": task,
+        "task_family": task_family,
         "source_type": "handcrafted",
         "split": "validation",
         "language": "python",

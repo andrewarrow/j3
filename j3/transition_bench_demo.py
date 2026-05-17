@@ -14,6 +14,7 @@ from j3.transition_action_choice import (
 from j3.transition_action_scoring import (
     DEFAULT_TOP_K,
     TRANSITION_ACTION_SCORER_VERSION,
+    TRANSITION_ACTION_SCORER_V2_VERSION,
     evaluate_transition_product_readiness,
     evaluate_transition_action_choices,
 )
@@ -221,7 +222,11 @@ def format_transition_bench_demo_report(report: Mapping[str, object]) -> str:
         f"top k: {scoring.get('top_k')}",
         "metrics:",
     ]
-    for name in (TRANSITION_ACTION_SCORER_VERSION, *sorted(_baseline_names(metrics))):
+    for name in (
+        TRANSITION_ACTION_SCORER_VERSION,
+        TRANSITION_ACTION_SCORER_V2_VERSION,
+        *sorted(_baseline_names(metrics)),
+    ):
         section = _mapping(metrics.get(name))
         if not section:
             continue
@@ -241,6 +246,15 @@ def format_transition_bench_demo_report(report: Mapping[str, object]) -> str:
             "product gate: "
             f"{product_readiness.get('gate_result')} "
             f"residuals={product_readiness.get('residual_count')}"
+        )
+    calibration = _mapping(scoring.get("calibration"))
+    validation = _mapping(calibration.get("validation"))
+    v2_readiness = _mapping(validation.get("product_readiness"))
+    if v2_readiness:
+        lines.append(
+            "v2 validation gate: "
+            f"{v2_readiness.get('gate_result')} "
+            f"residuals={v2_readiness.get('residual_count')}"
         )
     lines.extend(
         [
@@ -323,7 +337,10 @@ def _baseline_names(metrics: Mapping[str, object]) -> list[str]:
     return [
         name
         for name in metrics
-        if name != TRANSITION_ACTION_SCORER_VERSION
+        if name not in {
+            TRANSITION_ACTION_SCORER_VERSION,
+            TRANSITION_ACTION_SCORER_V2_VERSION,
+        }
     ]
 
 

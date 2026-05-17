@@ -20,7 +20,56 @@ PROMPT_INTENT_SCHEMA_VERSION = "prompt-intent-label-v1"
 EVAL_SCHEMA_VERSION = "prompt-intent-eval-v1"
 LEARNED_BASELINE_SCHEMA_VERSION = "prompt-intent-token-perceptron-v1"
 PROMPT_FEATURE_SCHEMA_VERSION = "prompt-token-bigram-char-skipgram-v2"
+PROMPT_CORPUS_PROFILE_SCHEMA_VERSION = "prompt-corpus-profile-v1"
 DEFAULT_PROMPT_INTENTS_PATH = Path("examples/prompt_intents/greenshot_7_intents.jsonl")
+PROMPT_CORPUS_REQUIRED_FIELDS = (
+    "id",
+    "split",
+    "source_type",
+    "task_type",
+    "repo_mode",
+    "domain",
+    "prompt",
+    "expected",
+    "tags",
+)
+PROMPT_CORPUS_REQUIRED_FIELD_TYPES = {
+    "id": str,
+    "split": str,
+    "source_type": str,
+    "task_type": str,
+    "repo_mode": str,
+    "domain": str,
+    "prompt": str,
+    "expected": dict,
+    "tags": list,
+}
+PROMPT_CORPUS_SCALAR_LABELS = {
+    "split": ("test", "train", "validation"),
+    "source_type": (
+        "human_seed",
+        "manual_reviewed_synthetic",
+        "synthetic_template_v0",
+    ),
+    "task_type": (
+        "add_feature",
+        "add_tests",
+        "bugfix",
+        "clarify",
+        "config_change",
+        "create_app",
+        "create_library",
+        "docs_change",
+        "refactor",
+    ),
+    "repo_mode": ("existing_repo", "new_repo", "unknown"),
+    "expected_action": (
+        "ask_clarification",
+        "emit_existing_repo_change_spec",
+        "emit_request_spec",
+    ),
+    "requires_clarification": ("no", "yes"),
+}
 TARGET_FIELDS = [
     "repo_mode",
     "task_type",
@@ -376,6 +425,143 @@ def profile_prompt_intents(records: Sequence[PromptIntentRecord]) -> dict[str, o
             1 for record in records if record.target.primary_artifact == "none"
         ),
     }
+
+
+def inspect_prompt_corpus(path: Path) -> dict[str, object]:
+    """Profile and quality-check raw prompt-intent corpus rows.
+
+    Unlike ``load_prompt_intent_records``, this helper does not assume the corpus
+    is already valid. It keeps going after missing fields and unknown labels so
+    the CLI can report corpus quality in one stable JSON record.
+    """
+
+    return profile_prompt_corpus_rows(
+        _load_json_rows(path),
+        labels_path=path.expanduser().resolve(),
+    )
+
+
+def profile_prompt_corpus_rows(
+    rows: Sequence[dict[str, object]],
+    *,
+    labels_path: Path | None = None,
+) -> dict[str, object]:
+    """Return corpus profile counts plus duplicate/leakage/label checks."""
+
+    split_counts: Counter[str] = Counter()
+    task_type_counts: Counter[str] = Counter()
+    repo_mode_counts: Counter[str] = Counter()
+    domain_counts: Counter[str] = Counter()
+    expected_action_counts: Counter[str] = Counter()
+    clarification_counts: Counter[str] = Counter()
+    prompt_groups: dict[str, list[dict[str, object]]] = {}
+    family_groups: dict[str, list[dict[str, object]]] = {}
+    missing_required_fields: list[dict[str, object]] = []
+    unsupported_scalar_labels: list[dict[str, object]] = []
+
+    for index, row in enumerate(rows):
+        row_ref = _row_reference(row, index)
+        missing_required_fields.extend(_required_field_issues(row, index=index))
+
+        split = _optional_scalar(row.get("split"))
+        task_type = _optional_scalar(row.get("task_type"))
+        repo_mode = _optional_scalar(row.get("repo_mode"))
+        domain = _optional_scalar(row.get("domain"))
+        expected = row.get("expected") if isinstance(row.get("expected"), dict) else {}
+        assert isinstance(expected, dict)
+        expected_action = _expected_action(row, expected)
+        requires_clarification = _safe_requires_clarification(
+            expected=expected,
+            expected_action=expected_action,
+        )
+
+        split_counts.update([split])
+        task_type_counts.update([task_type])
+        repo_mode_counts.update([repo_mode])
+        domain_counts.update([domain])
+        expected_action_counts.update([expected_action])
+        clarification_counts.update([requires_clarification])
+
+        prompt = row.get("prompt")
+        if isinstance(prompt, str) and prompt.strip():
+            prompt_groups.setdefault(_normalize_prompt(prompt), []).append(
+                {
+                    **row_ref,
+                    "split": split,
+                    "prompt": prompt,
+                }
+            )
+
+        family = _prompt_family(row)
+        if family:
+            family_groups.setdefault(family, []).append(
+                {
+                    **row_ref,
+                    "split": split,
+                    "prompt": prompt if isinstance(prompt, str) else "",
+                }
+            )
+
+        scalar_values = {
+            "split": split,
+            "source_type": _optional_scalar(row.get("source_type")),
+            "task_type": task_type,
+            "repo_mode": repo_mode,
+            "expected_action": expected_action,
+            "requires_clarification": requires_clarification,
+        }
+        for field, value in scalar_values.items():
+            allowed = PROMPT_CORPUS_SCALAR_LABELS[field]
+            if value not in allowed:
+                unsupported_scalar_labels.append(
+                    {
+                        **row_ref,
+                        "field": field,
+                        "value": value,
+                        "allowed": list(allowed),
+                    }
+                )
+
+    duplicate_normalized_prompts = [
+        {
+            "normalized_prompt": normalized_prompt,
+            "count": len(matches),
+            "rows": matches,
+        }
+        for normalized_prompt, matches in sorted(prompt_groups.items())
+        if len(matches) > 1
+    ]
+    family_split_leakage = [
+        {
+            "family": family,
+            "splits": sorted({str(match["split"]) for match in matches}),
+            "rows": matches,
+        }
+        for family, matches in sorted(family_groups.items())
+        if len({match["split"] for match in matches}) > 1
+    ]
+
+    profile: dict[str, object] = {
+        "schema_version": PROMPT_CORPUS_PROFILE_SCHEMA_VERSION,
+        "total_rows": len(rows),
+        "split_counts": _counter_record(split_counts.elements()),
+        "task_type_counts": _counter_record(task_type_counts.elements()),
+        "repo_mode_counts": _counter_record(repo_mode_counts.elements()),
+        "domain_counts": _counter_record(domain_counts.elements()),
+        "expected_action_counts": _counter_record(expected_action_counts.elements()),
+        "clarification_counts": _counter_record(clarification_counts.elements()),
+        "duplicate_normalized_prompts": duplicate_normalized_prompts,
+        "duplicate_normalized_prompt_count": len(duplicate_normalized_prompts),
+        "near_duplicate_family_leakage": family_split_leakage,
+        "near_duplicate_family_leakage_count": len(family_split_leakage),
+        "missing_required_fields": missing_required_fields,
+        "missing_required_field_count": len(missing_required_fields),
+        "unsupported_scalar_labels": unsupported_scalar_labels,
+        "unsupported_scalar_label_count": len(unsupported_scalar_labels),
+    }
+    if labels_path is not None:
+        profile["labels"] = str(labels_path)
+    return profile
 
 
 def predict_prompt_intent(
@@ -785,6 +971,74 @@ def _target_from_prediction(
         ),
         target_files=_tuple_prediction(prediction.get("target_files", expected.target_files)),
     )
+
+
+def _row_reference(row: dict[str, object], index: int) -> dict[str, object]:
+    row_id = row.get("id")
+    return {
+        "row_index": index,
+        "line": index + 1,
+        "id": row_id if isinstance(row_id, str) and row_id else None,
+    }
+
+
+def _required_field_issues(
+    row: dict[str, object],
+    *,
+    index: int,
+) -> list[dict[str, object]]:
+    issues: list[dict[str, object]] = []
+    row_ref = _row_reference(row, index)
+    for field in PROMPT_CORPUS_REQUIRED_FIELDS:
+        if field not in row:
+            issues.append({**row_ref, "field": field, "issue": "missing"})
+            continue
+        value = row[field]
+        expected_type = PROMPT_CORPUS_REQUIRED_FIELD_TYPES[field]
+        if not isinstance(value, expected_type):
+            issues.append({**row_ref, "field": field, "issue": "invalid_type"})
+            continue
+        if isinstance(value, str) and not value.strip():
+            issues.append({**row_ref, "field": field, "issue": "empty"})
+    return issues
+
+
+def _safe_requires_clarification(
+    *,
+    expected: dict[str, object],
+    expected_action: str,
+) -> str:
+    clarification_fields = expected.get("clarification_fields", [])
+    if not isinstance(clarification_fields, list):
+        clarification_fields = []
+    if (
+        expected_action == "ask_clarification"
+        or expected.get("clarify") is True
+        or clarification_fields
+    ):
+        return "yes"
+    return "no"
+
+
+def _prompt_family(row: dict[str, object]) -> str | None:
+    family = row.get("prompt_family")
+    if isinstance(family, str) and family:
+        return family
+    tags = row.get("tags")
+    if isinstance(tags, list):
+        for tag in tags:
+            if not isinstance(tag, str):
+                continue
+            for prefix in ("prompt_family:", "family:"):
+                if tag.startswith(prefix) and len(tag) > len(prefix):
+                    return tag[len(prefix):]
+    return None
+
+
+def _optional_scalar(value: object) -> str:
+    if isinstance(value, str) and value:
+        return value
+    return "__missing__"
 
 
 def _required_str(row: dict[str, object], field: str, *, index: int) -> str:

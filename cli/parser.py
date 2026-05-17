@@ -15,6 +15,7 @@ from cli.handlers import (
     handle_fix,
     handle_greenshot_7,
     handle_implement,
+    handle_inspect_prompt_corpus,
     handle_mine,
     handle_outcome_summary,
     handle_patch,
@@ -382,6 +383,28 @@ def build_parser() -> argparse.ArgumentParser:
         help="maximum residual examples to print per split and target (default: 20)",
     )
     prompt_intents_parser.set_defaults(handler=handle_train_prompt_intents)
+
+    inspect_prompt_corpus_parser = subparsers.add_parser(
+        "inspect-prompt-corpus",
+        help="profile and quality-check prompt-intent corpus labels",
+        description=(
+            "Inspect prompt-intent JSONL labels for split and target counts, "
+            "duplicate normalized prompts, prompt-family split leakage, missing "
+            "required fields, and unsupported scalar labels."
+        ),
+    )
+    inspect_prompt_corpus_parser.add_argument(
+        "--labels",
+        type=Path,
+        default=Path("../prompts/coding_agent_prompts_expanded_v0.jsonl"),
+        help="prompt-intent JSONL labels to inspect",
+    )
+    inspect_prompt_corpus_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print the full corpus profile as JSON",
+    )
+    inspect_prompt_corpus_parser.set_defaults(handler=handle_inspect_prompt_corpus)
 
     prompt_jepa_build_parser = subparsers.add_parser(
         "build-prompt-jepa-index",

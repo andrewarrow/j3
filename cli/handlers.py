@@ -40,6 +40,7 @@ from greenshot_7 import run_greenshot_7_tasks, summary_has_failures
 from mining import mine_git_transitions
 from patching import plan_and_maybe_apply_patch
 from prompt_intents import (
+    inspect_prompt_corpus,
     load_prompt_intent_records,
     predict_prompt_intent,
     train_prompt_intent_token_baseline,
@@ -437,6 +438,35 @@ def handle_train_prompt_intents(args: argparse.Namespace) -> int:
                 omitted = len(metrics.residuals) - len(shown)
                 if omitted > 0:
                     print(f"      ... {omitted} more")
+    return 0
+
+
+def handle_inspect_prompt_corpus(args: argparse.Namespace) -> int:
+    profile = inspect_prompt_corpus(args.labels)
+
+    if args.json:
+        print(json.dumps(profile, indent=2, sort_keys=True))
+        return 0
+
+    print("j3 inspect-prompt-corpus complete")
+    print(f"labels: {args.labels.expanduser().resolve()}")
+    print(f"rows: {profile['total_rows']}")
+    print(f"splits: {_format_counts(profile['split_counts'])}")
+    print(f"task types: {_format_counts(profile['task_type_counts'])}")
+    print(f"repo modes: {_format_counts(profile['repo_mode_counts'])}")
+    print(f"domains: {_format_counts(profile['domain_counts'])}")
+    print(f"expected actions: {_format_counts(profile['expected_action_counts'])}")
+    print(f"clarifications: {_format_counts(profile['clarification_counts'])}")
+    print(
+        "duplicate normalized prompts: "
+        f"{profile['duplicate_normalized_prompt_count']}"
+    )
+    print(
+        "near-duplicate family leakage: "
+        f"{profile['near_duplicate_family_leakage_count']}"
+    )
+    print(f"missing required fields: {profile['missing_required_field_count']}")
+    print(f"unsupported scalar labels: {profile['unsupported_scalar_label_count']}")
     return 0
 
 
@@ -929,6 +959,12 @@ def _format_bool(value: object) -> str:
     if value is False:
         return "false"
     return "unknown"
+
+
+def _format_counts(value: object) -> str:
+    if not isinstance(value, dict) or not value:
+        return "none"
+    return ", ".join(f"{key}={count}" for key, count in value.items())
 
 
 def _format_proposal_target_summary(summary: object) -> str:

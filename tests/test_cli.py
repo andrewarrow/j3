@@ -102,6 +102,7 @@ def test_help_menu_prints_project_summary(capsys) -> None:
     assert "fix" in output
     assert "train" in output
     assert "train-prompt-intents" in output
+    assert "inspect-prompt-corpus" in output
     assert "build-prompt-jepa-index" in output
     assert "query-prompt-jepa-index" in output
     assert "propose-from-prompt-jepa" in output
@@ -309,6 +310,71 @@ def test_train_prompt_intents_command_accepts_derived_targets(capsys, tmp_path) 
     assert output[1]["model"]["labels"] == ["cli", "none", "pyproject"]
     assert output[2]["model"]["labels"] == ["none", "ui_interface"]
     assert output[3]["model"]["labels"] == ["interface", "none"]
+
+
+def test_inspect_prompt_corpus_command_reports_json_profile(capsys, tmp_path) -> None:
+    labels = tmp_path / "prompt-labels.jsonl"
+    labels.write_text(
+        "\n".join(
+            [
+                (
+                    '{"id":"train-create","split":"train","source_type":"human_seed",'
+                    '"task_type":"create_app","repo_mode":"new_repo",'
+                    '"domain":"calculator","prompt":"make me a simple cli calc",'
+                    '"expected":{"action":"emit_request_spec","clarify":false,'
+                    '"artifacts":["cli","tests"]},"tags":["family:calc-basic"]}'
+                ),
+                (
+                    '{"id":"test-create","split":"test",'
+                    '"source_type":"synthetic_template_v0",'
+                    '"task_type":"create_app","repo_mode":"new_repo",'
+                    '"domain":"calculator","prompt":"make me a simple cli calc",'
+                    '"expected":{"action":"emit_request_spec","clarify":false,'
+                    '"artifacts":["cli","tests"]},"tags":[],'
+                    '"prompt_family":"calc-basic"}'
+                ),
+                (
+                    '{"id":"bad-row","split":"holdout","source_type":"test",'
+                    '"task_type":"create_app","repo_mode":"new_repo",'
+                    '"domain":"calculator","prompt":"make a calculator",'
+                    '"expected":{"action":"ask_clarification","clarify":true}}'
+                ),
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    assert (
+        main(
+            [
+                "inspect-prompt-corpus",
+                "--labels",
+                str(labels),
+                "--json",
+            ]
+        )
+        == 0
+    )
+
+    output = json.loads(capsys.readouterr().out)
+    assert output["schema_version"] == "prompt-corpus-profile-v1"
+    assert output["labels"] == str(labels.resolve())
+    assert output["total_rows"] == 3
+    assert output["split_counts"] == {"holdout": 1, "test": 1, "train": 1}
+    assert output["expected_action_counts"] == {
+        "ask_clarification": 1,
+        "emit_request_spec": 2,
+    }
+    assert output["clarification_counts"] == {"no": 2, "yes": 1}
+    assert output["duplicate_normalized_prompt_count"] == 1
+    assert output["near_duplicate_family_leakage_count"] == 1
+    assert output["missing_required_field_count"] == 1
+    assert output["missing_required_fields"][0]["field"] == "tags"
+    assert {
+        (issue["field"], issue["value"])
+        for issue in output["unsupported_scalar_labels"]
+    } >= {("split", "holdout"), ("source_type", "test")}
 
 
 def test_build_prompt_jepa_index_command_writes_index(capsys, tmp_path) -> None:

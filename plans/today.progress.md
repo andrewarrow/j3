@@ -461,3 +461,29 @@ Use this shape for each worker handoff:
   and reproduced the 320-row corpus.
 - Next: implement the prompt corpus quality/profile command.
 - Blockers: none.
+
+### Iteration 2: Prompt corpus quality/profile command
+
+- Worker: Codex local iteration
+- Goal: add a tested `inspect-prompt-corpus` path for the expanded prompt
+  corpus.
+- Files changed: `prompt_intents.py`, `cli/parser.py`, `cli/handlers.py`,
+  `cli/__init__.py`, `tests/test_prompt_intents.py`, `tests/test_cli.py`,
+  `plans/today.progress.md`
+- Tests run: `pytest tests/test_prompt_intents.py -q` passed with 12 tests;
+  `pytest tests/test_cli.py -q` passed with 36 tests; `python -m py_compile
+  prompt_intents.py cli/handlers.py cli/parser.py cli/__init__.py` passed;
+  `python cli.py inspect-prompt-corpus --labels
+  ../prompts/coding_agent_prompts_expanded_v0.jsonl --json` passed; `git diff
+  --check` passed.
+- Result: implemented JSON and human-readable corpus profiling for total rows,
+  split counts, task type, repo mode, domain, expected action, clarification
+  counts, duplicate normalized prompts, prompt-family split leakage, missing
+  required fields, and unsupported scalar labels. The expanded 320-row corpus
+  currently reports no duplicate normalized prompts, no prompt-family leakage,
+  no missing required fields, and no unsupported scalar labels.
+- Commit: pending
+- Push: pending
+- Next: add a one-command Prompt-JEPA demo/report path with timings, artifact
+  sizes, representative queries, dry-run proposals, and hosted API tokens `0`.
+- Blockers: none.

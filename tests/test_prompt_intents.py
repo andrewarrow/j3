@@ -10,6 +10,7 @@ from prompt_intents import (
     evaluate_prompt_intent_predictions,
     load_prompt_intent_records,
     predict_prompt_intent,
+    profile_prompt_corpus_rows,
     profile_prompt_intents,
     train_prompt_intent_token_baseline,
 )
@@ -98,6 +99,96 @@ def test_loads_greenshot_7_prompt_intent_fixtures() -> None:
         "calculator.py",
         "tests/test_calculator_cli.py",
     )
+
+
+def test_prompt_corpus_profile_reports_quality_issues() -> None:
+    rows = [
+        {
+            "id": "train-create",
+            "split": "train",
+            "source_type": "human_seed",
+            "task_type": "create_app",
+            "repo_mode": "new_repo",
+            "domain": "calculator",
+            "prompt": "Make me a simple CLI calc",
+            "expected": {
+                "action": "emit_request_spec",
+                "clarify": False,
+                "artifacts": ["cli", "tests"],
+            },
+            "tags": ["family:calc-basic"],
+        },
+        {
+            "id": "test-create",
+            "split": "test",
+            "source_type": "synthetic_template_v0",
+            "task_type": "create_app",
+            "repo_mode": "new_repo",
+            "domain": "calculator",
+            "prompt": " make me a simple cli calc ",
+            "expected": {
+                "action": "emit_request_spec",
+                "clarify": False,
+                "artifacts": ["cli", "tests"],
+            },
+            "tags": [],
+            "prompt_family": "calc-basic",
+        },
+        {
+            "id": "bad-row",
+            "split": "holdout",
+            "source_type": "unknown_generator",
+            "task_type": "invent_magic",
+            "repo_mode": "scratch",
+            "domain": "calculator",
+            "prompt": "make a calculator",
+            "expected": {"action": "write_patch", "clarify": True},
+        },
+    ]
+
+    profile = profile_prompt_corpus_rows(rows)
+
+    assert profile["schema_version"] == "prompt-corpus-profile-v1"
+    assert profile["total_rows"] == 3
+    assert profile["split_counts"] == {"holdout": 1, "test": 1, "train": 1}
+    assert profile["task_type_counts"]["create_app"] == 2  # type: ignore[index]
+    assert profile["repo_mode_counts"] == {"new_repo": 2, "scratch": 1}
+    assert profile["domain_counts"] == {"calculator": 3}
+    assert profile["expected_action_counts"] == {
+        "emit_request_spec": 2,
+        "write_patch": 1,
+    }
+    assert profile["clarification_counts"] == {"no": 2, "yes": 1}
+    assert profile["duplicate_normalized_prompt_count"] == 1
+    duplicate = profile["duplicate_normalized_prompts"][0]  # type: ignore[index]
+    assert duplicate["normalized_prompt"] == "make me a simple cli calc"
+    assert [row["id"] for row in duplicate["rows"]] == [
+        "train-create",
+        "test-create",
+    ]
+    leakage = profile["near_duplicate_family_leakage"][0]  # type: ignore[index]
+    assert leakage["family"] == "calc-basic"
+    assert leakage["splits"] == ["test", "train"]
+    assert profile["missing_required_fields"] == [
+        {
+            "row_index": 2,
+            "line": 3,
+            "id": "bad-row",
+            "field": "tags",
+            "issue": "missing",
+        }
+    ]
+    unsupported = {
+        (item["field"], item["value"])
+        for item in profile["unsupported_scalar_labels"]  # type: ignore[union-attr]
+    }
+    assert {
+        ("split", "holdout"),
+        ("source_type", "unknown_generator"),
+        ("task_type", "invent_magic"),
+        ("repo_mode", "scratch"),
+        ("expected_action", "write_patch"),
+    }.issubset(unsupported)
 
 
 def test_prompt_intent_eval_scores_future_predictors() -> None:

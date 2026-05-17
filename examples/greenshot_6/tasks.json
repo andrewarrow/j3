@@ -50,6 +50,28 @@
     }
   },
   {
+    "name": "readme_rst_content_type_dict_value",
+    "family": "mapping_value",
+    "source_type": "mutation",
+    "split": "train",
+    "repo": ".",
+    "test": "python -m pytest tests/test_pkgmeta.py::test_rst_readme_uses_standard_metadata_content_type",
+    "source": {
+      "repo": "pypa/pyproject-metadata",
+      "fixture": "readme rst content-type mapping-value mutation"
+    },
+    "preferred": {
+      "file_path": "pkgmeta/metadata.py",
+      "action": "change_dict_value",
+      "symbol": "readme_content_type",
+      "params": {
+        "key": "rst",
+        "from": "text/x-rst",
+        "to": "text/rst"
+      }
+    }
+  },
+  {
     "name": "minimum_python_version_operator_boundary",
     "family": "operator_boundary",
     "source_type": "mutation",
@@ -878,6 +900,28 @@
         "key": "host",
         "from": "__Host",
         "to": "__Host-"
+      }
+    }
+  },
+  {
+    "name": "cookie_legacy_secure_prefix_dict_value",
+    "family": "mapping_value",
+    "source_type": "mutation",
+    "split": "train",
+    "repo": ".",
+    "test": "python -m pytest tests/test_webcookies.py::test_legacy_secure_cookie_prefix_has_no_trailing_dash",
+    "source": {
+      "repo": "pallets/werkzeug",
+      "fixture": "legacy cookie prefix policy mutation"
+    },
+    "preferred": {
+      "file_path": "webcookies/policy.py",
+      "action": "change_dict_value",
+      "symbol": "legacy_cookie_prefix",
+      "params": {
+        "key": "secure",
+        "from": "__Secure-",
+        "to": "__Secure"
       }
     }
   },

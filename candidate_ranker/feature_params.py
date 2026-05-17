@@ -62,6 +62,27 @@ def _add_dict_value_assertion_delta_features(
         ] = 1.0
 
 
+def _add_literal_dict_key_assertion_delta_features(
+    features: dict[str, float],
+    *,
+    action: str,
+    params: Mapping[str, object],
+    hints: list[object] | tuple[object, ...],
+    ast_metadata: Mapping[str, object],
+) -> None:
+    if action != "change_literal":
+        return
+    if _scalar_assertion_value_delta_match(params, hints) != "expected_only":
+        return
+    if not _ast_delta_changes_dict_key(ast_metadata):
+        return
+
+    features["literal_dict_key_scalar_assertion_to_matches_expected_only"] = 1.0
+    features[
+        f"action_literal_dict_key_scalar_assertion_to_matches_expected_only:{action}"
+    ] = 1.0
+
+
 def _add_import_locality_features(
     features: dict[str, float],
     action: str,
@@ -549,6 +570,18 @@ def _exact_value_equal(left: object, right: object) -> bool:
 
 def _is_scalar_assertion_value(value: object) -> bool:
     return value is None or isinstance(value, (str, bool, int, float))
+
+
+def _ast_delta_changes_dict_key(ast_metadata: Mapping[str, object]) -> bool:
+    added = ast_metadata.get("ast_delta_added_features")
+    removed = ast_metadata.get("ast_delta_removed_features")
+    return _has_dict_key_delta(added) and _has_dict_key_delta(removed)
+
+
+def _has_dict_key_delta(value: object) -> bool:
+    if not isinstance(value, Mapping):
+        return False
+    return any(str(key).startswith("dict_key:") for key in value)
 
 
 def _string_set(value: object) -> set[str]:

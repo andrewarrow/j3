@@ -99,7 +99,7 @@ def test_load_greenshot_6_tasks() -> None:
     tasks = load_tasks(Path("examples/greenshot_6"))
     by_name = {task.name: task for task in tasks}
 
-    assert len(tasks) == 46
+    assert len(tasks) == 48
     assert tasks[0].name == "core_metadata_version_dict_value"
     assert tasks[0].family == "mapping_value"
     assert tasks[0].source_type == "mutation"
@@ -121,6 +121,18 @@ def test_load_greenshot_6_tasks() -> None:
             "key": "Apache-2.0",
             "from": "License :: OSI Approved :: Apache License",
             "to": "License :: OSI Approved :: Apache Software License",
+        },
+    }
+    assert by_name["readme_rst_content_type_dict_value"].split == "train"
+    assert by_name["readme_rst_content_type_dict_value"].source_type == "mutation"
+    assert by_name["readme_rst_content_type_dict_value"].preferred_patch == {
+        "file_path": "pkgmeta/metadata.py",
+        "action": "change_dict_value",
+        "symbol": "readme_content_type",
+        "params": {
+            "key": "rst",
+            "from": "text/x-rst",
+            "to": "text/rst",
         },
     }
     assert by_name["readme_missing_file_exception_key"].family == "exception_context"
@@ -531,6 +543,17 @@ def test_load_greenshot_6_tasks() -> None:
             "to": True,
         },
     }
+    assert by_name["cookie_legacy_secure_prefix_dict_value"].split == "train"
+    assert by_name["cookie_legacy_secure_prefix_dict_value"].preferred_patch == {
+        "file_path": "webcookies/policy.py",
+        "action": "change_dict_value",
+        "symbol": "legacy_cookie_prefix",
+        "params": {
+            "key": "secure",
+            "from": "__Secure-",
+            "to": "__Secure",
+        },
+    }
     assert by_name["cookie_pair_argument_order"].preferred_patch == {
         "file_path": "webcookies/policy.py",
         "action": "swap_call_arg",
@@ -834,6 +857,7 @@ def test_write_candidate_outcomes_jsonl_records_one_row_per_tested_candidate(tmp
 def test_write_candidate_outcomes_preserves_scalar_dict_value_assertion_delta(tmp_path) -> None:
     preferred = _cookie_host_prefix_candidate(to="__Host-")
     false = _cookie_host_prefix_candidate(to="host")
+    literal_key_false = _cookie_host_prefix_literal_key_candidate()
     hint = PytestFailureHint(
         assertions=[
             AssertionComparison(actual="__Host", operator="==", expected="__Host-"),
@@ -843,14 +867,14 @@ def test_write_candidate_outcomes_preserves_scalar_dict_value_assertion_delta(tm
         repo=tmp_path,
         test_command="python -m pytest tests/test_policy.py",
         baseline_exit_code=1,
-        candidates_generated=2,
-        candidates_tested=2,
+        candidates_generated=3,
+        candidates_tested=3,
         selected=preferred,
         applied=True,
         test_output="",
-        tested_candidates=(preferred, false),
+        tested_candidates=(preferred, false, literal_key_false),
         failure_hints=(hint,),
-        tested_candidate_hints=((hint,), (hint,)),
+        tested_candidate_hints=((hint,), (hint,), (hint,)),
         first_passing_index=1,
         passing_candidates=(preferred,),
         selected_candidates=(preferred,),
@@ -877,6 +901,7 @@ def test_write_candidate_outcomes_preserves_scalar_dict_value_assertion_delta(tm
     ]
     preferred_features = _candidate_record_features(rows[0], rows[0]["failure_hints"])
     false_features = _candidate_record_features(rows[1], rows[1]["failure_hints"])
+    literal_key_features = _candidate_record_features(rows[2], rows[2]["failure_hints"])
 
     assert rows[0]["failure_hints"][0]["assertions"] == [
         {
@@ -892,6 +917,18 @@ def test_write_candidate_outcomes_preserves_scalar_dict_value_assertion_delta(tm
         == 1.0
     )
     assert "dict_value_scalar_assertion_delta_matches" not in false_features
+    assert (
+        literal_key_features[
+            "literal_dict_key_scalar_assertion_to_matches_expected_only"
+        ]
+        == 1.0
+    )
+    assert (
+        literal_key_features[
+            "action_literal_dict_key_scalar_assertion_to_matches_expected_only:change_literal"
+        ]
+        == 1.0
+    )
 
 
 def test_write_candidate_outcomes_preserves_swap_call_role_metadata(tmp_path) -> None:
@@ -1067,6 +1104,41 @@ def _cookie_host_prefix_candidate(*, to: str) -> CandidatePatch:
         original_source=source,
         patched_source=patched,
         reason=f"try dictionary value 'host'={to!r}",
+        failure_hint_score=100.0,
+    )
+
+
+def _cookie_host_prefix_literal_key_candidate() -> CandidatePatch:
+    source = (
+        "PREFIXES = {\n"
+        "    'host': '__Host',\n"
+        "    'secure': '__Secure-',\n"
+        "}\n"
+    )
+    patched = source.replace("'host': '__Host'", "'__Host-': '__Host'")
+    return CandidatePatch(
+        file_path="webcookies/policy.py",
+        action=PatchAction(
+            kind=PatchActionKind.CHANGE_LITERAL,
+            target=PatchTarget(
+                file_path="webcookies/policy.py",
+                start_line=2,
+                end_line=2,
+                symbol="PREFIXES",
+                node_kind="Constant",
+            ),
+            params={"from": "host", "to": "__Host-"},
+        ),
+        edit=SourceEdit(
+            start_line=2,
+            start_col=4,
+            end_line=2,
+            end_col=10,
+            replacement="'__Host-'",
+        ),
+        original_source=source,
+        patched_source=patched,
+        reason="try nearby literal '__Host-'",
         failure_hint_score=100.0,
     )
 

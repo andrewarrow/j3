@@ -21,6 +21,14 @@ def cookie_prefix(kind: str) -> str:
     return prefixes[kind]
 
 
+def legacy_cookie_prefix(kind: str) -> str:
+    prefixes = {
+        "secure": "__Secure-",
+        "host": "__Host-",
+    }
+    return prefixes[kind]
+
+
 def is_expired_cookie(max_age: int) -> bool:
     return max_age < 0
 

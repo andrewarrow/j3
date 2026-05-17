@@ -34,6 +34,12 @@ def test_markdown_readme_uses_metadata_content_type() -> None:
     assert metadata["Description-Content-Type"] == "text/markdown"
 
 
+def test_rst_readme_uses_standard_metadata_content_type() -> None:
+    metadata = describe_readme("rst")
+
+    assert metadata["Description-Content-Type"] == "text/rst"
+
+
 def test_minimum_python_version_is_inclusive() -> None:
     assert is_python_version_supported((3, 8), minimum=(3, 8))
 

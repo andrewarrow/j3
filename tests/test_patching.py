@@ -521,6 +521,68 @@ def test_generate_same_mapping_boolean_value_with_key_rename_decoy(tmp_path) -> 
     )
 
 
+def test_generate_literal_dict_key_decoy_for_dict_value_repair(tmp_path) -> None:
+    repo = tmp_path / "greenshot_6"
+    shutil.copytree("examples/greenshot_6", repo)
+
+    result = plan_and_maybe_apply_patch(
+        repo=repo,
+        test_command=(
+            "python -m pytest "
+            "tests/test_pkgmeta.py::test_rst_readme_uses_standard_metadata_content_type"
+        ),
+        dry_run=True,
+        timeout_seconds=10,
+        explore_after_pass=5,
+    )
+
+    assert result.selected is not None
+    assert result.selected.file_path == "pkgmeta/metadata.py"
+    assert result.selected.action.kind.value == "change_dict_value"
+    assert result.selected.action.params == {
+        "key": "rst",
+        "from": "text/x-rst",
+        "to": "text/rst",
+    }
+    assert any(
+        candidate.action.kind.value == "change_literal"
+        and candidate.action.params == {"from": "rst", "to": "text/rst"}
+        and candidate not in result.passing_candidates
+        for candidate in result.tested_candidates
+    )
+
+
+def test_patch_solves_legacy_secure_prefix_dict_value(tmp_path) -> None:
+    repo = tmp_path / "greenshot_6"
+    shutil.copytree("examples/greenshot_6", repo)
+
+    result = plan_and_maybe_apply_patch(
+        repo=repo,
+        test_command=(
+            "python -m pytest "
+            "tests/test_webcookies.py::test_legacy_secure_cookie_prefix_has_no_trailing_dash"
+        ),
+        dry_run=True,
+        timeout_seconds=10,
+        explore_after_pass=5,
+    )
+
+    assert result.selected is not None
+    assert result.selected.file_path == "webcookies/policy.py"
+    assert result.selected.action.kind.value == "change_dict_value"
+    assert result.selected.action.params == {
+        "key": "secure",
+        "from": "__Secure-",
+        "to": "__Secure",
+    }
+    assert any(
+        candidate.action.kind.value == "change_literal"
+        and candidate.action.params == {"from": "secure", "to": "__Secure"}
+        and candidate not in result.passing_candidates
+        for candidate in result.tested_candidates
+    )
+
+
 def test_generate_change_dict_value_candidate_from_repo_string_literals(tmp_path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()

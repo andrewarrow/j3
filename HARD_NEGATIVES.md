@@ -1524,3 +1524,79 @@ Decision: do not tune broad action/string/boolean weights from this single
 refresh. The next step should inspect whether there is a narrow non-leaky
 signal or independent non-held-out coverage for literal-vs-dictionary-value
 decoys in the same API surface before changing ranker features.
+
+### Literal-Key vs Dictionary-Value Follow-Up
+
+Inspection date: 2026-05-17.
+
+Inspection source:
+
+```bash
+runs/apache-python-git/greenshot-5-candidate-outcomes.jsonl
+runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl
+runs/apache-python-git/ranker-holdout-greenshot-6-test-slice/candidate-ranker.json
+```
+
+The reopened `cookie_host_prefix_dict_value` residual was confirmed as ranking
+signal, not missing action signal. The preferred row exists, passes, and is
+marked preferred; the false row changes the dictionary key literal rather than
+the value:
+
+| Trained rank before fix | Original rank | Passed | Preferred | Candidate | Score |
+| ---: | ---: | --- | --- | --- | ---: |
+| 1 | 3 | no | no | `change_literal`, `host` -> `__Host-` | 15.096667 |
+| 2 | 1 | yes | yes | `change_dict_value`, `host: "__Host"` -> `"__Host-"` | 13.180131 |
+
+The preferred row already had the scalar dictionary-value assertion-delta
+feature and a better failure-hint score. The false literal won through learned
+literal token-overlap, call-graph, and relation/locality features. Existing
+non-held-out coverage for this exact literal-key decoy shape was too thin:
+only `readme_markdown_content_type_dict_value` had a failing
+`change_literal` dictionary-key row where `params.to` matched the scalar
+assertion expected value.
+
+Implementation result:
+
+- Added a narrow v13 ranker feature for `change_literal` candidates whose AST
+  delta changes a dictionary key and whose replacement matches the scalar
+  assertion expected value while the original literal does not match the
+  assertion actual value.
+- Added independent train-split coverage for the same decoy shape:
+  `readme_rst_content_type_dict_value` and
+  `cookie_legacy_secure_prefix_dict_value`.
+- No action family, broad action/string/boolean weight, or pass/preferred-label
+  feature was added.
+
+Focused verification passed:
+
+```bash
+pytest tests/test_candidate_ranking.py -q
+pytest tests/test_evaluation.py::test_load_greenshot_6_tasks tests/test_evaluation.py::test_write_candidate_outcomes_preserves_scalar_dict_value_assertion_delta -q
+pytest tests/test_patching.py::test_generate_literal_dict_key_decoy_for_dict_value_repair tests/test_patching.py::test_patch_solves_legacy_secure_prefix_dict_value -q
+```
+
+GreenShot-6 outcome refresh:
+
+| Slice | Tasks | Solved | Pass@1 | Rows | Passing rows | Preferred-positive rows |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| GreenShot-6 ranked explore | 48 | 48/48 | 34/48 | 379 | 78 | 48 |
+
+Validation result after rerunning the same GreenShot-6 `split: test` holdout:
+
+| Slice | Plans | Solved | Pass@1 | Positive@1 | Avg first passing index |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| GreenShot-6 `split: test` holdout | 7 | 7/7 | 7/7 | 7/7 | 1.0 |
+
+The held-out cookie residual is fixed in this slice:
+
+| Trained rank after fix | Original rank | Passed | Preferred | Candidate | Score |
+| ---: | ---: | --- | --- | --- | ---: |
+| 1 | 1 | yes | yes | `change_dict_value`, `host: "__Host"` -> `"__Host-"` | 15.524589 |
+| 4 | 3 | no | no | `change_literal`, `host` -> `__Host-` | 8.656597 |
+
+The v13 literal-key feature is present on the intended rows, but the final
+trained model does not assign it a direct non-zero weight yet. The clean
+held-out result comes from the added independent coverage shifting the learned
+ordering for this decoy family without manual broad-weight tuning. Keep the
+feature for future support, but do not add more literal/dictionary-value
+metadata unless a fresh residual shows it is needed.

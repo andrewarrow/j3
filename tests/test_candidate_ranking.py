@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 
 from actions import PatchAction, PatchActionKind, PatchTarget
+from ast_delta import python_ast_delta_metadata
 from candidate_ranking import CandidateRankerModel, candidate_features, train_candidate_ranker
 from candidate_ranker.features import _candidate_record_features
 from failure_hints import AssertionComparison, PytestFailureHint
@@ -796,6 +797,7 @@ def test_candidate_features_distinguish_same_mapping_asserted_key_value_and_key_
 
 def test_candidate_features_distinguish_scalar_dict_value_assertion_delta() -> None:
     preferred, false = _cookie_host_prefix_candidates()
+    literal_key_false = _cookie_host_prefix_literal_key_candidate()
     hints = [
         PytestFailureHint(
             assertions=[
@@ -806,6 +808,7 @@ def test_candidate_features_distinguish_scalar_dict_value_assertion_delta() -> N
 
     preferred_features = candidate_features(preferred, hints=hints)
     false_features = candidate_features(false, hints=hints)
+    literal_key_features = candidate_features(literal_key_false, hints=hints)
 
     assert preferred_features["dict_value_scalar_assertion_delta_matches"] == 1.0
     assert (
@@ -819,6 +822,19 @@ def test_candidate_features_distinguish_scalar_dict_value_assertion_delta() -> N
         == 1.0
     )
     assert "dict_value_scalar_assertion_delta_matches" not in false_features
+    assert (
+        literal_key_features[
+            "literal_dict_key_scalar_assertion_to_matches_expected_only"
+        ]
+        == 1.0
+    )
+    assert (
+        literal_key_features[
+            "action_literal_dict_key_scalar_assertion_to_matches_expected_only:change_literal"
+        ]
+        == 1.0
+    )
+    assert "literal_dict_key_scalar_assertion_to_matches_expected_only" not in preferred_features
 
 
 def test_candidate_features_record_swap_call_arg_role_metadata(tmp_path) -> None:
@@ -1059,6 +1075,10 @@ def test_candidate_record_features_distinguish_scalar_dict_value_assertion_delta
         _cookie_host_prefix_value_record(to="host", passed=False),
         hints,
     )
+    literal_key_features = _candidate_record_features(
+        _cookie_host_prefix_literal_key_record(),
+        hints,
+    )
 
     assert preferred_features["dict_value_scalar_assertion_delta_matches"] == 1.0
     assert (
@@ -1072,6 +1092,19 @@ def test_candidate_record_features_distinguish_scalar_dict_value_assertion_delta
         == 1.0
     )
     assert "dict_value_scalar_assertion_delta_matches" not in false_features
+    assert (
+        literal_key_features[
+            "literal_dict_key_scalar_assertion_to_matches_expected_only"
+        ]
+        == 1.0
+    )
+    assert (
+        literal_key_features[
+            "action_literal_dict_key_scalar_assertion_to_matches_expected_only:change_literal"
+        ]
+        == 1.0
+    )
+    assert "literal_dict_key_scalar_assertion_to_matches_expected_only" not in preferred_features
 
 
 def test_candidate_record_features_include_swap_call_arg_role_metadata() -> None:
@@ -1472,6 +1505,41 @@ def _cookie_host_prefix_candidates() -> tuple[CandidatePatch, CandidatePatch]:
     return preferred, false
 
 
+def _cookie_host_prefix_literal_key_candidate() -> CandidatePatch:
+    source = (
+        "PREFIXES = {\n"
+        "    'host': '__Host',\n"
+        "    'secure': '__Secure-',\n"
+        "}\n"
+    )
+    patched = source.replace("'host': '__Host'", "'__Host-': '__Host'")
+    return CandidatePatch(
+        file_path="policy.py",
+        action=PatchAction(
+            kind=PatchActionKind.CHANGE_LITERAL,
+            target=PatchTarget(
+                file_path="policy.py",
+                start_line=2,
+                end_line=2,
+                symbol="PREFIXES",
+                node_kind="Constant",
+            ),
+            params={"from": "host", "to": "__Host-"},
+        ),
+        edit=SourceEdit(
+            start_line=2,
+            start_col=4,
+            end_line=2,
+            end_col=10,
+            replacement="'__Host-'",
+        ),
+        original_source=source,
+        patched_source=patched,
+        reason="try nearby literal '__Host-'",
+        failure_hint_score=100.0,
+    )
+
+
 def _cookie_secure_value_record(*, passed: bool) -> dict[str, object]:
     return {
         "file_path": "webcookies/policy.py",
@@ -1518,6 +1586,29 @@ def _cookie_host_prefix_value_record(*, to: str, passed: bool) -> dict[str, obje
             "dict_value_key_in_same_mapping": True,
         },
     }
+
+
+def _cookie_host_prefix_literal_key_record() -> dict[str, object]:
+    candidate = _cookie_host_prefix_literal_key_candidate()
+    record = {
+        "file_path": candidate.file_path,
+        "action": "change_literal",
+        "symbol": "PREFIXES",
+        "start_line": 2,
+        "end_line": 2,
+        "node_kind": "Constant",
+        "params": {"from": "host", "to": "__Host-"},
+        "reason": "try nearby literal '__Host-'",
+        "model_score": 0.0,
+        "failure_hint_score": 100.0,
+        "ranker_score": None,
+        "passed": False,
+        "target_context": {"role": "helper"},
+    }
+    record.update(
+        python_ast_delta_metadata(candidate.original_source, candidate.patched_source)
+    )
+    return record
 
 
 def _cookie_secure_key_record(*, passed: bool) -> dict[str, object]:

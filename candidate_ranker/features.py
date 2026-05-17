@@ -16,6 +16,7 @@ from .feature_params import (
     _add_dict_value_assertion_delta_features,
     _add_edit_metadata_features,
     _add_import_locality_features,
+    _add_literal_dict_key_assertion_delta_features,
     _add_param_features,
     _add_target_context_features,
 )
@@ -51,11 +52,8 @@ def candidate_features(
     edit_metadata = _live_candidate_edit_metadata(candidate)
     if edit_metadata is not None:
         _add_edit_metadata_features(features, action, **edit_metadata)
-    features.update(
-        ast_delta_feature_map(
-            python_ast_delta_metadata(candidate.original_source, candidate.patched_source)
-        )
-    )
+    ast_metadata = python_ast_delta_metadata(candidate.original_source, candidate.patched_source)
+    features.update(ast_delta_feature_map(ast_metadata))
 
     for hint in hints:
         _merge_hint_features(features, candidate, action, hint)
@@ -76,6 +74,13 @@ def candidate_features(
         action=action,
         params=params,
         hints=hints,
+    )
+    _add_literal_dict_key_assertion_delta_features(
+        features,
+        action=action,
+        params=params,
+        hints=hints,
+        ast_metadata=ast_metadata,
     )
     _add_target_context_features(
         features,
@@ -145,6 +150,13 @@ def _candidate_record_features(candidate: dict[str, object], hints: object) -> d
                 action=action,
                 params=params,
                 hints=hints,
+            )
+            _add_literal_dict_key_assertion_delta_features(
+                features,
+                action=action,
+                params=params,
+                hints=hints,
+                ast_metadata=candidate,
             )
     _add_target_context_features(
         features,

@@ -4,6 +4,7 @@ from webcookies.api import (
     default_cookie_attributes,
     default_partitioned_cookie_attributes,
     is_expired_cookie,
+    legacy_cookie_prefix,
     render_cookie_pair,
 )
 
@@ -22,6 +23,10 @@ def test_partitioned_cookie_attribute_is_enabled_by_default() -> None:
 
 def test_host_cookie_prefix_has_trailing_dash() -> None:
     assert cookie_prefix("host") == "__Host-"
+
+
+def test_legacy_secure_cookie_prefix_has_no_trailing_dash() -> None:
+    assert legacy_cookie_prefix("secure") == "__Secure"
 
 
 def test_zero_max_age_cookie_is_expired() -> None:

@@ -938,12 +938,36 @@ Recent work:
   Raw GreenShot-6 now has 11 pass@1 misses, but every task has a tested
   preferred-positive row and the saved test-slice ranker places every
   preferred-positive candidate at trained rank 1.
+- GreenShot-6 now includes a twenty-first fixture domain, `poetryenv`, with
+  one real-package-derived `git_history` task modeled on `python-poetry/poetry`
+  PR 325 / commit `d98f168941e9e7ffab9888686c2cc0a13fbea887`. The task
+  `poetry_project_directory_unable_typo` repairs a Poetry virtualenv
+  RuntimeError message typo by changing `Unbale` to `Unable`, using the
+  existing `change_literal` action family.
+- Focused loader/generator coverage passed for the new Poetry-derived task:
+  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
+  `pytest tests/test_patching.py::test_patch_solves_poetry_project_directory_unable_typo -q`.
+- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
+  adding `poetryenv`. The persisted dataset at
+  `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` now covers 40
+  tasks and 296 tested candidates. Ranked eval solved all 40 tasks with
+  `pass@1=28/40` and average candidates `7.40`; the new Poetry-derived task
+  solves at raw rank 1 with the preferred `change_literal` candidate.
+- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
+  the poetryenv outcome refresh and stayed clean: solved=7/7, pass@1=7/7,
+  positive@1=7/7. Training used 376 rows, 76 passing rows, 322 training pairs,
+  794 features, and 4 margin violations.
+- Refreshed raw/trained miss inspection after adding `poetryenv` found no
+  missing preferred-positive rows and no trained preferred-positive misses.
+  Raw GreenShot-6 now has 12 pass@1 misses, but every task has a tested
+  preferred-positive row and the saved test-slice ranker places every
+  preferred-positive candidate at trained rank 1.
 
 Last focused verification:
 
 ```bash
 pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q
-pytest tests/test_patching.py::test_patch_solves_django_makemessages_locale_directory_exists -q
+pytest tests/test_patching.py::test_patch_solves_poetry_project_directory_unable_typo -q
 python cli.py eval \
   --tasks examples/greenshot_6 \
   --checkpoint runs/apache-python-git/model.json \
@@ -971,7 +995,7 @@ python cli.py outcome-summary \
   --candidate-outcomes runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl
 python - <<'PY'
 # Applied the refreshed test-slice ranker to all refreshed GreenShot-6 rows:
-# raw_pass1_misses=11, trained_preferred_positive_misses=0 across 39 tasks.
+# raw_pass1_misses=12, trained_preferred_positive_misses=0 across 40 tasks.
 PY
 git diff --check
 ```
@@ -1299,7 +1323,7 @@ The next context window should continue dataset growth by adding another
 real-package-derived GreenShot-6 task or small fixture domain. Do not tune broad
 handcrafted weights or add pass/preferred-label features from this state. The
 current GreenShot-6 `split: test` held-out validation is clean after the
-i18nmsgs outcome refresh.
+poetryenv outcome refresh.
 
 Immediate next sequence:
 

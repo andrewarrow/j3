@@ -1061,6 +1061,30 @@ def test_patch_solves_django_makemessages_locale_directory_exists(tmp_path) -> N
     assert "directory exists in an app" in result.selected.patched_source
 
 
+def test_patch_solves_poetry_project_directory_unable_typo(tmp_path) -> None:
+    repo = tmp_path / "greenshot_6"
+    shutil.copytree("examples/greenshot_6", repo)
+
+    result = plan_and_maybe_apply_patch(
+        repo=repo,
+        test_command=(
+            "python -m pytest "
+            "tests/test_poetryenv.py::test_missing_project_directory_error_spells_unable"
+        ),
+        dry_run=True,
+        timeout_seconds=10,
+    )
+
+    assert result.selected is not None
+    assert result.selected.file_path == "poetryenv/venv.py"
+    assert result.selected.action.kind.value == "change_literal"
+    assert result.selected.action.params == {
+        "from": "Unbale to determine the project's directory",
+        "to": "Unable to determine the project's directory",
+    }
+    assert "Unable to determine the project's directory" in result.selected.patched_source
+
+
 def test_generate_membership_operator_with_literal_needle_decoy(tmp_path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()

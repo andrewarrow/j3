@@ -99,7 +99,7 @@ def test_load_greenshot_6_tasks() -> None:
     tasks = load_tasks(Path("examples/greenshot_6"))
     by_name = {task.name: task for task in tasks}
 
-    assert len(tasks) == 39
+    assert len(tasks) == 40
     assert tasks[0].name == "core_metadata_version_dict_value"
     assert tasks[0].family == "mapping_value"
     assert tasks[0].source_type == "mutation"
@@ -214,6 +214,22 @@ def test_load_greenshot_6_tasks() -> None:
         "params": {
             "from": "the 'locale' directory exist in an app",
             "to": "the 'locale' directory exists in an app",
+        },
+    }
+    assert by_name["poetry_project_directory_unable_typo"].family == (
+        "venv_error_message"
+    )
+    assert by_name["poetry_project_directory_unable_typo"].source_type == (
+        "git_history"
+    )
+    assert by_name["poetry_project_directory_unable_typo"].split == "train"
+    assert by_name["poetry_project_directory_unable_typo"].preferred_patch == {
+        "file_path": "poetryenv/venv.py",
+        "action": "change_literal",
+        "symbol": "project_directory_error",
+        "params": {
+            "from": "Unbale to determine the project's directory",
+            "to": "Unable to determine the project's directory",
         },
     }
     assert by_name["http_no_store_directive_subscript_key"].preferred_patch == {

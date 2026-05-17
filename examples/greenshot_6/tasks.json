@@ -659,6 +659,28 @@
     }
   },
   {
+    "name": "poetry_project_directory_unable_typo",
+    "family": "venv_error_message",
+    "source_type": "git_history",
+    "split": "train",
+    "repo": ".",
+    "test": "python -m pytest tests/test_poetryenv.py::test_missing_project_directory_error_spells_unable",
+    "source": {
+      "repo": "python-poetry/poetry",
+      "commit": "d98f168941e9e7ffab9888686c2cc0a13fbea887",
+      "pr": 325
+    },
+    "preferred": {
+      "file_path": "poetryenv/venv.py",
+      "action": "change_literal",
+      "symbol": "project_directory_error",
+      "params": {
+        "from": "Unbale to determine the project's directory",
+        "to": "Unable to determine the project's directory"
+      }
+    }
+  },
+  {
     "name": "cookie_default_secure_flag_dict_value",
     "family": "mapping_value",
     "source_type": "mutation",

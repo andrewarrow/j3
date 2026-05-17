@@ -1161,6 +1161,30 @@ def test_patch_solves_dvc_pre_commit_repo_treeverse_url(tmp_path) -> None:
     assert "https://github.com/treeverse/dvc" in result.selected.patched_source
 
 
+def test_patch_solves_scrapy_playwright_download_log_typo(tmp_path) -> None:
+    repo = tmp_path / "greenshot_6"
+    shutil.copytree("examples/greenshot_6", repo)
+
+    result = plan_and_maybe_apply_patch(
+        repo=repo,
+        test_command=(
+            "python -m pytest "
+            "tests/test_playwrightlog.py::test_download_wait_log_template_spells_download"
+        ),
+        dry_run=True,
+        timeout_seconds=10,
+    )
+
+    assert result.selected is not None
+    assert result.selected.file_path == "playwrightlog/handler.py"
+    assert result.selected.action.kind.value == "change_literal"
+    assert result.selected.action.params == {
+        "from": "Waiting on dowload to finish for %s",
+        "to": "Waiting on download to finish for %s",
+    }
+    assert "Waiting on download to finish for %s" in result.selected.patched_source
+
+
 def test_generate_membership_operator_with_literal_needle_decoy(tmp_path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()

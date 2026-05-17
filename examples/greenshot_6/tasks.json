@@ -749,6 +749,28 @@
     }
   },
   {
+    "name": "scrapy_playwright_download_log_typo",
+    "family": "download_log_message",
+    "source_type": "git_history",
+    "split": "train",
+    "repo": ".",
+    "test": "python -m pytest tests/test_playwrightlog.py::test_download_wait_log_template_spells_download",
+    "source": {
+      "repo": "scrapy-plugins/scrapy-playwright",
+      "commit": "662747694cbaec87045f55be1f7fc53c3be810ab",
+      "pr": 312
+    },
+    "preferred": {
+      "file_path": "playwrightlog/handler.py",
+      "action": "change_literal",
+      "symbol": "download_wait_template",
+      "params": {
+        "from": "Waiting on dowload to finish for %s",
+        "to": "Waiting on download to finish for %s"
+      }
+    }
+  },
+  {
     "name": "cookie_default_secure_flag_dict_value",
     "family": "mapping_value",
     "source_type": "mutation",

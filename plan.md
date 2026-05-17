@@ -1035,12 +1035,38 @@ Recent work:
 - Applying the saved test-slice ranker to all refreshed GreenShot-6 rows found
   no trained preferred-positive misses across 43 tasks. Raw GreenShot-6 has 13
   pass@1 misses, but every task has a tested preferred-positive row.
+- GreenShot-6 now includes a twenty-fifth real-package-derived fixture domain,
+  `playwrightlog`, with one `git_history` task modeled on
+  `scrapy-plugins/scrapy-playwright` PR 312 / commit
+  `662747694cbaec87045f55be1f7fc53c3be810ab`. The task
+  `scrapy_playwright_download_log_typo` repairs a download wait log message
+  template typo by changing `dowload` to `download`, using the existing
+  `change_literal` action family.
+- Focused loader/generator coverage passed for the scrapy-playwright-derived
+  task:
+  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
+  `pytest tests/test_patching.py::test_patch_solves_scrapy_playwright_download_log_typo -q`.
+- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
+  adding `playwrightlog`. The persisted dataset at
+  `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` now covers 44
+  tasks and 324 tested candidates. Ranked eval solved all 44 tasks with
+  `pass@1=31/44` and average candidates `7.36`; the new
+  scrapy-playwright-derived task solves at raw rank 1 with the preferred
+  `change_literal` candidate.
+- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
+  the playwrightlog outcome refresh and stayed clean: solved=7/7,
+  pass@1=7/7, positive@1=7/7, avg_first_passing_index=1.0. Training used 404
+  rows, 80 passing rows, 346 training pairs, 819 features, and 3 margin
+  violations.
+- Applying the saved test-slice ranker to all refreshed GreenShot-6 rows found
+  no trained preferred-positive misses across 44 tasks. Raw GreenShot-6 has 13
+  pass@1 misses, but every task has a tested preferred-positive row.
 
 Last focused verification:
 
 ```bash
 pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q
-pytest tests/test_patching.py::test_patch_solves_dvc_pre_commit_repo_treeverse_url -q
+pytest tests/test_patching.py::test_patch_solves_scrapy_playwright_download_log_typo -q
 python cli.py eval \
   --tasks examples/greenshot_6 \
   --checkpoint runs/apache-python-git/model.json \
@@ -1068,7 +1094,7 @@ python cli.py outcome-summary \
   --candidate-outcomes runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl
 python - <<'PY'
 # Applied the refreshed test-slice ranker to all refreshed GreenShot-6 rows:
-# raw_pass1_misses=13, trained_preferred_positive_misses=0 across 43 tasks.
+# raw_pass1_misses=13, trained_preferred_positive_misses=0 across 44 tasks.
 PY
 git diff --check
 ```
@@ -1187,9 +1213,9 @@ GreenShot-6 outcome collection result:
 
 ```text
 ranked, runs/apache-python-git/model.json, explore-after-pass=5:
-  solved=43/43 pass@1=30/43 avg_candidates=7.40
-  rows=318 passing_rows=71 preferred_positive_rows=43
-  source_type pass@1: git_history=15/25 mutation=15/18
+  solved=44/44 pass@1=31/44 avg_candidates=7.36
+  rows=324 passing_rows=72 preferred_positive_rows=44
+  source_type pass@1: git_history=16/26 mutation=15/18
 ```
 
 Treat this as a smoke check, not a benchmark claim.
@@ -1208,7 +1234,7 @@ GreenShot-6 test-slice ranker validation result:
 
 ```text
 train-ranker, holdout-task includes all GreenShot-6 split:test tasks:
-  training rows=398 passing_rows=79 tasks=56 plans=56 pairs=341
+  training rows=404 passing_rows=80 tasks=57 plans=57 pairs=346
   training_accuracy=1.000 margin_violations=3 features=819
   validation solved=7/7 pass@1=7/7 positive@1=7/7
   validation avg_first_passing_index=1.0
@@ -1396,7 +1422,7 @@ The next context window should continue dataset growth by adding another
 real-package-derived GreenShot-6 task or small fixture domain. Do not tune broad
 handcrafted weights or add pass/preferred-label features from this state. The
 current GreenShot-6 `split: test` held-out validation is clean after the
-flaskcli outcome refresh.
+playwrightlog outcome refresh.
 
 Immediate next sequence:
 

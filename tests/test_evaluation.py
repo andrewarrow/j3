@@ -99,7 +99,7 @@ def test_load_greenshot_6_tasks() -> None:
     tasks = load_tasks(Path("examples/greenshot_6"))
     by_name = {task.name: task for task in tasks}
 
-    assert len(tasks) == 43
+    assert len(tasks) == 44
     assert tasks[0].name == "core_metadata_version_dict_value"
     assert tasks[0].family == "mapping_value"
     assert tasks[0].source_type == "mutation"
@@ -473,6 +473,17 @@ def test_load_greenshot_6_tasks() -> None:
             "key": "repo",
             "from": "https://github.com/iterative/dvc",
             "to": "https://github.com/treeverse/dvc",
+        },
+    }
+    assert by_name["scrapy_playwright_download_log_typo"].split == "train"
+    assert by_name["scrapy_playwright_download_log_typo"].source_type == "git_history"
+    assert by_name["scrapy_playwright_download_log_typo"].preferred_patch == {
+        "file_path": "playwrightlog/handler.py",
+        "action": "change_literal",
+        "symbol": "download_wait_template",
+        "params": {
+            "from": "Waiting on dowload to finish for %s",
+            "to": "Waiting on download to finish for %s",
         },
     }
     assert by_name["cookie_default_secure_flag_dict_value"].split == "test"

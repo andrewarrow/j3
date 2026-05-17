@@ -96,7 +96,7 @@ def test_load_greenshot_6_tasks() -> None:
     tasks = load_tasks(Path("examples/greenshot_6"))
     by_name = {task.name: task for task in tasks}
 
-    assert len(tasks) == 11
+    assert len(tasks) == 14
     assert tasks[0].name == "core_metadata_version_dict_value"
     assert tasks[0].family == "mapping_value"
     assert tasks[0].source_type == "mutation"
@@ -131,6 +131,17 @@ def test_load_greenshot_6_tasks() -> None:
             "to": "project.readme.file",
         },
     }
+    assert by_name["dynamic_field_error_message"].family == "exception_message"
+    assert by_name["dynamic_field_error_message"].source_type == "git_history"
+    assert by_name["dynamic_field_error_message"].preferred_patch == {
+        "file_path": "pkgmeta/metadata.py",
+        "action": "change_literal",
+        "symbol": "validate_dynamic_field",
+        "params": {
+            "from": " declared as dynamic in but is defined",
+            "to": ' declared as dynamic in "project.dynamic" but is defined',
+        },
+    }
     assert by_name["http_no_store_directive_subscript_key"].preferred_patch == {
         "file_path": "httpcache/policy.py",
         "action": "change_subscript_key",
@@ -157,6 +168,24 @@ def test_load_greenshot_6_tasks() -> None:
             "keyword": "preserve_case",
             "value": "preserve_case",
             "callee": "normalize_vary_header",
+        },
+    }
+    assert by_name["http_no_store_response_with_etag"].preferred_patch == {
+        "file_path": "httpcache/policy.py",
+        "action": "change_operator",
+        "symbol": "should_store_response",
+        "params": {
+            "from": "not in",
+            "to": "in",
+        },
+    }
+    assert by_name["http_range_request_bypasses_cache"].preferred_patch == {
+        "file_path": "httpcache/policy.py",
+        "action": "change_literal",
+        "symbol": "cached_response_for_request",
+        "params": {
+            "from": "Content-Range",
+            "to": "Range",
         },
     }
 

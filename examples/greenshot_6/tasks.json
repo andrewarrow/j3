@@ -103,6 +103,26 @@
     }
   },
   {
+    "name": "dynamic_field_error_message",
+    "family": "exception_message",
+    "source_type": "git_history",
+    "repo": ".",
+    "test": "python -m pytest tests/test_pkgmeta.py::test_dynamic_field_error_mentions_project_dynamic",
+    "source": {
+      "repo": "pypa/pyproject-metadata",
+      "commit": "a52c477dcf5d77b731d484f8b1e759fbd0b00977"
+    },
+    "preferred": {
+      "file_path": "pkgmeta/metadata.py",
+      "action": "change_literal",
+      "symbol": "validate_dynamic_field",
+      "params": {
+        "from": " declared as dynamic in but is defined",
+        "to": " declared as dynamic in \"project.dynamic\" but is defined"
+      }
+    }
+  },
+  {
     "name": "http_no_store_directive_subscript_key",
     "family": "http_cache_directive",
     "source_type": "mutation",
@@ -181,6 +201,46 @@
         "keyword": "preserve_case",
         "value": "preserve_case",
         "callee": "normalize_vary_header"
+      }
+    }
+  },
+  {
+    "name": "http_no_store_response_with_etag",
+    "family": "http_cache_storage",
+    "source_type": "git_history",
+    "repo": ".",
+    "test": "python -m pytest tests/test_httpcache.py::test_no_store_response_is_not_stored_with_etag",
+    "source": {
+      "repo": "psf/cachecontrol",
+      "commit": "a954e2418f2864c06d27d4eb18e1d2935ff44d19"
+    },
+    "preferred": {
+      "file_path": "httpcache/policy.py",
+      "action": "change_operator",
+      "symbol": "should_store_response",
+      "params": {
+        "from": "not in",
+        "to": "in"
+      }
+    }
+  },
+  {
+    "name": "http_range_request_bypasses_cache",
+    "family": "http_cache_range",
+    "source_type": "git_history",
+    "repo": ".",
+    "test": "python -m pytest tests/test_httpcache.py::test_range_request_bypasses_cached_response",
+    "source": {
+      "repo": "psf/cachecontrol",
+      "commit": "4e267a8c32ef2bac6a745db0c6e77eb0719dcd76"
+    },
+    "preferred": {
+      "file_path": "httpcache/policy.py",
+      "action": "change_literal",
+      "symbol": "cached_response_for_request",
+      "params": {
+        "from": "Content-Range",
+        "to": "Range"
       }
     }
   }

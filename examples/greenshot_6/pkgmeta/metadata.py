@@ -48,6 +48,14 @@ def license_classifier(license_id: str) -> str:
     return classifiers[license_id]
 
 
+def validate_dynamic_field(field: str, project: dict[str, object]) -> None:
+    if field in project:
+        raise MetadataValidationError(
+            f'Field "project.{field}" declared as dynamic in but is defined',
+            key=f"project.{field}",
+        )
+
+
 def validate_readme_file(filename: str, available_files: set[str]) -> None:
     if filename not in available_files:
         raise MetadataValidationError(

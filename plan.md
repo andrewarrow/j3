@@ -107,6 +107,10 @@ Recent work:
 - GreenShot-6 now includes its first git-history-derived held-out repair task,
   modeled on `pypa/pyproject-metadata` commit `604d388`, for a wrong
   `project.readme.file` validation error key.
+- GreenShot-6 now includes three additional git-history-derived held-out repair
+  tasks: a `pypa/pyproject-metadata` dynamic-field error-message repair
+  modeled on commit `a52c477`, plus `psf/cachecontrol` no-store and Range-header
+  cache behavior repairs modeled on commits `a954e24` and `4e267a8`.
 - GreenShot-6 now includes a second fixture domain, `httpcache`, with 5
   mutation-derived HTTP cache/header tasks using existing action families:
   subscript-key repair, inclusive status-code boundary, dictionary value,
@@ -176,6 +180,11 @@ Recent work:
   plus the fresh GreenShot-6 rows with `http_cache_directive` held out produced
   523 features and ranked the held-out HTTP `no-store` repair first
   (`pass@1=1/1`, `positive@1=1/1`).
+- A current GreenShot-6 ranked smoke run solves all 14 tasks, including 4
+  git-history-derived tasks (`pass@1=9/14`, average candidates 3.00). The new
+  dynamic-field error-message task passes at rank 4, and the new Range-header
+  cache bypass task passes at rank 3, providing additional ranking signal
+  without adding action families.
 
 Last focused verification:
 
@@ -274,8 +283,8 @@ Keep this section as the live queue. When work is completed, move it to
 
 Immediate next sequence:
 
-1. Add more real git-history tasks, because the current hard-negative/ranker
-   signal has been addressed by the mapping-key observation features.
+1. Re-run GreenShot-6 with `--explore-after-pass 5` and refresh the
+   candidate-outcome summary now that more git-history-derived tasks were added.
 
 ### 1. Make GreenShot-6 Real
 
@@ -284,7 +293,6 @@ fixtures, not invented toy modules.
 
 Next tasks:
 
-- Add more git-history-derived held-out repair tasks.
 - Add more mutation-generated held-out tasks from real repos.
 - Prefer additional fixture domains/packages over more `pkgmeta` metadata tasks.
 - Continue marking every task with a task family and source type:

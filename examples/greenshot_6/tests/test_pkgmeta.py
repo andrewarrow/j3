@@ -3,6 +3,7 @@ import pytest
 from pkgmeta.api import (
     build_project_urls,
     build_wheel_metadata,
+    check_dynamic_field,
     check_readme_file,
     describe_readme,
     is_python_version_supported,
@@ -49,3 +50,11 @@ def test_missing_readme_error_points_to_readme_file_key() -> None:
         check_readme_file("README.md", {"LICENSE"})
 
     assert exc_info.value.key == "project.readme.file"
+
+
+def test_dynamic_field_error_mentions_project_dynamic() -> None:
+    with pytest.raises(
+        MetadataValidationError,
+        match='Field "project.version" declared as dynamic in "project.dynamic" but is defined',
+    ):
+        check_dynamic_field("version", {"version": "1.0.0"})

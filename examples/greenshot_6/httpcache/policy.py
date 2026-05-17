@@ -44,3 +44,20 @@ def normalize_vary_header(header: str, preserve_case: bool = False) -> list[str]
 
 def response_vary_members(header: str, preserve_case: bool = False) -> list[str]:
     return normalize_vary_header(header)
+
+
+def should_store_response(headers: dict[str, str]) -> bool:
+    cache_control = headers.get("cache-control", "").lower()
+    if "no-store" not in cache_control:
+        return False
+    return "etag" in headers
+
+
+def cached_response_for_request(
+    cache: dict[str, str],
+    url: str,
+    headers: dict[str, str],
+) -> str | None:
+    if "Content-Range" in headers:
+        return None
+    return cache.get(url)

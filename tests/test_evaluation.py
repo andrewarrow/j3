@@ -99,7 +99,7 @@ def test_load_greenshot_6_tasks() -> None:
     tasks = load_tasks(Path("examples/greenshot_6"))
     by_name = {task.name: task for task in tasks}
 
-    assert len(tasks) == 68
+    assert len(tasks) == 69
     assert tasks[0].name == "core_metadata_version_dict_value"
     assert tasks[0].family == "mapping_value"
     assert tasks[0].source_type == "mutation"
@@ -132,6 +132,23 @@ def test_load_greenshot_6_tasks() -> None:
         "params": {
             "from": "For an additional example, seethe partial JSON parsing section.",
             "to": "For an additional example, see the partial JSON parsing section.",
+        },
+    }
+    assert by_name["isort_indented_import_headings_typo"].family == (
+        "config_option_doc_text"
+    )
+    assert by_name["isort_indented_import_headings_typo"].source_type == (
+        "git_history"
+    )
+    assert by_name["isort_indented_import_headings_typo"].split == "train"
+    assert by_name["isort_indented_import_headings_typo"].preferred_patch == {
+        "file_path": "isortopts/config.py",
+        "action": "change_dict_value",
+        "symbol": "OPTION_DESCRIPTIONS",
+        "params": {
+            "key": "indented_import_headings",
+            "from": "apply headings to indended imports",
+            "to": "apply headings to indented imports",
         },
     }
     assert by_name["pytest_expected_exception_message_sentence"].preferred_patch == {

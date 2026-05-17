@@ -1208,6 +1208,29 @@
     }
   },
   {
+    "name": "isort_indented_import_headings_typo",
+    "family": "config_option_doc_text",
+    "source_type": "git_history",
+    "split": "train",
+    "repo": ".",
+    "test": "python -m pytest tests/test_isortopts.py::test_indented_import_headings_description_is_spelled_correctly",
+    "source": {
+      "repo": "PyCQA/isort",
+      "commit": "72aca29ad73dc9513b66ddb4ad2e2eb8a9118c83",
+      "pr": 2161
+    },
+    "preferred": {
+      "file_path": "isortopts/config.py",
+      "action": "change_dict_value",
+      "symbol": "OPTION_DESCRIPTIONS",
+      "params": {
+        "key": "indented_import_headings",
+        "from": "apply headings to indended imports",
+        "to": "apply headings to indented imports"
+      }
+    }
+  },
+  {
     "name": "packaging_parser_docstring_ebnf_typo",
     "family": "requirement_parser_docstring",
     "source_type": "git_history",

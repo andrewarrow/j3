@@ -179,6 +179,13 @@ def _add_target_context_features(
         features["subscript_to_matches_returned_mapping_key"] = 1.0
         features[f"action_subscript_to_matches_returned_mapping_key:{action}"] = 1.0
 
+    _add_same_mapping_asserted_key_features(
+        features,
+        action=action,
+        target_context=target_context,
+        hints=hints,
+    )
+
     hint_names = _hint_function_name_set(hints)
     distance = _hint_target_distance(
         symbol=symbol,
@@ -234,6 +241,80 @@ def _hint_target_distance(
     if not distances:
         return None
     return min(distances)
+
+
+def _add_same_mapping_asserted_key_features(
+    features: dict[str, float],
+    *,
+    action: str,
+    target_context: Mapping[str, object],
+    hints: list[object] | tuple[object, ...],
+) -> None:
+    asserted_keys = _asserted_mapping_key_set(hints)
+    if not asserted_keys:
+        return
+    mapping_keys = _string_set(target_context.get("dict_literal_keys"))
+    if not mapping_keys:
+        return
+
+    matched_keys = asserted_keys & mapping_keys
+    if not matched_keys:
+        return
+
+    features["same_mapping_has_asserted_key"] = 1.0
+    features[f"action_same_mapping_has_asserted_key:{action}"] = 1.0
+
+    value_key = target_context.get("dict_value_key")
+    if (
+        action == "change_dict_value"
+        and isinstance(value_key, str)
+        and value_key in matched_keys
+        and target_context.get("dict_value_key_in_same_mapping") is True
+    ):
+        features["same_mapping_asserted_key_value_changed"] = 1.0
+        features[f"action_same_mapping_asserted_key_value_changed:{action}"] = 1.0
+        return
+
+    original_key = target_context.get("dict_key_from")
+    replacement_key = target_context.get("dict_key_to")
+    if (
+        action == "change_dict_key"
+        and isinstance(original_key, str)
+        and original_key in matched_keys
+        and target_context.get("dict_key_from_in_same_mapping") is True
+        and replacement_key != original_key
+    ):
+        features["same_mapping_asserted_key_renamed_or_removed"] = 1.0
+        features[f"action_same_mapping_asserted_key_renamed_or_removed:{action}"] = 1.0
+        return
+
+    if (
+        action == "change_dict_key"
+        and isinstance(replacement_key, str)
+        and replacement_key in asserted_keys
+        and replacement_key not in mapping_keys
+    ):
+        features["same_mapping_asserted_key_created"] = 1.0
+        features[f"action_same_mapping_asserted_key_created:{action}"] = 1.0
+
+
+def _asserted_mapping_key_set(hints: list[object] | tuple[object, ...]) -> set[str]:
+    keys: set[str] = set()
+    for hint in hints:
+        if isinstance(hint, Mapping):
+            raw_keys = hint.get("asserted_mapping_keys", [])
+        else:
+            raw_keys = getattr(hint, "asserted_mapping_keys", set())
+        keys.update(_string_set(raw_keys))
+    return keys
+
+
+def _string_set(value: object) -> set[str]:
+    if isinstance(value, str):
+        return {value}
+    if isinstance(value, (set, list, tuple)):
+        return {item for item in value if isinstance(item, str)}
+    return set()
 
 
 def _count_bucket(count: int) -> str:

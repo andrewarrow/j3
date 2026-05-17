@@ -744,6 +744,38 @@ def test_candidate_features_connect_subscript_write_to_returned_mapping_key(tmp_
     assert features["action_subscript_to_matches_returned_mapping_key:change_subscript_key"] == 1.0
 
 
+def test_candidate_features_distinguish_same_mapping_asserted_key_value_and_key_decoy(tmp_path) -> None:
+    value_candidate, key_candidate = _cookie_secure_candidates()
+    repo_file = tmp_path / "policy.py"
+    repo_file.write_text(value_candidate.original_source, encoding="utf-8")
+
+    value_with_context, key_with_context = attach_target_context(
+        tmp_path,
+        [value_candidate, key_candidate],
+    )
+    hints = [PytestFailureHint(asserted_mapping_keys={"secure"})]
+
+    value_features = candidate_features(value_with_context, hints=hints)
+    key_features = candidate_features(key_with_context, hints=hints)
+
+    assert value_with_context.target_context["dict_value_key"] == "secure"
+    assert key_with_context.target_context["dict_key_from"] == "secure"
+    assert value_features["same_mapping_asserted_key_value_changed"] == 1.0
+    assert (
+        value_features[
+            "action_same_mapping_asserted_key_value_changed:change_dict_value"
+        ]
+        == 1.0
+    )
+    assert key_features["same_mapping_asserted_key_renamed_or_removed"] == 1.0
+    assert (
+        key_features[
+            "action_same_mapping_asserted_key_renamed_or_removed:change_dict_key"
+        ]
+        == 1.0
+    )
+
+
 def test_train_candidate_ranker_uses_target_context_from_outcomes(tmp_path) -> None:
     outcomes = tmp_path / "candidate-outcomes.jsonl"
     rows = [
@@ -827,6 +859,67 @@ def test_candidate_record_features_include_asserted_mapping_key_matches() -> Non
     assert features["action_hint_asserted_mapping_key_matches_to:change_subscript_key"] == 1.0
 
 
+def test_candidate_record_features_distinguish_same_mapping_asserted_key_value_and_key_decoy() -> None:
+    hints = [{"asserted_mapping_keys": ["secure"]}]
+
+    value_features = _candidate_record_features(_cookie_secure_value_record(passed=True), hints)
+    key_features = _candidate_record_features(_cookie_secure_key_record(passed=False), hints)
+
+    assert value_features["same_mapping_asserted_key_value_changed"] == 1.0
+    assert (
+        value_features[
+            "action_same_mapping_asserted_key_value_changed:change_dict_value"
+        ]
+        == 1.0
+    )
+    assert key_features["same_mapping_asserted_key_renamed_or_removed"] == 1.0
+    assert (
+        key_features[
+            "action_same_mapping_asserted_key_renamed_or_removed:change_dict_key"
+        ]
+        == 1.0
+    )
+
+
+def test_train_candidate_ranker_uses_same_mapping_asserted_key_metadata(tmp_path) -> None:
+    outcomes = tmp_path / "candidate-outcomes.jsonl"
+    rows = [
+        {
+            "task": "cookie_default_secure_flag_dict_value",
+            "phase": "ranked",
+            **_cookie_secure_key_record(passed=False),
+            "rank_index": 1,
+            "first_passing_index": 2,
+            "is_first_pass": False,
+            "failure_hints": [{"asserted_mapping_keys": ["secure"]}],
+        },
+        {
+            "task": "cookie_default_secure_flag_dict_value",
+            "phase": "ranked",
+            **_cookie_secure_value_record(passed=True),
+            "rank_index": 2,
+            "first_passing_index": 2,
+            "is_first_pass": True,
+            "failure_hints": [{"asserted_mapping_keys": ["secure"]}],
+        },
+    ]
+    outcomes.write_text(
+        "\n".join(json.dumps(row) for row in rows) + "\n",
+        encoding="utf-8",
+    )
+
+    result = train_candidate_ranker(candidate_outcome_paths=[outcomes], out_dir=tmp_path / "run")
+    ranker = CandidateRankerModel.load(result.ranker_path)
+    ranked = rank_with_candidate_ranker(
+        list(_cookie_secure_candidates()),
+        ranker,
+        hints=[PytestFailureHint(asserted_mapping_keys={"secure"})],
+    )
+
+    assert result.training_pairs == 1
+    assert ranked[0].action.kind == PatchActionKind.CHANGE_DICT_VALUE
+
+
 def _candidate_record(*, to: str, passed: bool) -> dict[str, object]:
     return {
         "file_path": "bugs.py",
@@ -840,6 +933,113 @@ def _candidate_record(*, to: str, passed: bool) -> dict[str, object]:
         "failure_hint_score": 50.0,
         "ranker_score": None,
         "passed": passed,
+    }
+
+
+def _cookie_secure_candidates() -> tuple[CandidatePatch, CandidatePatch]:
+    source = (
+        "def default_cookie_attributes():\n"
+        "    return {\n"
+        "        'secure': True,\n"
+        "        'http_only': True,\n"
+        "        'same_site': 'Lax',\n"
+        "    }\n"
+    )
+    value_patched = source.replace("'secure': True", "'secure': False")
+    key_patched = source.replace("'secure': True", "'__Secure-': True")
+    value_candidate = CandidatePatch(
+        file_path="policy.py",
+        action=PatchAction(
+            kind=PatchActionKind.CHANGE_DICT_VALUE,
+            target=PatchTarget(
+                file_path="policy.py",
+                start_line=3,
+                end_line=3,
+                symbol="default_cookie_attributes",
+                node_kind="Dict",
+            ),
+            params={"key": "secure", "from": True, "to": False},
+        ),
+        edit=SourceEdit(start_line=3, start_col=18, end_line=3, end_col=22, replacement="False"),
+        original_source=source,
+        patched_source=value_patched,
+        reason="try dictionary value 'secure'=False",
+        failure_hint_score=100.0,
+    )
+    key_candidate = CandidatePatch(
+        file_path="policy.py",
+        action=PatchAction(
+            kind=PatchActionKind.CHANGE_DICT_KEY,
+            target=PatchTarget(
+                file_path="policy.py",
+                start_line=3,
+                end_line=3,
+                symbol="default_cookie_attributes",
+                node_kind="Dict",
+            ),
+            params={"from": "secure", "to": "__Secure-"},
+        ),
+        edit=SourceEdit(
+            start_line=3,
+            start_col=8,
+            end_line=3,
+            end_col=16,
+            replacement="'__Secure-'",
+        ),
+        original_source=source,
+        patched_source=key_patched,
+        reason="try dictionary key '__Secure-'",
+        failure_hint_score=100.0,
+    )
+    return value_candidate, key_candidate
+
+
+def _cookie_secure_value_record(*, passed: bool) -> dict[str, object]:
+    return {
+        "file_path": "webcookies/policy.py",
+        "action": "change_dict_value",
+        "symbol": "default_cookie_attributes",
+        "start_line": 3,
+        "end_line": 3,
+        "node_kind": "Dict",
+        "params": {"key": "secure", "from": True, "to": False},
+        "reason": "try dictionary value 'secure'=False",
+        "model_score": 0.0,
+        "failure_hint_score": 100.0,
+        "ranker_score": None,
+        "passed": passed,
+        "target_context": {
+            "role": "helper",
+            "dict_literal_key_count": 3,
+            "dict_literal_keys": ["http_only", "same_site", "secure"],
+            "dict_value_key": "secure",
+            "dict_value_key_in_same_mapping": True,
+        },
+    }
+
+
+def _cookie_secure_key_record(*, passed: bool) -> dict[str, object]:
+    return {
+        "file_path": "webcookies/policy.py",
+        "action": "change_dict_key",
+        "symbol": "default_cookie_attributes",
+        "start_line": 3,
+        "end_line": 3,
+        "node_kind": "Dict",
+        "params": {"from": "secure", "to": "__Secure-"},
+        "reason": "try dictionary key '__Secure-'",
+        "model_score": 0.0,
+        "failure_hint_score": 100.0,
+        "ranker_score": None,
+        "passed": passed,
+        "target_context": {
+            "role": "helper",
+            "dict_literal_key_count": 3,
+            "dict_literal_keys": ["http_only", "same_site", "secure"],
+            "dict_key_from": "secure",
+            "dict_key_from_in_same_mapping": True,
+            "dict_key_to": "__Secure-",
+        },
     }
 
 

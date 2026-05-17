@@ -220,10 +220,24 @@ Recent work:
   a false `change_dict_key` candidate over the preferred `change_dict_value`
   edit even though the assertion names the `secure` lookup key. Details are in
   `HARD_NEGATIVES.md`.
+- Same-mapping asserted-key metadata was implemented for dictionary literal
+  value/key candidates: target context now records the dictionary keys plus
+  whether a candidate changes the value for an asserted key or renames/removes
+  that asserted key in the same mapping. Candidate ranker features consume the
+  metadata from both live candidates and persisted outcome rows. Focused
+  candidate-ranking tests passed.
+- GreenShot-6 outcomes were refreshed after the same-mapping metadata change,
+  then the GreenShot-6 `split: test` held-out ranker validation was rerun. The
+  validation stayed at solved=7/7, pass@1=5/7, positive@1=4/7, and
+  avg_first_passing_index=1.29. `cookie_default_secure_flag_dict_value` still
+  did not move to preferred rank 1; the false `change_dict_key` candidate
+  remains above the preferred `change_dict_value` candidate after training.
 
 Last focused verification:
 
 ```bash
+pytest tests/test_candidate_ranking.py -q
+pytest tests/test_evaluation.py::test_write_candidate_outcomes_jsonl_records_one_row_per_tested_candidate -q
 python cli.py eval \
   --tasks examples/greenshot_6 \
   --checkpoint runs/apache-python-git/model.json \
@@ -234,8 +248,19 @@ python cli.py eval \
   --diagnostics runs/apache-python-git/greenshot-6-explore-diagnostics.json \
   --candidate-outcomes runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl \
   --quiet
-python cli.py outcome-summary \
-  --candidate-outcomes runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl
+python cli.py train-ranker \
+  --candidate-outcomes \
+    runs/apache-python-git/greenshot-5-candidate-outcomes.jsonl \
+    runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl \
+  --holdout-task \
+    apache_license_classifier_dict_value \
+    http_no_store_response_with_etag \
+    cookie_default_secure_flag_dict_value \
+    cookie_host_prefix_dict_value \
+    cookie_zero_max_age_operator_boundary \
+    cookie_pair_argument_order \
+    cookie_scope_include_path_keyword \
+  --out runs/apache-python-git/ranker-holdout-greenshot-6-test-slice
 git diff --check
 ```
 
@@ -311,9 +336,11 @@ GreenShot-6 test-slice ranker validation result:
 ```text
 train-ranker, holdout-task includes all GreenShot-6 split:test tasks:
   training rows=220 passing_rows=45 tasks=32 plans=32 pairs=186
-  training_accuracy=1.000 margin_violations=4 features=542
+  training_accuracy=1.000 margin_violations=4 features=544
   validation solved=7/7 pass@1=5/7 positive@1=4/7
   validation rows=47 avg_first_passing_index=1.29
+  residual: cookie_default_secure_flag_dict_value still does not rank the
+  preferred change_dict_value candidate first
 ```
 
 ## Next Right Things
@@ -323,17 +350,18 @@ Keep this section as the live queue. When work is completed, move it to
 
 Immediate next sequence:
 
-1. Implement the same-mapping value/key decoy metadata decided in
-   `HARD_NEGATIVES.md`: when a failure assertion names a mapping lookup key,
-   record whether a candidate preserves that asserted key and changes its value
-   or renames/removes the asserted key in the same mapping.
-2. Wire the new metadata into candidate ranker features for both live
-   candidates and persisted outcome rows, with focused tests around
-   `change_dict_value` versus `change_dict_key` on the same asserted key.
+1. Inspect why the same-mapping asserted-key metadata was not enough to move
+   `cookie_default_secure_flag_dict_value` to preferred rank 1. Compare the
+   trained scores/features for the false `change_dict_key secure -> __Secure-`
+   candidate and the preferred `change_dict_value secure: True -> False`
+   candidate, and update `HARD_NEGATIVES.md` with the smallest next ranking
+   signal before changing behavior.
+2. Keep the next implementation narrow and ranker-focused. Do not add tasks,
+   action families, or broad handcrafted weights until the residual miss is
+   explained from held-out rows.
 3. Re-run the GreenShot-6 `split: test` holdout ranker validation after the
-   metadata change. Do not add more tasks or action families before checking
-   whether `cookie_default_secure_flag_dict_value` moves back to preferred
-   rank 1.
+   next metadata/feature change, and specifically check whether
+   `cookie_default_secure_flag_dict_value` moves to preferred rank 1.
 
 ### 1. Make GreenShot-6 Real
 
@@ -354,9 +382,11 @@ transition modeling.
 
 Next tasks:
 
-- Add the same-mapping asserted-key preservation/removal metadata described in
-  the immediate next sequence. Equivalent/overlap relation features are already
-  wired; the current narrow gap is key/value intent within one mapping.
+- Inspect the residual `cookie_default_secure_flag_dict_value` same-mapping
+  decoy after the new metadata. Equivalent/overlap relation features and
+  same-mapping asserted-key features are already wired; the current narrow gap
+  is why the trained model still prefers the asserted-key rename/removal decoy
+  over the asserted-key value edit.
 
 ### 3. Collect Hard Negatives
 

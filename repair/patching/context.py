@@ -111,6 +111,9 @@ def _candidate_target_context(
     subscript_context = _subscript_returned_mapping_context(candidate)
     if subscript_context:
         target.update(subscript_context)
+    dict_context = _dict_literal_key_context(candidate)
+    if dict_context:
+        target.update(dict_context)
     if qname is None:
         return target
 
@@ -180,6 +183,90 @@ def _subscript_returned_mapping_context(candidate: CandidatePatch) -> dict[str, 
     if replacement in keys:
         result["subscript_to_matches_returned_mapping_key"] = True
     return result
+
+
+def _dict_literal_key_context(candidate: CandidatePatch) -> dict[str, object]:
+    if candidate.action.kind.value not in {"change_dict_key", "change_dict_value"}:
+        return {}
+
+    try:
+        tree = ast.parse(candidate.original_source)
+    except SyntaxError:
+        return {}
+
+    target_function = _find_target_function(
+        tree,
+        symbol=candidate.action.target.symbol,
+        start_line=candidate.action.target.start_line,
+    )
+    if target_function is None:
+        return {}
+
+    target_dict = _find_target_dict_literal(
+        target_function,
+        action=candidate.action.kind.value,
+        start_line=candidate.action.target.start_line,
+        end_line=candidate.action.target.end_line,
+    )
+    if target_dict is None:
+        return {}
+
+    keys = _dict_literal_string_keys(target_dict)
+    if not keys:
+        return {}
+
+    result: dict[str, object] = {
+        "dict_literal_key_count": len(keys),
+        "dict_literal_keys": sorted(keys),
+    }
+    params = candidate.action.params
+    key = params.get("key")
+    original = params.get("from")
+    replacement = params.get("to")
+    if candidate.action.kind.value == "change_dict_value" and isinstance(key, str):
+        result["dict_value_key"] = key
+        if key in keys:
+            result["dict_value_key_in_same_mapping"] = True
+    elif candidate.action.kind.value == "change_dict_key":
+        if isinstance(original, str):
+            result["dict_key_from"] = original
+            if original in keys:
+                result["dict_key_from_in_same_mapping"] = True
+        if isinstance(replacement, str):
+            result["dict_key_to"] = replacement
+            if replacement in keys:
+                result["dict_key_to_in_same_mapping"] = True
+    return result
+
+
+def _find_target_dict_literal(
+    function: ast.FunctionDef,
+    *,
+    action: str,
+    start_line: int,
+    end_line: int,
+) -> ast.Dict | None:
+    for node in ast.walk(function):
+        if not isinstance(node, ast.Dict):
+            continue
+        for key_node, value_node in zip(node.keys, node.values, strict=True):
+            target_node: ast.AST | None = key_node if action == "change_dict_key" else value_node
+            if target_node is None:
+                continue
+            if target_node.lineno != start_line:
+                continue
+            if (target_node.end_lineno or target_node.lineno) != end_line:
+                continue
+            return node
+    return None
+
+
+def _dict_literal_string_keys(node: ast.Dict) -> set[str]:
+    keys: set[str] = set()
+    for key_node in node.keys:
+        if isinstance(key_node, ast.Constant) and isinstance(key_node.value, str):
+            keys.add(key_node.value)
+    return keys
 
 
 def _find_target_function(

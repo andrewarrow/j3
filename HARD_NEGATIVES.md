@@ -188,3 +188,24 @@ This is narrower and less ambiguous than call-target locality because
 candidate in the current outcome rows, and it is less label-sensitive than
 trying to distinguish all accidental passing repairs in
 `http_no_store_response_with_etag`.
+
+## Same-Mapping Metadata Follow-Up
+
+Implementation result: same-mapping asserted-key metadata is now recorded for
+dictionary literal key/value candidates and consumed by ranker features from
+both live candidates and persisted candidate-outcome rows. Focused tests around
+`change_dict_value` versus `change_dict_key` on the same asserted key passed.
+
+Validation result after refreshing GreenShot-6 outcomes and rerunning the
+GreenShot-6 `split: test` holdout:
+
+| Slice | Plans | Solved | Pass@1 | Positive@1 | Avg first passing index |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| GreenShot-6 `split: test` holdout | 7 | 7/7 | 5/7 | 4/7 | 1.29 |
+
+Residual: `cookie_default_secure_flag_dict_value` still does not move to
+preferred rank 1. The false same-mapping `change_dict_key` candidate
+(`secure` -> `__Secure-`) remains above the preferred `change_dict_value`
+candidate (`secure: True` -> `False`) after training. The next sequence should
+inspect that pair's trained scores and feature differences before adding any
+new task, action family, or broad ranker weighting.

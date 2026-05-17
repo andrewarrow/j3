@@ -272,12 +272,32 @@ Recent work:
   call-site argument-role metadata for `swap_call_arg`, including whether a
   swap breaks callee parameter-name alignment or swaps mapping `.get` key and
   default roles.
+- Call-site argument-role metadata was implemented for `swap_call_arg`
+  candidates. Target context now records whether a swap repairs, preserves, or
+  breaks callee parameter-name alignment when the local/imported callee
+  signature is known, and records mapping `.get` key/default role swaps when
+  detectable. Candidate ranker features consume this metadata from both live
+  candidates and persisted outcome rows. The feature version is
+  `candidate-diagnostics-v10`.
+- Focused ranker and candidate-outcome coverage passed for the v10 call-site
+  metadata:
+  `pytest tests/test_candidate_ranking.py -q` and
+  `pytest tests/test_evaluation.py::test_write_candidate_outcomes_jsonl_records_one_row_per_tested_candidate tests/test_evaluation.py::test_write_candidate_outcomes_preserves_swap_call_role_metadata -q`.
+- GreenShot-6 outcomes were refreshed after the v10 call-site metadata change,
+  then the GreenShot-6 `split: test` held-out ranker validation was rerun. The
+  validation stayed at solved=7/7, pass@1=6/7, positive@1=5/7, and
+  avg_first_passing_index=1.1428571428571428. The HTTP preferred-positive rank
+  did not improve: for `http_no_store_response_with_etag`, the preferred
+  `change_operator` repair remains trained rank 3 while the non-preferred
+  passing `.get` `swap_call_arg` remains rank 1. `cookie_scope_include_path_keyword`
+  still lacks the preferred `add_keyword_arg(include_path=True)` candidate in
+  the tested rows.
 
 Last focused verification:
 
 ```bash
 pytest tests/test_candidate_ranking.py -q
-pytest tests/test_evaluation.py::test_write_candidate_outcomes_jsonl_records_one_row_per_tested_candidate -q
+pytest tests/test_evaluation.py::test_write_candidate_outcomes_jsonl_records_one_row_per_tested_candidate tests/test_evaluation.py::test_write_candidate_outcomes_preserves_swap_call_role_metadata -q
 python cli.py eval \
   --tasks examples/greenshot_6 \
   --checkpoint runs/apache-python-git/model.json \
@@ -376,13 +396,16 @@ GreenShot-6 test-slice ranker validation result:
 ```text
 train-ranker, holdout-task includes all GreenShot-6 split:test tasks:
   training rows=220 passing_rows=45 tasks=32 plans=32 pairs=186
-  training_accuracy=1.000 margin_violations=4 features=546
+  training_accuracy=1.000 margin_violations=4 features=558
   validation solved=7/7 pass@1=6/7 positive@1=5/7
-  residual: cookie_default_secure_flag_dict_value now ranks the preferred
+  validation avg_first_passing_index=1.1428571428571428
+  residual: cookie_default_secure_flag_dict_value still ranks the preferred
   change_dict_value candidate first
-  remaining: cookie_scope_include_path_keyword misses pass@1, and
-  http_no_store_response_with_etag ranks a non-preferred passing candidate
-  first while the preferred repair is rank 3
+  remaining: cookie_scope_include_path_keyword misses pass@1 and still lacks
+  the preferred add_keyword_arg(include_path=True) candidate; for
+  http_no_store_response_with_etag, the non-preferred passing .get
+  swap_call_arg remains trained rank 1 while the preferred change_operator
+  repair remains rank 3
 ```
 
 ## Next Right Things
@@ -392,19 +415,25 @@ Keep this section as the live queue. When work is completed, move it to
 
 Immediate next sequence:
 
-1. Implement the narrow non-leaky call-site metadata identified from the
-   residual held-out inspection: for `swap_call_arg` candidates, record whether
-   the swap preserves or breaks callee parameter-name alignment, and record
-   mapping `.get` key/default role swaps when detectable.
-2. Feed that metadata into candidate-ranker features from both live candidates
-   and persisted outcome rows. Avoid broad `swap_call_arg` weights and avoid
-   using pass/preferred labels as features.
-3. Add focused candidate-ranking and candidate-outcome coverage for the metadata
-   using small fixtures around a correct name-aligned call, a broken
-   name-aligned swap, and a mapping `.get` key/default swap.
-4. Refresh GreenShot-6 outcomes and rerun the GreenShot-6 `split: test` held-out
-   ranker validation. Report solved, pass@1, positive@1, average first passing
-   index, and whether the HTTP preferred-positive rank improves.
+1. Inspect v10 feature support and learned weights for the residual held-out
+   rows, especially `swap_call_mapping_get_key_default_swapped`,
+   `swap_call_breaks_name_alignment`, and
+   `swap_call_repairs_name_alignment`. Determine whether the HTTP miss is due
+   to absent non-held-out coverage for `.get` key/default swaps or because the
+   preferred operator repair still needs richer non-leaky predicate/context
+   metadata. Do not add broad `swap_call_arg` weights or use pass/preferred
+   labels as features.
+2. For `cookie_scope_include_path_keyword`, treat the primary gap as missing
+   preferred-candidate signal: the tested rows still do not contain the
+   preferred `add_keyword_arg(include_path=True)` repair. If working on this
+   next, extend the existing `add_keyword_arg` family narrowly enough to
+   synthesize boolean default keywords from local callee signatures, rather
+   than adding a new action family.
+3. If adding candidate-generation support for the cookie scope gap, add focused
+   coverage showing the preferred `add_keyword_arg(include_path=True)` candidate
+   is generated and ranked without breaking existing pass-through keyword
+   behavior. Then refresh GreenShot-6 outcomes and rerun the same GreenShot-6
+   `split: test` held-out validation.
 
 ### 1. Make GreenShot-6 Real
 
@@ -425,8 +454,9 @@ transition modeling.
 
 Next tasks:
 
-- Add the call-site argument-role metadata described in the immediate next
-  sequence before collecting another broad outcome refresh.
+- Inspect the v10 call-site metadata support/weights before collecting another
+  broad outcome refresh; the metadata is present in refreshed GreenShot-6 rows,
+  but the HTTP preferred-positive rank did not move.
 
 ### 3. Collect Hard Negatives
 

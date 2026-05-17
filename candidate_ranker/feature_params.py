@@ -190,6 +190,11 @@ def _add_target_context_features(
         target_context=target_context,
         hints=hints,
     )
+    _add_swap_call_role_features(
+        features,
+        action=action,
+        target_context=target_context,
+    )
 
     hint_names = _hint_function_name_set(hints)
     distance = _hint_target_distance(
@@ -307,6 +312,54 @@ def _add_same_mapping_asserted_key_features(
     ):
         features["same_mapping_asserted_key_created"] = 1.0
         features[f"action_same_mapping_asserted_key_created:{action}"] = 1.0
+
+
+def _add_swap_call_role_features(
+    features: dict[str, float],
+    *,
+    action: str,
+    target_context: Mapping[str, object],
+) -> None:
+    before = target_context.get("swap_call_name_alignment_before")
+    after = target_context.get("swap_call_name_alignment_after")
+    if isinstance(before, str) and before:
+        features[f"swap_call_name_alignment_before:{before}"] = 1.0
+        features[f"action_swap_call_name_alignment_before:{action}:{before}"] = 1.0
+    if isinstance(after, str) and after:
+        features[f"swap_call_name_alignment_after:{after}"] = 1.0
+        features[f"action_swap_call_name_alignment_after:{action}:{after}"] = 1.0
+
+    if target_context.get("swap_call_preserves_name_alignment") is True:
+        features["swap_call_preserves_name_alignment"] = 1.0
+        features[f"action_swap_call_preserves_name_alignment:{action}"] = 1.0
+    if target_context.get("swap_call_breaks_name_alignment") is True:
+        features["swap_call_breaks_name_alignment"] = 1.0
+        features[f"action_swap_call_breaks_name_alignment:{action}"] = 1.0
+    if target_context.get("swap_call_repairs_name_alignment") is True:
+        features["swap_call_repairs_name_alignment"] = 1.0
+        features[f"action_swap_call_repairs_name_alignment:{action}"] = 1.0
+
+    if target_context.get("swap_call_mapping_get_key_default_swapped") is True:
+        features["swap_call_mapping_get_key_default_swapped"] = 1.0
+        features[f"action_swap_call_mapping_get_key_default_swapped:{action}"] = 1.0
+
+    method = target_context.get("swap_call_method")
+    if isinstance(method, str) and method == "get":
+        features["swap_call_method:get"] = 1.0
+        features[f"action_swap_call_method:{action}:get"] = 1.0
+
+    left_role = target_context.get("swap_call_left_role")
+    right_role = target_context.get("swap_call_right_role")
+    if isinstance(left_role, str) and isinstance(right_role, str):
+        features[f"swap_call_role_pair:{left_role}->{right_role}"] = 1.0
+        features[f"action_swap_call_role_pair:{action}:{left_role}->{right_role}"] = 1.0
+
+    left_kind = target_context.get("swap_call_left_arg_kind")
+    right_kind = target_context.get("swap_call_right_arg_kind")
+    if isinstance(left_kind, str):
+        features[f"swap_call_left_arg_kind:{left_kind}"] = 1.0
+    if isinstance(right_kind, str):
+        features[f"swap_call_right_arg_kind:{right_kind}"] = 1.0
 
 
 def _asserted_mapping_key_set(hints: list[object] | tuple[object, ...]) -> set[str]:

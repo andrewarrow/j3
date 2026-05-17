@@ -20,6 +20,7 @@ class _RepoContext:
     function_qnames: dict[tuple[str, str], str]
     calls: dict[str, frozenset[str]]
     callers: dict[str, frozenset[str]]
+    visible_signatures: dict[str, dict[str, tuple[str, ...]]]
 
 
 def attach_target_context(repo: Path, candidates: list[CandidatePatch]) -> list[CandidatePatch]:
@@ -96,6 +97,7 @@ def _build_repo_context(repo: Path) -> _RepoContext:
         function_qnames=function_qnames,
         calls=calls,
         callers=callers,
+        visible_signatures=_visible_signature_index(parsed_sources, module_functions),
     )
 
 
@@ -114,6 +116,9 @@ def _candidate_target_context(
     dict_context = _dict_literal_key_context(candidate)
     if dict_context:
         target.update(dict_context)
+    call_context = _swap_call_arg_context(candidate, context)
+    if call_context:
+        target.update(call_context)
     if qname is None:
         return target
 
@@ -183,6 +188,162 @@ def _subscript_returned_mapping_context(candidate: CandidatePatch) -> dict[str, 
     if replacement in keys:
         result["subscript_to_matches_returned_mapping_key"] = True
     return result
+
+
+def _swap_call_arg_context(
+    candidate: CandidatePatch,
+    context: _RepoContext,
+) -> dict[str, object]:
+    if candidate.action.kind.value != "swap_call_arg":
+        return {}
+
+    params = candidate.action.params
+    left = params.get("left")
+    right = params.get("right")
+    if not isinstance(left, int) or not isinstance(right, int) or left < 0 or right < 0:
+        return {}
+
+    try:
+        tree = ast.parse(candidate.original_source)
+    except SyntaxError:
+        return {}
+
+    target_function = _find_target_function(
+        tree,
+        symbol=candidate.action.target.symbol,
+        start_line=candidate.action.target.start_line,
+    )
+    if target_function is None:
+        return {}
+
+    call = _find_target_call(
+        target_function,
+        start_line=candidate.action.target.start_line,
+        end_line=candidate.action.target.end_line,
+        min_args=right + 1,
+    )
+    if call is None:
+        return {}
+
+    result: dict[str, object] = {}
+    result.update(_mapping_get_swap_context(call, left=left, right=right))
+
+    callee_name = call.func.id if isinstance(call.func, ast.Name) else None
+    if callee_name is None:
+        return result
+    signature = context.visible_signatures.get(candidate.file_path, {}).get(callee_name)
+    if signature is None or right >= len(signature):
+        return result
+
+    left_name = _arg_name(call.args[left])
+    right_name = _arg_name(call.args[right])
+    if left_name is None or right_name is None:
+        return result
+
+    left_param = signature[left]
+    right_param = signature[right]
+    before = _alignment_state(
+        left_arg=left_name,
+        right_arg=right_name,
+        left_param=left_param,
+        right_param=right_param,
+    )
+    after = _alignment_state(
+        left_arg=right_name,
+        right_arg=left_name,
+        left_param=left_param,
+        right_param=right_param,
+    )
+    result.update(
+        {
+            "swap_call_callee": callee_name,
+            "swap_call_left_param": left_param,
+            "swap_call_right_param": right_param,
+            "swap_call_left_arg_name": left_name,
+            "swap_call_right_arg_name": right_name,
+            "swap_call_name_alignment_before": before,
+            "swap_call_name_alignment_after": after,
+        }
+    )
+    if before == "preserved" and after == "preserved":
+        result["swap_call_preserves_name_alignment"] = True
+    elif before == "preserved" and after != "preserved":
+        result["swap_call_breaks_name_alignment"] = True
+    elif before != "preserved" and after == "preserved":
+        result["swap_call_repairs_name_alignment"] = True
+    return result
+
+
+def _find_target_call(
+    function: ast.FunctionDef,
+    *,
+    start_line: int,
+    end_line: int,
+    min_args: int = 0,
+) -> ast.Call | None:
+    for node in ast.walk(function):
+        if not isinstance(node, ast.Call):
+            continue
+        if node.lineno != start_line:
+            continue
+        if (node.end_lineno or node.lineno) != end_line:
+            continue
+        if len(node.args) < min_args:
+            continue
+        return node
+    return None
+
+
+def _mapping_get_swap_context(call: ast.Call, *, left: int, right: int) -> dict[str, object]:
+    if not isinstance(call.func, ast.Attribute) or call.func.attr != "get":
+        return {}
+    if (left, right) != (0, 1):
+        return {}
+    if len(call.args) < 2:
+        return {}
+    return {
+        "swap_call_method": "get",
+        "swap_call_mapping_get_key_default_swapped": True,
+        "swap_call_left_role": "mapping_key",
+        "swap_call_right_role": "mapping_default",
+        "swap_call_left_arg_kind": _arg_role_kind(call.args[left]),
+        "swap_call_right_arg_kind": _arg_role_kind(call.args[right]),
+    }
+
+
+def _alignment_state(
+    *,
+    left_arg: str,
+    right_arg: str,
+    left_param: str,
+    right_param: str,
+) -> str:
+    left_aligned = left_arg == left_param
+    right_aligned = right_arg == right_param
+    if left_aligned and right_aligned:
+        return "preserved"
+    if left_aligned or right_aligned:
+        return "partial"
+    return "broken"
+
+
+def _arg_name(node: ast.AST) -> str | None:
+    return node.id if isinstance(node, ast.Name) else None
+
+
+def _arg_role_kind(node: ast.AST) -> str:
+    if isinstance(node, ast.Constant):
+        if isinstance(node.value, str):
+            return "empty_string_literal" if node.value == "" else "string_literal"
+        if node.value is None:
+            return "none_literal"
+        if isinstance(node.value, bool):
+            return "bool_literal"
+        if isinstance(node.value, int | float):
+            return "number_literal"
+    if isinstance(node, ast.Name):
+        return "name"
+    return type(node).__name__
 
 
 def _dict_literal_key_context(candidate: CandidatePatch) -> dict[str, object]:
@@ -401,6 +562,49 @@ def _imported_function_qnames(
                 continue
             imports[alias.asname or alias.name] = f"{module}.{alias.name}"
     return imports
+
+
+def _visible_signature_index(
+    parsed_sources: list[tuple[PythonSource, ast.Module]],
+    module_functions: dict[str, set[str]],
+) -> dict[str, dict[str, tuple[str, ...]]]:
+    module_signatures: dict[str, dict[str, tuple[str, ...]]] = {}
+    module_paths: dict[str, str] = {}
+    for source, tree in parsed_sources:
+        module = _module_name_from_path(PurePosixPath(source.relative_path))
+        if not module:
+            continue
+        module_paths[module] = source.relative_path
+        module_signatures[module] = {
+            node.name: tuple(
+                arg.arg
+                for arg in [*node.args.posonlyargs, *node.args.args, *node.args.kwonlyargs]
+                if arg.arg not in {"self", "cls"}
+            )
+            for node in tree.body
+            if isinstance(node, ast.FunctionDef)
+        }
+
+    index: dict[str, dict[str, tuple[str, ...]]] = {}
+    for source, tree in parsed_sources:
+        current_module = _module_name_from_path(PurePosixPath(source.relative_path))
+        visible: dict[str, tuple[str, ...]] = {}
+        if current_module in module_signatures:
+            visible.update(module_signatures[current_module])
+        for node in tree.body:
+            if not isinstance(node, ast.ImportFrom):
+                continue
+            module = _resolve_import_from_module(current_module, node)
+            if module is None or module not in module_signatures or module not in module_paths:
+                continue
+            for alias in node.names:
+                if alias.name not in module_functions.get(module, set()):
+                    continue
+                signature = module_signatures[module].get(alias.name)
+                if signature is not None:
+                    visible[alias.asname or alias.name] = signature
+        index[source.relative_path] = visible
+    return index
 
 
 def _resolve_import_from_module(current_module: str, node: ast.ImportFrom) -> str | None:

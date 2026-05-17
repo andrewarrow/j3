@@ -15,6 +15,7 @@ from evaluation import (
     write_eval_diagnostics,
 )
 from patching import CandidatePatch, PatchPlanResult
+from repair.patching.context import attach_target_context
 from synth import SourceEdit
 from training import train_from_path
 
@@ -497,6 +498,79 @@ def test_write_candidate_outcomes_jsonl_records_one_row_per_tested_candidate(tmp
     assert all(row["ast_parse_ok"] is True for row in rows)
     assert all(isinstance(row["ast_delta_added_features"], dict) for row in rows)
     assert any(row["ast_delta_added_features"] for row in rows)
+
+
+def test_write_candidate_outcomes_preserves_swap_call_role_metadata(tmp_path) -> None:
+    source = (
+        "def normalize_scope(host, path):\n"
+        "    return host, path\n\n"
+        "def cookie_scope_key(host, path):\n"
+        "    return normalize_scope(host, path)\n"
+    )
+    (tmp_path / "cookies.py").write_text(source, encoding="utf-8")
+    candidate = CandidatePatch(
+        file_path="cookies.py",
+        action=PatchAction(
+            kind=PatchActionKind.SWAP_CALL_ARG,
+            target=PatchTarget(
+                file_path="cookies.py",
+                start_line=5,
+                end_line=5,
+                symbol="cookie_scope_key",
+                node_kind="Call",
+            ),
+            params={"left": 0, "right": 1},
+        ),
+        edit=SourceEdit(
+            start_line=5,
+            start_col=11,
+            end_line=5,
+            end_col=38,
+            replacement="normalize_scope(path, host)",
+        ),
+        original_source=source,
+        patched_source=source.replace(
+            "normalize_scope(host, path)",
+            "normalize_scope(path, host)",
+            1,
+        ),
+        reason="swap call arguments 0 and 1",
+    )
+    [candidate] = attach_target_context(tmp_path, [candidate])
+    plan = PatchPlanResult(
+        repo=tmp_path,
+        test_command="pytest",
+        baseline_exit_code=1,
+        candidates_generated=1,
+        candidates_tested=1,
+        selected=None,
+        applied=False,
+        test_output="",
+        tested_candidates=(candidate,),
+        passing_candidates=(),
+        first_passing_index=None,
+    )
+    summary = EvalSummary(
+        tasks=[
+            TaskEvalResult(
+                task=RepairTask(
+                    name="cookie_scope_include_path_keyword",
+                    repo=tmp_path,
+                    test_command="pytest",
+                    split="test",
+                ),
+                baseline=None,
+                ranked=plan,
+            )
+        ]
+    )
+
+    outcomes = write_candidate_outcomes(summary, tmp_path / "candidate_outcomes.jsonl")
+    row = json.loads(outcomes.read_text(encoding="utf-8"))
+
+    assert row["target_context"]["swap_call_breaks_name_alignment"] is True
+    assert row["target_context"]["swap_call_name_alignment_before"] == "preserved"
+    assert row["target_context"]["swap_call_name_alignment_after"] == "broken"
 
 
 def test_candidate_outcomes_record_equivalent_candidate_metadata(tmp_path) -> None:

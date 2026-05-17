@@ -372,12 +372,11 @@ Why the false swap wins:
   no `include_path` parameter, so the preferred constant keyword
   `include_path=True` is not represented in the tested rows.
 
-Smallest non-leaky next signal for ranking tested candidates: record call-site
-argument-role metadata for call mutations, especially whether `swap_call_arg`
-preserves or breaks name-to-parameter alignment against the known callee
-signature. That would distinguish the false swap from the downstream helper
-candidate without using pass labels. It would not, by itself, create the
-preferred `include_path=True` candidate.
+Implemented non-leaky signal for ranking tested candidates: call-site
+argument-role metadata for `swap_call_arg` now records whether the swap repairs,
+preserves, or breaks name-to-parameter alignment against the known local/imported
+callee signature. In this task, the false swap is marked as breaking alignment.
+This does not create the preferred `include_path=True` candidate.
 
 Smallest candidate-signal gap if this task is prioritized: extend the existing
 `add_keyword_arg` family to synthesize narrow boolean default keywords from the
@@ -419,15 +418,60 @@ Why the accidental swap wins:
   branch pass by reading the wrong mapping key/default rather than repairing the
   predicate.
 
-Smallest non-leaky next metadata/ranker signal: record call-site role metadata
-for `swap_call_arg` candidates. For known method calls like mapping `.get`,
-capture the callee name and the argument roles being swapped, for example
-`mapping_get_key_default_swapped`. More generally, record whether a swap moves
-literal/default-like arguments into key/name positions or breaks a callee
-signature's parameter-name alignment. This is narrower than broad action
+Implemented non-leaky metadata/ranker signal: `swap_call_arg` target context
+now records mapping `.get` key/default role swaps when detectable, plus
+signature-name alignment metadata for local/imported function calls. The feature
+version is `candidate-diagnostics-v10`. This is narrower than broad action
 weights, does not use pass/preferred labels, and also applies to the cookie
 false-swap case.
 
 Avoid treating this task as solved by pass@1 alone. It is a
 multiple-passing-candidate case where preferred-positive rank remains the useful
 signal.
+
+### Call-Site Role Metadata Follow-Up
+
+Implementation result: v10 call-site argument-role metadata was added for
+`swap_call_arg` candidates and consumed by candidate-ranker features from both
+live candidates and persisted candidate-outcome rows. Focused tests passed:
+
+```bash
+pytest tests/test_candidate_ranking.py -q
+pytest tests/test_evaluation.py::test_write_candidate_outcomes_jsonl_records_one_row_per_tested_candidate tests/test_evaluation.py::test_write_candidate_outcomes_preserves_swap_call_role_metadata -q
+```
+
+Validation result after refreshing GreenShot-6 outcomes and rerunning the
+GreenShot-6 `split: test` holdout:
+
+| Slice | Plans | Solved | Pass@1 | Positive@1 | Avg first passing index |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| GreenShot-6 `split: test` holdout | 7 | 7/7 | 6/7 | 5/7 | 1.1428571428571428 |
+
+Residuals:
+
+- `http_no_store_response_with_etag` did not improve on preferred-positive
+  rank. The preferred `change_operator` repair remains trained rank 3, while
+  the non-preferred passing `.get` `swap_call_arg` remains rank 1. The refreshed
+  row now carries `swap_call_mapping_get_key_default_swapped`, but current
+  non-held-out training signal does not move it below the preferred operator
+  repair.
+- `cookie_scope_include_path_keyword` still lacks the preferred
+  `add_keyword_arg(include_path=True)` candidate in the tested rows. The
+  remaining pass@1 miss should be treated first as missing preferred-candidate
+  signal, not only as a ranker problem.
+
+Recommended next inspection:
+
+1. Inspect v10 feature support and learned weights for
+   `swap_call_mapping_get_key_default_swapped`,
+   `swap_call_breaks_name_alignment`, and
+   `swap_call_repairs_name_alignment` across the non-held-out GreenShot-5/6
+   rows. Do not add broad `swap_call_arg` weights or pass/preferred-label
+   features.
+2. Decide whether the HTTP residual needs more independent non-held-out
+   `.get` key/default role-swap coverage or richer non-leaky predicate/context
+   metadata for the preferred operator repair.
+3. For `cookie_scope_include_path_keyword`, consider a narrow extension of the
+   existing `add_keyword_arg` family to synthesize boolean default keywords from
+   local callee signatures, specifically enough to generate
+   `include_path=True`, rather than adding a new action family.

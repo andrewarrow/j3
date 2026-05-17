@@ -794,6 +794,61 @@ def test_candidate_features_distinguish_same_mapping_asserted_key_value_and_key_
     )
 
 
+def test_candidate_features_record_swap_call_arg_role_metadata(tmp_path) -> None:
+    repair_candidate = _swap_call_alignment_candidate(
+        source=(
+            "def render_pair(name, value):\n"
+            "    return f'{name}={value}'\n\n"
+            "def cookie_pair(value, name):\n"
+            "    return render_pair(value, name)\n"
+        ),
+        patched_call="render_pair(name, value)",
+        symbol="cookie_pair",
+        line=5,
+    )
+    broken_candidate = _swap_call_alignment_candidate(
+        source=(
+            "def normalize_scope(host, path):\n"
+            "    return host, path\n\n"
+            "def cookie_scope_key(host, path):\n"
+            "    return normalize_scope(host, path)\n"
+        ),
+        patched_call="normalize_scope(path, host)",
+        symbol="cookie_scope_key",
+        line=5,
+    )
+    get_candidate = _swap_call_alignment_candidate(
+        source=(
+            "def should_store_response(headers):\n"
+            "    cache_control = headers.get('cache-control', '')\n"
+            "    return cache_control\n"
+        ),
+        patched_call="headers.get('', 'cache-control')",
+        symbol="should_store_response",
+        line=2,
+    )
+    (tmp_path / "cookies.py").write_text(repair_candidate.original_source, encoding="utf-8")
+    repair_with_context = attach_target_context(tmp_path, [repair_candidate])[0]
+    (tmp_path / "cookies.py").write_text(broken_candidate.original_source, encoding="utf-8")
+    broken_with_context = attach_target_context(tmp_path, [broken_candidate])[0]
+    (tmp_path / "cookies.py").write_text(get_candidate.original_source, encoding="utf-8")
+    get_with_context = attach_target_context(tmp_path, [get_candidate])[0]
+
+    repair_features = candidate_features(repair_with_context)
+    broken_features = candidate_features(broken_with_context)
+    get_features = candidate_features(get_with_context)
+
+    assert repair_with_context.target_context["swap_call_name_alignment_before"] == "broken"
+    assert repair_with_context.target_context["swap_call_name_alignment_after"] == "preserved"
+    assert repair_features["swap_call_repairs_name_alignment"] == 1.0
+    assert repair_features["action_swap_call_repairs_name_alignment:swap_call_arg"] == 1.0
+    assert broken_with_context.target_context["swap_call_breaks_name_alignment"] is True
+    assert broken_features["swap_call_breaks_name_alignment"] == 1.0
+    assert get_with_context.target_context["swap_call_mapping_get_key_default_swapped"] is True
+    assert get_features["swap_call_mapping_get_key_default_swapped"] == 1.0
+    assert get_features["swap_call_role_pair:mapping_key->mapping_default"] == 1.0
+
+
 def test_train_candidate_ranker_uses_target_context_from_outcomes(tmp_path) -> None:
     outcomes = tmp_path / "candidate-outcomes.jsonl"
     rows = [
@@ -917,6 +972,55 @@ def test_candidate_record_features_distinguish_same_mapping_asserted_key_value_a
     )
 
 
+def test_candidate_record_features_include_swap_call_arg_role_metadata() -> None:
+    repair_features = _candidate_record_features(
+        _swap_call_role_record(
+            passed=True,
+            target_context={
+                "role": "helper",
+                "swap_call_name_alignment_before": "broken",
+                "swap_call_name_alignment_after": "preserved",
+                "swap_call_repairs_name_alignment": True,
+            },
+        ),
+        [],
+    )
+    broken_features = _candidate_record_features(
+        _swap_call_role_record(
+            passed=False,
+            target_context={
+                "role": "helper",
+                "swap_call_name_alignment_before": "preserved",
+                "swap_call_name_alignment_after": "broken",
+                "swap_call_breaks_name_alignment": True,
+            },
+        ),
+        [],
+    )
+    get_features = _candidate_record_features(
+        _swap_call_role_record(
+            passed=False,
+            target_context={
+                "role": "helper",
+                "swap_call_method": "get",
+                "swap_call_mapping_get_key_default_swapped": True,
+                "swap_call_left_role": "mapping_key",
+                "swap_call_right_role": "mapping_default",
+                "swap_call_left_arg_kind": "string_literal",
+                "swap_call_right_arg_kind": "empty_string_literal",
+            },
+        ),
+        [],
+    )
+
+    assert repair_features["swap_call_repairs_name_alignment"] == 1.0
+    assert repair_features["action_swap_call_name_alignment_after:swap_call_arg:preserved"] == 1.0
+    assert broken_features["swap_call_breaks_name_alignment"] == 1.0
+    assert get_features["swap_call_mapping_get_key_default_swapped"] == 1.0
+    assert get_features["action_swap_call_method:swap_call_arg:get"] == 1.0
+    assert get_features["swap_call_right_arg_kind:empty_string_literal"] == 1.0
+
+
 def test_train_candidate_ranker_uses_same_mapping_asserted_key_metadata(tmp_path) -> None:
     outcomes = tmp_path / "candidate-outcomes.jsonl"
     rows = [
@@ -969,6 +1073,63 @@ def _candidate_record(*, to: str, passed: bool) -> dict[str, object]:
         "failure_hint_score": 50.0,
         "ranker_score": None,
         "passed": passed,
+    }
+
+
+def _swap_call_alignment_candidate(
+    *,
+    source: str,
+    patched_call: str,
+    symbol: str,
+    line: int,
+) -> CandidatePatch:
+    original_call = source.splitlines()[line - 1].strip().removeprefix("return ")
+    return CandidatePatch(
+        file_path="cookies.py",
+        action=PatchAction(
+            kind=PatchActionKind.SWAP_CALL_ARG,
+            target=PatchTarget(
+                file_path="cookies.py",
+                start_line=line,
+                end_line=line,
+                symbol=symbol,
+                node_kind="Call",
+            ),
+            params={"left": 0, "right": 1},
+        ),
+        edit=SourceEdit(
+            start_line=line,
+            start_col=11,
+            end_line=line,
+            end_col=11 + len(original_call),
+            replacement=patched_call,
+        ),
+        original_source=source,
+        patched_source=source.replace(original_call, patched_call),
+        reason="swap call arguments 0 and 1",
+        failure_hint_score=100.0,
+    )
+
+
+def _swap_call_role_record(
+    *,
+    passed: bool,
+    target_context: dict[str, object],
+) -> dict[str, object]:
+    return {
+        "file_path": "webcookies/policy.py",
+        "action": "swap_call_arg",
+        "symbol": "cookie_scope_key",
+        "start_line": 5,
+        "end_line": 5,
+        "node_kind": "Call",
+        "params": {"left": 0, "right": 1},
+        "reason": "swap call arguments 0 and 1",
+        "model_score": 0.0,
+        "failure_hint_score": 100.0,
+        "ranker_score": None,
+        "passed": passed,
+        "target_context": target_context,
     }
 
 

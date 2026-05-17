@@ -34,7 +34,7 @@ new implementation facts change the 24-hour plan itself. Record any
   `python -m py_compile j3/transition_assets.py cli/handlers.py cli/parser.py cli/__init__.py`;
   `python cli.py inspect-transition-assets --json`;
   `git diff --check`
-- Latest implementation/demo commit: `1783df6` (`Wire transition artifacts into demo`)
+- Latest implementation/demo commit: `7e3df39` (`Add transition asset inventory`)
 - Latest documentation commit: `ef99279` (`Rewrite README for Prompt Repo JEPA`)
 - Current blocker: none
 - Next task: define `transition-bench-v1` rows with checked-in fixtures.
@@ -115,8 +115,8 @@ Use this shape for each worker handoff:
   git transition JSONL files, candidate outcome JSONL files, Prompt+Repo demo
   artifacts, and prototype model metadata. Missing ignored `data/` and `runs/`
   assets are reported normally.
-- Commit: pending before commit; final hash in worker report.
-- Push: pending before push; final result in worker report.
+- Commit: `7e3df39` (`Add transition asset inventory`)
+- Push: succeeded to `main`.
 - Next: define `transition-bench-v1` rows with checked-in fixtures.
 - Blockers: none.
 

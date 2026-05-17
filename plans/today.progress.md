@@ -8,7 +8,7 @@ new implementation facts change the 24-hour plan itself. Record any
 ## Status
 
 - Current phase: Transition bench and action selection V1
-- Completed iterations: 5 for this reset; Prompt+Repo JEPA transition V0
+- Completed iterations: 6 for this reset; Prompt+Repo JEPA transition V0
   completed 6 iterations; Prompt-JEPA developer demo reset
   completed 5 iterations; previous Prompt-JEPA index reset completed 8
   iterations
@@ -45,11 +45,12 @@ new implementation facts change the 24-hour plan itself. Record any
   `python cli.py demo-transition-bench --json`;
   `python cli.py demo-transition-bench --embedding-dim 8 --top-k 1 --out /tmp/j3-transition-bench-report.json`;
   `python -m json.tool /private/tmp/j3-transition-bench-report.json >/dev/null`;
-  `git diff --check`
+  `git diff --check`;
+  `python -m json.tool /tmp/j3-transition-bench-report.json >/dev/null`
 - Latest implementation/demo commit: `760c1fe` (`Add transition bench demo`)
-- Latest documentation commit: `ef99279` (`Rewrite README for Prompt Repo JEPA`)
+- Latest documentation commit: pending worker iteration 6
 - Current blocker: none
-- Next task: document reproduction, ignored data boundaries, and future release packaging.
+- Next task: watcher review; no unchecked active task remains in this slice.
 
 ## Active Task Queue
 
@@ -59,7 +60,7 @@ new implementation facts change the 24-hour plan itself. Record any
 - [x] Build `transition-action-choice-v1` groups from candidate outcomes.
 - [x] Add an evaluation-only future scorer with pass@1/top-k/MRR metrics.
 - [x] Add a one-command transition bench demo/report.
-- [ ] Document reproduction, ignored data boundaries, and future release
+- [x] Document reproduction, ignored data boundaries, and future release
   packaging.
 
 ## Worker Iteration Template
@@ -237,6 +238,30 @@ Use this shape for each worker handoff:
 - Push: succeeded to `main`.
 - Next: document reproduction, ignored data boundaries, and future release
   packaging.
+- Blockers: none.
+
+### Iteration 6: Transition bench reproduction docs
+
+- Worker: Codex worker iteration 6
+- Goal: document reproduction, ignored data boundaries, checked-in schemas, and
+  future release packaging for Transition Bench and Action Selection V1.
+- Files changed: `docs/TRANSITION_BENCH.md`, `README.md`,
+  `plans/today.progress.md`
+- Tests/checks run: `python cli.py inspect-transition-assets --json` passed;
+  `python cli.py demo-transition-bench --embedding-dim 8 --top-k 1 --out /tmp/j3-transition-bench-report.json`
+  passed; `python -m json.tool /tmp/j3-transition-bench-report.json >/dev/null`
+  passed; `git diff --check` passed.
+- Result: added focused Transition Bench docs covering checked-in fixture
+  reproduction, optional local-data report commands, intentionally ignored
+  `data/` and `runs/` boundaries, the `transition-asset-inventory-v1`,
+  `transition-bench-v1`, `transition-action-choice-v1`,
+  `transition-action-scoring-eval-v1`, and
+  `transition-bench-demo-report-v1` artifact surfaces, plus future release
+  package expectations for manifests, checksums, optional artifact zips, and
+  local no-hosted-API rebuild/verification.
+- Commit: pending (`Document transition bench reproduction`)
+- Push: pending.
+- Next: watcher review; no unchecked active task remains in this slice.
 - Blockers: none.
 
 - Rewrote `README.md` into a much smaller developer-focused JEPA pitch using

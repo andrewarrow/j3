@@ -187,7 +187,9 @@ python -m pip install -e ".[dev]"
 python cli.py --help
 ```
 
-More detail: [docs/PROMPT_JEPA_DEMO.md](docs/PROMPT_JEPA_DEMO.md).
+More detail:
+[docs/PROMPT_JEPA_DEMO.md](docs/PROMPT_JEPA_DEMO.md) and
+[docs/TRANSITION_BENCH.md](docs/TRANSITION_BENCH.md).
 
 ## Why This Is Exciting
 

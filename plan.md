@@ -615,6 +615,16 @@ Recent work:
   `http_no_store_response_with_etag`, where a non-preferred passing
   `change_literal "no-store" -> "no_store"` again ranks above the preferred
   `change_operator not in -> in`. Details are in `HARD_NEGATIVES.md`.
+- The two filesize-refresh trained holdout residuals were inspected without
+  code changes. `cookie_host_prefix_dict_value` needs narrow scalar
+  assertion-delta metadata for dictionary value edits: the rows already contain
+  assertion actual/expected values, but current features do not encode that the
+  preferred edit changes `params.from` from the assertion actual to
+  `params.to` equal to the assertion expected. `http_no_store_response_with_etag`
+  is already described by v11 membership-predicate metadata and has a very
+  small residual gap, so prefer more independent non-held-out
+  membership-predicate coverage only if it remains after the cookie metadata
+  fix and outcome refresh. Details are in `HARD_NEGATIVES.md`.
 
 Last focused verification:
 
@@ -793,18 +803,15 @@ GreenShot-6 test-slice ranker validation result:
 
 ```text
 train-ranker, holdout-task includes all GreenShot-6 split:test tasks:
-  training rows=262 passing_rows=60 tasks=38 plans=38 pairs=223
-  training_accuracy=1.000 margin_violations=3 features=674
-  validation solved=7/7 pass@1=7/7 positive@1=7/7
-  validation avg_first_passing_index=1.0
-  fixed: cookie_default_secure_flag_dict_value now ranks the preferred
-  change_dict_value candidate first after adding independent same-mapping
-  boolean value-vs-key-rename coverage.
-  fixed: cookie_scope_include_path_keyword now ranks the preferred
-  add_keyword_arg(include_path=True) candidate first
-  fixed: http_no_store_response_with_etag now ranks the preferred
-  change_operator candidate first after adding failing literal-needle
-  hard-negative coverage.
+  training rows=274 passing_rows=62 tasks=39 plans=39 pairs=233
+  training_accuracy=1.000 margin_violations=2 features=761
+  validation solved=7/7 pass@1=6/7 positive@1=5/7
+  validation avg_first_passing_index=1.1428571428571428
+  residual: cookie_host_prefix_dict_value ranks false
+  change_dict_value host: "__Host" -> "host" above the preferred
+  host: "__Host" -> "__Host-" repair.
+  residual: http_no_store_response_with_etag ranks a non-preferred passing
+  membership-literal edit above the preferred membership-operator repair.
 ```
 
 ## Next Right Things
@@ -814,15 +821,20 @@ Keep this section as the live queue. When work is completed, move it to
 
 Immediate next sequence:
 
-1. Add the next real-package-derived GreenShot-6 task or small fixture domain
-   from real git-history signal, preferring a repair shape not already covered
-   by `pkgmeta`, `httpcache`, `webcookies`, `cliformat`, `sampling`,
-   `dateparse`, or `headers`.
-2. Use existing action families where possible; only add an action if the
-   held-out repair proves the candidate is missing.
-3. Run focused loader/generator tests, refresh GreenShot-6 outcomes with
-   `--explore-after-pass 5`, rerun the same `split: test` holdout, and inspect
-   any new raw or trained preferred-positive misses before ranker feature work.
+1. Implement narrow scalar assertion-delta metadata for dictionary value
+   candidates: when failure hints contain a scalar assertion, record whether a
+   `change_dict_value` candidate changes `params.from` from the assertion
+   actual to `params.to` equal to the assertion expected. Keep it non-leaky and
+   available from both live candidates and persisted outcome rows.
+2. Add focused candidate-ranker and candidate-outcome tests for the new
+   metadata, especially the `cookie_host_prefix_dict_value` shape where the
+   same key and `from` value can lead either to the expected `"__Host-"` or the
+   false `"host"` value.
+3. Refresh GreenShot-6 outcomes with `--explore-after-pass 5`, rerun the same
+   GreenShot-6 `split: test` holdout, and inspect whether
+   `http_no_store_response_with_etag` still needs independent non-held-out
+   membership-predicate coverage. Do not tune broad action/string/boolean
+   weights or add pass/preferred-label features.
 
 ### 1. Make GreenShot-6 Real
 
@@ -985,20 +997,20 @@ Start neural/JEPA work only when:
 
 ## Handoff Recommendation
 
-The next context window should inspect the two trained GreenShot-6 `split: test`
-holdout residuals introduced after adding the humanize-derived `filesize` task.
-Do not tune broad handcrafted weights or add pass/preferred-label features from
-this state. The new filesize task itself is clean and has a tested
-preferred-positive row at raw rank 1.
+The next context window should implement the narrow scalar assertion-delta
+metadata for dictionary value edits identified in the filesize residual
+inspection. Do not tune broad handcrafted weights or add pass/preferred-label
+features from this state. The new filesize task itself is clean and has a
+tested preferred-positive row at raw rank 1.
 
 Immediate next sequence:
 
-1. Inspect `cookie_host_prefix_dict_value`: the trained ranker now puts a false
-   same-key `change_dict_value host: "__Host" -> "host"` above the preferred
-   `host: "__Host" -> "__Host-"` repair.
-2. Inspect `http_no_store_response_with_etag`: the trained ranker again puts a
-   non-preferred passing membership-literal edit above the preferred membership
-   operator repair.
-3. Decide whether either residual needs independent non-held-out dataset
-   coverage or narrow non-leaky metadata. Prefer dataset coverage if the
-   existing feature set already describes the distinction but lacks support.
+1. Add candidate/record features for scalar assertion actual-to-expected deltas
+   on `change_dict_value` candidates, analogous to the existing same-mapping
+   assertion-delta feature but not limited to mapping-key assertions.
+2. Run focused ranker/outcome tests, then refresh GreenShot-6 outcomes and
+   rerun the same `split: test` held-out ranker validation.
+3. If `http_no_store_response_with_etag` still ranks a non-preferred
+   membership-literal edit above the preferred operator repair, prefer
+   independent non-held-out membership-predicate coverage before adding new
+   predicate metadata.

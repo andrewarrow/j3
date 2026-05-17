@@ -356,6 +356,119 @@ filesize task is clean and useful dataset growth, but the next work should
 inspect the two trained residuals above and decide whether independent
 non-held-out coverage or narrow non-leaky metadata is the right fix.
 
+### Filesize Holdout Residual Inspection
+
+Inspection date: 2026-05-17.
+
+Inspection source:
+
+```bash
+runs/apache-python-git/greenshot-5-candidate-outcomes.jsonl
+runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl
+runs/apache-python-git/ranker-holdout-greenshot-6-test-slice/candidate-ranker.json
+```
+
+The refreshed rows and saved holdout ranker use
+`candidate-diagnostics-v11`. The new humanize-derived
+`humanize_gnu_ronna_suffix` task is not the problem: it has a tested
+preferred-positive `change_dict_value` row at raw rank 1. The residuals are in
+older held-out tasks after the training mix changed.
+
+#### `cookie_host_prefix_dict_value`
+
+The preferred row exists and passes at raw rank 1, but the trained ranker puts
+a false same-key dictionary-value edit first:
+
+| Trained rank | Original rank | Passed | Preferred | Candidate | Score |
+| ---: | ---: | --- | --- | --- | ---: |
+| 1 | 4 | no | no | `change_dict_value`, `host: "__Host" -> "host"` | 15.778675 |
+| 2 | 1 | yes | yes | `change_dict_value`, `host: "__Host" -> "__Host-"` | 15.433925 |
+
+This is not a missing-action problem. It is also not the same same-mapping
+asserted-key shape as the earlier boolean cookie residual: the assertion is a
+scalar string equality from `cookie_prefix("host")`, so there is no asserted
+mapping key for the current same-mapping metadata to use.
+
+The false row wins by only `0.344750`. The largest score differences are
+relation/locality artifacts, while the raw failure hint already prefers the
+right edit:
+
+- Preferred hint score is `97.0`; false row hint score is `62.0`, worth
+  `-1.405` against the false row under the learned `failure_hint_score` weight.
+- The false row gets relation-distance features because its overlapping
+  candidates are farther away: `overlapping_candidate_rank_distance:2_3`
+  contributes `+1.500`, and
+  `action_overlapping_candidate_rank_distance:change_dict_value:2_3`
+  contributes `+1.250`.
+- Both rows share the same action, key, `from` value, string parameter types,
+  target symbol, and broad AST delta count buckets. Current features only see
+  token overlap with the assertion diff; they do not record that the preferred
+  candidate changes the value from assertion actual `"__Host"` to assertion
+  expected `"__Host-"`, while the false row changes away from the expected
+  value.
+
+Non-held-out string `change_dict_value` rows already include a few exact
+assertion actual-to-expected repairs, but the existing feature set does not
+encode that exact scalar assertion-delta distinction for dictionary values:
+
+| Non-held-out string `change_dict_value` relation to scalar assertion | Rows | Passing | Preferred | Tasks |
+| --- | ---: | ---: | ---: | --- |
+| `from == actual` and `to == expected` | 3 | 3 | 3 | `core_metadata_version_dict_value`, `humanize_gnu_ronna_suffix`, `readme_markdown_content_type_dict_value` |
+| `from == actual`, `to != expected` | 3 | 0 | 0 | `humanize_gnu_ronna_suffix`, `readme_markdown_content_type_dict_value` |
+| `to == expected`, `from != actual` | 1 | 0 | 0 | `readme_markdown_content_type_dict_value` |
+| neither exact | 16 | 0 | 0 | mixed decoys |
+
+Decision: the next fix for this residual should be narrow non-leaky metadata,
+not more dataset coverage first. Add a scalar assertion-delta feature for
+dictionary value edits, analogous to the same-mapping assertion-delta feature:
+for `change_dict_value`, record when `params.from` equals an observed assertion
+actual and `params.to` equals the assertion expected value. Also record the
+near-miss cases (`from` matches actual but `to` does not; `to` matches expected
+but `from` does not) if useful for learning. This uses only failure-hint
+content and candidate params, not pass/preferred labels.
+
+#### `http_no_store_response_with_etag`
+
+The HTTP residual is again a preferred-positive miss, not a missing-action
+problem. Every tested candidate passes, and the preferred operator repair is
+only narrowly behind the non-preferred literal-needle edit:
+
+| Trained rank | Original rank | Passed | Preferred | Candidate | Score |
+| ---: | ---: | --- | --- | --- | ---: |
+| 1 | 5 | yes | no | `change_literal`, `"no-store" -> "no_store"` | 16.250375 |
+| 2 | 1 | yes | yes | `change_operator`, `"no-store" not in cache_control` -> `"no-store" in cache_control` | 16.048984 |
+| 3 | 6 | yes | no | `change_literal`, `"no-store" -> "max-age=0, no-store"` | 14.203500 |
+| 4 | 3 | yes | no | `.get` `swap_call_arg`, args `0 <-> 1` | 7.485833 |
+
+The v11 membership metadata is present and already describes the main
+literal-vs-operator distinction:
+
+- The literal decoy has `membership_predicate_literal_changed`,
+  `membership_predicate_needle_changed`, and
+  `membership_predicate_literal_role:needle`.
+- The preferred operator row has `membership_predicate_operator_changed`,
+  `membership_predicate_operator_flipped`, `membership_predicate_operator:not_in`,
+  and the explicit `not in -> in` parameter symbols.
+
+The remaining gap is only `0.201391`. Non-held-out support exists, but is still
+thin and mixed:
+
+| Feature group | Non-held-out rows | Passing | Preferred | Learned direction |
+| --- | ---: | ---: | ---: | --- |
+| membership literal/needle changed | 3 | 2 | 1 | positive, including `+0.25` literal-changed and needle-changed features |
+| membership operator flipped | 6 | 3 | 2 | weak negative, `-0.25` generic and action-specific |
+| `action_membership_predicate_operator:change_operator:not_in` | 3 | 2 | 2 | positive, `+0.50` |
+| exact `no_store` literal AST delta | 1 | 1 | 1 | positive, from `http_no_store_directive_subscript_key`, not a membership-literal decoy |
+
+Decision: prefer independent non-held-out dataset coverage if this residual is
+prioritized after the cookie metadata fix. The existing v11 feature set already
+describes literal-needle edits versus membership-operator flips; it just lacks
+enough clean support to keep the preferred operator ahead after the filesize
+training mix changed. Add another train-split membership-predicate hard
+negative only if the residual remains after the scalar assertion-delta change
+and outcome refresh. Keep validation on preferred-positive rank, because
+pass@1 is misleading when all tested candidates pass.
+
 ## Same-Mapping Metadata Follow-Up
 
 Implementation result: same-mapping asserted-key metadata is now recorded for

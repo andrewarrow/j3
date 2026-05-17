@@ -398,6 +398,18 @@ Recent work:
   trained rank 2, but a non-preferred passing `change_literal`
   `"no-store" -> "no_store"` still ranks first. The cookie secure task remains
   fixed in this slice.
+- Refreshed membership-predicate support and learned weights were inspected
+  after adding `http_no_cache_revalidation_with_etag`. The saved holdout ranker
+  uses `candidate-diagnostics-v11` with 663 learned features. For the held-out
+  `http_no_store_response_with_etag` task, the preferred
+  `change_operator not in -> in` repair is trained rank 2 with score
+  15.824030, just behind the non-preferred passing literal-needle edit
+  `"no-store" -> "no_store"` at 15.975122. Membership features still favor the
+  literal decoy (`+5.50`) and penalize the preferred operator (`-2.25`).
+  The added `http_no_cache_revalidation_with_etag` task has the intended raw
+  operator-vs-literal shape, but its literal-needle decoy also passes, so it
+  provides preference signal rather than a clean failing hard negative. Details
+  are in `HARD_NEGATIVES.md`.
 
 Last focused verification:
 
@@ -552,16 +564,19 @@ Immediate next sequence:
 
 1. Stay on the remaining GreenShot-6 `split: test` residual:
    `http_no_store_response_with_etag`.
-2. Inspect the refreshed membership-predicate feature support and learned
-   weights after adding `http_no_cache_revalidation_with_etag`. The preferred
-   HTTP candidate now ranks second behind the literal needle edit, so validate
-   preferred-positive rank and not pass@1 alone.
-3. Decide on the next narrow non-leaky signal before tuning weights. Likely
-   options are either another independent non-held-out membership predicate
-   hard negative with a failing literal-needle decoy, or richer branch-effect
-   metadata that distinguishes flipping the membership predicate from changing
-   the membership needle to make the branch unreachable. Do not change broad
-   action, string, boolean, or pass/preferred-label weights.
+2. Add one independent non-held-out HTTP membership-predicate hard negative
+   with the existing `change_operator` action as the preferred repair and a
+   tempting `change_literal` membership-needle decoy that fails. Keep it
+   `split: train`; do not add an action family.
+3. Run only focused loader/generator tests for that task, then refresh
+   GreenShot-6 outcomes and rerun the same GreenShot-6 `split: test` holdout.
+   Validate preferred-positive rank for `http_no_store_response_with_etag`,
+   not pass@1 alone.
+4. If the preferred HTTP repair still ranks below the literal decoy after that
+   failing-decoy coverage, add richer branch-effect metadata distinguishing a
+   membership-operator flip from a membership-needle change that makes the
+   branch unreachable. Do not change broad action, string, boolean, or
+   pass/preferred-label weights.
 
 ### 1. Make GreenShot-6 Real
 
@@ -721,8 +736,8 @@ Start neural/JEPA work only when:
 ## Handoff Recommendation
 
 The next context window should not tune broad handcrafted weights first. It
-should inspect the refreshed membership-predicate support after the independent
-HTTP coverage addition, then choose one narrow non-leaky signal for the
-remaining HTTP preferred-positive miss. Keep scope to one signal, refresh
-outcome rows only after implementation, and rerun the same GreenShot-6
-`split: test` held-out validation slice.
+should add one independent non-held-out HTTP membership-predicate hard negative
+where the literal-needle decoy fails, then refresh outcome rows and rerun the
+same GreenShot-6 `split: test` held-out validation slice. Keep validation on
+preferred-positive rank for `http_no_store_response_with_etag`, because pass@1
+is already misleading in this multiple-passing-candidate task.

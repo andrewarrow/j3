@@ -771,3 +771,63 @@ Continue to treat this as preferred-positive ranking signal, not pass@1. The
 next clean step is to inspect the refreshed membership feature weights and then
 choose a narrow non-leaky signal; do not change broad action, string, boolean,
 or pass/preferred-label weights.
+
+### Refreshed Membership Feature Inspection
+
+Inspection date: 2026-05-16.
+
+Inspection source:
+
+```bash
+runs/apache-python-git/greenshot-5-candidate-outcomes.jsonl
+runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl
+runs/apache-python-git/ranker-holdout-greenshot-6-test-slice/candidate-ranker.json
+```
+
+The saved holdout ranker uses `candidate-diagnostics-v11` with 663 learned
+features. The held-out HTTP residual is now a narrow preferred-positive miss,
+not a pass@1 miss: all tested candidates pass, and the preferred operator
+repair is trained rank 2 behind the literal-needle edit.
+
+| Trained rank | Original rank | Passed | Preferred | Candidate | Score | Membership contribution |
+| ---: | ---: | --- | --- | --- | ---: | ---: |
+| 1 | 5 | yes | no | `change_literal`, `"no-store"` -> `"no_store"` | 15.975122 | +5.50 |
+| 2 | 1 | yes | yes | `change_operator`, `"no-store" not in cache_control` -> `"no-store" in cache_control` | 15.824030 | -2.25 |
+| 3 | 6 | yes | no | `change_literal`, `"no-store"` -> `"max-age=0, no-store"` | 14.209497 | +5.50 |
+
+The independent `http_no_cache_revalidation_with_etag` training task added the
+intended raw candidate shape, but its literal-needle decoy also passes. That
+means it supplies preferred-positive ordering signal, not clean failing-negative
+signal:
+
+| Candidate | Original rank | Passed | Preferred | Membership contribution |
+| --- | ---: | --- | --- | ---: |
+| `change_operator`, `"no-cache" not in cache_control` -> `"no-cache" in cache_control` | 1 | yes | yes | -2.25 |
+| `change_literal`, `"no-cache"` -> `"no_cache"` | 5 | yes | no | +5.50 |
+
+Non-held-out membership support after the refresh still explains the residual:
+
+| Feature group | Non-held-out rows | Passing rows | Preferred rows | Learned direction |
+| --- | ---: | ---: | ---: | --- |
+| membership literal changed / needle changed | 2 | 2 | 1 | positive, `+0.50` generic and `+0.50` action-specific |
+| membership operator changed / flipped | 5 | 2 | 1 | negative, `-0.50` generic and `-0.50` action-specific |
+| `action_membership_predicate_operator:change_operator:not_in` | 2 | 1 | 1 | positive, `+0.50` |
+| `action_membership_predicate_operator:change_literal:not_in` | 1 | 1 | 0 | weak negative, `-0.25` |
+
+Feature-delta inspection for the held-out pair shows that the literal decoy's
+lead is now small (`0.151092`) but membership features still favor the wrong
+candidate by `7.75` points. The preferred operator is kept close by overlap
+metadata, higher failure-hint score, and explicit `not in -> in` parameter
+features. The current metadata does not distinguish a literal needle edit that
+preserves behavior from one that makes the guarded branch unreachable.
+
+Decision: add another independent non-held-out HTTP membership-predicate hard
+negative before tuning weights or adding branch-effect metadata. The new task
+should keep the existing `change_operator` preferred repair, but its
+literal-needle edit should fail, not merely pass as a non-preferred repair.
+That gives the current v11 membership features a clean negative example for
+the exact tempting literal-needle shape. If that still leaves the held-out
+preferred rank below the literal decoy, then add richer branch-effect metadata
+to distinguish flipping the membership predicate from changing the membership
+needle to make the branch unreachable. Continue validating preferred-positive
+rank for `http_no_store_response_with_etag`; pass@1 alone is misleading here.

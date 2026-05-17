@@ -14,6 +14,7 @@ Project direction:
 - `j3 eval` defaults to ranked-only, task-level progress. Use `--phase both` for benchmark refreshes, `--verbose` for candidate-level progress, and `--quiet` to suppress progress logging.
 - Use `j3 eval --explore-after-pass N --candidate-outcomes PATH` when collecting ranker data. Candidate outcome JSONL should be one row per tested candidate and include rank index, pass label, first-pass index, scores, action, target, params, and multiple-pass context.
 - For the current next task and commit sequence, follow `plan.md` instead of duplicating the live queue here.
+- Whenever editing `plan.md`, keep it as a clean handoff: remove or move completed/stale next steps, make the immediate next sequence explicit, and avoid leaving old tasks in any "Next tasks" list after they are done.
 
 Verification cadence:
 - Default to the smallest focused test that proves the touched behavior. Good examples:

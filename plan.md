@@ -111,6 +111,12 @@ Recent work:
   1.
 - Planner failure signatures now normalize parsed list/dict assertion values
   before using them for loop detection.
+- Candidate outcome rows now include `language`, diff line counts, edit line
+  spans/deltas, replacement lines, and target locality; ranker features consume
+  this metadata from both live candidates and persisted rows.
+- `j3 outcome-summary` covers candidate outcome JSONL files by rows, tasks,
+  families, source types, actions, preferred positives, average candidates, and
+  pass@1 slices.
 
 Last focused verification:
 
@@ -131,6 +137,17 @@ Treat this as a smoke check, not a benchmark claim.
 
 ## Next Right Things
 
+Keep this section as the live queue. When work is completed, move it to
+`Recent work` or `Current State` and remove it from these next-task lists.
+
+Immediate next sequence:
+
+1. Add the first git-history-derived GreenShot-6 held-out repair task.
+2. Run GreenShot-5 with `--explore-after-pass` and save candidate outcomes.
+3. Use `outcome-summary` to inspect high-scoring failed candidates from that
+   run.
+4. Add stable split metadata to outcome rows or a sidecar split file.
+
 ### 1. Make GreenShot-6 Real
 
 Goal: GreenShot-6 should use small real packages or real-package-derived
@@ -142,16 +159,6 @@ Next tasks:
 - Add more mutation-generated held-out tasks from real repos.
 - Continue marking every task with a task family and source type:
   `handcrafted`, `mutation`, or `git_history`.
-- Keep GreenShot-5 as the toy/helper regression ladder.
-- Use GreenShot-6 for held-out package-style signal.
-
-Done first implementation:
-
-- Created 5 GreenShot-6 package-metadata mutation tasks that reuse existing
-  action families.
-- No new action family was added; one missing candidate was handled by expanding
-  structured string-literal alternatives.
-- Current result is solved=5/5, pass@1=3/5, avg_candidates=1.80.
 
 ### 2. Improve Outcome Dataset Quality
 
@@ -161,27 +168,8 @@ transition modeling.
 Next tasks:
 
 - Add stable split metadata to outcome rows or a sidecar split file.
-- Add `language` to candidate outcome rows.
-- Add candidate diff size and edit locality features. Done: outcome rows now
-  record diff line counts, edit line spans/deltas, replacement lines, and target
-  locality; ranker features consume the same metadata from live candidates and
-  persisted rows.
 - Add before/after AST delta features.
 - Record whether candidates are equivalent or overlapping.
-- Add a command to summarize outcome datasets. Done: `j3 outcome-summary`
-  covers candidate outcome JSONL files.
-
-The dataset summary should report at least:
-
-- rows
-- tasks
-- task families
-- source types
-- actions
-- passing rows
-- preferred-positive rows
-- average candidates per task
-- pass@1 by family and source type
 
 ### 3. Collect Hard Negatives
 

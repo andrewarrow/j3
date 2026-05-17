@@ -1035,6 +1035,28 @@
     }
   },
   {
+    "name": "bugbear_b037_message_extra_and",
+    "family": "lint_error_message",
+    "source_type": "git_history",
+    "split": "train",
+    "repo": ".",
+    "test": "python -m pytest tests/test_lintchecks.py::test_b037_message_does_not_have_extra_and",
+    "source": {
+      "repo": "PyCQA/flake8-bugbear",
+      "commit": "ea13615e9528bd0194bdeff7717c635d0fbff5e9",
+      "pr": 495
+    },
+    "preferred": {
+      "file_path": "lintchecks/bugbear.py",
+      "action": "change_literal",
+      "symbol": "b037_message",
+      "params": {
+        "from": "B037 Class `__init__` methods must not return or yield and any values.",
+        "to": "B037 Class `__init__` methods must not return or yield any values."
+      }
+    }
+  },
+  {
     "name": "cookie_default_secure_flag_dict_value",
     "family": "mapping_value",
     "source_type": "mutation",

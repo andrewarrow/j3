@@ -1288,12 +1288,31 @@ Recent work:
 - The same GreenShot-6 `split: test` held-out ranker validation stayed clean:
   solved=7/7, pass@1=7/7, positive@1=7/7. Training used 526 rows, 96 passing
   rows, 455 training pairs, 852 features, and 2 margin violations.
+- GreenShot-6 now includes a thirty-seventh real-package-derived task,
+  `bugbear_b037_message_extra_and`, modeled on `PyCQA/flake8-bugbear` PR 495 /
+  commit `ea13615e9528bd0194bdeff7717c635d0fbff5e9`. The task repairs the B037
+  diagnostic text by changing `return or yield and any values` to
+  `return or yield any values`, using the existing `change_literal` action
+  family. No action family or ranker metadata change was needed.
+- Focused loader/generator coverage passed for the flake8-bugbear-derived task:
+  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
+  `pytest tests/test_patching.py::test_patch_solves_bugbear_b037_message_extra_and -q`.
+- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
+  adding `lintchecks`. The persisted dataset now covers 58 tasks and 452
+  tested candidates. Ranked eval solved all 58 tasks with `pass@1=41/58` and
+  average candidates `7.79`; the new B037 task solves at raw rank 1 with the
+  preferred `change_literal` candidate. Outcome summary reports 89 passing rows
+  and 58 preferred-positive rows.
+- The same GreenShot-6 `split: test` held-out ranker validation stayed clean:
+  solved=7/7, pass@1=7/7, positive@1=7/7, avg_first_passing_index=1.0.
+  Training used 532 rows, 97 passing rows, 460 training pairs, 852 features,
+  and 2 margin violations.
 
 Last focused verification:
 
 ```bash
 pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q
-pytest tests/test_patching.py::test_patch_solves_seaborn_countplot_stat_label_capitalization -q
+pytest tests/test_patching.py::test_patch_solves_bugbear_b037_message_extra_and -q
 python3 -m json.tool examples/greenshot_6/tasks.json >/tmp/greenshot6_tasks_check.json
 python cli.py eval \
   --tasks examples/greenshot_6 \
@@ -1437,9 +1456,9 @@ GreenShot-6 outcome collection result:
 
 ```text
 ranked, runs/apache-python-git/model.json, explore-after-pass=5:
-  solved=57/57 pass@1=40/57 avg_candidates=7.82
-  rows=446 passing_rows=88 preferred_positive_rows=57
-  source_type pass@1: git_history=23/37 mutation=17/20
+  solved=58/58 pass@1=41/58 avg_candidates=7.79
+  rows=452 passing_rows=89 preferred_positive_rows=58
+  source_type pass@1: git_history=24/38 mutation=17/20
 ```
 
 Treat this as a smoke check, not a benchmark claim.
@@ -1458,7 +1477,7 @@ GreenShot-6 test-slice ranker validation result:
 
 ```text
 train-ranker, holdout-task includes all GreenShot-6 split:test tasks:
-  rows=526 passing_rows=96 tasks=70 plans=70 pairs=455
+  rows=532 passing_rows=97 tasks=71 plans=71 pairs=460
   training_accuracy=1.000 margin_violations=2 features=852
   validation solved=7/7 pass@1=7/7 positive@1=7/7
   validation rows=46 avg_first_passing_index=1.0
@@ -1640,25 +1659,26 @@ Start neural/JEPA work only when:
 
 ## Handoff Recommendation
 
-The next context window should start from the post-Seaborn plot-label dataset
-growth, not the older graphlayout/NetworkX, taskqueue/Celery, envwrite, v13
-literal-key, scipyquad, raisemsg, attrvalidators, or pytest-regex-label states.
-GreenShot-6 now has 57 tasks.
+The next context window should start from the post-flake8-bugbear B037 dataset
+growth, not the older Seaborn plot-label, graphlayout/NetworkX, taskqueue/Celery,
+envwrite, v13 literal-key, scipyquad, raisemsg, attrvalidators, or
+pytest-regex-label states. GreenShot-6 now has 58 tasks.
 
 Latest addition:
 
-- Fixture domain: `plotlabels`
-- Task: `seaborn_countplot_stat_label_capitalization`
-- Source: `mwaskom/seaborn` PR 3806 / commit `52b291c`
-- Repair shape: countplot stat labels should use `Count` instead of lowercase
-  `count`.
-- Action: existing `change_dict_value`; no action family or ranker metadata
+- Fixture domain: `lintchecks`
+- Task: `bugbear_b037_message_extra_and`
+- Source: `PyCQA/flake8-bugbear` PR 495 / commit
+  `ea13615e9528bd0194bdeff7717c635d0fbff5e9`
+- Repair shape: B037 diagnostics should say `return or yield any values`
+  without the extra `and`.
+- Action: existing `change_literal`; no action family or ranker metadata
   change was needed.
 
-Latest GreenShot-6 refresh with `--explore-after-pass 5` solved all 57 tasks:
-`pass@1=40/57`, average candidates `7.82`, rows `446`, passing rows `88`, and
-preferred-positive rows `57`. The new Seaborn-derived task passes at raw rank 1
-with the preferred `change_dict_value count: "count" -> "Count"` candidate.
+Latest GreenShot-6 refresh with `--explore-after-pass 5` solved all 58 tasks:
+`pass@1=41/58`, average candidates `7.79`, rows `452`, passing rows `89`, and
+preferred-positive rows `58`. The new flake8-bugbear-derived task passes at raw
+rank 1 with the preferred `change_literal` candidate.
 
 The same GreenShot-6 `split: test` held-out validation is clean:
 solved=7/7, pass@1=7/7, positive@1=7/7, validation rows=46, and

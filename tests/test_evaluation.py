@@ -99,7 +99,7 @@ def test_load_greenshot_6_tasks() -> None:
     tasks = load_tasks(Path("examples/greenshot_6"))
     by_name = {task.name: task for task in tasks}
 
-    assert len(tasks) == 57
+    assert len(tasks) == 58
     assert tasks[0].name == "core_metadata_version_dict_value"
     assert tasks[0].family == "mapping_value"
     assert tasks[0].source_type == "mutation"
@@ -213,6 +213,22 @@ def test_load_greenshot_6_tasks() -> None:
             "key": "count",
             "from": "count",
             "to": "Count",
+        },
+    }
+    assert by_name["bugbear_b037_message_extra_and"].family == "lint_error_message"
+    assert by_name["bugbear_b037_message_extra_and"].source_type == "git_history"
+    assert by_name["bugbear_b037_message_extra_and"].split == "train"
+    assert by_name["bugbear_b037_message_extra_and"].preferred_patch == {
+        "file_path": "lintchecks/bugbear.py",
+        "action": "change_literal",
+        "symbol": "b037_message",
+        "params": {
+            "from": (
+                "B037 Class `__init__` methods must not return or yield and any values."
+            ),
+            "to": (
+                "B037 Class `__init__` methods must not return or yield any values."
+            ),
         },
     }
     assert by_name["prettytable_missing_attribute_quote"].family == "table_legacy_attribute_error"

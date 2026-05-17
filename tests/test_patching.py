@@ -1535,6 +1535,30 @@ def test_patch_solves_seaborn_countplot_stat_label_capitalization(tmp_path) -> N
     assert '"Count"' in result.selected.patched_source
 
 
+def test_patch_solves_bugbear_b037_message_extra_and(tmp_path) -> None:
+    repo = tmp_path / "greenshot_6"
+    shutil.copytree("examples/greenshot_6", repo)
+
+    result = plan_and_maybe_apply_patch(
+        repo=repo,
+        test_command=(
+            "python -m pytest "
+            "tests/test_lintchecks.py::test_b037_message_does_not_have_extra_and"
+        ),
+        dry_run=True,
+        timeout_seconds=10,
+    )
+
+    assert result.selected is not None
+    assert result.selected.file_path == "lintchecks/bugbear.py"
+    assert result.selected.action.kind.value == "change_literal"
+    assert result.selected.action.params == {
+        "from": "B037 Class `__init__` methods must not return or yield and any values.",
+        "to": "B037 Class `__init__` methods must not return or yield any values.",
+    }
+    assert "yield any values" in result.selected.patched_source
+
+
 def test_generate_membership_operator_with_literal_needle_decoy(tmp_path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()

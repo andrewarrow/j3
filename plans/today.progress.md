@@ -7,8 +7,8 @@ new implementation facts change the 24-hour plan itself. Record any
 
 ## Status
 
-- Current phase: unsupported-requirement family eval target added locally
-- Completed iterations: 9
+- Current phase: unsupported-requirement fine-grained label coverage expanded
+- Completed iterations: 10
 - Passing focused tests:
   - `pytest tests/test_prompt_intents.py -q`
   - `pytest tests/test_prompt_intents.py tests/test_request_spec.py -q`
@@ -23,12 +23,15 @@ new implementation facts change the 24-hour plan itself. Record any
   - `python cli.py train-prompt-intents --labels examples/prompt_intents/greenshot_7_intents.jsonl --target unsupported_requirement --show-residuals --residual-limit 12`
   - `python cli.py train-prompt-intents --labels examples/prompt_intents/greenshot_7_intents.jsonl --target unsupported_requirement unsupported_requirement_family --show-residuals --residual-limit 20`
   - `python -m py_compile prompt_intents.py cli/handlers.py cli/parser.py cli/__init__.py`
+  - `pytest tests/test_prompt_intents.py tests/test_request_spec.py tests/test_existing_repo_change.py tests/test_cli.py -q`
 - Latest implementation commit: `f3b60d43d87ce45a1bcbdf60c4b16d0325f0ef9b`
-- Current blocker: none
-- Next task: keep learned production routing blocked; use the family-level
-  unsupported requirement target as a conservative evaluation target while
-  collecting more fine-grained unsupported label coverage before any model can
-  replace fixture-backed request-spec or change-spec routing
+- Current blocker: learned production routing remains blocked; the
+  family-level target is perfect locally, but fine-grained
+  `unsupported_requirement` still has held-out residuals inside unsupported
+  interface subtypes.
+- Next task: keep production routing fixture-backed and conservative; either
+  collect more desktop/graphical/visual interface labels or improve prompt
+  representation before reconsidering fine-grained learned routing.
 
 ## Worker Iteration Template
 
@@ -548,3 +551,57 @@ Use this shape for each worker handoff:
   UI-vs-graphical and vague non-calculator math prompts, while continuing to
   report the family-level target for conservative routing readiness.
 - Blockers: none
+
+### Iteration 10: Fine-Grained Unsupported Labels
+
+- Worker: Codex
+- Goal: collect more fine-grained unsupported requirement labels, especially
+  UI-vs-graphical, visual-interface scope, and vague non-calculator math
+  prompts, while continuing to report the family-level target.
+- Files changed:
+  - `examples/prompt_intents/greenshot_7_intents.jsonl`
+  - `tests/test_prompt_intents.py`
+  - `plans/today.progress.md`
+- Tests run:
+  - `pytest tests/test_prompt_intents.py -q` -> passed, 9 tests
+  - `pytest tests/test_prompt_intents.py tests/test_request_spec.py tests/test_existing_repo_change.py tests/test_cli.py -q`
+    -> passed, 46 tests
+  - `python -m py_compile prompt_intents.py cli/handlers.py cli/parser.py cli/__init__.py`
+    -> passed
+  - `git diff --check` -> passed
+  - `python cli.py train-prompt-intents --labels examples/prompt_intents/greenshot_7_intents.jsonl --target unsupported_requirement unsupported_requirement_family --show-residuals --residual-limit 20`
+    -> passed
+- Result:
+  - Added 24 local fixture rows. The first 12 are split-balanced across
+    train/validation/test for explicit UI, graphical, visual-interface scope,
+    and vague math/domain-unspecified prompts. The remaining train rows add
+    support for user-interface, browser/web, visual-interface, vague math,
+    operator-example `none`, and scientific feature-scope phrasing.
+  - Local fixture coverage is now 59 rows with split counts train=33,
+    validation=12, test=14. Unsupported requirement counts are
+    `graphical_interface=15`, `none=11`, `domain_unspecified=9`,
+    `ui_interface=7`, `visual_interface_scope=6`,
+    `scientific_operations_unspecified=5`, `web_interface=4`, and
+    `desktop_interface=2`.
+  - Local fine-grained `unsupported_requirement` metrics are train 33/33 =
+    1.000 vs majority 7/33 = 0.212, validation 10/12 = 0.833 vs majority
+    2/12 = 0.167, and test 13/14 = 0.929 vs majority 2/14 = 0.143.
+  - Fine-grained residuals are now interface-subtype misses:
+    `gs7-intent-0020` expected `desktop_interface`, predicted `none`;
+    `gs7-intent-0041` expected `graphical_interface`, predicted
+    `web_interface`; `gs7-intent-0035` expected `graphical_interface`,
+    predicted `visual_interface_scope`.
+  - Local family-level `unsupported_requirement_family` metrics are train
+    33/33 = 1.000, validation 12/12 = 1.000, and test 14/14 = 1.000.
+    Majority baselines were train 17/33 = 0.515, validation 8/12 = 0.667,
+    and test 9/14 = 0.643.
+  - Production routing remains fixture-backed and conservative. The
+    family-level target is still the better conservative routing signal, but
+    fine-grained learned routing is blocked by residual interface subtype
+    errors and the small local fixture size.
+- Commit: pending
+- Push: pending
+- Next: either collect more desktop/graphical/visual interface labels or
+  improve prompt representation features before considering fine-grained
+  learned routing for production.
+- Blockers: fine-grained `unsupported_requirement` is not production-ready.

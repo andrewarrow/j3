@@ -21,38 +21,39 @@ def test_loads_greenshot_7_prompt_intent_fixtures() -> None:
     records = load_prompt_intent_records(GREENSHOT_7_INTENTS)
     profile = profile_prompt_intents(records)
 
-    assert len(records) == 35
+    assert len(records) == 59
+    assert profile["split_counts"] == {"test": 14, "train": 33, "validation": 12}
     assert profile["expected_action_counts"] == {
-        "ask_clarification": 25,
-        "emit_existing_repo_change_spec": 6,
+        "ask_clarification": 48,
+        "emit_existing_repo_change_spec": 7,
         "emit_request_spec": 4,
     }
     assert profile["repo_mode_counts"] == {
-        "existing_repo": 6,
-        "new_repo": 27,
-        "unknown": 2,
+        "existing_repo": 7,
+        "new_repo": 43,
+        "unknown": 9,
     }
-    assert profile["unsupported_requirement_count"] == 25
-    assert profile["existing_repo_change_count"] == 6
-    assert profile["requires_clarification_counts"] == {"no": 10, "yes": 25}
-    assert profile["primary_artifact_counts"] == {"none": 35}
+    assert profile["unsupported_requirement_count"] == 48
+    assert profile["existing_repo_change_count"] == 7
+    assert profile["requires_clarification_counts"] == {"no": 11, "yes": 48}
+    assert profile["primary_artifact_counts"] == {"none": 59}
     assert profile["unsupported_requirement_counts"] == {
         "desktop_interface": 2,
-        "domain_unspecified": 2,
-        "graphical_interface": 12,
-        "none": 10,
-        "scientific_operations_unspecified": 3,
-        "ui_interface": 2,
-        "visual_interface_scope": 1,
-        "web_interface": 3,
+        "domain_unspecified": 9,
+        "graphical_interface": 15,
+        "none": 11,
+        "scientific_operations_unspecified": 5,
+        "ui_interface": 7,
+        "visual_interface_scope": 6,
+        "web_interface": 4,
     }
     assert profile["unsupported_requirement_family_counts"] == {
-        "domain": 2,
-        "feature_scope": 3,
-        "interface": 20,
-        "none": 10,
+        "domain": 9,
+        "feature_scope": 5,
+        "interface": 34,
+        "none": 11,
     }
-    assert profile["missing_artifact_label_count"] == 35
+    assert profile["missing_artifact_label_count"] == 59
 
     unsupported = next(
         record
@@ -142,18 +143,19 @@ def test_local_fixture_trains_unsupported_requirement_target() -> None:
         "visual_interface_scope",
         "web_interface",
     )
-    assert result.metrics["validation"].accuracy >= 0.875
+    assert result.metrics["validation"].accuracy >= 10 / 12
     assert (
         result.metrics["validation"].accuracy
         > result.metrics["validation"].baseline_accuracy
     )
-    assert result.metrics["test"].accuracy >= 0.9
+    assert result.metrics["test"].accuracy >= 13 / 14
     assert result.metrics["test"].accuracy > result.metrics["test"].baseline_accuracy
     assert [residual.row_id for residual in result.metrics["validation"].residuals] == [
-        "gs7-intent-0033",
+        "gs7-intent-0020",
+        "gs7-intent-0041",
     ]
     assert [residual.row_id for residual in result.metrics["test"].residuals] == [
-        "gs7-intent-0009",
+        "gs7-intent-0035",
     ]
     graphical_holdout_ids = {
         "gs7-intent-0004",

@@ -200,6 +200,20 @@ Recent work:
   after adding the 5 `webcookies` held-out mutation tasks. The persisted dataset
   at `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` now covers
   19 tasks and 141 tested candidates.
+- Refreshed GreenShot-5 and GreenShot-6 candidate outcomes were used for a
+  GreenShot-6 `split: test` held-out ranker validation slice that includes all
+  5 new `webcookies` tasks. The trained ranker solved all 7 held-out plans, but
+  pass@1 was 5/7 and positive@1 was 4/7. The old Apache classifier miss now
+  ranks first; the remaining held-out pass@1 misses are
+  `cookie_default_secure_flag_dict_value` and
+  `cookie_scope_include_path_keyword`, with an additional non-preferred passing
+  candidate ranked first for `http_no_store_response_with_etag`.
+- GreenShot-6 raw pass@1 misses are not concentrated only in the new cookie
+  domain: 6/19 tasks miss pass@1, split as `git_history=2/4` and
+  `mutation=4/15`, and by split as `test=2/7`, `train=3/9`,
+  `validation=1/3`. The new `webcookies` tasks account for 1 raw GreenShot-6
+  miss, while existing HTTP/cache hard negatives and git-history literal/message
+  repairs remain important ranking signal. Details are in `HARD_NEGATIVES.md`.
 
 Last focused verification:
 
@@ -286,6 +300,16 @@ train-ranker, holdout-task-family=http_cache_directive:
   validation rows=19 avg_first_passing_index=5.0
 ```
 
+GreenShot-6 test-slice ranker validation result:
+
+```text
+train-ranker, holdout-task includes all GreenShot-6 split:test tasks:
+  training rows=220 passing_rows=45 tasks=32 plans=32 pairs=186
+  training_accuracy=1.000 margin_violations=4 features=542
+  validation solved=7/7 pass@1=5/7 positive@1=4/7
+  validation rows=47 avg_first_passing_index=1.29
+```
+
 ## Next Right Things
 
 Keep this section as the live queue. When work is completed, move it to
@@ -293,12 +317,14 @@ Keep this section as the live queue. When work is completed, move it to
 
 Immediate next sequence:
 
-1. Use the refreshed GreenShot-5 and GreenShot-6 candidate-outcome rows for a
-   held-out ranker validation slice that includes the new `webcookies` test
-   tasks.
-2. Summarize whether the remaining GreenShot-6 pass@1 misses are concentrated
-   in existing hard negatives, the new `webcookies` tasks, or source-type/split
-   differences before adding ranker features or more tasks.
+1. Inspect the held-out test-slice ranker misses in `HARD_NEGATIVES.md`:
+   `cookie_default_secure_flag_dict_value`,
+   `cookie_scope_include_path_keyword`, and the non-preferred passing
+   `http_no_store_response_with_etag` rank-1 candidate.
+2. Decide whether the next narrow change should be observation/target-context
+   metadata for same-mapping value/key decoys, call-target locality, or
+   distinguishing accidental passing candidates. Do not add more tasks or action
+   families before that decision.
 
 ### 1. Make GreenShot-6 Real
 
@@ -330,6 +356,8 @@ Next tasks:
 
 - Use GreenShot-5 and GreenShot-6 rows for ranker training and validation.
 - Prefer held-out family/source-type validation over in-sample pass@1.
+- Keep the GreenShot-6 `split: test` holdout available as a cookie-inclusive
+  validation slice before changing ranker features.
 - Re-run GreenShot-6 with `--explore-after-pass 5` after the next batch of
   real-derived tasks or after changing candidate generation/ranking metadata.
 

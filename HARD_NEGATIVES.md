@@ -79,3 +79,79 @@ ranking, not missing actions.
   exact repairs from accidental passes.
 - Keep `http_cache_directive` as a held-out validation slice after adding those
   metadata fields, because it is the clearest current hard-negative case.
+
+## GreenShot-6 Test-Slice Holdout
+
+Inspection source:
+
+```bash
+runs/apache-python-git/greenshot-5-candidate-outcomes.jsonl
+runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl
+```
+
+Held-out validation command:
+
+```bash
+python cli.py train-ranker \
+  --candidate-outcomes \
+    runs/apache-python-git/greenshot-5-candidate-outcomes.jsonl \
+    runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl \
+  --holdout-task \
+    apache_license_classifier_dict_value \
+    http_no_store_response_with_etag \
+    cookie_default_secure_flag_dict_value \
+    cookie_host_prefix_dict_value \
+    cookie_zero_max_age_operator_boundary \
+    cookie_pair_argument_order \
+    cookie_scope_include_path_keyword \
+  --out runs/apache-python-git/ranker-holdout-greenshot-6-test-slice
+```
+
+Result:
+
+| Slice | Plans | Solved | Pass@1 | Positive@1 | Avg first passing index |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| GreenShot-6 `split: test` holdout | 7 | 7/7 | 5/7 | 4/7 | 1.29 |
+
+Training used 220 non-held-out rows from the refreshed GreenShot-5 and
+GreenShot-6 outcome datasets, with 45 passing rows, 32 plans, 186 training
+pairs, 542 features, and 4 margin violations.
+
+### Held-Out Task Notes
+
+- `apache_license_classifier_dict_value` is no longer a held-out pass@1 miss:
+  the trained ranker moves the preferred `change_dict_value` candidate from
+  original rank 5 to rank 1.
+- `cookie_default_secure_flag_dict_value` misses at rank 1 after training. The
+  preferred `change_dict_value` candidate was originally rank 1, but a false
+  `change_dict_key` candidate in the same `default_cookie_attributes` mapping is
+  promoted above it.
+- `cookie_scope_include_path_keyword` remains a held-out pass@1 miss. The
+  passing repair is the original rank-2 `modify_condition` candidate in
+  `normalize_scope`; a false `swap_call_arg` candidate in `cookie_scope_key`
+  stays above it.
+- `http_no_store_response_with_etag` passes at rank 1 after training, but not
+  with the preferred positive. The ranker promotes an accidentally passing
+  `swap_call_arg` candidate above the preferred `change_operator` repair.
+
+### GreenShot-6 Miss Concentration
+
+The refreshed GreenShot-6 outcome rows solve all 19 tasks with 13/19 pass@1.
+The six original pass@1 misses are:
+
+| Task | Family | Source | Split | First passing rank |
+| --- | --- | --- | --- | ---: |
+| `apache_license_classifier_dict_value` | `mapping_value` | `mutation` | `test` | 5 |
+| `cookie_scope_include_path_keyword` | `keyword_propagation` | `mutation` | `test` | 2 |
+| `dynamic_field_error_message` | `exception_message` | `git_history` | `train` | 8 |
+| `http_no_store_directive_subscript_key` | `http_cache_directive` | `mutation` | `train` | 14 |
+| `http_range_request_bypasses_cache` | `http_cache_range` | `git_history` | `train` | 2 |
+| `minimum_python_version_operator_boundary` | `operator_boundary` | `mutation` | `validation` | 2 |
+
+By source type, misses are `git_history=2/4` and `mutation=4/15`. By split,
+they are `test=2/7`, `train=3/9`, and `validation=1/3`. The new `webcookies`
+tasks account for 1 of the 6 GreenShot-6 raw pass@1 misses, but 2 of the 7
+held-out test-slice ranker misses after retraining. The remaining misses are
+not concentrated only in the new cookie domain: existing HTTP/cache hard
+negatives and git-history-derived literal/message repairs still provide the
+stronger evidence for observation and target-context work.

@@ -2,9 +2,9 @@
 
 `j3` is an experiment in building a local-first JEPA coding agent.
 
-The goal is simple and ambitious: repair Python repositories by predicting the
-consequences of code edits in latent repo space, without asking an LLM to
-generate patch candidates first.
+The goal is simple and ambitious: turn user requests or failing observations
+into structured repo actions by predicting useful transitions in latent space,
+without asking an LLM to generate patches or source files first.
 
 ## Why This Exists
 
@@ -15,13 +15,85 @@ expensive, token-heavy, and often blind to the actual dynamics of a codebase.
 `j3` treats a repository as a world:
 
 - the current codebase is the state
-- a patch is an action
-- tests, type checks, stack traces, and runtime behavior are observations
-- a passing test suite is a target state
+- a prompt, test log, type check, stack trace, or runtime behavior is an
+  observation
+- a request spec or passing test suite describes the target state
+- a patch, file creation, or clarification is a structured action
 
-Instead of generating arbitrary source text token by token, `j3` starts with a
-structured patch action space. The model chooses an edit type, target, and
-parameters. A deterministic patch engine turns that decision into a real diff.
+Instead of generating arbitrary source text token by token, `j3` starts with
+structured specs and actions. The model chooses an action type, target, and
+parameters. Deterministic builders and patch engines turn that decision into a
+real repo change.
+
+## Current Progress: GreenShot-7 Prompt-JEPA
+
+The active slice is GreenShot-7: request-to-repo work for a narrow calculator
+CLI domain. The smallest useful path is:
+
+```text
+prompt
+  -> request-spec-v1 or clarification
+  -> structured create/change action
+  -> generated repo or recorded blocked outcome
+  -> validation record
+```
+
+There is now a persisted Prompt-JEPA index for this path:
+
+```text
+prompt / task context
+  -> context embedding
+request spec / action / outcome
+  -> target embedding
+context + target + metadata
+  -> indexed row
+new prompt
+  -> nearest prompt/spec/action/outcome evidence
+```
+
+V0 uses deterministic feature hashing, not a neural encoder. The important part
+is the JEPA-shaped artifact: context vectors and target vectors are separate,
+dimensions are fixed and validated, rows preserve train/validation/test splits,
+and real `implement --record` / `change --record` outcome rows can be indexed.
+
+Try the calculator prompt index:
+
+```bash
+python cli.py build-prompt-jepa-index \
+  --labels examples/prompt_intents/greenshot_7_intents.jsonl \
+  --out /tmp/j3-prompt-jepa-index.json
+
+python cli.py query-prompt-jepa-index \
+  --index /tmp/j3-prompt-jepa-index.json \
+  --prompt "make me a simple cli calc" \
+  --top-k 5
+```
+
+For the simple CLI calculator prompt, the nearest row is the direct
+`emit_request_spec` calculator example. For prompts that ask for unsupported or
+ambiguous calculator variants, nearest rows move toward `ask_clarification` or
+blocked outcome evidence instead of pretending the request is supported.
+
+The same artifact supports held-out retrieval evaluation and dry-run planner
+evidence:
+
+```bash
+python cli.py eval-prompt-jepa-index \
+  --labels examples/prompt_intents/greenshot_7_intents.jsonl \
+  --mode compare
+
+python cli.py propose-from-prompt-jepa \
+  --index /tmp/j3-prompt-jepa-index.json \
+  --prompt "make me a complex calc for spaceships" \
+  --top-k 5
+```
+
+`propose-from-prompt-jepa` emits a `prompt-jepa-planner-proposal-v1` dry-run
+record. It does not apply changes and production `implement` / `change` routing
+is still deterministic while retrieval quality is measured. When the index is
+built with `--records` from real `implement --record` and `change --record`
+JSONL rows, the proposal evidence also carries outcome kind, status,
+validation, pass/fail, and changed-file metadata.
 
 ## First Demo: GreenShot-1
 
@@ -93,6 +165,16 @@ Useful starter commands:
 ```bash
 j3 actions
 j3 actions --json
+j3 implement \
+  --prompt "make me a simple cli calc" \
+  --out /tmp/j3-calc-demo
+j3 build-prompt-jepa-index \
+  --labels examples/prompt_intents/greenshot_7_intents.jsonl \
+  --out /tmp/j3-prompt-jepa-index.json
+j3 query-prompt-jepa-index \
+  --index /tmp/j3-prompt-jepa-index.json \
+  --prompt "make me a simple cli calc" \
+  --top-k 5
 j3 train --data examples/greenshot_bug
 j3 train --data ../Decepticon ../scientific-agent-skills ../CLI-Anything
 j3 mine --repo ../some-python-project --out data/transitions/project.jsonl
@@ -107,9 +189,12 @@ pytest
 ```text
 .
 ├── actions.py        # structured patch actions and targets
+├── cli/              # command handlers and parser wiring
 ├── cli.py            # command line interface
 ├── examples/         # small local repos for demos and smoke tests
 ├── features.py       # deterministic AST hashing encoder
+├── prompt_jepa.py    # prompt context/target encoders, index, eval, proposals
+├── request_spec.py   # request-spec-v1 parsing and validation
 ├── repo.py           # repository discovery helpers
 ├── synth.py          # synthetic break/fix transition generation
 ├── training.py       # prototype local trainer
@@ -322,9 +407,11 @@ should be small enough that iteration speed matters more than benchmark scale.
 
 ## Status
 
-This repository is at the first working prototype stage. It can generate local
-training artifacts, find a passing structured patch for the bundled failing
-example, and apply that patch without using an LLM.
+This repository is at the small working prototype stage. It can generate local
+repair-training artifacts, find and apply structured repairs for bundled
+failures, parse the first supported calculator CLI requests into
+`request-spec-v1`, generate a working calculator repo, and build/query/evaluate a
+Prompt-JEPA index over prompt/spec/action/outcome rows without using an LLM.
 
 ## FAQ
 

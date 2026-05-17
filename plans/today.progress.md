@@ -328,3 +328,32 @@ Use this shape for each worker handoff:
   decide whether a future planner should consume proposals directly or through
   a separate planner-evidence adapter.
 - Blockers: none.
+
+### Documentation: README Prompt-JEPA progress
+
+- Goal: update `README.md` to reflect GreenShot-7 Prompt-JEPA progress and the
+  actual small-example use of separate prompt context and target embeddings.
+- Files changed: `README.md`, `plans/today.progress.md`
+- Tests run: `python cli.py build-prompt-jepa-index --labels
+  examples/prompt_intents/greenshot_7_intents.jsonl --out
+  /tmp/j3-prompt-jepa-index.json` passed; `python cli.py query-prompt-jepa-index
+  --index /tmp/j3-prompt-jepa-index.json --prompt "make me a simple cli calc"
+  --top-k 5` passed and returned `gs7-intent-0001` first with score `0.928041`;
+  `python cli.py query-prompt-jepa-index --index /tmp/j3-prompt-jepa-index.json
+  --prompt "make me a complex calc for spaceships" --top-k 5` passed and
+  returned `gs7-intent-0004` first with expected action `ask_clarification`;
+  `python cli.py eval-prompt-jepa-index --labels
+  examples/prompt_intents/greenshot_7_intents.jsonl --mode compare` passed;
+  `python cli.py propose-from-prompt-jepa --index
+  /tmp/j3-prompt-jepa-index.json --prompt "make me a complex calc for
+  spaceships" --top-k 5` passed and emitted a dry-run proposal with
+  `gs7-intent-0004` as nearest evidence;
+  temp `python cli.py implement --prompt "make me a simple cli calc" --out
+  "$tmpdir"` passed with generated repo validation; `git diff --check` passed.
+- Result: README now documents the GreenShot-7 prompt-to-repo path, the
+  persisted `j3.prompt-jepa-index.v1` artifact, context-vs-target embedding
+  separation, calculator index build/query/eval commands, dry-run planner
+  proposal behavior, and the current production-routing boundary.
+- Next: keep README concise; move deeper Prompt-JEPA metrics or design notes to
+  focused docs if they grow beyond the small current-progress summary.
+- Blockers: none.

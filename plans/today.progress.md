@@ -46,7 +46,7 @@ new implementation facts change the 24-hour plan itself. Record any
   `python cli.py demo-transition-bench --embedding-dim 8 --top-k 1 --out /tmp/j3-transition-bench-report.json`;
   `python -m json.tool /private/tmp/j3-transition-bench-report.json >/dev/null`;
   `git diff --check`
-- Latest implementation/demo commit: this commit (`Add transition bench demo`)
+- Latest implementation/demo commit: `760c1fe` (`Add transition bench demo`)
 - Latest documentation commit: `ef99279` (`Rewrite README for Prompt Repo JEPA`)
 - Current blocker: none
 - Next task: document reproduction, ignored data boundaries, and future release packaging.
@@ -233,7 +233,7 @@ Use this shape for each worker handoff:
   lexical, and deterministic-random baselines, prints human metrics for group
   count, candidate count, pass@1, top-k, MRR, local runtime, and zero hosted
   token/context usage, and writes stable sorted JSON when `--out` is supplied.
-- Commit: this commit (`Add transition bench demo`)
+- Commit: `760c1fe` (`Add transition bench demo`)
 - Push: succeeded to `main`.
 - Next: document reproduction, ignored data boundaries, and future release
   packaging.

@@ -8,6 +8,16 @@ import sys
 import pytest
 
 from cli import main
+from j3.prompt_jepa import (
+    EXISTING_REPO_CHANGE_ATTEMPT_KIND,
+    REQUEST_REPO_ATTEMPT_KIND,
+)
+from j3.prompt_repo_transitions import (
+    PromptRepoOutcomeState,
+    build_prompt_repo_transition_rows,
+    write_prompt_repo_transitions_jsonl,
+)
+from j3.repo_state import encode_repo_state_record
 
 
 def _jsonl_rows(path):
@@ -87,6 +97,136 @@ def _write_prompt_jepa_outcome_rows(path):
     )
 
 
+def _write_prompt_repo_transition_rows(path, tmp_path):
+    empty_repo = tmp_path / "empty"
+    created_repo = tmp_path / "created"
+    blocked_repo = tmp_path / "blocked"
+    before_repo = tmp_path / "before"
+    after_repo = tmp_path / "after"
+    for repo in (empty_repo, created_repo, blocked_repo, before_repo, after_repo):
+        repo.mkdir()
+    (created_repo / "calculator.py").write_text(
+        "def add(left, right):\n    return left + right\n",
+        encoding="utf-8",
+    )
+    (before_repo / "calculator.py").write_text(
+        "def calculate(left, operator, right):\n    return left + right\n",
+        encoding="utf-8",
+    )
+    (after_repo / "calculator.py").write_text(
+        "def calculate(left, operator, right):\n"
+        "    if operator == '**':\n"
+        "        return left ** right\n"
+        "    return left + right\n",
+        encoding="utf-8",
+    )
+    rows = build_prompt_repo_transition_rows(
+        [
+            {
+                "record_kind": REQUEST_REPO_ATTEMPT_KIND,
+                "raw_prompt": "make me a simple cli calc",
+                "normalized_request_spec": {
+                    "schema_version": "request-spec-v1",
+                    "task_type": "create_app",
+                    "repo_mode": "new_repo",
+                    "domain": "calculator",
+                    "features": ["add"],
+                    "artifacts": ["calculator.py"],
+                    "interfaces": [{"kind": "cli"}],
+                    "clarifications_needed": [],
+                },
+                "greenfield_actions": [
+                    {"kind": "create_file", "target": "calculator.py", "payload": {}}
+                ],
+                "build_result": {
+                    "status": "built",
+                    "files_written": ["calculator.py"],
+                },
+                "validation": {
+                    "status": "passed",
+                    "command": "python -m pytest tests -q",
+                    "exit_code": 0,
+                },
+                "passed": True,
+                "failure_observation": None,
+            },
+            {
+                "record_kind": REQUEST_REPO_ATTEMPT_KIND,
+                "raw_prompt": "add auth",
+                "normalized_request_spec": {
+                    "schema_version": "request-spec-v1",
+                    "task_type": "create_app",
+                    "repo_mode": "new_repo",
+                    "domain": "calculator",
+                    "features": ["add"],
+                    "artifacts": ["calculator.py"],
+                    "interfaces": [{"kind": "cli"}],
+                    "clarifications_needed": [
+                        {
+                            "field": "unsupported_requirement",
+                            "message": "authentication is out of scope",
+                        }
+                    ],
+                },
+                "greenfield_actions": [
+                    {"kind": "ask_clarification", "target": None, "payload": {}}
+                ],
+                "build_result": {"status": "blocked", "files_written": []},
+                "validation": {"status": "not_run", "command": None, "exit_code": None},
+                "passed": False,
+                "failure_observation": {"kind": "blocking_clarification"},
+            },
+            {
+                "record_kind": EXISTING_REPO_CHANGE_ATTEMPT_KIND,
+                "raw_prompt": "add exponent support",
+                "existing_repo_change_spec": {
+                    "schema_version": "existing-repo-change-spec-v1",
+                    "task_type": "modify_app",
+                    "repo_mode": "existing_repo",
+                    "domain": "calculator",
+                    "features_to_add": ["power"],
+                    "target_files": ["calculator.py"],
+                },
+                "existing_repo_actions": [
+                    {"kind": "inspect_repo", "target": None, "payload": {}},
+                    {
+                        "kind": "add_operator_dispatch",
+                        "target": "calculator.py",
+                        "payload": {},
+                    },
+                ],
+                "change_result": {
+                    "status": "validated",
+                    "files_changed": ["calculator.py"],
+                },
+                "validation": {
+                    "status": "passed",
+                    "command": "python -m pytest tests -q",
+                    "exit_code": 0,
+                },
+                "passed": True,
+                "failure_observation": None,
+            },
+        ],
+        [
+            PromptRepoOutcomeState(
+                repo_before=encode_repo_state_record(empty_repo, embedding_dim=16),
+                repo_after=encode_repo_state_record(created_repo, embedding_dim=16),
+            ),
+            PromptRepoOutcomeState(
+                repo_before=encode_repo_state_record(blocked_repo, embedding_dim=16),
+                repo_after=encode_repo_state_record(blocked_repo, embedding_dim=16),
+            ),
+            PromptRepoOutcomeState(
+                repo_before=encode_repo_state_record(before_repo, embedding_dim=16),
+                repo_after=encode_repo_state_record(after_repo, embedding_dim=16),
+            ),
+        ],
+        embedding_dim=16,
+    )
+    write_prompt_repo_transitions_jsonl(rows, path)
+
+
 def test_help_menu_prints_project_summary(capsys) -> None:
     with pytest.raises(SystemExit) as exc_info:
         main(["--help"])
@@ -108,6 +248,7 @@ def test_help_menu_prints_project_summary(capsys) -> None:
     assert "query-prompt-jepa-index" in output
     assert "propose-from-prompt-jepa" in output
     assert "eval-prompt-jepa-index" in output
+    assert "eval-prompt-repo-transitions" in output
     assert "train-ranker" in output
     assert "outcome-summary" in output
     assert "compare-diagnostics" in output
@@ -1045,6 +1186,84 @@ def test_eval_prompt_jepa_index_command_compares_modes(capsys) -> None:
     assert {
         item["field"] for item in output["residual_comparisons"]
     } >= {"expected_action", "repo_mode", "domain"}
+
+
+def test_eval_prompt_repo_transitions_command_reports_json_metrics(
+    capsys,
+    tmp_path,
+) -> None:
+    transitions = tmp_path / "transitions.jsonl"
+    _write_prompt_repo_transition_rows(transitions, tmp_path)
+
+    assert (
+        main(
+            [
+                "eval-prompt-repo-transitions",
+                "--transitions",
+                str(transitions),
+                "--top-k",
+                "3",
+                "--json",
+            ]
+        )
+        == 0
+    )
+
+    output = json.loads(capsys.readouterr().out)
+    assert output["schema_version"] == "prompt-repo-transition-eval-v1"
+    assert output["decision"] == "evaluation-only"
+    assert output["predictor_kind"] == "nearest_context_action_delta"
+    assert output["baseline_kind"] == "prompt_only_nearest_neighbor"
+    assert output["rows"] == 3
+    assert output["embedding_dim"] == 16
+    assert output["top_k"] == 3
+    assert output["effective_top_k"] == 2
+    assert output["source_split"] == {
+        "source_change_or_no_change": 2,
+        "blocked_or_clarification": 1,
+    }
+    assert output["v0_predictor"]["outcome_kind"]["total"] == 3
+    assert output["prompt_only_baseline"]["validation_status"]["total"] == 3
+    assert output["v0_predictor"]["repo_after_embedding_distance"][
+        "total_applicable"
+    ] == 2
+    assert output["residual_examples"]
+    assert {"prompt", "action", "expected", "predicted", "distance"} <= set(
+        output["residual_examples"][0]
+    )
+
+
+def test_eval_prompt_repo_transitions_command_prints_summary(
+    capsys,
+    tmp_path,
+) -> None:
+    transitions = tmp_path / "transitions.jsonl"
+    _write_prompt_repo_transition_rows(transitions, tmp_path)
+
+    assert (
+        main(
+            [
+                "eval-prompt-repo-transitions",
+                "--transitions",
+                str(transitions),
+                "--top-k",
+                "2",
+                "--residual-limit",
+                "2",
+            ]
+        )
+        == 0
+    )
+
+    output = capsys.readouterr().out
+    assert "j3 eval-prompt-repo-transitions complete" in output
+    assert f"transitions: {transitions.resolve()}" in output
+    assert "source split:" in output
+    assert "v0 predictor:" in output
+    assert "prompt-only baseline:" in output
+    assert "outcome_kind: top1=" in output
+    assert "repo_after_distance:" in output
+    assert "residual examples:" in output
 
 
 def test_implement_command_builds_repo_and_request_spec_artifact(capsys, tmp_path) -> None:

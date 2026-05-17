@@ -8,7 +8,7 @@ new implementation facts change the 24-hour plan itself. Record any
 ## Status
 
 - Current phase: Prompt+Repo JEPA transition V0
-- Completed iterations: 3 for this reset; Prompt-JEPA developer demo reset
+- Completed iterations: 4 for this reset; Prompt-JEPA developer demo reset
   completed 5 iterations; previous Prompt-JEPA index reset completed 8
   iterations
 - Passing focused tests: `pytest tests/test_prompt_intents.py -q`;
@@ -23,18 +23,21 @@ new implementation facts change the 24-hour plan itself. Record any
   `python -m py_compile j3/repo_state.py`;
   `python cli.py --help`;
   `pytest tests/test_prompt_repo_transitions.py -q`;
+  `pytest tests/test_cli.py -q`;
   `python -m py_compile j3/prompt_repo_transitions.py`;
+  `python -m py_compile j3/prompt_repo_transitions.py cli/handlers.py cli/parser.py cli/__init__.py`;
+  `python cli.py eval-prompt-repo-transitions --transitions /tmp/j3-prompt-jepa-demo/transitions.jsonl --top-k 3 --json`;
   `git diff --check`
-- Latest implementation/demo commit: transition predictor V0 worker commit
+- Latest implementation/demo commit: consequence-prediction metrics worker commit
 - Current blocker: none
-- Next task: add consequence-prediction metrics and residuals.
+- Next task: wire transition rows/model/eval into `demo-prompt-jepa` report artifacts.
 
 ## Active Task Queue
 
 - [x] Add reusable repo-state encoder artifact over Python source files.
 - [x] Build `prompt-repo-transition-v1` rows from demo outcomes.
 - [x] Add a tiny evaluation-only transition predictor V0.
-- [ ] Add consequence-prediction metrics and residuals.
+- [x] Add consequence-prediction metrics and residuals.
 - [ ] Wire transition rows/model/eval into `demo-prompt-jepa` report artifacts.
 - [ ] Update developer docs with the state/action/target transition story.
 
@@ -696,4 +699,30 @@ Use this shape for each worker handoff:
 - Commit: `ca3065d`
 - Push: succeeded to `main`.
 - Next: add consequence-prediction metrics and residuals.
+- Blockers: none.
+
+### Iteration 4: Consequence-prediction metrics and residuals
+
+- Worker: Codex worker iteration 4 for the Prompt+Repo transition V0 reset
+- Goal: add inspectable consequence-prediction metrics and residual examples
+  for `prompt-repo-transition-v1` rows and the V0 transition predictor.
+- Files changed: `j3/prompt_repo_transitions.py`, `cli/parser.py`,
+  `cli/handlers.py`, `tests/test_prompt_repo_transitions.py`,
+  `tests/test_cli.py`, `plans/today.progress.md`
+- Tests run: `pytest tests/test_prompt_repo_transitions.py -q` passed with 8
+  tests; `pytest tests/test_cli.py -q` passed with 39 tests;
+  `python -m py_compile j3/prompt_repo_transitions.py cli/handlers.py cli/parser.py cli/__init__.py`
+  passed; `python cli.py demo-prompt-jepa --labels ../prompts/coding_agent_prompts_expanded_v0.jsonl --out /tmp/j3-prompt-jepa-demo --top-k 5`
+  passed; `python cli.py eval-prompt-repo-transitions --transitions /tmp/j3-prompt-jepa-demo/transitions.jsonl --top-k 3 --json`
+  passed; `git diff --check` passed.
+- Result: added leave-one-out transition evaluation with top-1/top-k outcome
+  kind and validation-status metrics, repo-after embedding distance metrics for
+  source-changing/no-change rows, source-change vs blocked split counts,
+  prompt-only nearest-neighbor baseline metrics, and bounded residual examples
+  containing prompt, action, expected, predicted, prompt-only, and distance
+  fields. Added the evaluation-only `eval-prompt-repo-transitions` CLI command.
+- Commit: pending before commit; final hash reported by worker.
+- Push: pending.
+- Next: wire transition rows/model/eval into `demo-prompt-jepa` report
+  artifacts.
 - Blockers: none.

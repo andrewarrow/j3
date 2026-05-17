@@ -12,6 +12,7 @@ from cli.handlers import (
     handle_compare_diagnostics,
     handle_demo_prompt_jepa,
     handle_eval_prompt_jepa_index,
+    handle_eval_prompt_repo_transitions,
     handle_eval,
     handle_fix,
     handle_greenshot_7,
@@ -615,6 +616,44 @@ def build_parser() -> argparse.ArgumentParser:
         help="maximum miss examples to retain per split (default: 20)",
     )
     prompt_jepa_eval_parser.set_defaults(handler=handle_eval_prompt_jepa_index)
+
+    prompt_repo_transition_eval_parser = subparsers.add_parser(
+        "eval-prompt-repo-transitions",
+        help="evaluate Prompt+Repo transition consequence prediction",
+        description=(
+            "Evaluate leave-one-out consequence prediction over "
+            "prompt-repo-transition-v1 JSONL rows. Reports V0 predictor metrics, "
+            "a prompt-only retrieval baseline, repo-after embedding distances, "
+            "and representative residuals. This command is evaluation-only and "
+            "does not wire prediction into production routing."
+        ),
+    )
+    prompt_repo_transition_eval_parser.add_argument(
+        "--transitions",
+        type=Path,
+        required=True,
+        help="prompt-repo-transition-v1 JSONL rows to evaluate",
+    )
+    prompt_repo_transition_eval_parser.add_argument(
+        "--top-k",
+        type=int,
+        default=3,
+        help="nearest-neighbor cutoff for top-k exact-match metrics (default: 3)",
+    )
+    prompt_repo_transition_eval_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print transition metrics as JSON",
+    )
+    prompt_repo_transition_eval_parser.add_argument(
+        "--residual-limit",
+        type=int,
+        default=20,
+        help="maximum residual examples to retain and print (default: 20)",
+    )
+    prompt_repo_transition_eval_parser.set_defaults(
+        handler=handle_eval_prompt_repo_transitions
+    )
 
     ranker_parser = subparsers.add_parser(
         "train-ranker",

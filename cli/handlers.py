@@ -55,6 +55,10 @@ from j3.prompt_jepa import (
     propose_from_prompt_jepa,
     save_prompt_jepa_index,
 )
+from j3.prompt_repo_transitions import (
+    evaluate_prompt_repo_transition_predictions,
+    load_prompt_repo_transition_rows,
+)
 from j3.request_outcomes import append_request_repo_attempt
 from j3.request_spec import RequestSpec, parse_request_to_spec
 from j3.training import train_from_paths
@@ -734,6 +738,90 @@ def handle_eval_prompt_jepa_index(args: argparse.Namespace) -> int:
                 )
         elif args.show_misses:
             print("  misses: none")
+    return 0
+
+
+def handle_eval_prompt_repo_transitions(args: argparse.Namespace) -> int:
+    rows = load_prompt_repo_transition_rows(args.transitions)
+    result = evaluate_prompt_repo_transition_predictions(
+        rows,
+        top_k=args.top_k,
+        residual_limit=args.residual_limit,
+    )
+
+    if args.json:
+        print(json.dumps(result, indent=2, sort_keys=True))
+        return 0
+
+    print("j3 eval-prompt-repo-transitions complete")
+    print(f"transitions: {args.transitions.expanduser().resolve()}")
+    print(f"rows: {result['rows']}")
+    print(f"embedding dim: {result['embedding_dim']}")
+    print(f"top k: {result['top_k']}")
+    print(f"effective top k: {result['effective_top_k']}")
+    print(f"source split: {_format_counts(result['source_split'])}")
+    for section_name, label in (
+        ("v0_predictor", "v0 predictor"),
+        ("prompt_only_baseline", "prompt-only baseline"),
+    ):
+        section = result[section_name]
+        if not isinstance(section, dict):
+            continue
+        print(f"{label}:")
+        for field in ("outcome_kind", "validation_status"):
+            metrics = section.get(field)
+            if not isinstance(metrics, dict):
+                continue
+            print(
+                "  "
+                f"{field}: "
+                f"top1={metrics['top_1_correct']}/{metrics['total']} "
+                f"({_format_optional_score(metrics['top_1_accuracy'])}) "
+                f"top{result['effective_top_k']}="
+                f"{metrics['top_k_correct']}/{metrics['total']} "
+                f"({_format_optional_score(metrics['top_k_accuracy'])})"
+            )
+        distance = section.get("repo_after_embedding_distance")
+        if isinstance(distance, dict):
+            print(
+                "  repo_after_distance: "
+                f"predicted={distance['predicted_source_targets']}/"
+                f"{distance['total_applicable']} "
+                f"mean={_format_optional_score(distance['mean'])} "
+                f"max={_format_optional_score(distance['max'])}"
+            )
+    residuals = result["residual_examples"]
+    if isinstance(residuals, list) and residuals:
+        print("residual examples:")
+        for residual in residuals:
+            if not isinstance(residual, dict):
+                continue
+            expected = residual.get("expected", {})
+            predicted = residual.get("predicted", {})
+            action = residual.get("action", {})
+            distance = residual.get("distance", {})
+            if not isinstance(expected, dict) or not isinstance(predicted, dict):
+                continue
+            if not isinstance(action, dict):
+                action = {}
+            distance_value = (
+                distance.get("repo_after_embedding_distance")
+                if isinstance(distance, dict)
+                else None
+            )
+            print(
+                "  "
+                f"{residual.get('row_id')}: "
+                f"action={action.get('kind', 'unknown')} "
+                f"expected={expected.get('outcome_kind', 'unknown')}/"
+                f"{expected.get('validation_status', 'unknown')} "
+                f"predicted={predicted.get('outcome_kind', 'unknown')}/"
+                f"{predicted.get('validation_status', 'unknown')} "
+                f"distance={_format_optional_score(distance_value)}"
+            )
+            print(f"    prompt: {residual.get('prompt', '')}")
+    else:
+        print("residual examples: none")
     return 0
 
 

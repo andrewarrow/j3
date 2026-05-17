@@ -12,10 +12,13 @@ from j3.prompt_jepa import (
 from j3.prompt_repo_transitions import (
     EVALUATION_ONLY_DECISION,
     NEAREST_ACTION_DELTA_PREDICTOR_KIND,
+    PROMPT_ONLY_RETRIEVAL_BASELINE_KIND,
+    PROMPT_REPO_TRANSITION_EVAL_SCHEMA_VERSION,
     PROMPT_REPO_TRANSITION_PREDICTOR_SCHEMA_VERSION,
     PROMPT_REPO_TRANSITION_SCHEMA_VERSION,
     PromptRepoOutcomeState,
     build_prompt_repo_transition_rows,
+    evaluate_prompt_repo_transition_predictions,
     fit_prompt_repo_transition_predictor_v0,
     load_prompt_repo_transition_predictor_json,
     predict_prompt_repo_transition_target_v0,
@@ -209,6 +212,66 @@ def test_predict_transition_target_v0_handles_source_and_blocked_targets(
         "unsupported_requirement"
     ]
     assert blocked_prediction["target"]["repo_after_embedding"] is None  # type: ignore[index]
+
+
+def test_evaluate_transition_predictions_reports_metrics_and_residuals(
+    tmp_path: Path,
+) -> None:
+    rows = _sample_transition_rows(tmp_path)
+
+    result = evaluate_prompt_repo_transition_predictions(
+        rows,
+        top_k=3,
+        residual_limit=5,
+    )
+
+    assert json.loads(json.dumps(result, sort_keys=True)) == result
+    assert result["schema_version"] == PROMPT_REPO_TRANSITION_EVAL_SCHEMA_VERSION
+    assert result["decision"] == EVALUATION_ONLY_DECISION
+    assert result["predictor_kind"] == NEAREST_ACTION_DELTA_PREDICTOR_KIND
+    assert result["baseline_kind"] == PROMPT_ONLY_RETRIEVAL_BASELINE_KIND
+    assert result["rows"] == 3
+    assert result["embedding_dim"] == 16
+    assert result["top_k"] == 3
+    assert result["effective_top_k"] == 2
+    assert result["source_split"] == {  # type: ignore[comparison-overlap]
+        "source_change_or_no_change": 2,
+        "blocked_or_clarification": 1,
+    }
+
+    v0 = result["v0_predictor"]
+    prompt_only = result["prompt_only_baseline"]
+    assert v0["outcome_kind"]["total"] == 3  # type: ignore[index]
+    assert v0["outcome_kind"]["top_1_correct"] <= (  # type: ignore[index]
+        v0["outcome_kind"]["top_k_correct"]  # type: ignore[index]
+    )
+    assert v0["validation_status"]["total"] == 3  # type: ignore[index]
+    assert prompt_only["outcome_kind"]["total"] == 3  # type: ignore[index]
+    assert prompt_only["validation_status"]["top_1_correct"] <= (  # type: ignore[index]
+        prompt_only["validation_status"]["top_k_correct"]  # type: ignore[index]
+    )
+    distance = v0["repo_after_embedding_distance"]  # type: ignore[index]
+    assert distance["total_applicable"] == 2
+    assert distance["predicted_source_targets"] <= 2
+    assert set(distance) == {
+        "total_applicable",
+        "predicted_source_targets",
+        "missing_source_predictions",
+        "mean",
+        "min",
+        "max",
+    }
+    residuals = result["residual_examples"]
+    assert residuals
+    first = residuals[0]
+    assert {
+        "prompt",
+        "action",
+        "expected",
+        "predicted",
+        "prompt_only",
+        "distance",
+    } <= set(first)
 
 
 def test_source_changing_transition_requires_repo_after(tmp_path: Path) -> None:

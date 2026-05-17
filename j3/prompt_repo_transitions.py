@@ -24,7 +24,9 @@ PROMPT_REPO_TRANSITION_FEATURE_SCHEMA_VERSION = "prompt-repo-transition-feature-
 PROMPT_REPO_TRANSITION_PREDICTION_SCHEMA_VERSION = (
     "prompt-repo-transition-prediction-v0"
 )
+PROMPT_REPO_TRANSITION_EVAL_SCHEMA_VERSION = "prompt-repo-transition-eval-v1"
 NEAREST_ACTION_DELTA_PREDICTOR_KIND = "nearest_context_action_delta"
+PROMPT_ONLY_RETRIEVAL_BASELINE_KIND = "prompt_only_nearest_neighbor"
 EVALUATION_ONLY_DECISION = "evaluation-only"
 TRANSITION_ARTIFACT = "transitions.jsonl"
 HOSTED_LLM_API_TOKENS = 0
@@ -382,6 +384,123 @@ def predict_prompt_repo_transition_target_v0(
     return predictor.predict(row)
 
 
+def evaluate_prompt_repo_transition_predictions(
+    rows: Sequence[Mapping[str, object]],
+    *,
+    top_k: int = 3,
+    residual_limit: int = 20,
+) -> dict[str, object]:
+    """Evaluate leave-one-out consequence prediction for transition rows."""
+
+    if top_k < 1:
+        raise ValueError("top_k must be positive")
+    if residual_limit < 0:
+        raise ValueError("residual_limit must be non-negative")
+    if len(rows) < 2:
+        raise ValueError("at least two transition rows are required for evaluation")
+
+    validated_rows = tuple(rows)
+    for row in validated_rows:
+        _validate_transition_row(row)
+
+    embedding_dim = _transition_embedding_dim(validated_rows[0])
+    for row in validated_rows:
+        row_dim = _transition_embedding_dim(row)
+        if row_dim != embedding_dim:
+            raise ValueError(
+                "all transition rows must share embedding dimension "
+                f"{embedding_dim}; found {row_dim}"
+            )
+
+    effective_top_k = min(top_k, len(validated_rows) - 1)
+    v0_metrics = _empty_transition_model_metrics()
+    prompt_only_metrics = _empty_transition_model_metrics()
+    split_counts = {"source_change_or_no_change": 0, "blocked_or_clarification": 0}
+    residuals: list[dict[str, object]] = []
+
+    for row in validated_rows:
+        row_id = _transition_row_id(row)
+        train_rows = tuple(
+            train_row
+            for train_row in validated_rows
+            if _transition_row_id(train_row) != row_id
+        )
+        predictor = fit_prompt_repo_transition_predictor_v0(train_rows)
+        prediction = predictor.predict(row)
+        v0_ranked = _rank_predictor_examples(predictor, row, top_k=effective_top_k)
+        prompt_only_ranked = _rank_prompt_only_neighbors(
+            row,
+            train_rows,
+            top_k=effective_top_k,
+        )
+        train_rows_by_id = {
+            _transition_row_id(train_row): train_row for train_row in train_rows
+        }
+
+        expected = _transition_expected_summary(row)
+        split_key = (
+            "source_change_or_no_change"
+            if expected["outcome_kind"] in {"source_changed", "source_unchanged"}
+            else "blocked_or_clarification"
+        )
+        split_counts[split_key] += 1
+
+        v0_distance = _prediction_repo_after_distance(
+            row,
+            prediction,
+            train_rows=train_rows,
+        )
+        _score_transition_prediction(
+            v0_metrics,
+            expected=expected,
+            predicted_top_1=_prediction_target_summary(prediction),
+            ranked=v0_ranked,
+            distance=v0_distance,
+        )
+        _score_transition_prediction(
+            prompt_only_metrics,
+            expected=expected,
+            predicted_top_1=prompt_only_ranked[0] if prompt_only_ranked else {},
+            ranked=prompt_only_ranked,
+            distance=_prompt_only_repo_after_distance(
+                row,
+                prompt_only_ranked=prompt_only_ranked,
+                train_rows_by_id=train_rows_by_id,
+            ),
+        )
+
+        residual = _transition_residual_record(
+            row,
+            expected=expected,
+            prediction=prediction,
+            v0_ranked=v0_ranked,
+            prompt_only_ranked=prompt_only_ranked,
+            distance=v0_distance,
+        )
+        if residual["is_residual"] or v0_distance is not None:
+            residuals.append(residual)
+
+    return {
+        "schema_version": PROMPT_REPO_TRANSITION_EVAL_SCHEMA_VERSION,
+        "decision": EVALUATION_ONLY_DECISION,
+        "predictor_kind": NEAREST_ACTION_DELTA_PREDICTOR_KIND,
+        "baseline_kind": PROMPT_ONLY_RETRIEVAL_BASELINE_KIND,
+        "rows": len(validated_rows),
+        "embedding_dim": embedding_dim,
+        "top_k": top_k,
+        "effective_top_k": effective_top_k,
+        "source_split": split_counts,
+        "v0_predictor": _finalize_transition_model_metrics(v0_metrics),
+        "prompt_only_baseline": _finalize_transition_model_metrics(
+            prompt_only_metrics
+        ),
+        "residual_examples": _bounded_residual_examples(
+            residuals,
+            limit=residual_limit,
+        ),
+    }
+
+
 def write_prompt_repo_transition_predictor_json(
     predictor: PromptRepoTransitionPredictorV0,
     path: Path,
@@ -462,6 +581,407 @@ def validate_prompt_repo_transition_predictor(
                 raise ValueError(
                     f"predictor train example {row_id!r} target dimension mismatch"
                 )
+
+
+def _empty_transition_model_metrics() -> dict[str, object]:
+    return {
+        "outcome_kind": _empty_top_k_metrics(),
+        "validation_status": _empty_top_k_metrics(),
+        "repo_after_embedding_distance": {
+            "total_applicable": 0,
+            "predicted_source_targets": 0,
+            "missing_source_predictions": 0,
+            "distances": [],
+        },
+    }
+
+
+def _empty_top_k_metrics() -> dict[str, int]:
+    return {"total": 0, "top_1_correct": 0, "top_k_correct": 0}
+
+
+def _score_transition_prediction(
+    metrics: dict[str, object],
+    *,
+    expected: Mapping[str, object],
+    predicted_top_1: Mapping[str, object],
+    ranked: Sequence[Mapping[str, object]],
+    distance: Mapping[str, object] | None,
+) -> None:
+    _score_top_k_field(
+        _metric_mapping(metrics, "outcome_kind"),
+        expected=expected.get("outcome_kind"),
+        predicted_top_1=predicted_top_1.get("outcome_kind"),
+        ranked_values=[item.get("outcome_kind") for item in ranked],
+    )
+    _score_top_k_field(
+        _metric_mapping(metrics, "validation_status"),
+        expected=expected.get("validation_status"),
+        predicted_top_1=predicted_top_1.get("validation_status"),
+        ranked_values=[item.get("validation_status") for item in ranked],
+    )
+
+    if expected.get("outcome_kind") not in {"source_changed", "source_unchanged"}:
+        return
+    distance_metrics = _metric_mapping(metrics, "repo_after_embedding_distance")
+    distance_metrics["total_applicable"] = int(distance_metrics["total_applicable"]) + 1
+    if distance is None:
+        distance_metrics["missing_source_predictions"] = (
+            int(distance_metrics["missing_source_predictions"]) + 1
+        )
+        return
+    distance_metrics["predicted_source_targets"] = (
+        int(distance_metrics["predicted_source_targets"]) + 1
+    )
+    distances = distance_metrics.get("distances")
+    if not isinstance(distances, list):
+        raise ValueError("distance metrics list is malformed")
+    distances.append(float(distance["repo_after_embedding_distance"]))
+
+
+def _score_top_k_field(
+    metrics: dict[str, int],
+    *,
+    expected: object,
+    predicted_top_1: object,
+    ranked_values: Sequence[object],
+) -> None:
+    if not isinstance(expected, str) or not expected:
+        return
+    metrics["total"] += 1
+    if predicted_top_1 == expected:
+        metrics["top_1_correct"] += 1
+    if expected in ranked_values:
+        metrics["top_k_correct"] += 1
+
+
+def _finalize_transition_model_metrics(metrics: Mapping[str, object]) -> dict[str, object]:
+    return {
+        "outcome_kind": _finalize_top_k_metrics(
+            _metric_mapping(metrics, "outcome_kind")
+        ),
+        "validation_status": _finalize_top_k_metrics(
+            _metric_mapping(metrics, "validation_status")
+        ),
+        "repo_after_embedding_distance": _finalize_distance_metrics(
+            _metric_mapping(metrics, "repo_after_embedding_distance")
+        ),
+    }
+
+
+def _finalize_top_k_metrics(metrics: Mapping[str, object]) -> dict[str, object]:
+    total = int(metrics.get("total", 0))
+    top_1_correct = int(metrics.get("top_1_correct", 0))
+    top_k_correct = int(metrics.get("top_k_correct", 0))
+    return {
+        "total": total,
+        "top_1_correct": top_1_correct,
+        "top_k_correct": top_k_correct,
+        "top_1_accuracy": _safe_ratio(top_1_correct, total),
+        "top_k_accuracy": _safe_ratio(top_k_correct, total),
+    }
+
+
+def _finalize_distance_metrics(metrics: Mapping[str, object]) -> dict[str, object]:
+    distances_raw = metrics.get("distances", [])
+    if not isinstance(distances_raw, list):
+        raise ValueError("distance metrics list is malformed")
+    distances = [float(value) for value in distances_raw]
+    total_applicable = int(metrics.get("total_applicable", 0))
+    predicted_source_targets = int(metrics.get("predicted_source_targets", 0))
+    missing_source_predictions = int(metrics.get("missing_source_predictions", 0))
+    return {
+        "total_applicable": total_applicable,
+        "predicted_source_targets": predicted_source_targets,
+        "missing_source_predictions": missing_source_predictions,
+        "mean": sum(distances) / len(distances) if distances else None,
+        "min": min(distances) if distances else None,
+        "max": max(distances) if distances else None,
+    }
+
+
+def _metric_mapping(metrics: Mapping[str, object], field: str) -> dict[str, object]:
+    value = metrics.get(field)
+    if not isinstance(value, dict):
+        raise ValueError(f"metrics field {field!r} is malformed")
+    return value
+
+
+def _safe_ratio(numerator: int, denominator: int) -> float | None:
+    if denominator == 0:
+        return None
+    return numerator / denominator
+
+
+def _rank_predictor_examples(
+    predictor: PromptRepoTransitionPredictorV0,
+    row: Mapping[str, object],
+    *,
+    top_k: int,
+) -> tuple[dict[str, object], ...]:
+    query_vector = _transition_input_vector(row, dim=predictor.embedding_dim)
+    scored = sorted(
+        predictor.train_examples,
+        key=lambda example: (
+            _dot(query_vector, _float_tuple(example["input_vector"])),
+            str(example["row_id"]),
+        ),
+        reverse=True,
+    )
+    return tuple(
+        _ranked_predictor_example_summary(example, rank=index)
+        for index, example in enumerate(scored[:top_k], start=1)
+    )
+
+
+def _ranked_predictor_example_summary(
+    example: Mapping[str, object],
+    *,
+    rank: int,
+) -> dict[str, object]:
+    return {
+        "rank": rank,
+        "row_id": str(example["row_id"]),
+        "action_kind": example.get("action_kind"),
+        "outcome_kind": example.get("outcome_kind"),
+        "outcome_status": example.get("outcome_status"),
+        "validation_status": example.get("validation_status"),
+        "target_kind": example.get("target_kind"),
+    }
+
+
+def _rank_prompt_only_neighbors(
+    row: Mapping[str, object],
+    train_rows: Sequence[Mapping[str, object]],
+    *,
+    top_k: int,
+) -> tuple[dict[str, object], ...]:
+    query = _prompt_context_embedding(row)
+    scored = sorted(
+        train_rows,
+        key=lambda train_row: (
+            _dot(query, _prompt_context_embedding(train_row)),
+            _transition_row_id(train_row),
+        ),
+        reverse=True,
+    )
+    return tuple(
+        _ranked_transition_summary(train_row, rank=index)
+        for index, train_row in enumerate(scored[:top_k], start=1)
+    )
+
+
+def _ranked_transition_summary(
+    row: Mapping[str, object],
+    *,
+    rank: int | None = None,
+) -> dict[str, object]:
+    outcome = _mapping_field(row, "outcome", index=0)
+    validation = _mapping_field(row, "validation", index=0)
+    action = _mapping_field(row, "structured_action", index=0)
+    result = {
+        "row_id": _transition_row_id(row),
+        "action_kind": action.get("kind"),
+        "outcome_kind": outcome.get("kind"),
+        "outcome_status": outcome.get("status"),
+        "validation_status": validation.get("status"),
+        "target_kind": (
+            "repo_after_embedding"
+            if outcome.get("kind") in {"source_changed", "source_unchanged"}
+            else "blocked_or_clarification"
+        ),
+    }
+    if rank is not None:
+        result["rank"] = rank
+    return result
+
+
+def _prediction_target_summary(prediction: Mapping[str, object]) -> dict[str, object]:
+    target = _mapping_field(prediction, "target", index=0)
+    return {
+        "target_kind": target.get("kind"),
+        "outcome_kind": target.get("outcome_kind"),
+        "outcome_status": target.get("outcome_status"),
+        "validation_status": target.get("validation_status"),
+    }
+
+
+def _transition_expected_summary(row: Mapping[str, object]) -> dict[str, object]:
+    outcome = _mapping_field(row, "outcome", index=0)
+    validation = _mapping_field(row, "validation", index=0)
+    repo_after = _mapping_field(row, "repo_after", index=0)
+    return {
+        "outcome_kind": outcome.get("kind"),
+        "outcome_status": outcome.get("status"),
+        "validation_status": validation.get("status"),
+        "repo_after_state_checksum": repo_after.get("state_checksum"),
+    }
+
+
+def _prediction_repo_after_distance(
+    row: Mapping[str, object],
+    prediction: Mapping[str, object],
+    *,
+    train_rows: Sequence[Mapping[str, object]],
+) -> dict[str, object] | None:
+    if _transition_outcome_kind(row) not in {"source_changed", "source_unchanged"}:
+        return None
+    target = _mapping_field(prediction, "target", index=0)
+    if target.get("kind") != "repo_after_embedding":
+        return None
+    predicted = _float_tuple(target.get("repo_after_embedding", []))
+    expected = _repo_embedding_from_transition(row, field="repo_after")
+    distance = _euclidean_distance(predicted, expected)
+    nearest = _nearest_repo_after_state(predicted, train_rows)
+    return {
+        "repo_after_embedding_distance": distance,
+        "nearest_predicted_repo_after_row_id": nearest.get("row_id"),
+        "nearest_predicted_repo_after_distance": nearest.get("distance"),
+    }
+
+
+def _prompt_only_repo_after_distance(
+    row: Mapping[str, object],
+    *,
+    prompt_only_ranked: Sequence[Mapping[str, object]],
+    train_rows_by_id: Mapping[str, Mapping[str, object]],
+) -> dict[str, object] | None:
+    if _transition_outcome_kind(row) not in {"source_changed", "source_unchanged"}:
+        return None
+    if not prompt_only_ranked:
+        return None
+    top_1 = prompt_only_ranked[0]
+    row_id = top_1.get("row_id")
+    if not isinstance(row_id, str):
+        return None
+    nearest = train_rows_by_id.get(row_id)
+    if nearest is None:
+        return None
+    if _transition_outcome_kind(nearest) not in {"source_changed", "source_unchanged"}:
+        return None
+    expected = _repo_embedding_from_transition(row, field="repo_after")
+    predicted = _repo_embedding_from_transition(nearest, field="repo_after")
+    return {
+        "repo_after_embedding_distance": _euclidean_distance(predicted, expected),
+        "nearest_predicted_repo_after_row_id": row_id,
+        "nearest_predicted_repo_after_distance": 0.0,
+    }
+
+
+def _nearest_repo_after_state(
+    predicted_embedding: Sequence[float],
+    train_rows: Sequence[Mapping[str, object]],
+) -> dict[str, object]:
+    candidates: list[dict[str, object]] = []
+    for train_row in train_rows:
+        if _transition_outcome_kind(train_row) not in {
+            "source_changed",
+            "source_unchanged",
+        }:
+            continue
+        train_embedding = _repo_embedding_from_transition(train_row, field="repo_after")
+        candidates.append(
+            {
+                "row_id": _transition_row_id(train_row),
+                "distance": _euclidean_distance(predicted_embedding, train_embedding),
+            }
+        )
+    if not candidates:
+        return {}
+    return min(candidates, key=lambda item: (float(item["distance"]), str(item["row_id"])))
+
+
+def _transition_residual_record(
+    row: Mapping[str, object],
+    *,
+    expected: Mapping[str, object],
+    prediction: Mapping[str, object],
+    v0_ranked: Sequence[Mapping[str, object]],
+    prompt_only_ranked: Sequence[Mapping[str, object]],
+    distance: Mapping[str, object] | None,
+) -> dict[str, object]:
+    predicted = _prediction_target_summary(prediction)
+    prompt_only_top_1 = prompt_only_ranked[0] if prompt_only_ranked else {}
+    top_1_miss = (
+        expected.get("outcome_kind") != predicted.get("outcome_kind")
+        or expected.get("validation_status") != predicted.get("validation_status")
+    )
+    prompt_only_top_1_miss = (
+        expected.get("outcome_kind") != prompt_only_top_1.get("outcome_kind")
+        or expected.get("validation_status")
+        != prompt_only_top_1.get("validation_status")
+    )
+    action = _mapping_field(row, "structured_action", index=0)
+    prompt_context = _mapping_field(row, "prompt_context", index=0)
+    record = {
+        "row_id": _transition_row_id(row),
+        "prompt": prompt_context.get("prompt"),
+        "action": {
+            "kind": action.get("kind"),
+            "features": _string_list(action.get("features", [])),
+            "target_files": _string_list(action.get("target_files", [])),
+        },
+        "expected": dict(expected),
+        "predicted": {
+            **predicted,
+            "nearest_train_row_id": prediction.get("nearest_train_row_id"),
+            "top_k": list(v0_ranked),
+        },
+        "prompt_only": {
+            "top_1": dict(prompt_only_top_1),
+            "top_k": list(prompt_only_ranked),
+            "top_1_miss": prompt_only_top_1_miss,
+        },
+        "distance": dict(distance) if distance is not None else None,
+        "is_residual": top_1_miss,
+    }
+    return record
+
+
+def _bounded_residual_examples(
+    residuals: Sequence[Mapping[str, object]],
+    *,
+    limit: int,
+) -> list[dict[str, object]]:
+    ordered = sorted(
+        residuals,
+        key=lambda residual: (
+            bool(residual.get("is_residual")),
+            _residual_distance_value(residual),
+            str(residual.get("row_id", "")),
+        ),
+        reverse=True,
+    )
+    return [_json_copy_dict(residual) for residual in ordered[:limit]]
+
+
+def _residual_distance_value(residual: Mapping[str, object]) -> float:
+    distance = residual.get("distance")
+    if not isinstance(distance, Mapping):
+        return -1.0
+    value = distance.get("repo_after_embedding_distance")
+    return float(value) if isinstance(value, int | float) else -1.0
+
+
+def _prompt_context_embedding(row: Mapping[str, object]) -> tuple[float, ...]:
+    prompt_context = _mapping_field(row, "prompt_context", index=0)
+    return _float_tuple(prompt_context.get("embedding", []))
+
+
+def _euclidean_distance(left: Sequence[float], right: Sequence[float]) -> float:
+    if len(left) != len(right):
+        raise ValueError("cannot compare vectors with different dimensions")
+    return sum(
+        (left_value - right_value) * (left_value - right_value)
+        for left_value, right_value in zip(left, right, strict=True)
+    ) ** 0.5
+
+
+def _json_copy_dict(value: Mapping[str, object]) -> dict[str, object]:
+    copied = _json_copy(value)
+    if not isinstance(copied, dict):
+        raise ValueError("expected object")
+    return copied
 
 
 def _predictor_from_record(record: Mapping[str, object]) -> PromptRepoTransitionPredictorV0:

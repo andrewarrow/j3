@@ -15,7 +15,7 @@ new implementation facts change the 24-hour plan itself. Record any
   `pytest tests/test_prompt_jepa.py -q`;
   `python -m py_compile prompt_jepa_demo.py prompt_jepa.py cli/handlers.py cli/parser.py cli/__init__.py`;
   `git diff --check`
-- Latest implementation commit: pending Iteration 3 commit
+- Latest implementation commit: `74aa004`
 - Current blocker: none
 - Next task: add a thin Python source-embedding sidecar for generated demo repos
   using `features.embed_python_source`.
@@ -517,8 +517,8 @@ Use this shape for each worker handoff:
   `make me a complex calc for spaceships` and the todo CLI prompt are reported
   as retrieval-only; `add auth` is reported as blocked. Dry-run proposals remain
   `applies_changes: false` and production routing is unchanged.
-- Commit: pending; exact hash reported by worker final response after commit.
-- Push: pending.
+- Commit: `74aa004`
+- Push: succeeded to `main`
 - Next: add a thin Python source-embedding sidecar for generated demo repos
   using `features.embed_python_source`.
 - Blockers: none.

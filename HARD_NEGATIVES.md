@@ -667,3 +667,33 @@ predicate governing the boolean assertion and a `change_literal` that changes
 the membership literal inside the same predicate. Keep validation on
 preferred-positive rank, because pass@1 alone is misleading when every tested
 candidate passes.
+
+### Same-Mapping Boolean Coverage Follow-Up
+
+Implementation result: added independent non-held-out coverage for the cookie
+same-mapping boolean value-vs-key-rename shape with
+`cookie_partitioned_default_dict_value` (`split: train`). The task uses the
+existing `change_dict_value` action and creates the same hard-negative shape as
+the held-out secure-cookie miss: preserving the asserted lookup key and changing
+its boolean value is preferred, while a same-mapping string key rename removes
+the asserted lookup key.
+
+Focused verification passed:
+
+```bash
+pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q
+pytest tests/test_patching.py::test_generate_same_mapping_boolean_value_with_key_rename_decoy -q
+```
+
+Validation result after refreshing GreenShot-6 outcomes and rerunning the same
+GreenShot-6 `split: test` holdout:
+
+| Slice | Plans | Solved | Pass@1 | Positive@1 | Avg first passing index |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| GreenShot-6 `split: test` holdout | 7 | 7/7 | 7/7 | 6/7 | 1.0 |
+
+The cookie same-mapping secure residual is fixed in this slice. The remaining
+held-out issue is `http_no_store_response_with_etag`: it passes at rank 1, but
+still ranks a non-preferred passing repair above the preferred
+`change_operator not in -> in` repair. Continue with the membership-predicate
+context metadata path and validate preferred-positive rank, not pass@1 alone.

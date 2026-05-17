@@ -486,6 +486,41 @@ def test_generate_change_dict_key_candidate_from_repo_string_literals(tmp_path) 
     )
 
 
+def test_generate_same_mapping_boolean_value_with_key_rename_decoy(tmp_path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "policy.py").write_text(
+        "def default_partitioned_cookie_attributes() -> dict[str, bool]:\n"
+        "    return {\n"
+        "        'partitioned': False,\n"
+        "        '__Partitioned-': False,\n"
+        "    }\n",
+        encoding="utf-8",
+    )
+    tests = repo / "tests"
+    tests.mkdir()
+    (tests / "test_policy.py").write_text(
+        "from policy import default_partitioned_cookie_attributes\n\n"
+        "def test_partitioned_default() -> None:\n"
+        "    attributes = default_partitioned_cookie_attributes()\n"
+        "    assert attributes['partitioned'] is True\n",
+        encoding="utf-8",
+    )
+
+    candidates = generate_candidate_patches(repo)
+
+    assert any(
+        candidate.action.kind.value == "change_dict_value"
+        and candidate.action.params == {"key": "partitioned", "from": False, "to": True}
+        for candidate in candidates
+    )
+    assert any(
+        candidate.action.kind.value == "change_dict_key"
+        and candidate.action.params == {"from": "partitioned", "to": "__Partitioned-"}
+        for candidate in candidates
+    )
+
+
 def test_generate_change_dict_value_candidate_from_repo_string_literals(tmp_path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()

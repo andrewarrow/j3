@@ -337,11 +337,33 @@ Recent work:
   `"no-store" -> "no_store"` at 13.111906, while the preferred
   `change_operator not in -> in` repair is rank 5 at 4.587461. Details are in
   `HARD_NEGATIVES.md`.
+- Added independent non-held-out same-mapping boolean value-vs-key-rename
+  coverage for the cookie residual with the mutation task
+  `cookie_partitioned_default_dict_value` (`split: train`). It uses the
+  existing `change_dict_value` action and creates a same-mapping
+  `change_dict_key partitioned -> __Partitioned-` hard-negative shape without
+  changing broad action/string/boolean weights or pass/preferred-label
+  features.
+- Focused loader/generator coverage passed for the new task:
+  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
+  `pytest tests/test_patching.py::test_generate_same_mapping_boolean_value_with_key_rename_decoy -q`.
+- GreenShot-6 outcomes were refreshed after adding the independent cookie
+  coverage. The persisted dataset at
+  `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` now covers 20
+  tasks and 146 tested candidates. Ranked eval solved all 20 tasks with
+  `pass@1=15/20` and average candidates `7.30`.
+- The GreenShot-6 `split: test` held-out ranker validation was rerun after the
+  outcome refresh. Validation improved to solved=7/7, pass@1=7/7,
+  positive@1=6/7, and avg_first_passing_index=1.0. The cookie same-mapping
+  secure residual is fixed in this slice. The remaining issue is
+  `http_no_store_response_with_etag`: it passes at rank 1 but still does not
+  rank the preferred `change_operator not in -> in` repair first.
 
 Last focused verification:
 
 ```bash
-pytest tests/test_patching.py::test_generate_missing_keyword_argument_passthrough_candidate tests/test_patching.py::test_generate_missing_boolean_default_keyword_candidate tests/test_patching.py::test_patch_solves_missing_keyword_argument_passthrough tests/test_patching.py::test_patch_solves_cookie_scope_include_path_keyword -q
+pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q
+pytest tests/test_patching.py::test_generate_same_mapping_boolean_value_with_key_rename_decoy -q
 python cli.py eval \
   --tasks examples/greenshot_6 \
   --checkpoint runs/apache-python-git/model.json \
@@ -449,9 +471,9 @@ GreenShot-6 outcome collection result:
 
 ```text
 ranked, runs/apache-python-git/model.json, explore-after-pass=5:
-  solved=19/19 pass@1=14/19 avg_candidates=7.37
-  rows=140 passing_rows=37 preferred_positive_rows=18
-  source_type pass@1: git_history=2/4 mutation=12/15
+  solved=20/20 pass@1=15/20 avg_candidates=7.30
+  rows=146 passing_rows=38 preferred_positive_rows=19
+  source_type pass@1: git_history=2/4 mutation=13/16
 ```
 
 Treat this as a smoke check, not a benchmark claim.
@@ -470,16 +492,17 @@ GreenShot-6 test-slice ranker validation result:
 
 ```text
 train-ranker, holdout-task includes all GreenShot-6 split:test tasks:
-  training rows=220 passing_rows=45 tasks=32 plans=32 pairs=186
-  training_accuracy=1.000 margin_violations=3 features=584
-  validation solved=7/7 pass@1=6/7 positive@1=5/7
-  validation avg_first_passing_index=1.1428571428571428
+  training rows=226 passing_rows=46 tasks=33 plans=33 pairs=191
+  training_accuracy=1.000 margin_violations=3 features=640
+  validation solved=7/7 pass@1=7/7 positive@1=6/7
+  validation avg_first_passing_index=1.0
+  fixed: cookie_default_secure_flag_dict_value now ranks the preferred
+  change_dict_value candidate first after adding independent same-mapping
+  boolean value-vs-key-rename coverage.
   fixed: cookie_scope_include_path_keyword now ranks the preferred
   add_keyword_arg(include_path=True) candidate first
-  residual: cookie_default_secure_flag_dict_value ranks the false
-  change_dict_key candidate first and the preferred change_dict_value second;
-  http_no_store_response_with_etag ranks a non-preferred passing
-  change_literal first and the preferred change_operator fifth
+  residual: http_no_store_response_with_etag still passes at rank 1 but ranks a
+  non-preferred passing repair above the preferred change_operator repair.
 ```
 
 ## Next Right Things
@@ -489,19 +512,16 @@ Keep this section as the live queue. When work is completed, move it to
 
 Immediate next sequence:
 
-1. Pick the next narrow signal from the refreshed residual inspection; do not
-   change broad action, string, boolean, or pass/preferred-label weights.
-2. If prioritizing `cookie_default_secure_flag_dict_value`, add independent
-   non-held-out coverage for the exact same-mapping boolean value-vs-key-rename
-   hard-negative shape before tuning weights. The signal should distinguish
-   preserving the asserted lookup key and changing its value from assertion
-   actual to expected versus renaming/removing that asserted key.
-3. If prioritizing `http_no_store_response_with_etag`, inspect and add
-   non-leaky membership-predicate context metadata before tuning weights. The
-   signal should distinguish a preferred `change_operator` on the boolean
-   membership predicate from a passing `change_literal` that changes the
-   membership needle and accidentally disables the branch. Validate on
-   preferred-positive rank, not pass@1 alone.
+1. Stay on the remaining GreenShot-6 `split: test` residual:
+   `http_no_store_response_with_etag`.
+2. Inspect and add narrow non-leaky membership-predicate context metadata before
+   tuning weights. The signal should distinguish a preferred
+   `change_operator` on the boolean membership predicate from a passing
+   `change_literal` that changes the membership needle and accidentally
+   disables the branch.
+3. Validate on preferred-positive rank, not pass@1 alone, because this task
+   already passes at rank 1 with a non-preferred candidate. Do not change broad
+   action, string, boolean, or pass/preferred-label weights.
 
 ### 1. Make GreenShot-6 Real
 

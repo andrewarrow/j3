@@ -97,7 +97,7 @@ def test_load_greenshot_6_tasks() -> None:
     tasks = load_tasks(Path("examples/greenshot_6"))
     by_name = {task.name: task for task in tasks}
 
-    assert len(tasks) == 19
+    assert len(tasks) == 20
     assert tasks[0].name == "core_metadata_version_dict_value"
     assert tasks[0].family == "mapping_value"
     assert tasks[0].source_type == "mutation"
@@ -198,6 +198,17 @@ def test_load_greenshot_6_tasks() -> None:
             "key": "secure",
             "from": True,
             "to": False,
+        },
+    }
+    assert by_name["cookie_partitioned_default_dict_value"].split == "train"
+    assert by_name["cookie_partitioned_default_dict_value"].preferred_patch == {
+        "file_path": "webcookies/policy.py",
+        "action": "change_dict_value",
+        "symbol": "default_partitioned_cookie_attributes",
+        "params": {
+            "key": "partitioned",
+            "from": False,
+            "to": True,
         },
     }
     assert by_name["cookie_pair_argument_order"].preferred_patch == {

@@ -2,6 +2,7 @@ from webcookies.api import (
     cookie_prefix,
     cookie_scope_key,
     default_cookie_attributes,
+    default_partitioned_cookie_attributes,
     is_expired_cookie,
     render_cookie_pair,
 )
@@ -11,6 +12,12 @@ def test_default_secure_attribute_can_be_disabled() -> None:
     attributes = default_cookie_attributes()
 
     assert attributes["secure"] is False
+
+
+def test_partitioned_cookie_attribute_is_enabled_by_default() -> None:
+    attributes = default_partitioned_cookie_attributes()
+
+    assert attributes["partitioned"] is True
 
 
 def test_host_cookie_prefix_has_trailing_dash() -> None:

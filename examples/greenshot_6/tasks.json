@@ -267,6 +267,28 @@
     }
   },
   {
+    "name": "cookie_partitioned_default_dict_value",
+    "family": "mapping_value",
+    "source_type": "mutation",
+    "split": "train",
+    "repo": ".",
+    "test": "python -m pytest tests/test_webcookies.py::test_partitioned_cookie_attribute_is_enabled_by_default",
+    "source": {
+      "repo": "pallets/werkzeug",
+      "fixture": "cookie partitioned attribute policy mutation"
+    },
+    "preferred": {
+      "file_path": "webcookies/policy.py",
+      "action": "change_dict_value",
+      "symbol": "default_partitioned_cookie_attributes",
+      "params": {
+        "key": "partitioned",
+        "from": false,
+        "to": true
+      }
+    }
+  },
+  {
     "name": "cookie_host_prefix_dict_value",
     "family": "mapping_value",
     "source_type": "mutation",

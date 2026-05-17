@@ -6,6 +6,13 @@ def default_cookie_attributes() -> dict[str, str | bool]:
     }
 
 
+def default_partitioned_cookie_attributes() -> dict[str, bool]:
+    return {
+        "partitioned": False,
+        "__Partitioned-": False,
+    }
+
+
 def cookie_prefix(kind: str) -> str:
     prefixes = {
         "secure": "__Secure-",
@@ -34,4 +41,3 @@ def normalize_scope(host: str, path: str, include_path: bool = False) -> str:
 
 def cookie_scope_key(host: str, path: str) -> str:
     return normalize_scope(host, path)
-

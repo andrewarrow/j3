@@ -1418,9 +1418,9 @@ GreenShot-6 outcome collection result:
 
 ```text
 ranked, runs/apache-python-git/model.json, explore-after-pass=5:
-  solved=54/54 pass@1=38/54 avg_candidates=7.85
-  rows=424 passing_rows=84 preferred_positive_rows=54
-  source_type pass@1: git_history=21/34 mutation=17/20
+  solved=56/56 pass@1=39/56 avg_candidates=7.86
+  rows=440 passing_rows=86 preferred_positive_rows=56
+  source_type pass@1: git_history=22/36 mutation=17/20
 ```
 
 Treat this as a smoke check, not a benchmark claim.
@@ -1439,8 +1439,8 @@ GreenShot-6 test-slice ranker validation result:
 
 ```text
 train-ranker, holdout-task includes all GreenShot-6 split:test tasks:
-  training rows=504 passing_rows=92 tasks=67 plans=67 pairs=436
-  training_accuracy=0.995 margin_violations=5 features=826
+  rows=520 passing_rows=94 tasks=69 plans=69 pairs=450
+  training_accuracy=1.000 margin_violations=2 features=852
   validation solved=7/7 pass@1=7/7 positive@1=7/7
   validation rows=46 avg_first_passing_index=1.0
 ```
@@ -1621,14 +1621,32 @@ Start neural/JEPA work only when:
 
 ## Handoff Recommendation
 
-The next context window should start from the post-attrvalidators/attrs dataset
+The next context window should start from the post-pytest-regex-label dataset
 growth, not the older graphlayout/NetworkX, taskqueue/Celery, envwrite, v13
-literal-key, scipyquad, or raisemsg states. GreenShot-6 now has 55 tasks. The
-same `split: test` held-out
-validation is clean:
-solved=7/7, pass@1=7/7, positive@1=7/7, and avg_first_passing_index=1.0. Do not
-tune broad handcrafted weights or add pass/preferred-label features from this
-state.
+literal-key, scipyquad, raisemsg, or attrvalidators states. GreenShot-6 now has
+56 tasks.
+
+Latest addition:
+
+- Fixture domain: `regexmatch`
+- Task: `pytest_raises_regex_expected_label`
+- Source: `pytest-dev/pytest` PR 13859 / merge commit
+  `b3f3263a83ad5cd53f9e080e4ef52b7f18b9d4f0`
+- Repair shape: regex match failure labels should say `Expected regex` instead
+  of the old `Regex` label.
+- Action: existing `change_literal`; no action family or ranker metadata change
+  was needed.
+
+Latest GreenShot-6 refresh with `--explore-after-pass 5` solved all 56 tasks:
+`pass@1=39/56`, average candidates `7.86`, rows `440`, passing rows `86`, and
+preferred-positive rows `56`. The new pytest-derived task is useful raw ranking
+signal: it passes at raw rank 2 with the preferred `Regex` -> `Expected regex`
+candidate after a lowercase `regex` decoy.
+
+The same GreenShot-6 `split: test` held-out validation is clean:
+solved=7/7, pass@1=7/7, positive@1=7/7, validation rows=46, and
+avg_first_passing_index=1.0. Do not tune broad handcrafted weights or add
+pass/preferred-label features from this state.
 
 Immediate next sequence:
 

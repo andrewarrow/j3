@@ -99,7 +99,7 @@ def test_load_greenshot_6_tasks() -> None:
     tasks = load_tasks(Path("examples/greenshot_6"))
     by_name = {task.name: task for task in tasks}
 
-    assert len(tasks) == 55
+    assert len(tasks) == 56
     assert tasks[0].name == "core_metadata_version_dict_value"
     assert tasks[0].family == "mapping_value"
     assert tasks[0].source_type == "mutation"
@@ -180,6 +180,22 @@ def test_load_greenshot_6_tasks() -> None:
         "params": {
             "from": "The validator uses `operator.ge` to compare the values.",
             "to": "The validator uses `operator.gt` to compare the values.",
+        },
+    }
+    assert by_name["pytest_raises_regex_expected_label"].family == (
+        "regex_match_error_message"
+    )
+    assert by_name["pytest_raises_regex_expected_label"].source_type == (
+        "git_history"
+    )
+    assert by_name["pytest_raises_regex_expected_label"].split == "train"
+    assert by_name["pytest_raises_regex_expected_label"].preferred_patch == {
+        "file_path": "regexmatch/raises.py",
+        "action": "change_literal",
+        "symbol": "regex_match_failure_message",
+        "params": {
+            "from": "Regex",
+            "to": "Expected regex",
         },
     }
     assert by_name["prettytable_missing_attribute_quote"].family == "table_legacy_attribute_error"

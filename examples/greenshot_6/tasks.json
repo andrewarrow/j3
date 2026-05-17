@@ -990,6 +990,28 @@
     }
   },
   {
+    "name": "pytest_raises_regex_expected_label",
+    "family": "regex_match_error_message",
+    "source_type": "git_history",
+    "split": "train",
+    "repo": ".",
+    "test": "python -m pytest tests/test_regexmatch.py::test_regex_match_failure_message_names_expected_regex",
+    "source": {
+      "repo": "pytest-dev/pytest",
+      "commit": "b3f3263a83ad5cd53f9e080e4ef52b7f18b9d4f0",
+      "pr": 13859
+    },
+    "preferred": {
+      "file_path": "regexmatch/raises.py",
+      "action": "change_literal",
+      "symbol": "regex_match_failure_message",
+      "params": {
+        "from": "Regex",
+        "to": "Expected regex"
+      }
+    }
+  },
+  {
     "name": "cookie_default_secure_flag_dict_value",
     "family": "mapping_value",
     "source_type": "mutation",

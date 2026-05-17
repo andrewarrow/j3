@@ -22,7 +22,7 @@ new implementation facts change the 24-hour plan itself. Record any
   - `python cli.py train-prompt-intents --labels ../prompts/coding_agent_prompts_seed.jsonl --target expected_action repo_mode requires_clarification primary_artifact --show-residuals --residual-limit 12`
   - `python cli.py train-prompt-intents --labels examples/prompt_intents/greenshot_7_intents.jsonl --target unsupported_requirement --show-residuals --residual-limit 12`
   - `python -m py_compile prompt_intents.py cli/handlers.py cli/parser.py cli/__init__.py`
-- Latest implementation commit: iteration 7 commit, see worker report
+- Latest implementation commit: `44283da598c50102c3291fdc18b56ac3720cccff`
 - Current blocker: none
 - Next task: keep learned production routing blocked; inspect unsupported-
   requirement residuals and add more held-out label coverage or better encoder
@@ -437,8 +437,8 @@ Use this shape for each worker handoff:
     `make me a complex graphic calc app`, `make a graphical calculator`, and
     `make a graphical desktop calc`, so this target is not ready for learned
     production routing.
-- Commit: pending, reported by worker after commit
-- Push: pending
+- Commit: `44283da598c50102c3291fdc18b56ac3720cccff`
+- Push: succeeded to `main`
 - Next: add more split-balanced unsupported-interface labels and/or improve
   prompt representation features so graphical/UI unsupported target recall
   improves on held-out rows before production learned routing is reconsidered.

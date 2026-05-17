@@ -48,7 +48,7 @@ new implementation facts change the 24-hour plan itself. Record any
   `git diff --check`;
   `python -m json.tool /tmp/j3-transition-bench-report.json >/dev/null`
 - Latest implementation/demo commit: `760c1fe` (`Add transition bench demo`)
-- Latest documentation commit: pending worker iteration 6
+- Latest documentation commit: `4cca638` (`Document transition bench reproduction`)
 - Current blocker: none
 - Next task: watcher review; no unchecked active task remains in this slice.
 
@@ -259,8 +259,8 @@ Use this shape for each worker handoff:
   `transition-bench-demo-report-v1` artifact surfaces, plus future release
   package expectations for manifests, checksums, optional artifact zips, and
   local no-hosted-API rebuild/verification.
-- Commit: pending (`Document transition bench reproduction`)
-- Push: pending.
+- Commit: `4cca638` (`Document transition bench reproduction`)
+- Push: succeeded to `main`.
 - Next: watcher review; no unchecked active task remains in this slice.
 - Blockers: none.
 

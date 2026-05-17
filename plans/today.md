@@ -1,23 +1,23 @@
-# Today Plan: Shadow Suite And Residual-Driven Readiness
+# Today Plan: Evidence Matrix And Guarded Product Trial
 
-The shadow-to-gate infrastructure is now complete:
+The shadow-suite loop is complete:
 
-- `summarize-transition-advice` summarizes shadow advice rows.
-- `normalize-transition-shadow-outcomes` joins advice to candidate outcomes.
-- `evaluate-transition-shadow-scorer` trains and evaluates the held-out V3
-  scorer.
-- `build-transition-evidence-bundle` packages reproducible local evidence.
-- `patch` and `eval` support shadow advice.
-- `patch` and `eval` support guarded, non-default ranking, but failed product
-  gates refuse ranking.
-- `docs/TRANSITION_BENCH.md` explains demo, benchmark, shadow, V3, bundle, and
-  guarded modes.
+- `run-transition-shadow-suite` writes candidate outcomes, shadow advice,
+  normalized shadow outcomes, a V3 report, residual-ready artifacts, and an
+  evidence bundle in one run.
+- `report-transition-residuals` turns held-out misses and shadow disagreements
+  into grouped engineering evidence.
+- `transition-action-shadow-features-v4` preserves bounded change-context
+  metadata from diff/edit/AST-delta fields.
+- docs explain the repeatable suite, residual report, evidence bundle, zero
+  hosted usage, and guarded-ranking policy.
 
-That is enough infrastructure for JEPA developers to inspect a real
-state/action/consequence loop. The next slice should make the evidence stronger
-and more product-real: run a repeatable shadow evaluation suite, study held-out
-residuals, improve the scorer or candidate features where it is weak, and only
-then attempt a narrow guarded trial.
+That is a strong local workflow, but it is still too small as product evidence.
+The checked-in smoke suite has 5 tasks and the current V3 validation report has
+only 1 held-out group. It reports `ready_for_shadow_mode`, not
+`ready_for_guarded_opt_in`. The next slice should broaden the evidence into a
+multi-suite matrix and use that matrix to decide whether any narrow guarded
+trial is justified.
 
 ## Current Reality
 
@@ -34,18 +34,7 @@ Reported:
 - candidate outcomes: 2 files, 642 rows
 - prototype models: 1 file
 
-Candidate-only transition bench:
-
-```bash
-python cli.py demo-transition-bench \
-  --no-fixtures \
-  --embedding-dim 256 \
-  --top-k 3 \
-  --candidate-outcomes runs/apache-python-git/*candidate-outcomes.jsonl \
-  --out /tmp/j3-transition-bench-candidates-report.json
-```
-
-Result:
+Candidate-only transition bench still shows why gates matter:
 
 - 642 transition bench rows
 - 88 action-choice groups
@@ -55,58 +44,74 @@ Result:
 - existing-rank-order pass@1: 65/88
 - V2 validation gate:
   `not_ready_underperforms_existing_rank_order`
+
+Current shadow suite smoke:
+
+```bash
+python cli.py run-transition-shadow-suite \
+  --tasks examples/greenshot_bugs \
+  --out /tmp/j3-transition-shadow-suite-current \
+  --force
+```
+
+Reported:
+
+- tasks: 5
+- ranked solved: 5
+- advice rows: 5
+- advice candidates: 185
+- known validation rows: 4
+- scorer/production agreement: 4/5
+- held-out V3 gate: `ready_for_shadow_mode`
+- residual failures: 0
+- evidence checksums verify
 - zero hosted token/context usage
 
-The shadow-to-gate queue added V3, but V2/V3 evidence must pass held-out gates
-before guarded ranking is allowed for ordinary product use. That is the right
-product boundary.
+This is good engineering hygiene, not enough product evidence. A JEPA developer
+will want to see held-out behavior across task families, residuals where the
+world-model scorer fails, and a clear decision about guarded ranking.
 
 ## Goal For The Next 24 Hours
 
-Build a repeatable shadow evaluation suite and use its residuals to improve
-product readiness:
+Build a multi-suite evidence matrix:
 
 ```text
-standard repair task suite
-  -> candidate outcomes + shadow advice
-  -> shadow outcomes
-  -> held-out V3 report
-  -> residual report
-  -> evidence bundle
-  -> narrow guarded trial only if gates pass
+GreenShot task suites
+  -> one shadow suite run per task family
+  -> matrix summary across gates and metrics
+  -> cross-suite residual report
+  -> release evidence bundle
+  -> guarded trial only where gates pass
 ```
 
-The outcome should be an evidence-producing workflow that a JEPA developer can
-run locally and a product engineer can trust. It should answer:
-
-- where does the transition scorer beat the existing rank order?
-- where does it regress?
-- which features or action generators need work?
-- does held-out evidence justify any guarded trial?
+The product goal is to make transition scoring trustworthy enough for a narrow
+guarded trial, or to clearly prove why it should remain shadow-only. The JEPA
+goal is to show a real local latent-state/action scoring loop evaluated across
+more than one tiny fixture.
 
 ## Strategic Decision
 
-Prioritize repeatable held-out evidence over new model machinery.
+Prioritize a benchmark matrix over another scorer version.
 
 Why:
 
-- The repo already has V1/V2/V3 scorers and multiple artifact schemas.
-- The product blocker is evidence quality, not another command name.
-- A coding agent becomes real when it improves the candidate actually
-  validated first, under repeatable held-out conditions.
-- JEPA developers will trust residuals, gates, and reproducible evidence more
-  than a larger pile of prompt rows.
+- The repo already has V1, V2, V3, shadow outcomes, residual reports, and
+  evidence bundles.
+- The current gap is not the lack of a scorer. It is the lack of broad,
+  repeatable held-out evidence.
+- A matrix over GreenShot suites gives product and JEPA readers a clearer
+  picture of where transition scoring works, where it regresses, and whether
+  guarded routing is justified.
 
-Defaults stay conservative. Do not make transition scoring default in `patch`,
-`fix`, `eval`, `implement`, or `change` during this slice.
+Defaults remain conservative. Do not make transition scoring default in
+`patch`, `fix`, `eval`, `implement`, or `change`.
 
 ## Non-Goals
 
-- Do not generate more prompt labels.
-- Do not commit generated `data/`, `runs`, `/tmp` artifacts, shadow advice, or
-  evidence bundles.
-- Do not bypass failed V2/V3 product gates.
-- Do not publish benchmark claims without held-out split details.
+- Do not generate more prompt rows.
+- Do not commit generated suite outputs, JSONL artifacts, or evidence bundles.
+- Do not bypass a failed product gate.
+- Do not treat full-set wins as product readiness when held-out gates fail.
 - Do not call hosted LLM, embedding, or repo-context APIs.
 
 ## Step-By-Step Work Plan
@@ -117,8 +122,8 @@ Deliverable:
 
 - restore `plans/today.md`
 - restore `plans/today.progress.md`
-- record the completed shadow-to-gate queue
-- set the next active task to a repeatable shadow suite
+- record that the shadow-suite queue is complete
+- set the next active task to the multi-suite evidence matrix
 
 Verification:
 
@@ -126,148 +131,172 @@ Verification:
 git diff --check
 ```
 
-### Step 2: Add A Repeatable Shadow Eval Suite Command
+### Step 2: Define A Checked-In Matrix Manifest
 
 Deliverable:
 
-- add a command such as `run-transition-shadow-suite`
-- run a standard local task set with:
-  - candidate outcomes
-  - diagnostics
-  - transition scorer shadow advice
-  - shadow advice summary
-  - normalized shadow outcomes
-  - held-out V3 report
-  - evidence bundle
-- write everything under a caller-provided ignored directory, for example:
-
-```text
-runs/transition-shadow-suite/<timestamp>/
-  candidate-outcomes.jsonl
-  transition-advice.jsonl
-  diagnostics.json
-  advice-summary.json
-  transition-shadow-outcomes.jsonl
-  shadow-scorer-v3-report.json
-  evidence/
-```
-
-- default to checked-in examples small enough for local use
-- accept explicit task paths for broader local runs
-- record exact commands and zero hosted usage
+- add a small checked-in manifest, for example
+  `examples/transition_shadow_matrix.json`
+- include standard local suites:
+  - `examples/greenshot_bugs`
+  - `examples/greenshot_3`
+  - `examples/greenshot_4`
+  - selected bounded subsets of `examples/greenshot_5` and
+    `examples/greenshot_6` if full runs are too slow
+- include per-suite parameters:
+  - max candidates
+  - explore-after-pass
+  - timeout
+  - split key
+  - validation fraction
+- keep the manifest small enough for local development
 
 Why this matters:
 
-- developers should not have to manually stitch six commands together to
-  reproduce the product evidence loop
-- product readiness needs repeatable runs, not one-off `/tmp` artifacts
+- another developer should know exactly what "the standard shadow evidence
+  suite" means
+- product gates need stable inputs
 
 Verification:
 
 ```bash
-pytest tests/test_transition_shadow_suite.py -q
-pytest tests/test_cli.py -q
-python cli.py run-transition-shadow-suite \
-  --tasks examples/greenshot_bugs \
-  --out /tmp/j3-transition-shadow-suite
-python -m json.tool /tmp/j3-transition-shadow-suite/shadow-scorer-v3-report.json >/dev/null
-python -m json.tool /tmp/j3-transition-shadow-suite/evidence/manifest.json >/dev/null
+pytest tests/test_transition_shadow_matrix.py -q
 ```
 
-### Step 3: Add A Residual Report For V3 And Shadow Outcomes
+### Step 3: Add A Matrix Runner
 
 Deliverable:
 
-- add a residual report command or module, for example
-  `report-transition-residuals`
-- consume:
-  - `transition-shadow-outcome-v1`
-  - V3 report
-  - candidate outcomes
-- group failures by:
-  - task family
-  - action kind
-  - source file
-  - scorer top candidate vs production candidate
-  - missing feature evidence
-  - candidate-generation gap vs scorer-ranking gap
-- list bounded examples with exact candidate summaries
-- include zero hosted usage fields
+- add a command such as `run-transition-shadow-matrix`
+- read the matrix manifest
+- run `run-transition-shadow-suite` for each suite into a subdirectory
+- write:
+
+```text
+matrix-manifest.json
+matrix-summary.json
+suite/<suite-id>/...
+evidence/
+```
+
+- aggregate:
+  - task count
+  - solved count
+  - advice rows
+  - candidate count
+  - held-out group count
+  - V3 gate per suite
+  - V3 vs existing-rank-order deltas
+  - residual counts
+  - zero hosted usage
+- support `--only` or equivalent for one-suite debugging
 
 Why this matters:
 
-- residuals turn JEPA evidence into engineering work
-- product improvements should come from concrete failure modes, not generic
-  "train harder" claims
+- this turns one-off suite runs into a repeatable product evidence matrix
+
+Verification:
+
+```bash
+pytest tests/test_transition_shadow_matrix.py -q
+pytest tests/test_cli.py -q
+python cli.py run-transition-shadow-matrix \
+  --matrix examples/transition_shadow_matrix.json \
+  --out /tmp/j3-transition-shadow-matrix \
+  --only greenshot_bugs
+python -m json.tool /tmp/j3-transition-shadow-matrix/matrix-summary.json >/dev/null
+```
+
+### Step 4: Add Cross-Suite Residual Reporting
+
+Deliverable:
+
+- extend `report-transition-residuals` or add a matrix residual command
+- consume one matrix output directory
+- group residuals across suites by:
+  - suite id
+  - task family
+  - action kind
+  - source file
+  - gate result
+  - generation gap vs ranking gap
+  - missing feature evidence
+- include bounded examples from each failing suite
+- include zero hosted usage totals
+
+Why this matters:
+
+- residuals are how this becomes product engineering rather than benchmark
+  decoration
 
 Verification:
 
 ```bash
 pytest tests/test_transition_residuals.py -q
 python cli.py report-transition-residuals \
-  --shadow-outcomes /tmp/j3-transition-shadow-suite/transition-shadow-outcomes.jsonl \
-  --shadow-scorer-report /tmp/j3-transition-shadow-suite/shadow-scorer-v3-report.json \
+  --matrix /tmp/j3-transition-shadow-matrix \
   --json
 ```
 
-### Step 4: Improve The Scorer Or Features From Residuals
+If the command shape changes during implementation, update this plan and
+record the reason in `plans/today.progress.md`.
+
+### Step 5: Produce A Release-Quality Matrix Evidence Bundle
 
 Deliverable:
 
-- pick one bounded residual family from the report
-- improve the local feature representation or action-choice metadata
-- examples of acceptable changes:
-  - better failure-hint alignment features
-  - richer action parameter signatures
-  - source-context features that do not leak validation labels
-  - candidate-after delta features where already available
-- rerun the shadow suite and compare V3 against the previous report
-- keep production rank as an ablation only, not a default feature
+- extend `build-transition-evidence-bundle` or add a matrix bundle command
+- package:
+  - matrix manifest
+  - matrix summary
+  - per-suite product gates
+  - residual report
+  - checksums
+  - reproduction commands
+  - zero hosted usage assertions
+- do not include large generated JSONL by default unless explicitly requested
+- make checksum verification work from any directory
 
 Why this matters:
 
-- this is where the repo becomes a product: measured residuals produce a
-  specific improvement, and gates decide whether it is useful
+- JEPA developers need a portable artifact they can inspect without trusting
+  local terminal output
 
 Verification:
 
 ```bash
-pytest tests/test_transition_action_scoring.py -q
-pytest tests/test_transition_shadow_scorer.py -q
-python cli.py run-transition-shadow-suite \
-  --tasks examples/greenshot_bugs \
-  --out /tmp/j3-transition-shadow-suite-after
+python cli.py build-transition-evidence-bundle \
+  --matrix /tmp/j3-transition-shadow-matrix \
+  --out /tmp/j3-transition-matrix-evidence
+python -m json.tool /tmp/j3-transition-matrix-evidence/manifest.json >/dev/null
+shasum -a 256 -c /tmp/j3-transition-matrix-evidence/checksums.sha256
 ```
 
-### Step 5: Add A Narrow Guarded Trial Only If Gates Pass
+### Step 6: Decide The Guarded Trial From Matrix Gates
 
 Deliverable:
 
-- if and only if held-out product gates pass, add or document a guarded trial
-  command over the same task suite:
+- if one or more suites report `ready_for_guarded_opt_in`, run a guarded trial
+  only for those suites
+- otherwise, record a clear blocked decision in the matrix summary:
 
-```bash
-python cli.py eval \
-  --tasks examples/greenshot_bugs \
-  --transition-scorer-rank \
-  --transition-scorer-report /tmp/j3-transition-shadow-suite-after/shadow-scorer-v3-report.json \
-  --candidate-outcomes /tmp/j3-guarded-candidate-outcomes.jsonl \
-  --diagnostics /tmp/j3-guarded-diagnostics.json
+```text
+guarded_trial_decision: blocked_by_product_gate
 ```
 
-- compare against the baseline eval:
-  - solved tasks
+- compare guarded trial results against shadow/baseline evidence when a trial
+  is allowed:
+  - solved count
   - pass@1
   - average candidates tested
   - regressions
   - runtime
   - zero hosted usage
-- if gates do not pass, record the blocker and skip the trial
 
 Why this matters:
 
-- the first product use should be explicit, narrow, and reversible
-- a failed gate is a useful result, not a reason to weaken the gate
+- this is the product boundary: evidence can permit a narrow trial, but failed
+  gates must block routing
 
 Verification:
 
@@ -276,19 +305,15 @@ pytest tests/test_evaluation.py -q
 pytest tests/test_cli.py -q
 ```
 
-### Step 6: Update Evidence And Product Docs
+### Step 7: Update Docs And README Only If Needed
 
 Deliverable:
 
-- update `docs/TRANSITION_BENCH.md` or add a focused
-  `docs/TRANSITION_SHADOW_SUITE.md`
-- explain:
-  - the one-command shadow suite
-  - residual reports
-  - before/after scorer comparison
-  - guarded trial requirements
-  - when to stop and mine residuals instead of routing
+- update `docs/TRANSITION_BENCH.md` with matrix workflow
 - keep `README.md` small
+- if the matrix evidence is strong, add a short README line pointing to the
+  matrix evidence workflow; otherwise leave README alone and keep details in
+  docs
 
 Verification:
 
@@ -301,30 +326,27 @@ git diff --check
 Minimum success:
 
 - `plans/today.md` and `plans/today.progress.md` are restored.
-- a repeatable shadow suite command exists or the equivalent scripted workflow
-  is documented and tested.
-- advice, shadow outcomes, V3 report, and evidence bundle are produced in one
-  run.
-- residuals identify at least one concrete scorer or feature weakness.
-- default product routing remains unchanged.
+- a checked-in matrix manifest defines the standard local shadow suites.
+- a matrix runner can run at least one suite and write a valid summary.
+- the matrix summary records gate results and zero hosted usage.
+- generated suite and matrix artifacts stay out of git.
 
 Strong success:
 
-- one residual-driven scorer or feature improvement is implemented.
-- V3 improves on a held-out split without using production rank as a default
-  feature.
-- evidence bundle includes before/after product gates.
-- a guarded trial is run only if gates pass; otherwise the failed gate is
-  documented as the product blocker.
+- the matrix runs multiple GreenShot suites locally.
+- cross-suite residuals reveal at least one actionable failure family.
+- evidence bundle packages the matrix summary and verifies checksums.
+- guarded trial is either run only for passing suites or explicitly blocked by
+  product gates.
+- docs make the workflow reproducible for another developer.
 
 ## Testing Plan
 
 Focused tests first:
 
 ```bash
-pytest tests/test_transition_scorer_advice.py -q
-pytest tests/test_transition_shadow_outcomes.py -q
-pytest tests/test_transition_shadow_scorer.py -q
+pytest tests/test_transition_shadow_suite.py -q
+pytest tests/test_transition_residuals.py -q
 pytest tests/test_transition_evidence_bundle.py -q
 pytest tests/test_cli.py -q
 pytest tests/test_evaluation.py -q
@@ -334,17 +356,15 @@ git diff --check
 Manual checks:
 
 ```bash
-python cli.py inspect-transition-assets
+python cli.py run-transition-shadow-suite \
+  --tasks examples/greenshot_bugs \
+  --out /tmp/j3-transition-shadow-suite-current \
+  --force
 
-python cli.py demo-transition-bench \
-  --no-fixtures \
-  --embedding-dim 256 \
-  --top-k 3 \
-  --candidate-outcomes runs/apache-python-git/*candidate-outcomes.jsonl \
-  --out /tmp/j3-transition-bench-candidates-report.json
-
-python cli.py summarize-transition-advice \
-  --advice /tmp/j3-transition-advice.jsonl \
+python cli.py report-transition-residuals \
+  --shadow-outcomes /tmp/j3-transition-shadow-suite-current/transition-shadow-outcomes.jsonl \
+  --shadow-scorer-report /tmp/j3-transition-shadow-suite-current/shadow-scorer-v3-report.json \
+  --candidate-outcomes /tmp/j3-transition-shadow-suite-current/candidate-outcomes.jsonl \
   --json
 ```
 
@@ -353,11 +373,10 @@ gate.
 
 ## After This Slice
 
-1. If held-out gates pass repeatedly, document a narrow guarded ranking release
-   candidate.
-2. If held-out gates fail, use residuals to improve candidate generation,
-   feature extraction, or the scorer.
-3. Package a release evidence bundle for external JEPA developers once the
-   shadow suite is repeatable.
-4. Consider default routing only after repeated held-out wins and clean
-   guarded-trial evidence.
+1. If matrix gates pass, prepare a narrow guarded-ranking release candidate.
+2. If matrix gates fail, prioritize the top residual family over any routing
+   change.
+3. Publish or attach a matrix evidence bundle as a release artifact instead of
+   committing generated JSONL data.
+4. Use matrix residuals to decide whether the next improvement belongs in
+   candidate generation, scorer features, or repo-state encoding.

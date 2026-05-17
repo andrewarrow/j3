@@ -697,3 +697,28 @@ held-out issue is `http_no_store_response_with_etag`: it passes at rank 1, but
 still ranks a non-preferred passing repair above the preferred
 `change_operator not in -> in` repair. Continue with the membership-predicate
 context metadata path and validate preferred-positive rank, not pass@1 alone.
+
+### Membership-Predicate Metadata Follow-Up
+
+Implementation result: v11 membership-predicate target-context metadata was
+added for `change_operator` and `change_literal` candidates. The context records
+whether the target is an `in`/`not in` membership predicate, whether it appears
+in a branch test, the membership operator, operand kinds, operator flips,
+literal changes, and whether a changed literal is the membership needle. The
+ranker consumes the metadata from both live candidates and persisted outcome
+rows.
+
+Validation result after refreshing GreenShot-6 outcomes and rerunning the same
+GreenShot-6 `split: test` holdout:
+
+| Slice | Plans | Solved | Pass@1 | Positive@1 | Avg first passing index |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| GreenShot-6 `split: test` holdout | 7 | 7/7 | 7/7 | 6/7 | 1.0 |
+
+The HTTP preferred-positive rank did not improve. The new metadata is present
+on the `http_no_store_response_with_etag` candidates, but the current
+non-held-out GreenShot-5/6 coverage gives positive signal to membership literal
+edits and negative signal to membership operator flips. The next clean step is
+independent non-held-out coverage for the same predicate/operator hard-negative
+shape before changing broad action, string, boolean, or pass/preferred-label
+weights.

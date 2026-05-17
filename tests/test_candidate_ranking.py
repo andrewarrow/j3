@@ -849,6 +849,49 @@ def test_candidate_features_record_swap_call_arg_role_metadata(tmp_path) -> None
     assert get_features["swap_call_role_pair:mapping_key->mapping_default"] == 1.0
 
 
+def test_candidate_features_record_membership_predicate_metadata(tmp_path) -> None:
+    source = (
+        "def should_store_response(headers):\n"
+        "    cache_control = headers.get('cache-control', '')\n"
+        "    if 'no-store' not in cache_control and 'etag' in headers:\n"
+        "        return True\n"
+        "    return False\n"
+    )
+    package = tmp_path / "httpcache"
+    package.mkdir()
+    (package / "policy.py").write_text(source, encoding="utf-8")
+    operator_candidate = _membership_operator_candidate(source)
+    literal_candidate = _membership_literal_candidate(source)
+    operator_with_context, literal_with_context = attach_target_context(
+        tmp_path,
+        [operator_candidate, literal_candidate],
+    )
+
+    operator_features = candidate_features(operator_with_context)
+    literal_features = candidate_features(literal_with_context)
+
+    assert operator_with_context.target_context["membership_predicate"] is True
+    assert operator_with_context.target_context["membership_predicate_operator"] == "not_in"
+    assert operator_with_context.target_context["membership_predicate_operator_changed"] is True
+    assert operator_with_context.target_context["membership_predicate_operator_flipped"] is True
+    assert operator_features["membership_predicate_operator_changed"] == 1.0
+    assert (
+        operator_features[
+            "action_membership_predicate_operator_changed:change_operator"
+        ]
+        == 1.0
+    )
+    assert literal_with_context.target_context["membership_predicate_literal_role"] == "needle"
+    assert literal_with_context.target_context["membership_predicate_needle_changed"] is True
+    assert literal_features["membership_predicate_needle_changed"] == 1.0
+    assert (
+        literal_features[
+            "action_membership_predicate_needle_changed:change_literal"
+        ]
+        == 1.0
+    )
+
+
 def test_train_candidate_ranker_uses_target_context_from_outcomes(tmp_path) -> None:
     outcomes = tmp_path / "candidate-outcomes.jsonl"
     rows = [
@@ -1021,6 +1064,59 @@ def test_candidate_record_features_include_swap_call_arg_role_metadata() -> None
     assert get_features["swap_call_right_arg_kind:empty_string_literal"] == 1.0
 
 
+def test_candidate_record_features_include_membership_predicate_metadata() -> None:
+    operator_features = _candidate_record_features(
+        _membership_context_record(
+            action="change_operator",
+            params={"from": "not in", "to": "in"},
+            target_context={
+                "role": "helper",
+                "membership_predicate": True,
+                "membership_predicate_operator": "not_in",
+                "membership_predicate_needle_kind": "string_literal",
+                "membership_predicate_container_kind": "name",
+                "membership_predicate_in_branch_test": True,
+                "membership_predicate_operator_changed": True,
+                "membership_predicate_operator_flipped": True,
+            },
+        ),
+        [],
+    )
+    literal_features = _candidate_record_features(
+        _membership_context_record(
+            action="change_literal",
+            params={"from": "no-store", "to": "no_store"},
+            target_context={
+                "role": "helper",
+                "membership_predicate": True,
+                "membership_predicate_operator": "not_in",
+                "membership_predicate_needle_kind": "string_literal",
+                "membership_predicate_container_kind": "name",
+                "membership_predicate_in_branch_test": True,
+                "membership_predicate_literal_changed": True,
+                "membership_predicate_literal_role": "needle",
+                "membership_predicate_needle_changed": True,
+            },
+        ),
+        [],
+    )
+
+    assert operator_features["membership_predicate_operator_flipped"] == 1.0
+    assert (
+        operator_features[
+            "action_membership_predicate_operator_flipped:change_operator"
+        ]
+        == 1.0
+    )
+    assert literal_features["membership_predicate_needle_changed"] == 1.0
+    assert (
+        literal_features[
+            "action_membership_predicate_literal_role:change_literal:needle"
+        ]
+        == 1.0
+    )
+
+
 def test_train_candidate_ranker_uses_same_mapping_asserted_key_metadata(tmp_path) -> None:
     outcomes = tmp_path / "candidate-outcomes.jsonl"
     rows = [
@@ -1129,6 +1225,75 @@ def _swap_call_role_record(
         "failure_hint_score": 100.0,
         "ranker_score": None,
         "passed": passed,
+        "target_context": target_context,
+    }
+
+
+def _membership_operator_candidate(source: str) -> CandidatePatch:
+    patched = source.replace("'no-store' not in cache_control", "'no-store' in cache_control")
+    return CandidatePatch(
+        file_path="httpcache/policy.py",
+        action=PatchAction(
+            kind=PatchActionKind.CHANGE_OPERATOR,
+            target=PatchTarget(
+                file_path="httpcache/policy.py",
+                start_line=3,
+                end_line=3,
+                symbol="should_store_response",
+                node_kind="Compare",
+            ),
+            params={"from": "not in", "to": "in"},
+        ),
+        edit=SourceEdit(start_line=3, start_col=8, end_line=3, end_col=39, replacement="'no-store' in cache_control"),
+        original_source=source,
+        patched_source=patched,
+        reason="try comparison operator in",
+        failure_hint_score=100.0,
+    )
+
+
+def _membership_literal_candidate(source: str) -> CandidatePatch:
+    patched = source.replace("'no-store' not in cache_control", "'no_store' not in cache_control")
+    return CandidatePatch(
+        file_path="httpcache/policy.py",
+        action=PatchAction(
+            kind=PatchActionKind.CHANGE_LITERAL,
+            target=PatchTarget(
+                file_path="httpcache/policy.py",
+                start_line=3,
+                end_line=3,
+                symbol="should_store_response",
+                node_kind="Constant",
+            ),
+            params={"from": "no-store", "to": "no_store"},
+        ),
+        edit=SourceEdit(start_line=3, start_col=8, end_line=3, end_col=18, replacement="'no_store'"),
+        original_source=source,
+        patched_source=patched,
+        reason="try nearby literal 'no_store'",
+        failure_hint_score=100.0,
+    )
+
+
+def _membership_context_record(
+    *,
+    action: str,
+    params: dict[str, object],
+    target_context: dict[str, object],
+) -> dict[str, object]:
+    return {
+        "file_path": "httpcache/policy.py",
+        "action": action,
+        "symbol": "should_store_response",
+        "start_line": 3,
+        "end_line": 3,
+        "node_kind": "Compare",
+        "params": params,
+        "reason": "membership predicate edit",
+        "model_score": 0.0,
+        "failure_hint_score": 100.0,
+        "ranker_score": None,
+        "passed": True,
         "target_context": target_context,
     }
 

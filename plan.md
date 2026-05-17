@@ -358,12 +358,30 @@ Recent work:
   secure residual is fixed in this slice. The remaining issue is
   `http_no_store_response_with_etag`: it passes at rank 1 but still does not
   rank the preferred `change_operator not in -> in` repair first.
+- Membership-predicate target-context metadata was implemented for
+  `change_operator` and `change_literal` candidates. Target context now records
+  membership predicates, `in`/`not in` operator, operand kinds, branch-test
+  context, operator flips, literal changes, and whether a changed literal is
+  the membership needle. Candidate ranker features consume the metadata from
+  both live candidates and persisted outcome rows. The feature version is
+  `candidate-diagnostics-v11`.
+- Focused candidate-ranking coverage passed for the v11 predicate metadata.
+  GreenShot-6 outcomes were refreshed after the change; ranked eval still
+  solved all 20 tasks with `pass@1=15/20` and average candidates `7.30`.
+- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
+  the v11 outcome refresh. Validation stayed at solved=7/7, pass@1=7/7,
+  positive@1=6/7, and avg_first_passing_index=1.0. The HTTP residual is still
+  a preferred-positive miss: the preferred `change_operator not in -> in`
+  repair ranks below non-preferred passing `.get` swap and literal-needle
+  edits. The new metadata is present, but current non-held-out GreenShot-5/6
+  coverage has positive membership-literal signal and failing membership-operator
+  flips, so more independent predicate/operator hard-negative coverage is the
+  next clean step before any broad weight changes.
 
 Last focused verification:
 
 ```bash
-pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q
-pytest tests/test_patching.py::test_generate_same_mapping_boolean_value_with_key_rename_decoy -q
+pytest tests/test_candidate_ranking.py -q
 python cli.py eval \
   --tasks examples/greenshot_6 \
   --checkpoint runs/apache-python-git/model.json \
@@ -387,7 +405,6 @@ python cli.py train-ranker \
     cookie_pair_argument_order \
     cookie_scope_include_path_keyword \
   --out runs/apache-python-git/ranker-holdout-greenshot-6-test-slice
-git diff --check
 ```
 
 Previous focused verification:
@@ -493,7 +510,7 @@ GreenShot-6 test-slice ranker validation result:
 ```text
 train-ranker, holdout-task includes all GreenShot-6 split:test tasks:
   training rows=226 passing_rows=46 tasks=33 plans=33 pairs=191
-  training_accuracy=1.000 margin_violations=3 features=640
+  training_accuracy=1.000 margin_violations=3 features=645
   validation solved=7/7 pass@1=7/7 positive@1=6/7
   validation avg_first_passing_index=1.0
   fixed: cookie_default_secure_flag_dict_value now ranks the preferred
@@ -514,14 +531,13 @@ Immediate next sequence:
 
 1. Stay on the remaining GreenShot-6 `split: test` residual:
    `http_no_store_response_with_etag`.
-2. Inspect and add narrow non-leaky membership-predicate context metadata before
-   tuning weights. The signal should distinguish a preferred
-   `change_operator` on the boolean membership predicate from a passing
-   `change_literal` that changes the membership needle and accidentally
-   disables the branch.
-3. Validate on preferred-positive rank, not pass@1 alone, because this task
-   already passes at rank 1 with a non-preferred candidate. Do not change broad
-   action, string, boolean, or pass/preferred-label weights.
+2. Add independent non-held-out coverage for the same hard-negative shape before
+   tuning weights: a local boolean membership predicate where the preferred
+   repair is a `change_operator` flip and a tempting `change_literal` changes
+   the membership needle to disable the branch accidentally.
+3. Refresh GreenShot-6 outcomes and rerun the same `split: test` held-out
+   validation. Continue validating preferred-positive rank, not pass@1 alone.
+   Do not change broad action, string, boolean, or pass/preferred-label weights.
 
 ### 1. Make GreenShot-6 Real
 

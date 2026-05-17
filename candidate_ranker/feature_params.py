@@ -195,6 +195,11 @@ def _add_target_context_features(
         action=action,
         target_context=target_context,
     )
+    _add_membership_predicate_features(
+        features,
+        action=action,
+        target_context=target_context,
+    )
 
     hint_names = _hint_function_name_set(hints)
     distance = _hint_target_distance(
@@ -360,6 +365,57 @@ def _add_swap_call_role_features(
         features[f"swap_call_left_arg_kind:{left_kind}"] = 1.0
     if isinstance(right_kind, str):
         features[f"swap_call_right_arg_kind:{right_kind}"] = 1.0
+
+
+def _add_membership_predicate_features(
+    features: dict[str, float],
+    *,
+    action: str,
+    target_context: Mapping[str, object],
+) -> None:
+    if target_context.get("membership_predicate") is not True:
+        return
+
+    features["membership_predicate"] = 1.0
+    features[f"action_membership_predicate:{action}"] = 1.0
+
+    operator = target_context.get("membership_predicate_operator")
+    if isinstance(operator, str) and operator:
+        features[f"membership_predicate_operator:{operator}"] = 1.0
+        features[f"action_membership_predicate_operator:{action}:{operator}"] = 1.0
+
+    needle_kind = target_context.get("membership_predicate_needle_kind")
+    if isinstance(needle_kind, str) and needle_kind:
+        features[f"membership_predicate_needle_kind:{needle_kind}"] = 1.0
+        features[f"action_membership_predicate_needle_kind:{action}:{needle_kind}"] = 1.0
+
+    container_kind = target_context.get("membership_predicate_container_kind")
+    if isinstance(container_kind, str) and container_kind:
+        features[f"membership_predicate_container_kind:{container_kind}"] = 1.0
+        features[
+            f"action_membership_predicate_container_kind:{action}:{container_kind}"
+        ] = 1.0
+
+    literal_role = target_context.get("membership_predicate_literal_role")
+    if isinstance(literal_role, str) and literal_role:
+        features[f"membership_predicate_literal_role:{literal_role}"] = 1.0
+        features[f"action_membership_predicate_literal_role:{action}:{literal_role}"] = 1.0
+
+    if target_context.get("membership_predicate_in_branch_test") is True:
+        features["membership_predicate_in_branch_test"] = 1.0
+        features[f"action_membership_predicate_in_branch_test:{action}"] = 1.0
+    if target_context.get("membership_predicate_operator_changed") is True:
+        features["membership_predicate_operator_changed"] = 1.0
+        features[f"action_membership_predicate_operator_changed:{action}"] = 1.0
+    if target_context.get("membership_predicate_operator_flipped") is True:
+        features["membership_predicate_operator_flipped"] = 1.0
+        features[f"action_membership_predicate_operator_flipped:{action}"] = 1.0
+    if target_context.get("membership_predicate_literal_changed") is True:
+        features["membership_predicate_literal_changed"] = 1.0
+        features[f"action_membership_predicate_literal_changed:{action}"] = 1.0
+    if target_context.get("membership_predicate_needle_changed") is True:
+        features["membership_predicate_needle_changed"] = 1.0
+        features[f"action_membership_predicate_needle_changed:{action}"] = 1.0
 
 
 def _asserted_mapping_key_set(hints: list[object] | tuple[object, ...]) -> set[str]:

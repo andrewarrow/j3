@@ -119,6 +119,9 @@ def _candidate_target_context(
     call_context = _swap_call_arg_context(candidate, context)
     if call_context:
         target.update(call_context)
+    membership_context = _membership_predicate_context(candidate)
+    if membership_context:
+        target.update(membership_context)
     if qname is None:
         return target
 
@@ -309,6 +312,207 @@ def _mapping_get_swap_context(call: ast.Call, *, left: int, right: int) -> dict[
         "swap_call_left_arg_kind": _arg_role_kind(call.args[left]),
         "swap_call_right_arg_kind": _arg_role_kind(call.args[right]),
     }
+
+
+def _membership_predicate_context(candidate: CandidatePatch) -> dict[str, object]:
+    if candidate.action.kind.value not in {"change_operator", "change_literal"}:
+        return {}
+
+    try:
+        tree = ast.parse(candidate.original_source)
+    except SyntaxError:
+        return {}
+
+    target_function = _find_target_function(
+        tree,
+        symbol=candidate.action.target.symbol,
+        start_line=candidate.action.target.start_line,
+    )
+    if target_function is None:
+        return {}
+
+    if candidate.action.kind.value == "change_operator":
+        compare = _find_target_membership_compare(
+            target_function,
+            start_line=candidate.action.target.start_line,
+            end_line=candidate.action.target.end_line,
+        )
+        if compare is None:
+            return {}
+        result = _membership_compare_context(target_function, compare)
+        result["membership_predicate_operator_changed"] = True
+        before = _membership_operator_name(compare)
+        after = _membership_operator_param_name(candidate.action.params.get("to"))
+        if before is not None and after is not None and before != after:
+            result["membership_predicate_operator_flipped"] = True
+        return result
+
+    literal_context = _find_target_membership_literal_context(
+        target_function,
+        start_line=candidate.action.target.start_line,
+        end_line=candidate.action.target.end_line,
+        value=candidate.action.params.get("from"),
+    )
+    if literal_context is None:
+        return {}
+    compare, literal_role = literal_context
+    result = _membership_compare_context(target_function, compare)
+    result["membership_predicate_literal_changed"] = True
+    result["membership_predicate_literal_role"] = literal_role
+    if literal_role == "needle":
+        result["membership_predicate_needle_changed"] = True
+    return result
+
+
+def _find_target_membership_compare(
+    function: ast.FunctionDef,
+    *,
+    start_line: int,
+    end_line: int,
+) -> ast.Compare | None:
+    for node in ast.walk(function):
+        if not isinstance(node, ast.Compare):
+            continue
+        if node.lineno != start_line:
+            continue
+        if (node.end_lineno or node.lineno) != end_line:
+            continue
+        if _membership_operator_name(node) is not None:
+            return node
+    return None
+
+
+def _find_target_membership_literal_context(
+    function: ast.FunctionDef,
+    *,
+    start_line: int,
+    end_line: int,
+    value: object,
+) -> tuple[ast.Compare, str] | None:
+    if not isinstance(value, str):
+        return None
+    for compare in ast.walk(function):
+        if not isinstance(compare, ast.Compare):
+            continue
+        if _membership_operator_name(compare) is None:
+            continue
+        role = _membership_literal_role(
+            compare,
+            start_line=start_line,
+            end_line=end_line,
+            value=value,
+        )
+        if role is not None:
+            return compare, role
+    return None
+
+
+def _membership_compare_context(
+    function: ast.FunctionDef,
+    compare: ast.Compare,
+) -> dict[str, object]:
+    result: dict[str, object] = {
+        "membership_predicate": True,
+    }
+    operator = _membership_operator_name(compare)
+    if operator is not None:
+        result["membership_predicate_operator"] = operator
+    needle_kind = _membership_operand_kind(compare.left)
+    if needle_kind is not None:
+        result["membership_predicate_needle_kind"] = needle_kind
+    if compare.comparators:
+        container_kind = _membership_operand_kind(compare.comparators[0])
+        if container_kind is not None:
+            result["membership_predicate_container_kind"] = container_kind
+    if _node_appears_in_branch_test(function, compare):
+        result["membership_predicate_in_branch_test"] = True
+    return result
+
+
+def _membership_operator_name(compare: ast.Compare) -> str | None:
+    if len(compare.ops) != 1:
+        return None
+    op = compare.ops[0]
+    if isinstance(op, ast.In):
+        return "in"
+    if isinstance(op, ast.NotIn):
+        return "not_in"
+    return None
+
+
+def _membership_operator_param_name(value: object) -> str | None:
+    if value == "in":
+        return "in"
+    if value == "not in":
+        return "not_in"
+    return None
+
+
+def _membership_literal_role(
+    compare: ast.Compare,
+    *,
+    start_line: int,
+    end_line: int,
+    value: str,
+) -> str | None:
+    if _constant_string_matches(compare.left, start_line=start_line, end_line=end_line, value=value):
+        return "needle"
+    for comparator in compare.comparators:
+        if _constant_string_matches(
+            comparator,
+            start_line=start_line,
+            end_line=end_line,
+            value=value,
+        ):
+            return "container"
+    return None
+
+
+def _constant_string_matches(
+    node: ast.AST,
+    *,
+    start_line: int,
+    end_line: int,
+    value: str,
+) -> bool:
+    for child in ast.walk(node):
+        if not isinstance(child, ast.Constant) or not isinstance(child.value, str):
+            continue
+        if child.value != value:
+            continue
+        if child.lineno != start_line:
+            continue
+        if (child.end_lineno or child.lineno) != end_line:
+            continue
+        return True
+    return False
+
+
+def _membership_operand_kind(node: ast.AST) -> str | None:
+    if isinstance(node, ast.Constant):
+        if isinstance(node.value, str):
+            return "string_literal"
+        if isinstance(node.value, bool):
+            return "bool_literal"
+        if node.value is None:
+            return "none_literal"
+        if isinstance(node.value, int | float):
+            return "number_literal"
+    if isinstance(node, ast.Name):
+        return "name"
+    if isinstance(node, ast.Attribute):
+        return "attribute"
+    if isinstance(node, ast.Call):
+        return "call"
+    return type(node).__name__
+
+
+def _node_appears_in_branch_test(function: ast.FunctionDef, target: ast.AST) -> bool:
+    for node in ast.walk(function):
+        test = node.test if isinstance(node, ast.If | ast.While) else None
+        if test is not None and any(child is target for child in ast.walk(test)):
+            return True
+    return False
 
 
 def _alignment_state(

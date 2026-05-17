@@ -455,8 +455,40 @@ Recent work:
   the outcome refresh and stayed clean: solved=7/7, pass@1=7/7,
   positive@1=7/7, avg_first_passing_index=1.0. Training used 243 rows, 55
   passing rows, 207 training pairs, 650 features, and 3 margin violations.
+- The refreshed GreenShot-6 raw pass@1 misses and preferred-positive ranks were
+  inspected after the f-string fragment outcome refresh. Raw GreenShot-6 still
+  solves all 22 tasks with pass@1=17/22. The five raw pass@1 misses are
+  `apache_license_classifier_dict_value`, `dynamic_field_error_message`,
+  `http_no_store_directive_subscript_key`, `http_range_request_bypasses_cache`,
+  and `minimum_python_version_operator_boundary`. Each now has a tested
+  preferred-positive row, and the saved GreenShot-6 `split: test` held-out
+  ranker places the preferred-positive candidate at trained rank 1 for all five
+  raw misses. Details are in `HARD_NEGATIVES.md`.
+- The fresh inspection did not expose a narrow candidate-generation,
+  outcome-quality, or ranker-metadata gap. Do not tune broad handcrafted
+  action/string/boolean weights or add pass/preferred-label features from this
+  state. The next useful work should be adding the next real-package-derived
+  GreenShot-6 task or small fixture domain, then refreshing outcomes and
+  rerunning the same held-out validation.
 
 Last focused verification:
+
+```bash
+python cli.py outcome-summary \
+  --candidate-outcomes runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl
+python - <<'PY'
+# grouped raw miss / preferred-positive rank inspection over
+# runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl
+PY
+python - <<'PY'
+# applied the saved
+# runs/apache-python-git/ranker-holdout-greenshot-6-test-slice/candidate-ranker.json
+# to refreshed GreenShot-6 rows for preferred-positive rank inspection
+PY
+git diff --check
+```
+
+Previous focused verification:
 
 ```bash
 pytest tests/test_patching.py::test_generate_fstring_fragment_literal_candidate_from_concrete_message tests/test_evaluation.py::test_load_greenshot_6_tasks -q
@@ -489,7 +521,7 @@ python cli.py outcome-summary \
 git diff --check
 ```
 
-Previous focused verification:
+Earlier focused verification:
 
 ```bash
 pytest tests/test_candidate_ranking.py -q
@@ -781,9 +813,22 @@ Start neural/JEPA work only when:
 
 ## Handoff Recommendation
 
-The next context window should inspect the refreshed GreenShot-6 raw pass@1
-misses and preferred-positive ranks before adding more features or tasks. The
-latest GreenShot-6 `split: test` holdout is clean, and
-`dynamic_field_error_message` now has a matching preferred-positive f-string
-fragment row, so do not tune broad handcrafted action/string/boolean weights or
-add pass/preferred-label features without a fresh hard-negative finding.
+The next context window should add the next real-package-derived GreenShot-6
+task or a small fixture domain from real git-history signal, using existing
+action families where possible. The latest GreenShot-6 `split: test` holdout is
+clean, `dynamic_field_error_message` now has a matching preferred-positive
+f-string fragment row, and the fresh raw-miss inspection did not reveal a
+narrow ranker or outcome-quality gap.
+
+Immediate next sequence:
+
+1. Pick one real-package-derived repair shape not already represented by the
+   current `pkgmeta`, `httpcache`, and `webcookies` fixture domains.
+2. Add the smallest GreenShot-6 task or fixture domain that captures that repair
+   with existing actions if possible; only add an action if the held-out repair
+   proves the candidate is missing.
+3. Run focused loader/generator tests for the new task.
+4. Refresh GreenShot-6 outcomes with `--explore-after-pass 5`.
+5. Rerun the GreenShot-6 `split: test` held-out ranker validation and inspect
+   any new raw or trained preferred-positive misses before implementing ranker
+   features.

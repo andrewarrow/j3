@@ -1014,3 +1014,52 @@ preferred-positive ranks before adding more features or tasks. Keep the clean
 `split: test` holdout as a guardrail, and do not tune broad action/string/
 boolean weights or add pass/preferred-label features without a fresh
 hard-negative finding.
+
+### Refreshed Raw Miss Inspection
+
+Inspection date: 2026-05-17.
+
+Inspection source:
+
+```bash
+runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl
+runs/apache-python-git/ranker-holdout-greenshot-6-test-slice/candidate-ranker.json
+```
+
+The refreshed GreenShot-6 outcome rows still solve all 22 tasks with raw
+`pass@1=17/22`, 47 passing rows, and 22 preferred-positive rows. The saved
+GreenShot-6 `split: test` held-out ranker remains clean and uses
+`candidate-diagnostics-v11`.
+
+Raw pass@1 misses:
+
+| Task | Source | Split | Raw first pass | Raw preferred-positive rank |
+| --- | --- | --- | ---: | ---: |
+| `apache_license_classifier_dict_value` | `mutation` | `test` | 5 | 5 |
+| `dynamic_field_error_message` | `git_history` | `train` | 8 | 10 |
+| `http_no_store_directive_subscript_key` | `mutation` | `train` | 19 | 19 |
+| `http_range_request_bypasses_cache` | `git_history` | `train` | 2 | 2 |
+| `minimum_python_version_operator_boundary` | `mutation` | `validation` | 2 | 2 |
+
+Applying the saved test-slice ranker to the refreshed GreenShot-6 rows puts the
+preferred-positive candidate first for all five raw misses:
+
+| Task | Trained preferred-positive rank | Preferred repair |
+| --- | ---: | --- |
+| `apache_license_classifier_dict_value` | 1 | `change_dict_value`, `Apache-2.0` classifier value |
+| `dynamic_field_error_message` | 1 | `change_literal`, reusable f-string suffix fragment |
+| `http_no_store_directive_subscript_key` | 1 | `change_subscript_key`, `no-store` -> `no_store` |
+| `http_range_request_bypasses_cache` | 1 | `change_literal`, `Content-Range` -> `Range` |
+| `minimum_python_version_operator_boundary` | 1 | `change_operator`, `>` -> `>=` |
+
+Decision: this inspection does not expose a narrow candidate-generation,
+outcome-quality, or ranker-metadata gap. The raw misses are still useful
+evidence that hint-only ordering is weak, but the current trained ranker already
+handles them without broad action/string/boolean weight tuning.
+
+Next immediate work should therefore be dataset growth: add the next
+real-package-derived GreenShot-6 task or a small new fixture domain from a real
+git-history repair, using existing action families where possible. Prefer a
+new held-out source shape over another handcrafted ranking feature. After adding
+the task/domain, refresh GreenShot-6 outcomes and rerun the same `split: test`
+holdout before deciding whether there is a new hard negative.

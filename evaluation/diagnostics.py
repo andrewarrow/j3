@@ -143,6 +143,7 @@ def _candidate_outcome_rows(summary: EvalSummary) -> Iterable[dict[str, object]]
         for phase, plan in (("baseline", result.baseline), ("ranked", result.ranked)):
             if plan is None:
                 continue
+            repair_plan_id = _plan_repair_plan_id(plan)
             first_passing_index = _first_passing_index(plan)
             passing_candidates = _passing_candidates(plan)
             passing_count = len(passing_candidates)
@@ -161,6 +162,11 @@ def _candidate_outcome_rows(summary: EvalSummary) -> Iterable[dict[str, object]]
                     "split": result.task.split,
                     "language": "python",
                     "phase": phase,
+                    **(
+                        {"repair_plan_id": repair_plan_id}
+                        if repair_plan_id is not None
+                        else {}
+                    ),
                     "file_path": candidate.file_path,
                     "action": candidate.action.kind.value,
                     "symbol": candidate.action.target.symbol,
@@ -184,6 +190,16 @@ def _candidate_outcome_rows(summary: EvalSummary) -> Iterable[dict[str, object]]
                     **candidate_relations[rank_index - 1],
                     **_candidate_edit_metadata(candidate),
                 }
+
+
+def _plan_repair_plan_id(plan: PatchPlanResult) -> str | None:
+    advice = plan.transition_advice
+    if advice is None:
+        return None
+    repair_plan_id = advice.get("repair_plan_id")
+    if isinstance(repair_plan_id, str) and repair_plan_id:
+        return repair_plan_id
+    return None
 
 
 def _failure_hint_diagnostics(hint: object) -> dict[str, object]:

@@ -2727,3 +2727,58 @@ def test_eval_writes_candidate_outcomes_jsonl(capsys, tmp_path) -> None:
     assert {row["phase"] for row in rows} == {"ranked"}
     assert all(row["rank_index"] == 1 for row in rows)
     assert all("first_passing_index" in row for row in rows)
+
+
+def test_eval_shadow_advice_can_join_candidate_outcomes(capsys, tmp_path) -> None:
+    outcomes = tmp_path / "candidate_outcomes.jsonl"
+    advice = tmp_path / "transition_advice.jsonl"
+
+    assert (
+        main(
+            [
+                "eval",
+                "--tasks",
+                "examples/greenshot_3",
+                "--checkpoint",
+                "runs/greenshot-1/model.json",
+                "--timeout",
+                "10",
+                "--max-candidates",
+                "1",
+                "--candidate-outcomes",
+                str(outcomes),
+                "--transition-scorer-shadow",
+                "--transition-advice-out",
+                str(advice),
+            ]
+        )
+        == 0
+    )
+
+    output = capsys.readouterr().out
+    outcome_rows = [
+        json.loads(line)
+        for line in outcomes.read_text(encoding="utf-8").splitlines()
+    ]
+    advice_rows = [
+        json.loads(line)
+        for line in advice.read_text(encoding="utf-8").splitlines()
+    ]
+    advice_keys = {
+        (
+            row["repair_context"]["task"],
+            row["repair_context"]["phase"],
+            row["repair_plan_id"],
+        )
+        for row in advice_rows
+    }
+    outcome_keys = {
+        (row["task"], row["phase"], row["repair_plan_id"])
+        for row in outcome_rows
+    }
+
+    assert f"candidate outcomes: {outcomes.resolve()}" in output
+    assert f"transition advice: {advice.resolve()}" in output
+    assert advice_rows
+    assert outcome_keys == advice_keys
+    assert {row["repair_context"]["phase"] for row in advice_rows} == {"ranked"}

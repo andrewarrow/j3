@@ -190,7 +190,7 @@ def _run_task(
                 "task_family": task.family,
                 "source_type": task.source_type,
                 "split": task.split,
-                "phase": phase,
+                "phase": "ranked" if phase == "model" else phase,
             },
             progress=(
                 (lambda message: progress(f"{prefix}: {message}"))

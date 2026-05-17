@@ -6,8 +6,9 @@ This file is the live progress log for `plans/today.md`. Keep
 ## Status
 
 - Current phase: shadow-to-gate transition scoring.
-- Completed iterations for this reset: 1.
+- Completed iterations for this reset: 2.
 - Latest relevant commits:
+  - `f26cd39` documented and smoked the real shadow eval loop.
   - `f962018` closed the previous transition scoring queue.
   - `106e1ed` documented transition bench product modes.
   - `882f9c4` added guarded transition-scorer ranking.
@@ -18,13 +19,14 @@ This file is the live progress log for `plans/today.md`. Keep
 - Current blocker: V2 beats V1 on the full local candidate bench, but the
   held-out validation gate still underperforms existing rank order, so guarded
   opt-in remains blocked for normal local artifacts.
-- Next task: run and document a real shadow `eval` loop.
+- Next task: normalize shadow advice plus candidate outcomes into a training
+  surface.
 
 ## Active Task Queue
 
 - [x] Recreate `plans/today.md` and `plans/today.progress.md`.
 - [x] Add a shadow advice summary command.
-- [ ] Run and document a real shadow `eval` loop.
+- [x] Run and document a real shadow `eval` loop.
 - [ ] Normalize shadow advice plus candidate outcomes into a training surface.
 - [ ] Train/evaluate a held-out V3 scorer from shadow outcomes.
 - [ ] Add a release-quality transition evidence bundle command.
@@ -63,6 +65,8 @@ This file is the live progress log for `plans/today.md`. Keep
   - zero hosted token/context usage
 - `patch` and `eval` support shadow advice and guarded ranking flags, but
   default routing remains unchanged.
+- Real shadow `eval` artifacts can be joined where advice exists by
+  `task + phase + repair_plan_id`.
 
 ## Checks Run During Plan Recreation
 
@@ -142,4 +146,34 @@ Use this shape for each worker handoff:
 - Commit: `f4fdeb6` (`Add transition advice summary`).
 - Push: pushed to `origin/main` (`f4fdeb6`).
 - Next: run and document a real shadow `eval` loop.
+- Blockers: none.
+
+### Iteration 2: Run and document real shadow eval loop
+
+- Worker: Worker 2.
+- Goal: smoke `eval` with candidate outcomes and transition-scorer shadow
+  advice enabled, document the command, and verify advice rows can be
+  summarized and joined to candidate outcomes where possible.
+- Files changed: `docs/TRANSITION_BENCH.md`, `evaluation/diagnostics.py`,
+  `evaluation/runner.py`, `tests/test_cli.py`, `plans/today.progress.md`.
+- Tests run:
+  - `pytest tests/test_cli.py::test_eval_shadow_advice_can_join_candidate_outcomes tests/test_cli.py::test_eval_writes_candidate_outcomes_jsonl -q` passed.
+  - `python cli.py eval --tasks examples/greenshot_bugs --candidate-outcomes /tmp/j3-shadow-candidate-outcomes.jsonl --transition-scorer-shadow --transition-advice-out /tmp/j3-shadow-transition-advice.jsonl --diagnostics /tmp/j3-shadow-diagnostics.json` passed.
+  - `python cli.py summarize-transition-advice --advice /tmp/j3-shadow-transition-advice.jsonl --json` passed and wrote `/tmp/j3-shadow-transition-summary.json`.
+  - `python -m json.tool /tmp/j3-shadow-diagnostics.json >/dev/null` passed.
+  - `python -m json.tool /tmp/j3-shadow-transition-summary.json >/dev/null` passed.
+  - `pytest tests/test_transition_scorer_advice.py -q` passed.
+  - `pytest tests/test_cli.py -q` passed.
+  - `pytest tests/test_evaluation.py::test_write_candidate_outcomes_jsonl_records_one_row_per_tested_candidate -q` passed.
+- Result: documented the real shadow `eval` loop under `/tmp`; the smoke wrote
+  5 candidate outcome rows and 5 advice rows. The advice summary reported 185
+  total candidates, 5 advice rows, 3 known-validation rows, 3/5 scorer/top
+  agreement, no known regressions, and zero hosted usage. Candidate outcomes
+  now carry `repair_plan_id` when shadow advice exists, and ranked eval advice
+  uses the same `ranked` phase label as candidate outcomes; all 5 smoke keys
+  joined on `task + phase + repair_plan_id`.
+- Commit: `f26cd39` (`Document shadow eval loop`).
+- Push: pending.
+- Next: normalize shadow advice plus candidate outcomes into a training
+  surface.
 - Blockers: none.

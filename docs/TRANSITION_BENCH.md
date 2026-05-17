@@ -89,6 +89,28 @@ candidate, scorer top candidate, agreement with existing rank order, validation
 comparison when known, and zero hosted usage fields. Shadow mode is the right
 place to inspect regressions because production routing remains unchanged.
 
+For a real shadow eval smoke, write all generated artifacts under `/tmp` or
+another ignored path:
+
+```bash
+python cli.py eval \
+  --tasks examples/greenshot_bugs \
+  --candidate-outcomes /tmp/j3-shadow-candidate-outcomes.jsonl \
+  --transition-scorer-shadow \
+  --transition-advice-out /tmp/j3-shadow-transition-advice.jsonl \
+  --diagnostics /tmp/j3-shadow-diagnostics.json
+
+python cli.py summarize-transition-advice \
+  --advice /tmp/j3-shadow-transition-advice.jsonl \
+  --json
+```
+
+When `eval` writes candidate outcomes and shadow advice in the same run,
+candidate outcome rows include `repair_plan_id` where advice exists. Join
+candidate outcomes to advice rows on `task`, `phase`, and `repair_plan_id`.
+This is only a smoke-level join key; the normalized shadow training surface is a
+separate artifact.
+
 ### Guarded Opt-In Mode
 
 Guarded mode is explicit and non-default. It is enabled with

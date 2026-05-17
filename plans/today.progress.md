@@ -64,6 +64,11 @@ Use this shape for each worker handoff:
 
 ## 2026-05-17
 
+- Rewrote `README.md` into a much smaller developer-focused JEPA pitch using
+  the new Prompt+Repo transition artifacts as the core proof point. The README
+  now opens with a JEPA explanation, shows current calculator implementation
+  and Prompt+Repo demo commands, names the transition artifacts/schemas, and
+  keeps deeper details in `docs/PROMPT_JEPA_DEMO.md`.
 - Reset `plans/today.md` away from unsupported-intent fixture refinement and
   toward a concrete Prompt-JEPA encoder/index slice.
 - Stopped the in-flight label-expansion worker before it committed or pushed.

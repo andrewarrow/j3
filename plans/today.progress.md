@@ -28,7 +28,7 @@ new implementation facts change the 24-hour plan itself. Record any
   `python -m py_compile j3/prompt_repo_transitions.py cli/handlers.py cli/parser.py cli/__init__.py`;
   `python cli.py eval-prompt-repo-transitions --transitions /tmp/j3-prompt-jepa-demo/transitions.jsonl --top-k 3 --json`;
   `git diff --check`
-- Latest implementation/demo commit: demo transition artifact wiring pending
+- Latest implementation/demo commit: `1783df6` (`Wire transition artifacts into demo`)
 - Current blocker: none
 - Next task: update developer docs with the state/action/target transition story.
 
@@ -751,7 +751,7 @@ Use this shape for each worker handoff:
   concise V0/prompt-only metrics, residual examples, and
   `evaluation_only_not_wired_to_production: true` to `report.json`. Hosted
   LLM token and hosted repo-context usage remain zero.
-- Commit: pending until commit is created; final hash reported by worker.
-- Push: pending until commit is created.
+- Commit: `1783df6` (`Wire transition artifacts into demo`)
+- Push: succeeded to `main`.
 - Next: update developer docs with the state/action/target transition story.
 - Blockers: none.

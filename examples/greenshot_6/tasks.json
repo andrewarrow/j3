@@ -946,6 +946,28 @@
     }
   },
   {
+    "name": "networkx_pydot_layout_relabelled_graph",
+    "family": "graph_layout_doc_example",
+    "source_type": "git_history",
+    "split": "train",
+    "repo": ".",
+    "test": "python -m pytest tests/test_graphlayout.py::test_pydot_layout_example_uses_relabelled_graph",
+    "source": {
+      "repo": "networkx/networkx",
+      "commit": "7d195ae",
+      "pr": 7572
+    },
+    "preferred": {
+      "file_path": "graphlayout/nx_pydot.py",
+      "action": "change_literal",
+      "symbol": "pydot_layout_relabeling_example",
+      "params": {
+        "from": "H_layout = nx.nx_pydot.pydot_layout(G, prog=\"dot\")",
+        "to": "H_layout = nx.nx_pydot.pydot_layout(H, prog=\"dot\")"
+      }
+    }
+  },
+  {
     "name": "cookie_default_secure_flag_dict_value",
     "family": "mapping_value",
     "source_type": "mutation",

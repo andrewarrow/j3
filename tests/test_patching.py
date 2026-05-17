@@ -1438,6 +1438,30 @@ def test_patch_solves_jinja_async_loop_filter_error_message(tmp_path) -> None:
     )
 
 
+def test_patch_solves_networkx_pydot_layout_relabelled_graph(tmp_path) -> None:
+    repo = tmp_path / "greenshot_6"
+    shutil.copytree("examples/greenshot_6", repo)
+
+    result = plan_and_maybe_apply_patch(
+        repo=repo,
+        test_command=(
+            "python -m pytest "
+            "tests/test_graphlayout.py::test_pydot_layout_example_uses_relabelled_graph"
+        ),
+        dry_run=True,
+        timeout_seconds=10,
+    )
+
+    assert result.selected is not None
+    assert result.selected.file_path == "graphlayout/nx_pydot.py"
+    assert result.selected.action.kind.value == "change_literal"
+    assert result.selected.action.params == {
+        "from": 'H_layout = nx.nx_pydot.pydot_layout(G, prog="dot")',
+        "to": 'H_layout = nx.nx_pydot.pydot_layout(H, prog="dot")',
+    }
+    assert 'pydot_layout(H, prog="dot")' in result.selected.patched_source
+
+
 def test_generate_membership_operator_with_literal_needle_decoy(tmp_path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()

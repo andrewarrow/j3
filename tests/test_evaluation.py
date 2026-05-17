@@ -99,7 +99,7 @@ def test_load_greenshot_6_tasks() -> None:
     tasks = load_tasks(Path("examples/greenshot_6"))
     by_name = {task.name: task for task in tasks}
 
-    assert len(tasks) == 53
+    assert len(tasks) == 54
     assert tasks[0].name == "core_metadata_version_dict_value"
     assert tasks[0].family == "mapping_value"
     assert tasks[0].source_type == "mutation"
@@ -576,6 +576,19 @@ def test_load_greenshot_6_tasks() -> None:
         "params": {
             "from": "loop filters in async mode are currently if the ",
             "to": "loop filters in async mode are unavailable if the ",
+        },
+    }
+    assert by_name["networkx_pydot_layout_relabelled_graph"].split == "train"
+    assert by_name["networkx_pydot_layout_relabelled_graph"].source_type == (
+        "git_history"
+    )
+    assert by_name["networkx_pydot_layout_relabelled_graph"].preferred_patch == {
+        "file_path": "graphlayout/nx_pydot.py",
+        "action": "change_literal",
+        "symbol": "pydot_layout_relabeling_example",
+        "params": {
+            "from": 'H_layout = nx.nx_pydot.pydot_layout(G, prog="dot")',
+            "to": 'H_layout = nx.nx_pydot.pydot_layout(H, prog="dot")',
         },
     }
     assert by_name["cookie_default_secure_flag_dict_value"].split == "test"

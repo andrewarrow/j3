@@ -1233,12 +1233,31 @@ Recent work:
   passing rows, 431 training pairs, 862 features, and 4 margin violations.
   Applying the saved test-slice ranker to all refreshed GreenShot-6 rows found
   no trained preferred-positive misses across 53 tasks.
+- GreenShot-6 now includes a thirty-third real-package-derived fixture domain,
+  `graphlayout`, with one `git_history` task modeled on `networkx/networkx`
+  PR 7572 / commit `7d195ae`. The task
+  `networkx_pydot_layout_relabelled_graph` repairs a NetworkX-style
+  `nx_pydot.pydot_layout` documentation example by changing the relabelled
+  layout call from `G` to `H`, using the existing `change_literal` action
+  family.
+- Focused loader/generator coverage passed for the NetworkX-derived task:
+  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
+  `pytest tests/test_patching.py::test_patch_solves_networkx_pydot_layout_relabelled_graph -q`.
+- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
+  adding `graphlayout`. The persisted dataset now covers 54 tasks and 424
+  tested candidates. Ranked eval solved all 54 tasks with `pass@1=38/54` and
+  average candidates `7.85`; the new NetworkX-derived task passes at raw rank
+  1 with the preferred `change_literal` candidate.
+- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
+  the NetworkX outcome refresh and stayed clean: solved=7/7, pass@1=7/7,
+  positive@1=7/7, avg_first_passing_index=1.0. Training used 504 rows, 92
+  passing rows, 436 training pairs, 826 features, and 5 margin violations.
 
 Last focused verification:
 
 ```bash
 pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q
-pytest tests/test_patching.py::test_patch_solves_jinja_async_loop_filter_error_message -q
+pytest tests/test_patching.py::test_patch_solves_networkx_pydot_layout_relabelled_graph -q
 python cli.py eval \
   --tasks examples/greenshot_6 \
   --checkpoint runs/apache-python-git/model.json \
@@ -1381,9 +1400,9 @@ GreenShot-6 outcome collection result:
 
 ```text
 ranked, runs/apache-python-git/model.json, explore-after-pass=5:
-  solved=53/53 pass@1=37/53 avg_candidates=7.89
-  rows=418 passing_rows=83 preferred_positive_rows=53
-  source_type pass@1: git_history=20/33 mutation=17/20
+  solved=54/54 pass@1=38/54 avg_candidates=7.85
+  rows=424 passing_rows=84 preferred_positive_rows=54
+  source_type pass@1: git_history=21/34 mutation=17/20
 ```
 
 Treat this as a smoke check, not a benchmark claim.
@@ -1402,8 +1421,8 @@ GreenShot-6 test-slice ranker validation result:
 
 ```text
 train-ranker, holdout-task includes all GreenShot-6 split:test tasks:
-  training rows=498 passing_rows=91 tasks=66 plans=66 pairs=431
-  training_accuracy=0.998 margin_violations=4 features=862
+  training rows=504 passing_rows=92 tasks=67 plans=67 pairs=436
+  training_accuracy=0.995 margin_violations=5 features=826
   validation solved=7/7 pass@1=7/7 positive@1=7/7
   validation rows=46 avg_first_passing_index=1.0
 ```
@@ -1584,10 +1603,10 @@ Start neural/JEPA work only when:
 
 ## Handoff Recommendation
 
-The next context window should start from the post-taskqueue/Celery dataset
-growth, not the older envwrite, v13 literal-key, scipyquad, or raisemsg states.
-GreenShot-6 now has 52 tasks. The same `split: test` held-out validation is
-clean again:
+The next context window should start from the post-graphlayout/NetworkX dataset
+growth, not the older taskqueue/Celery, envwrite, v13 literal-key, scipyquad, or
+raisemsg states. GreenShot-6 now has 54 tasks. The same `split: test` held-out
+validation is clean:
 solved=7/7, pass@1=7/7, positive@1=7/7, and avg_first_passing_index=1.0. Do not
 tune broad handcrafted weights or add pass/preferred-label features from this
 state.

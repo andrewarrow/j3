@@ -23,7 +23,7 @@ new implementation facts change the 24-hour plan itself. Record any
   - `python cli.py train-prompt-intents --labels examples/prompt_intents/greenshot_7_intents.jsonl --target unsupported_requirement --show-residuals --residual-limit 12`
   - `python cli.py train-prompt-intents --labels examples/prompt_intents/greenshot_7_intents.jsonl --target unsupported_requirement unsupported_requirement_family --show-residuals --residual-limit 20`
   - `python -m py_compile prompt_intents.py cli/handlers.py cli/parser.py cli/__init__.py`
-- Latest implementation commit: pending iteration 9 commit
+- Latest implementation commit: `f3b60d43d87ce45a1bcbdf60c4b16d0325f0ef9b`
 - Current blocker: none
 - Next task: keep learned production routing blocked; use the family-level
   unsupported requirement target as a conservative evaluation target while
@@ -542,8 +542,8 @@ Use this shape for each worker handoff:
     target is a useful learned eval target, but the fixture is small and the
     fine-grained target still has residuals, so learned production routing is
     still blocked.
-- Commit: pending
-- Push: pending
+- Commit: `f3b60d43d87ce45a1bcbdf60c4b16d0325f0ef9b`
+- Push: succeeded to `main`
 - Next: collect more fine-grained unsupported requirement labels, especially
   UI-vs-graphical and vague non-calculator math prompts, while continuing to
   report the family-level target for conservative routing readiness.

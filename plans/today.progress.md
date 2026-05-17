@@ -13,12 +13,10 @@ new implementation facts change the 24-hour plan itself. Record any
   `pytest tests/test_prompt_jepa.py -q`;
   `python -m py_compile prompt_jepa.py cli/handlers.py cli/parser.py cli/__init__.py`;
   `git diff --check`
-- Latest implementation commit: this iteration commit; final hash reported by
-  worker after push
+- Latest implementation commit: `8c26fe8`
 - Current blocker: none
-- Next task: watcher to assign the next Prompt-JEPA slice; candidate next step
-  is improving prompt context features or split-aware reporting based on
-  held-out retrieval residuals.
+- Next task: add the first JEPA-style context-to-target embedding predictor,
+  train it on train rows, and evaluate target-space retrieval on held-out rows.
 
 ## Worker Iteration Template
 
@@ -136,9 +134,8 @@ Use this shape for each worker handoff:
   matches for scalar target fields, bounded representative misses with query
   ids, expected labels, nearest neighbor ids/scores/targets, and a new
   `eval-prompt-jepa-index` CLI command. Production routing remains unchanged.
-- Commit: this iteration commit; final hash reported by worker after push.
-- Push: pending at progress update time; final result reported by worker.
-- Next: watcher to assign the next Prompt-JEPA slice; candidate next step is
-  improving prompt context features or split-aware reporting based on held-out
-  retrieval residuals.
+- Commit: `8c26fe8`
+- Push: succeeded to `main`
+- Next: add the first JEPA-style context-to-target embedding predictor, train
+  it on train rows, and evaluate target-space retrieval on held-out rows.
 - Blockers: none.

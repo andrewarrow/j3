@@ -51,6 +51,7 @@ UNSUPPORTED_REQUIREMENT_FAMILIES = {
     "complex_scope": "scope",
     "desktop_interface": "interface",
     "domain_unspecified": "domain",
+    "graphing_feature_unspecified": "feature_scope",
     "graphical_interface": "interface",
     "scientific_operations_unspecified": "feature_scope",
     "ui_interface": "interface",

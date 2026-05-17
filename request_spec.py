@@ -108,7 +108,7 @@ def parse_request_to_spec(
     resolved_task_name = task_name or _slug_task_name(prompt)
     intent_target = _intent_target(intent)
 
-    if _intent_blocks_unsupported_interface(intent_target):
+    if _intent_requires_clarification(intent_target):
         return _intent_clarification_spec(
             prompt=prompt,
             task_name=resolved_task_name,
@@ -220,13 +220,18 @@ def _intent_confidence(
     return 1.0
 
 
-def _intent_blocks_unsupported_interface(target: PromptIntentTarget | None) -> bool:
+def _intent_requires_clarification(target: PromptIntentTarget | None) -> bool:
     if target is None:
+        return False
+    if target.unsupported_requirement == "domain_unspecified":
         return False
     return (
         target.expected_action == "ask_clarification"
-        and "interfaces" in target.clarification_fields
-        and bool(target.requested_interfaces or target.unsupported_requirements)
+        and bool(
+            target.clarification_fields
+            or target.requested_interfaces
+            or target.unsupported_requirements
+        )
     )
 
 
@@ -237,13 +242,14 @@ def _intent_clarification_spec(
     target: PromptIntentTarget,
     confidence: float,
 ) -> RequestSpec:
+    field = _intent_clarification_field(target)
     requested_interfaces = [
         {"kind": interface, "confidence": confidence}
         for interface in target.requested_interfaces
     ]
     unsupported_requirements = [
         {
-            "field": "interfaces",
+            "field": field,
             "value": requirement,
             "reason": requirement,
         }
@@ -253,16 +259,38 @@ def _intent_clarification_spec(
         prompt=prompt,
         task_name=task_name,
         domain=target.domain,
-        field="interfaces",
-        question=(
-            "This slice only supports a Python CLI calculator. Do you want a "
-            "simple CLI calculator, or should a graphical app scope/framework "
-            "be specified?"
-        ),
+        field=field,
+        question=_intent_clarification_question(field),
         requested_interfaces=requested_interfaces,
         supported_interfaces=[dict(interface) for interface in CALCULATOR_INTERFACES],
         unsupported_requirements=unsupported_requirements,
     )
+
+
+def _intent_clarification_field(target: PromptIntentTarget) -> str:
+    if "interfaces" in target.clarification_fields:
+        return "interfaces"
+    if "features" in target.clarification_fields:
+        return "features"
+    if target.clarification_fields:
+        return target.clarification_fields[0]
+    return "request"
+
+
+def _intent_clarification_question(field: str) -> str:
+    if field == "interfaces":
+        return (
+            "This slice only supports a Python CLI calculator. Do you want a "
+            "simple CLI calculator, or should a graphical app scope/framework "
+            "be specified?"
+        )
+    if field == "features":
+        return (
+            "This slice only supports add, subtract, multiply, and divide in "
+            "a Python CLI calculator. Which requested calculator features "
+            "should be supported or deferred?"
+        )
+    return "Can you clarify the requested calculator scope?"
 
 
 def _normalize(prompt: str) -> str:

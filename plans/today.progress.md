@@ -7,8 +7,8 @@ new implementation facts change the 24-hour plan itself. Record any
 
 ## Status
 
-- Current phase: unsupported-requirement prompt representation improved
-- Completed iterations: 11
+- Current phase: graphing/scientific unsupported feature labels collected
+- Completed iterations: 12
 - Passing focused tests:
   - `pytest tests/test_prompt_intents.py -q`
   - `pytest tests/test_prompt_intents.py tests/test_request_spec.py -q`
@@ -23,15 +23,18 @@ new implementation facts change the 24-hour plan itself. Record any
   - `python cli.py train-prompt-intents --labels examples/prompt_intents/greenshot_7_intents.jsonl --target unsupported_requirement --show-residuals --residual-limit 12`
   - `python cli.py train-prompt-intents --labels examples/prompt_intents/greenshot_7_intents.jsonl --target unsupported_requirement unsupported_requirement_family --show-residuals --residual-limit 20`
   - `python -m py_compile prompt_intents.py cli/handlers.py cli/parser.py cli/__init__.py`
+  - `python -m py_compile prompt_intents.py request_spec.py cli/handlers.py cli/parser.py cli/__init__.py`
   - `pytest tests/test_prompt_intents.py tests/test_request_spec.py tests/test_existing_repo_change.py tests/test_cli.py -q`
-- Latest implementation commit: `aacd3dead78551c0b8fb60a05b76d4a87058dee6`
+  - `python cli.py implement --prompt "make a graphing calculator" --out <tmp>`
+- Latest implementation commit: pending iteration 12 commit; final worker
+  report includes the pushed hash.
 - Current blocker: learned production routing remains blocked; the
   family-level target is perfect locally, but fine-grained
-  `unsupported_requirement` still has a held-out residual and the fixture set
-  is small.
-- Next task: keep production routing fixture-backed and conservative; inspect
-  the remaining scientific-graphing fine-grained residual and collect or source
-  broader labels before reconsidering learned routing.
+  `unsupported_requirement` still has held-out residuals after graphing/
+  scientific relabeling and the fixture set is still local-only.
+- Next task: keep production routing fixture-backed and conservative; either
+  collect broader domain-ambiguity and graphing/scientific labels or evaluate a
+  coarser learned routing target before reconsidering fine-grained routing.
 
 ## Worker Iteration Template
 
@@ -647,4 +650,69 @@ Use this shape for each worker handoff:
 - Push: succeeded to `main`
 - Next: inspect the scientific graphing residual and collect or source broader
   labels before reconsidering fine-grained learned routing.
+- Blockers: fine-grained learned production routing remains blocked.
+
+### Iteration 12: Scientific Graphing Taxonomy And Labels
+
+- Worker: Codex
+- Goal: inspect the remaining scientific graphing fine-grained residual and
+  collect/source broader labels before reconsidering fine-grained learned
+  routing.
+- Files changed:
+  - `examples/prompt_intents/greenshot_7_intents.jsonl`
+  - `prompt_intents.py`
+  - `request_spec.py`
+  - `tests/test_prompt_intents.py`
+  - `tests/test_request_spec.py`
+  - `plans/today.progress.md`
+- Tests run:
+  - `pytest tests/test_prompt_intents.py -q` -> passed, 11 tests
+  - `pytest tests/test_request_spec.py -q` -> passed, 6 tests
+  - `pytest tests/test_prompt_intents.py tests/test_request_spec.py tests/test_existing_repo_change.py tests/test_cli.py -q`
+    -> passed, 49 tests
+  - `python -m py_compile prompt_intents.py request_spec.py cli/handlers.py cli/parser.py cli/__init__.py`
+    -> passed
+  - `git diff --check` -> passed
+  - `python cli.py train-prompt-intents --labels examples/prompt_intents/greenshot_7_intents.jsonl --target unsupported_requirement unsupported_requirement_family --show-residuals --residual-limit 20`
+    -> passed
+  - `python cli.py implement --prompt "make a graphing calculator" --out <tmp>`
+    -> exited 1, printed a feature-scope clarification, and did not write
+    `calculator.py`
+- Result:
+  - Inspected `gs7-intent-0025`. The prompt "make a scientific calc with
+    graphing" is not best represented as a graphical-interface request:
+    graphing/plotting is a feature-scope requirement unless the prompt also
+    asks for a UI, interface, screen, or graphical app.
+  - Added a fine-grained `graphing_feature_unspecified` unsupported requirement
+    family-mapped to `feature_scope`, relabeled `gs7-intent-0025` to primary
+    graphing feature scope with secondary
+    `scientific_operations_unspecified`, and added split-covered graphing,
+    plotting, scientific CLI, and graphing-interface prompts.
+  - Local fixture coverage is now 87 rows with split counts train=53,
+    validation=16, test=18. Unsupported requirement counts are
+    `graphical_interface=18`, `graphing_feature_unspecified=16`,
+    `none=11`, `domain_unspecified=9`, `scientific_operations_unspecified=8`,
+    `ui_interface=9`, `visual_interface_scope=9`, `web_interface=5`, and
+    `desktop_interface=2`.
+  - `request-spec` now consumes exact fixture-backed ask-clarification intents
+    for unsupported feature scope as well as interface scope. Ambiguous
+    domain-unspecified prompts still fall through the existing parser path to
+    preserve current behavior.
+  - Local fine-grained `unsupported_requirement` metrics are train 53/53 =
+    1.000, validation 16/16 = 1.000, and test 16/18 = 0.889. Residuals:
+    `gs7-intent-0025` expected `graphing_feature_unspecified`, predicted
+    `graphical_interface`; `gs7-intent-0047` expected
+    `domain_unspecified`, predicted `graphical_interface`.
+  - Local family-level `unsupported_requirement_family` metrics remain train
+    53/53 = 1.000, validation 16/16 = 1.000, and test 18/18 = 1.000.
+  - Production routing remains fixture-backed and conservative. Fine-grained
+    learned routing remains blocked because the scientific-graphing row still
+    confuses feature scope with graphical interface, and a vague math/domain
+    row also regressed at the fine-grained level.
+- Commit: pending at progress-log update time; final worker report includes
+  the pushed commit hash.
+- Push: pending at progress-log update time.
+- Next: collect broader labels for graphing/scientific feature scope and vague
+  domain-clarification prompts, or keep learned routing at the family level
+  only if production routing is reconsidered.
 - Blockers: fine-grained learned production routing remains blocked.

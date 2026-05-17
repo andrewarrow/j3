@@ -133,3 +133,35 @@ def test_request_spec_blocks_graphical_calculator_through_prompt_intent() -> Non
             ),
         }
     ]
+
+
+def test_request_spec_blocks_graphing_feature_scope_through_prompt_intent() -> None:
+    prediction = predict_prompt_intent("make a graphing calculator")
+    spec = parse_request_to_spec(
+        "make a graphing calculator",
+        task_name="graphing_calc",
+        intent=prediction,
+    )
+    record = spec.to_record()
+
+    assert record["domain"] == "calculator"
+    assert record["artifacts"] == []
+    assert record["features"] == []
+    assert record["interfaces"] == []
+    assert record["unsupported_requirements"] == [
+        {
+            "field": "features",
+            "value": "graphing_feature_unspecified",
+            "reason": "graphing_feature_unspecified",
+        }
+    ]
+    assert record["clarifications_needed"] == [
+        {
+            "field": "features",
+            "question": (
+                "This slice only supports add, subtract, multiply, and divide in "
+                "a Python CLI calculator. Which requested calculator features "
+                "should be supported or deferred?"
+            ),
+        }
+    ]

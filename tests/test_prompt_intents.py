@@ -23,39 +23,40 @@ def test_loads_greenshot_7_prompt_intent_fixtures() -> None:
     records = load_prompt_intent_records(GREENSHOT_7_INTENTS)
     profile = profile_prompt_intents(records)
 
-    assert len(records) == 59
-    assert profile["split_counts"] == {"test": 14, "train": 33, "validation": 12}
+    assert len(records) == 87
+    assert profile["split_counts"] == {"test": 18, "train": 53, "validation": 16}
     assert profile["expected_action_counts"] == {
-        "ask_clarification": 48,
+        "ask_clarification": 76,
         "emit_existing_repo_change_spec": 7,
         "emit_request_spec": 4,
     }
     assert profile["repo_mode_counts"] == {
         "existing_repo": 7,
-        "new_repo": 43,
+        "new_repo": 71,
         "unknown": 9,
     }
-    assert profile["unsupported_requirement_count"] == 48
+    assert profile["unsupported_requirement_count"] == 76
     assert profile["existing_repo_change_count"] == 7
-    assert profile["requires_clarification_counts"] == {"no": 11, "yes": 48}
-    assert profile["primary_artifact_counts"] == {"none": 59}
+    assert profile["requires_clarification_counts"] == {"no": 11, "yes": 76}
+    assert profile["primary_artifact_counts"] == {"none": 87}
     assert profile["unsupported_requirement_counts"] == {
         "desktop_interface": 2,
         "domain_unspecified": 9,
-        "graphical_interface": 15,
+        "graphical_interface": 18,
+        "graphing_feature_unspecified": 16,
         "none": 11,
-        "scientific_operations_unspecified": 5,
-        "ui_interface": 7,
-        "visual_interface_scope": 6,
-        "web_interface": 4,
+        "scientific_operations_unspecified": 8,
+        "ui_interface": 9,
+        "visual_interface_scope": 9,
+        "web_interface": 5,
     }
     assert profile["unsupported_requirement_family_counts"] == {
         "domain": 9,
-        "feature_scope": 5,
-        "interface": 34,
+        "feature_scope": 24,
+        "interface": 43,
         "none": 11,
     }
-    assert profile["missing_artifact_label_count"] == 59
+    assert profile["missing_artifact_label_count"] == 87
 
     unsupported = next(
         record
@@ -81,6 +82,7 @@ def test_loads_greenshot_7_prompt_intent_fixtures() -> None:
     }
     assert {
         "desktop_interface",
+        "graphing_feature_unspecified",
         "graphical_interface",
         "scientific_operations_unspecified",
         "ui_interface",
@@ -139,6 +141,7 @@ def test_local_fixture_trains_unsupported_requirement_target() -> None:
         "desktop_interface",
         "domain_unspecified",
         "graphical_interface",
+        "graphing_feature_unspecified",
         "none",
         "scientific_operations_unspecified",
         "ui_interface",
@@ -151,11 +154,12 @@ def test_local_fixture_trains_unsupported_requirement_target() -> None:
         result.metrics["validation"].accuracy
         > result.metrics["validation"].baseline_accuracy
     )
-    assert result.metrics["test"].accuracy >= 13 / 14
+    assert result.metrics["test"].accuracy >= 16 / 18
     assert result.metrics["test"].accuracy > result.metrics["test"].baseline_accuracy
     assert result.metrics["validation"].residuals == ()
     assert [residual.row_id for residual in result.metrics["test"].residuals] == [
         "gs7-intent-0025",
+        "gs7-intent-0047",
     ]
     previous_interface_residual_ids = {
         "gs7-intent-0020",
@@ -176,6 +180,37 @@ def test_local_fixture_trains_unsupported_requirement_target() -> None:
     }
     assert critical_graphical_holdout_ids.isdisjoint(residual_ids)
     assert result.decision == "evaluation_only_not_wired_to_production"
+
+
+def test_graphing_calculator_labels_are_feature_scope_not_interface_by_default() -> None:
+    records = load_prompt_intent_records(GREENSHOT_7_INTENTS)
+    by_id = {record.row_id: record for record in records}
+
+    scientific_graphing = by_id["gs7-intent-0025"]
+    assert scientific_graphing.target.unsupported_requirement == (
+        "graphing_feature_unspecified"
+    )
+    assert scientific_graphing.target.unsupported_requirement_family == "feature_scope"
+    assert scientific_graphing.target.requested_interfaces == ()
+    assert scientific_graphing.target.unsupported_requirements == (
+        "graphing_feature_unspecified",
+        "scientific_operations_unspecified",
+    )
+
+    graphing_splits = {
+        record.split
+        for record in records
+        if record.target.unsupported_requirement == "graphing_feature_unspecified"
+    }
+    assert graphing_splits == {"train", "validation", "test"}
+
+    plotting_screen = by_id["gs7-intent-0071"]
+    assert plotting_screen.target.unsupported_requirement == "graphical_interface"
+    assert plotting_screen.target.unsupported_requirement_family == "interface"
+    assert plotting_screen.target.unsupported_requirements == (
+        "graphical_interface",
+        "graphing_feature_unspecified",
+    )
 
 
 def test_prompt_feature_extraction_includes_morphology_and_skip_bigrams() -> None:

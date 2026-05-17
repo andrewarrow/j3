@@ -469,6 +469,38 @@ negative only if the residual remains after the scalar assertion-delta change
 and outcome refresh. Keep validation on preferred-positive rank, because
 pass@1 is misleading when all tested candidates pass.
 
+### Scalar Dictionary-Value Assertion Delta Follow-Up
+
+Implementation result: scalar assertion-delta ranker features were implemented
+for `change_dict_value` candidates. The features record exact scalar assertion
+actual-to-expected matches plus near-miss cases where only `params.from`
+matches the assertion actual or only `params.to` matches the assertion
+expected. The feature is available from live candidates and persisted
+candidate-outcome rows through failure hints plus candidate params. The feature
+version is `candidate-diagnostics-v12`.
+
+Focused verification passed:
+
+```bash
+pytest tests/test_candidate_ranking.py -q
+pytest tests/test_evaluation.py::test_write_candidate_outcomes_jsonl_records_one_row_per_tested_candidate tests/test_evaluation.py::test_write_candidate_outcomes_preserves_scalar_dict_value_assertion_delta -q
+```
+
+GreenShot-6 outcomes were refreshed with `--explore-after-pass 5`, then the
+same GreenShot-6 `split: test` held-out validation was rerun. The validation
+is now clean:
+
+| Slice | Plans | Solved | Pass@1 | Positive@1 | Avg first passing index |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| GreenShot-6 `split: test` holdout | 7 | 7/7 | 7/7 | 7/7 | 1.0 |
+
+The residuals from the filesize inspection are resolved in this slice:
+
+| Task | Trained rank 1 | Result |
+| --- | --- | --- |
+| `cookie_host_prefix_dict_value` | preferred `change_dict_value`, `host: "__Host" -> "__Host-"` | Fixed by scalar assertion-delta feature. |
+| `http_no_store_response_with_etag` | preferred `change_operator`, `not in` -> `in` | No additional non-held-out membership-predicate coverage needed from this state. |
+
 ## Same-Mapping Metadata Follow-Up
 
 Implementation result: same-mapping asserted-key metadata is now recorded for

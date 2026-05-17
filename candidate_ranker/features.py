@@ -13,6 +13,7 @@ from .feature_hints import (
     _merge_hint_record_features,
 )
 from .feature_params import (
+    _add_dict_value_assertion_delta_features,
     _add_edit_metadata_features,
     _add_import_locality_features,
     _add_param_features,
@@ -70,6 +71,12 @@ def candidate_features(
             params=params,
             hint_tokens=_hint_tokens(hints),
         )
+    _add_dict_value_assertion_delta_features(
+        features,
+        action=action,
+        params=params,
+        hints=hints,
+    )
     _add_target_context_features(
         features,
         action=action,
@@ -132,6 +139,12 @@ def _candidate_record_features(candidate: dict[str, object], hints: object) -> d
                 ),
                 params=params,
                 hint_tokens=_hint_record_tokens(hints),
+            )
+            _add_dict_value_assertion_delta_features(
+                features,
+                action=action,
+                params=params,
+                hints=hints,
             )
     _add_target_context_features(
         features,

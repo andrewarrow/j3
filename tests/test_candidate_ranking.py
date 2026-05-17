@@ -794,6 +794,33 @@ def test_candidate_features_distinguish_same_mapping_asserted_key_value_and_key_
     )
 
 
+def test_candidate_features_distinguish_scalar_dict_value_assertion_delta() -> None:
+    preferred, false = _cookie_host_prefix_candidates()
+    hints = [
+        PytestFailureHint(
+            assertions=[
+                AssertionComparison(actual="__Host", operator="==", expected="__Host-")
+            ],
+        )
+    ]
+
+    preferred_features = candidate_features(preferred, hints=hints)
+    false_features = candidate_features(false, hints=hints)
+
+    assert preferred_features["dict_value_scalar_assertion_delta_matches"] == 1.0
+    assert (
+        preferred_features[
+            "action_dict_value_scalar_assertion_delta_matches:change_dict_value"
+        ]
+        == 1.0
+    )
+    assert (
+        false_features["dict_value_scalar_assertion_delta_from_matches_actual_only"]
+        == 1.0
+    )
+    assert "dict_value_scalar_assertion_delta_matches" not in false_features
+
+
 def test_candidate_features_record_swap_call_arg_role_metadata(tmp_path) -> None:
     repair_candidate = _swap_call_alignment_candidate(
         source=(
@@ -1013,6 +1040,38 @@ def test_candidate_record_features_distinguish_same_mapping_asserted_key_value_a
         ]
         == 1.0
     )
+
+
+def test_candidate_record_features_distinguish_scalar_dict_value_assertion_delta() -> None:
+    hints = [
+        {
+            "assertions": [
+                {"actual": "__Host", "operator": "==", "expected": "__Host-"},
+            ],
+        }
+    ]
+
+    preferred_features = _candidate_record_features(
+        _cookie_host_prefix_value_record(to="__Host-", passed=True),
+        hints,
+    )
+    false_features = _candidate_record_features(
+        _cookie_host_prefix_value_record(to="host", passed=False),
+        hints,
+    )
+
+    assert preferred_features["dict_value_scalar_assertion_delta_matches"] == 1.0
+    assert (
+        preferred_features[
+            "action_dict_value_scalar_assertion_delta_matches:change_dict_value"
+        ]
+        == 1.0
+    )
+    assert (
+        false_features["dict_value_scalar_assertion_delta_from_matches_actual_only"]
+        == 1.0
+    )
+    assert "dict_value_scalar_assertion_delta_matches" not in false_features
 
 
 def test_candidate_record_features_include_swap_call_arg_role_metadata() -> None:
@@ -1356,6 +1415,63 @@ def _cookie_secure_candidates() -> tuple[CandidatePatch, CandidatePatch]:
     return value_candidate, key_candidate
 
 
+def _cookie_host_prefix_candidates() -> tuple[CandidatePatch, CandidatePatch]:
+    source = (
+        "PREFIXES = {\n"
+        "    'host': '__Host',\n"
+        "    'secure': '__Secure-',\n"
+        "}\n"
+    )
+    preferred_patched = source.replace("'host': '__Host'", "'host': '__Host-'")
+    false_patched = source.replace("'host': '__Host'", "'host': 'host'")
+    target = PatchTarget(
+        file_path="policy.py",
+        start_line=2,
+        end_line=2,
+        symbol="PREFIXES",
+        node_kind="Dict",
+    )
+    preferred = CandidatePatch(
+        file_path="policy.py",
+        action=PatchAction(
+            kind=PatchActionKind.CHANGE_DICT_VALUE,
+            target=target,
+            params={"key": "host", "from": "__Host", "to": "__Host-"},
+        ),
+        edit=SourceEdit(
+            start_line=2,
+            start_col=12,
+            end_line=2,
+            end_col=20,
+            replacement="'__Host-'",
+        ),
+        original_source=source,
+        patched_source=preferred_patched,
+        reason="try dictionary value 'host'='__Host-'",
+        failure_hint_score=100.0,
+    )
+    false = CandidatePatch(
+        file_path="policy.py",
+        action=PatchAction(
+            kind=PatchActionKind.CHANGE_DICT_VALUE,
+            target=target,
+            params={"key": "host", "from": "__Host", "to": "host"},
+        ),
+        edit=SourceEdit(
+            start_line=2,
+            start_col=12,
+            end_line=2,
+            end_col=20,
+            replacement="'host'",
+        ),
+        original_source=source,
+        patched_source=false_patched,
+        reason="try dictionary value 'host'='host'",
+        failure_hint_score=100.0,
+    )
+    return preferred, false
+
+
 def _cookie_secure_value_record(*, passed: bool) -> dict[str, object]:
     return {
         "file_path": "webcookies/policy.py",
@@ -1375,6 +1491,30 @@ def _cookie_secure_value_record(*, passed: bool) -> dict[str, object]:
             "dict_literal_key_count": 3,
             "dict_literal_keys": ["http_only", "same_site", "secure"],
             "dict_value_key": "secure",
+            "dict_value_key_in_same_mapping": True,
+        },
+    }
+
+
+def _cookie_host_prefix_value_record(*, to: str, passed: bool) -> dict[str, object]:
+    return {
+        "file_path": "webcookies/policy.py",
+        "action": "change_dict_value",
+        "symbol": "PREFIXES",
+        "start_line": 2,
+        "end_line": 2,
+        "node_kind": "Dict",
+        "params": {"key": "host", "from": "__Host", "to": to},
+        "reason": f"try dictionary value 'host'={to!r}",
+        "model_score": 0.0,
+        "failure_hint_score": 100.0,
+        "ranker_score": None,
+        "passed": passed,
+        "target_context": {
+            "role": "helper",
+            "dict_literal_key_count": 2,
+            "dict_literal_keys": ["host", "secure"],
+            "dict_value_key": "host",
             "dict_value_key_in_same_mapping": True,
         },
     }

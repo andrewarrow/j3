@@ -625,11 +625,37 @@ Recent work:
   small residual gap, so prefer more independent non-held-out
   membership-predicate coverage only if it remains after the cookie metadata
   fix and outcome refresh. Details are in `HARD_NEGATIVES.md`.
+- Scalar assertion-delta ranker features were implemented for dictionary value
+  candidates. For `change_dict_value`, ranker features now record exact scalar
+  assertion actual-to-expected matches plus near-miss cases where only
+  `params.from` matches the assertion actual or only `params.to` matches the
+  assertion expected. The feature is computed from non-leaky failure hints and
+  candidate params for both live candidates and persisted outcome rows. The
+  feature version is `candidate-diagnostics-v12`.
+- Focused candidate-ranker and candidate-outcome coverage passed for the new
+  scalar dictionary-value assertion-delta feature, including the
+  `cookie_host_prefix_dict_value` same-key shape where `host: "__Host"` can be
+  changed either to the expected `"__Host-"` or the false `"host"` value.
+- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after the
+  scalar assertion-delta feature. The persisted dataset at
+  `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` still covers 27
+  tasks and 194 tested candidates. Ranked eval solved all 27 tasks with
+  `pass@1=21/27` and average candidates `7.19`.
+- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
+  the outcome refresh and is clean: solved=7/7, pass@1=7/7,
+  positive@1=7/7, avg_first_passing_index=1.0. Training used 274 rows, 62
+  passing rows, 233 training pairs, 742 features, and 3 margin violations.
+  `cookie_host_prefix_dict_value` now ranks the preferred
+  `change_dict_value host: "__Host" -> "__Host-"` repair first, and
+  `http_no_store_response_with_etag` now ranks the preferred
+  `change_operator not in -> in` repair first. No independent HTTP
+  membership-predicate coverage is needed from this state.
 
 Last focused verification:
 
 ```bash
-pytest tests/test_evaluation.py::test_load_greenshot_6_tasks tests/test_patching.py::test_patch_solves_humanize_gnu_ronna_suffix -q
+pytest tests/test_candidate_ranking.py -q
+pytest tests/test_evaluation.py::test_write_candidate_outcomes_jsonl_records_one_row_per_tested_candidate tests/test_evaluation.py::test_write_candidate_outcomes_preserves_scalar_dict_value_assertion_delta -q
 python cli.py eval \
   --tasks examples/greenshot_6 \
   --checkpoint runs/apache-python-git/model.json \
@@ -655,10 +681,6 @@ python cli.py train-ranker \
   --out runs/apache-python-git/ranker-holdout-greenshot-6-test-slice
 python cli.py outcome-summary \
   --candidate-outcomes runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl
-python - <<'PY'
-# grouped raw miss / preferred-positive rank inspection over refreshed
-# runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl
-PY
 python - <<'PY'
 # applied the refreshed
 # runs/apache-python-git/ranker-holdout-greenshot-6-test-slice/candidate-ranker.json
@@ -803,15 +825,10 @@ GreenShot-6 test-slice ranker validation result:
 
 ```text
 train-ranker, holdout-task includes all GreenShot-6 split:test tasks:
-  training rows=274 passing_rows=62 tasks=39 plans=39 pairs=233
-  training_accuracy=1.000 margin_violations=2 features=761
-  validation solved=7/7 pass@1=6/7 positive@1=5/7
-  validation avg_first_passing_index=1.1428571428571428
-  residual: cookie_host_prefix_dict_value ranks false
-  change_dict_value host: "__Host" -> "host" above the preferred
-  host: "__Host" -> "__Host-" repair.
-  residual: http_no_store_response_with_etag ranks a non-preferred passing
-  membership-literal edit above the preferred membership-operator repair.
+  training rows=274 passing_rows=62 tasks=40 plans=40 pairs=233
+  training_accuracy=1.000 margin_violations=3 features=742
+  validation solved=7/7 pass@1=7/7 positive@1=7/7
+  validation avg_first_passing_index=1.0
 ```
 
 ## Next Right Things
@@ -821,20 +838,15 @@ Keep this section as the live queue. When work is completed, move it to
 
 Immediate next sequence:
 
-1. Implement narrow scalar assertion-delta metadata for dictionary value
-   candidates: when failure hints contain a scalar assertion, record whether a
-   `change_dict_value` candidate changes `params.from` from the assertion
-   actual to `params.to` equal to the assertion expected. Keep it non-leaky and
-   available from both live candidates and persisted outcome rows.
-2. Add focused candidate-ranker and candidate-outcome tests for the new
-   metadata, especially the `cookie_host_prefix_dict_value` shape where the
-   same key and `from` value can lead either to the expected `"__Host-"` or the
-   false `"host"` value.
-3. Refresh GreenShot-6 outcomes with `--explore-after-pass 5`, rerun the same
-   GreenShot-6 `split: test` holdout, and inspect whether
-   `http_no_store_response_with_etag` still needs independent non-held-out
-   membership-predicate coverage. Do not tune broad action/string/boolean
-   weights or add pass/preferred-label features.
+1. Add the next real-package-derived GreenShot-6 task or small fixture domain.
+   Prefer a repair shape that uses an existing action family and creates useful
+   ranking or outcome-quality signal.
+2. Add focused loader/generator coverage for the new task, then refresh
+   GreenShot-6 outcomes with `--explore-after-pass 5`.
+3. Rerun the same GreenShot-6 `split: test` held-out ranker validation and
+   inspect any raw or trained residuals before adding metadata, tasks, or broad
+   weights. Do not tune broad action/string/boolean weights or add
+   pass/preferred-label features from the current clean holdout state.
 
 ### 1. Make GreenShot-6 Real
 
@@ -997,20 +1009,17 @@ Start neural/JEPA work only when:
 
 ## Handoff Recommendation
 
-The next context window should implement the narrow scalar assertion-delta
-metadata for dictionary value edits identified in the filesize residual
-inspection. Do not tune broad handcrafted weights or add pass/preferred-label
-features from this state. The new filesize task itself is clean and has a
-tested preferred-positive row at raw rank 1.
+The next context window should resume dataset growth by adding another
+real-package-derived GreenShot-6 task or small fixture domain. Do not tune
+broad handcrafted weights or add pass/preferred-label features from this state.
+The current GreenShot-6 `split: test` held-out validation is clean after the
+scalar dictionary-value assertion-delta feature.
 
 Immediate next sequence:
 
-1. Add candidate/record features for scalar assertion actual-to-expected deltas
-   on `change_dict_value` candidates, analogous to the existing same-mapping
-   assertion-delta feature but not limited to mapping-key assertions.
-2. Run focused ranker/outcome tests, then refresh GreenShot-6 outcomes and
-   rerun the same `split: test` held-out ranker validation.
-3. If `http_no_store_response_with_etag` still ranks a non-preferred
-   membership-literal edit above the preferred operator repair, prefer
-   independent non-held-out membership-predicate coverage before adding new
-   predicate metadata.
+1. Add the next real-package-derived GreenShot-6 task using an existing action
+   family where possible.
+2. Run focused loader/generator tests, refresh GreenShot-6 outcomes, and rerun
+   the same `split: test` held-out ranker validation.
+3. Inspect any new residuals and prefer narrow non-leaky metadata or independent
+   coverage over broad weight tuning.

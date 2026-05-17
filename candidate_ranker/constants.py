@@ -6,7 +6,7 @@ import re
 
 
 RANKER_FORMAT = "j3.candidate-ranker.v1"
-RANKER_FEATURE_VERSION = "candidate-diagnostics-v11"
+RANKER_FEATURE_VERSION = "candidate-diagnostics-v12"
 TOKEN_RE = re.compile(r"[A-Za-z][A-Za-z0-9]*")
 
 _SYMBOLIC_PARAM_VALUES = {

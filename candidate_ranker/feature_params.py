@@ -36,6 +36,32 @@ def _add_param_features(features: dict[str, float], action: str, params: Mapping
         features[f"action_numeric_param_delta:{action}"] = 1.0
 
 
+def _add_dict_value_assertion_delta_features(
+    features: dict[str, float],
+    *,
+    action: str,
+    params: Mapping[str, object],
+    hints: list[object] | tuple[object, ...],
+) -> None:
+    if action != "change_dict_value":
+        return
+
+    match = _scalar_assertion_value_delta_match(params, hints)
+    if match == "actual_to_expected":
+        features["dict_value_scalar_assertion_delta_matches"] = 1.0
+        features[f"action_dict_value_scalar_assertion_delta_matches:{action}"] = 1.0
+    elif match == "actual_only":
+        features["dict_value_scalar_assertion_delta_from_matches_actual_only"] = 1.0
+        features[
+            f"action_dict_value_scalar_assertion_delta_from_matches_actual_only:{action}"
+        ] = 1.0
+    elif match == "expected_only":
+        features["dict_value_scalar_assertion_delta_to_matches_expected_only"] = 1.0
+        features[
+            f"action_dict_value_scalar_assertion_delta_to_matches_expected_only:{action}"
+        ] = 1.0
+
+
 def _add_import_locality_features(
     features: dict[str, float],
     action: str,
@@ -460,6 +486,51 @@ def _matches_assertion_value_delta(
     return False
 
 
+def _scalar_assertion_value_delta_match(
+    params: Mapping[str, object],
+    hints: list[object] | tuple[object, ...],
+) -> str | None:
+    original = params.get("from", _MISSING)
+    replacement = params.get("to", _MISSING)
+    if original is _MISSING or replacement is _MISSING:
+        return None
+
+    found_actual_only = False
+    found_expected_only = False
+    for hint in hints:
+        assertions = (
+            hint.get("assertions", [])
+            if isinstance(hint, Mapping)
+            else getattr(hint, "assertions", [])
+        )
+        if not isinstance(assertions, list):
+            continue
+        for assertion in assertions:
+            if _assertion_operator(assertion) not in {"==", "is"}:
+                continue
+            actual = _assertion_value(assertion, "actual")
+            expected = _assertion_value(assertion, "expected")
+            if (
+                actual is _MISSING
+                or expected is _MISSING
+                or not _is_scalar_assertion_value(actual)
+                or not _is_scalar_assertion_value(expected)
+            ):
+                continue
+            actual_matches = _exact_value_equal(original, actual)
+            expected_matches = _exact_value_equal(replacement, expected)
+            if actual_matches and expected_matches:
+                return "actual_to_expected"
+            found_actual_only = found_actual_only or actual_matches
+            found_expected_only = found_expected_only or expected_matches
+
+    if found_actual_only:
+        return "actual_only"
+    if found_expected_only:
+        return "expected_only"
+    return None
+
+
 def _assertion_operator(assertion: object) -> object:
     if isinstance(assertion, Mapping):
         return assertion.get("operator")
@@ -474,6 +545,10 @@ def _assertion_value(assertion: object, key: str) -> object:
 
 def _exact_value_equal(left: object, right: object) -> bool:
     return type(left) is type(right) and left == right
+
+
+def _is_scalar_assertion_value(value: object) -> bool:
+    return value is None or isinstance(value, (str, bool, int, float))
 
 
 def _string_set(value: object) -> set[str]:

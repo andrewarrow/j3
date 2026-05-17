@@ -5,6 +5,7 @@ from pathlib import Path
 import json
 
 from actions import PatchAction, PatchActionKind, PatchTarget
+from candidate_ranker.features import _candidate_record_features
 from evaluation import (
     EvalSummary,
     RepairTask,
@@ -14,6 +15,7 @@ from evaluation import (
     write_candidate_outcomes,
     write_eval_diagnostics,
 )
+from failure_hints import AssertionComparison, PytestFailureHint
 from patching import CandidatePatch, PatchPlanResult
 from repair.patching.context import attach_target_context
 from synth import SourceEdit
@@ -589,6 +591,69 @@ def test_write_candidate_outcomes_jsonl_records_one_row_per_tested_candidate(tmp
     assert any(row["ast_delta_added_features"] for row in rows)
 
 
+def test_write_candidate_outcomes_preserves_scalar_dict_value_assertion_delta(tmp_path) -> None:
+    preferred = _cookie_host_prefix_candidate(to="__Host-")
+    false = _cookie_host_prefix_candidate(to="host")
+    hint = PytestFailureHint(
+        assertions=[
+            AssertionComparison(actual="__Host", operator="==", expected="__Host-"),
+        ],
+    )
+    plan = PatchPlanResult(
+        repo=tmp_path,
+        test_command="python -m pytest tests/test_policy.py",
+        baseline_exit_code=1,
+        candidates_generated=2,
+        candidates_tested=2,
+        selected=preferred,
+        applied=True,
+        test_output="",
+        tested_candidates=(preferred, false),
+        failure_hints=(hint,),
+        tested_candidate_hints=((hint,), (hint,)),
+        first_passing_index=1,
+        passing_candidates=(preferred,),
+        selected_candidates=(preferred,),
+    )
+    summary = EvalSummary(
+        tasks=[
+            TaskEvalResult(
+                task=RepairTask(
+                    name="cookie_host_prefix_dict_value",
+                    repo=tmp_path,
+                    test_command="python -m pytest tests/test_policy.py",
+                    split="test",
+                ),
+                baseline=None,
+                ranked=plan,
+            )
+        ]
+    )
+
+    outcomes = write_candidate_outcomes(summary, tmp_path / "candidate_outcomes.jsonl")
+    rows = [
+        json.loads(line)
+        for line in outcomes.read_text(encoding="utf-8").splitlines()
+    ]
+    preferred_features = _candidate_record_features(rows[0], rows[0]["failure_hints"])
+    false_features = _candidate_record_features(rows[1], rows[1]["failure_hints"])
+
+    assert rows[0]["failure_hints"][0]["assertions"] == [
+        {
+            "actual": "__Host",
+            "operator": "==",
+            "expected": "__Host-",
+            "numeric_delta": None,
+        }
+    ]
+    assert preferred_features["dict_value_scalar_assertion_delta_matches"] == 1.0
+    assert (
+        false_features["dict_value_scalar_assertion_delta_from_matches_actual_only"]
+        == 1.0
+    )
+    assert "dict_value_scalar_assertion_delta_matches" not in false_features
+
+
 def test_write_candidate_outcomes_preserves_swap_call_role_metadata(tmp_path) -> None:
     source = (
         "def normalize_scope(host, path):\n"
@@ -728,6 +793,41 @@ def _candidate_patch(*, to: int = 2, ranker_score: float | None) -> CandidatePat
         patched_source=patched,
         reason=f"try nearby literal {to}",
         ranker_score=ranker_score,
+    )
+
+
+def _cookie_host_prefix_candidate(*, to: str) -> CandidatePatch:
+    source = (
+        "PREFIXES = {\n"
+        "    'host': '__Host',\n"
+        "    'secure': '__Secure-',\n"
+        "}\n"
+    )
+    patched = source.replace("'host': '__Host'", f"'host': {to!r}")
+    return CandidatePatch(
+        file_path="webcookies/policy.py",
+        action=PatchAction(
+            kind=PatchActionKind.CHANGE_DICT_VALUE,
+            target=PatchTarget(
+                file_path="webcookies/policy.py",
+                start_line=2,
+                end_line=2,
+                symbol="PREFIXES",
+                node_kind="Dict",
+            ),
+            params={"key": "host", "from": "__Host", "to": to},
+        ),
+        edit=SourceEdit(
+            start_line=2,
+            start_col=12,
+            end_line=2,
+            end_col=20,
+            replacement=repr(to),
+        ),
+        original_source=source,
+        patched_source=patched,
+        reason=f"try dictionary value 'host'={to!r}",
+        failure_hint_score=100.0,
     )
 
 

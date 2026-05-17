@@ -1174,12 +1174,32 @@ Recent work:
   the pytest outcome refresh and stayed clean: solved=7/7, pass@1=7/7,
   positive@1=7/7, avg_first_passing_index=1.0. Training used 472 rows, 88
   passing rows, 408 training pairs, 862 features, and 4 margin violations.
+- GreenShot-6 now includes a thirtieth real-package-derived fixture domain,
+  `securecompare`, with one `git_history` task modeled on
+  `pallets/itsdangerous` PR 138 / commit
+  `1e3a10002994f15f882fe8170cc388dd82ccf722`. The task
+  `itsdangerous_constant_time_compare_doc_typo` repairs constant-time compare
+  documentation by changing `comparision` to `comparison`, using the existing
+  `change_literal` action family.
+- Focused loader/generator coverage passed for the ItsDangerous-derived task:
+  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
+  `pytest tests/test_patching.py::test_patch_solves_itsdangerous_constant_time_compare_doc_typo -q`.
+- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
+  adding `securecompare`. The persisted dataset now covers 51 tasks and 398
+  tested candidates. Ranked eval solved all 51 tasks with `pass@1=36/51` and
+  average candidates `7.80`; the new ItsDangerous-derived task solves at raw
+  rank 1 with the preferred `change_literal` candidate.
+- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
+  the ItsDangerous outcome refresh and stayed clean: solved=7/7,
+  pass@1=7/7, positive@1=7/7, avg_first_passing_index=1.0. Training used 478
+  rows, 89 passing rows, 413 training pairs, 862 features, and 4 margin
+  violations.
 
 Last focused verification:
 
 ```bash
 pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q
-pytest tests/test_patching.py::test_patch_solves_pytest_expected_exception_message_sentence -q
+pytest tests/test_patching.py::test_patch_solves_itsdangerous_constant_time_compare_doc_typo -q
 python cli.py eval \
   --tasks examples/greenshot_6 \
   --checkpoint runs/apache-python-git/model.json \
@@ -1322,9 +1342,9 @@ GreenShot-6 outcome collection result:
 
 ```text
 ranked, runs/apache-python-git/model.json, explore-after-pass=5:
-  solved=50/50 pass@1=35/50 avg_candidates=7.84
-  rows=392 passing_rows=80 preferred_positive_rows=50
-  source_type pass@1: git_history=18/30 mutation=17/20
+  solved=51/51 pass@1=36/51 avg_candidates=7.80
+  rows=398 passing_rows=81 preferred_positive_rows=51
+  source_type pass@1: git_history=19/31 mutation=17/20
 ```
 
 Treat this as a smoke check, not a benchmark claim.
@@ -1343,7 +1363,7 @@ GreenShot-6 test-slice ranker validation result:
 
 ```text
 train-ranker, holdout-task includes all GreenShot-6 split:test tasks:
-  training rows=472 passing_rows=88 tasks=63 plans=63 pairs=408
+  training rows=478 passing_rows=89 tasks=64 plans=64 pairs=413
   training_accuracy=0.998 margin_violations=4 features=862
   validation solved=7/7 pass@1=7/7 positive@1=7/7
   validation rows=46 avg_first_passing_index=1.0
@@ -1525,9 +1545,10 @@ Start neural/JEPA work only when:
 
 ## Handoff Recommendation
 
-The next context window should start from the post-raisemsg dataset growth, not
-the older envwrite, v13 literal-key, or scipyquad states. GreenShot-6 now has
-50 tasks. The same `split: test` held-out validation is clean again:
+The next context window should start from the post-securecompare dataset
+growth, not the older envwrite, v13 literal-key, scipyquad, or raisemsg states.
+GreenShot-6 now has 51 tasks. The same `split: test` held-out validation is
+clean again:
 solved=7/7, pass@1=7/7, positive@1=7/7, and avg_first_passing_index=1.0. Do not
 tune broad handcrafted weights or add pass/preferred-label features from this
 state.

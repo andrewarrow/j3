@@ -99,7 +99,7 @@ def test_load_greenshot_6_tasks() -> None:
     tasks = load_tasks(Path("examples/greenshot_6"))
     by_name = {task.name: task for task in tasks}
 
-    assert len(tasks) == 50
+    assert len(tasks) == 51
     assert tasks[0].name == "core_metadata_version_dict_value"
     assert tasks[0].family == "mapping_value"
     assert tasks[0].source_type == "mutation"
@@ -539,6 +539,19 @@ def test_load_greenshot_6_tasks() -> None:
         "params": {
             "from": "RunTimeError",
             "to": "RuntimeError",
+        },
+    }
+    assert by_name["itsdangerous_constant_time_compare_doc_typo"].split == "train"
+    assert by_name["itsdangerous_constant_time_compare_doc_typo"].source_type == (
+        "git_history"
+    )
+    assert by_name["itsdangerous_constant_time_compare_doc_typo"].preferred_patch == {
+        "file_path": "securecompare/constant.py",
+        "action": "change_literal",
+        "symbol": "constant_time_compare_note",
+        "params": {
+            "from": "Do not use for comparision with known length targets.",
+            "to": "Do not use for comparison with known length targets.",
         },
     }
     assert by_name["cookie_default_secure_flag_dict_value"].split == "test"

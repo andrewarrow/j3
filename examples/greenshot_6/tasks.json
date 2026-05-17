@@ -881,6 +881,28 @@
     }
   },
   {
+    "name": "itsdangerous_constant_time_compare_doc_typo",
+    "family": "security_compare_doc_text",
+    "source_type": "git_history",
+    "split": "train",
+    "repo": ".",
+    "test": "python -m pytest tests/test_securecompare.py::test_constant_time_compare_note_spells_comparison",
+    "source": {
+      "repo": "pallets/itsdangerous",
+      "commit": "1e3a10002994f15f882fe8170cc388dd82ccf722",
+      "pr": 138
+    },
+    "preferred": {
+      "file_path": "securecompare/constant.py",
+      "action": "change_literal",
+      "symbol": "constant_time_compare_note",
+      "params": {
+        "from": "Do not use for comparision with known length targets.",
+        "to": "Do not use for comparison with known length targets."
+      }
+    }
+  },
+  {
     "name": "cookie_default_secure_flag_dict_value",
     "family": "mapping_value",
     "source_type": "mutation",

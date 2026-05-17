@@ -1362,6 +1362,32 @@ def test_patch_solves_pytest_expected_exception_message_sentence(tmp_path) -> No
     assert "Expected a BaseException type, but got 'str'" in result.selected.patched_source
 
 
+def test_patch_solves_itsdangerous_constant_time_compare_doc_typo(tmp_path) -> None:
+    repo = tmp_path / "greenshot_6"
+    shutil.copytree("examples/greenshot_6", repo)
+
+    result = plan_and_maybe_apply_patch(
+        repo=repo,
+        test_command=(
+            "python -m pytest "
+            "tests/test_securecompare.py::test_constant_time_compare_note_spells_comparison"
+        ),
+        dry_run=True,
+        timeout_seconds=10,
+    )
+
+    assert result.selected is not None
+    assert result.selected.file_path == "securecompare/constant.py"
+    assert result.selected.action.kind.value == "change_literal"
+    assert result.selected.action.params == {
+        "from": "Do not use for comparision with known length targets.",
+        "to": "Do not use for comparison with known length targets.",
+    }
+    assert "Do not use for comparison with known length targets." in (
+        result.selected.patched_source
+    )
+
+
 def test_generate_membership_operator_with_literal_needle_decoy(tmp_path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()

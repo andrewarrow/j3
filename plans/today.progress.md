@@ -240,6 +240,6 @@ Use this shape for each worker handoff:
   excluded by default and available only through an explicit ablation flag.
   Patch/fix/eval defaults remain unchanged.
 - Commit: `2f13892` (`Add held-out shadow V3 scorer`).
-- Push: pushed to `origin/main` (`2f13892`; progress log through `bf6aa30`).
+- Push: pushed to `origin/main`; implementation commit `2f13892`.
 - Next: add a release-quality transition evidence bundle command.
 - Blockers: none.

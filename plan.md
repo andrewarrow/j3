@@ -107,6 +107,10 @@ Recent work:
 - GreenShot-6 now includes its first git-history-derived held-out repair task,
   modeled on `pypa/pyproject-metadata` commit `604d388`, for a wrong
   `project.readme.file` validation error key.
+- GreenShot-6 now includes a second fixture domain, `httpcache`, with 5
+  mutation-derived HTTP cache/header tasks using existing action families:
+  subscript-key repair, inclusive status-code boundary, dictionary value,
+  swapped call arguments, and keyword propagation.
 - Task manifests support `source_type`, defaulting to `handcrafted`.
 - `change_dict_value` now covers dictionary literal value repairs.
 - String literal alternatives now handle structured shared prefixes such as
@@ -126,15 +130,36 @@ Recent work:
 - Task manifests now support explicit `split` metadata; missing splits are
   assigned deterministically from task identity and are written to diagnostics
   and candidate outcome rows.
-- A current GreenShot-6 smoke run solves all 6 tasks, but pass@1 is 4/6. The
+- A current GreenShot-6 smoke run solves all 11 tasks, but pass@1 is 8/11. The
   non-pass@1 tasks are useful ranking signal rather than missing-action signal:
-  inclusive operator boundary passes at rank 2, and Apache classifier
-  dictionary-value repair passes at rank 5.
+  inclusive operator boundary passes at rank 2, Apache classifier
+  dictionary-value repair passes at rank 5, and HTTP `no-store` subscript-key
+  repair passes at rank 19.
+- GreenShot-6 candidate outcomes were collected with `--explore-after-pass 5`
+  at `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl`.
 
 Last focused verification:
 
 ```bash
-pytest tests/test_evaluation.py tests/test_cli.py -q
+pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q
+python cli.py eval \
+  --tasks examples/greenshot_6 \
+  --timeout 10 \
+  --max-candidates 80 \
+  --phase ranked \
+  --quiet
+python cli.py eval \
+  --tasks examples/greenshot_6 \
+  --checkpoint runs/apache-python-git/model.json \
+  --timeout 10 \
+  --max-candidates 80 \
+  --phase ranked \
+  --explore-after-pass 5 \
+  --diagnostics runs/apache-python-git/greenshot-6-explore-diagnostics.json \
+  --candidate-outcomes runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl \
+  --quiet
+python cli.py outcome-summary \
+  --candidate-outcomes runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl
 git diff --check
 ```
 
@@ -150,7 +175,15 @@ GreenShot-6 smoke result:
 
 ```text
 ranked, no candidate ranker:
-  solved=6/6 pass@1=4/6 avg_candidates=1.83
+  solved=11/11 pass@1=8/11 avg_candidates=3.09
+```
+
+GreenShot-6 outcome collection result:
+
+```text
+ranked, runs/apache-python-git/model.json, explore-after-pass=5:
+  solved=11/11 pass@1=8/11 avg_candidates=7.64
+  rows=84 passing_rows=19 preferred_positive_rows=11
 ```
 
 Treat this as a smoke check, not a benchmark claim.
@@ -162,13 +195,15 @@ Keep this section as the live queue. When work is completed, move it to
 
 Immediate next sequence:
 
-1. Add 3 to 5 more GreenShot-6 tasks from real git history or mutation-derived
-   real-repo changes, preferably outside the current package-metadata theme.
-2. Do not add a new action family for those tasks unless a held-out task proves
-   the right candidate is missing.
-3. Run GreenShot-6 with `--explore-after-pass 5` and save candidate outcomes.
-4. Use `outcome-summary` to inspect hard negatives by family, source type, and
-   split before changing ranker features.
+1. Train/evaluate the candidate ranker on the combined GreenShot-5 and
+   GreenShot-6 outcome rows, holding out at least one family or source-type
+   slice instead of reporting only in-sample pass@1.
+2. Inspect the GreenShot-6 hard negatives before changing ranker features,
+   especially `http_cache_directive`, `mapping_value`, and `operator_boundary`.
+3. Add before/after AST delta features to candidate outcome rows.
+4. Record whether candidates are equivalent or overlapping.
+5. Add more real git-history tasks only after the current hard-negative/ranker
+   signal has been used.
 
 ### 1. Make GreenShot-6 Real
 
@@ -179,7 +214,7 @@ Next tasks:
 
 - Add more git-history-derived held-out repair tasks.
 - Add more mutation-generated held-out tasks from real repos.
-- Prefer a second fixture domain/package over more `pkgmeta` metadata tasks.
+- Prefer additional fixture domains/packages over more `pkgmeta` metadata tasks.
 - Continue marking every task with a task family and source type:
   `handcrafted`, `mutation`, or `git_history`.
 
@@ -199,12 +234,11 @@ Goal: train on candidates the current system actually finds tempting.
 
 Next tasks:
 
-- Run GreenShot-6 with `--explore-after-pass 5` after adding 3 to 5 more
-  real-derived held-out tasks.
-- Save diagnostics and candidate outcomes.
-- Summarize high-scoring failed candidates.
-- Use those rows for ranker training and validation.
+- Summarize high-scoring failed candidates from the GreenShot-6 outcome rows.
+- Use GreenShot-5 and GreenShot-6 rows for ranker training and validation.
 - Prefer held-out family/source-type validation over in-sample pass@1.
+- Re-run GreenShot-6 with `--explore-after-pass 5` after the next batch of
+  real-derived tasks or after changing candidate generation/ranking metadata.
 
 Use a command like:
 

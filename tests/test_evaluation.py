@@ -94,8 +94,9 @@ def test_load_greenshot_5_tasks() -> None:
 
 def test_load_greenshot_6_tasks() -> None:
     tasks = load_tasks(Path("examples/greenshot_6"))
+    by_name = {task.name: task for task in tasks}
 
-    assert len(tasks) == 6
+    assert len(tasks) == 11
     assert tasks[0].name == "core_metadata_version_dict_value"
     assert tasks[0].family == "mapping_value"
     assert tasks[0].source_type == "mutation"
@@ -109,8 +110,7 @@ def test_load_greenshot_6_tasks() -> None:
             "to": "2.3",
         },
     }
-    assert tasks[-2].name == "apache_license_classifier_dict_value"
-    assert tasks[-2].preferred_patch == {
+    assert by_name["apache_license_classifier_dict_value"].preferred_patch == {
         "file_path": "pkgmeta/metadata.py",
         "action": "change_dict_value",
         "symbol": "license_classifier",
@@ -120,16 +120,43 @@ def test_load_greenshot_6_tasks() -> None:
             "to": "License :: OSI Approved :: Apache Software License",
         },
     }
-    assert tasks[-1].name == "readme_missing_file_exception_key"
-    assert tasks[-1].family == "exception_context"
-    assert tasks[-1].source_type == "git_history"
-    assert tasks[-1].preferred_patch == {
+    assert by_name["readme_missing_file_exception_key"].family == "exception_context"
+    assert by_name["readme_missing_file_exception_key"].source_type == "git_history"
+    assert by_name["readme_missing_file_exception_key"].preferred_patch == {
         "file_path": "pkgmeta/metadata.py",
         "action": "change_literal",
         "symbol": "validate_readme_file",
         "params": {
             "from": "project.license.file",
             "to": "project.readme.file",
+        },
+    }
+    assert by_name["http_no_store_directive_subscript_key"].preferred_patch == {
+        "file_path": "httpcache/policy.py",
+        "action": "change_subscript_key",
+        "symbol": "parse_request_cache_control",
+        "params": {
+            "from": "no-store",
+            "to": "no_store",
+        },
+    }
+    assert by_name["http_cache_key_argument_order"].preferred_patch == {
+        "file_path": "httpcache/policy.py",
+        "action": "swap_call_arg",
+        "symbol": "cache_key_for_request",
+        "params": {
+            "left": 0,
+            "right": 1,
+        },
+    }
+    assert by_name["http_vary_preserve_case_keyword"].preferred_patch == {
+        "file_path": "httpcache/policy.py",
+        "action": "add_keyword_arg",
+        "symbol": "response_vary_members",
+        "params": {
+            "keyword": "preserve_case",
+            "value": "preserve_case",
+            "callee": "normalize_vary_header",
         },
     }
 

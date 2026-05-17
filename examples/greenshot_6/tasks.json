@@ -101,5 +101,87 @@
         "to": "project.readme.file"
       }
     }
+  },
+  {
+    "name": "http_no_store_directive_subscript_key",
+    "family": "http_cache_directive",
+    "source_type": "mutation",
+    "repo": ".",
+    "test": "python -m pytest tests/test_httpcache.py::test_no_store_request_directive_is_tracked_separately",
+    "preferred": {
+      "file_path": "httpcache/policy.py",
+      "action": "change_subscript_key",
+      "symbol": "parse_request_cache_control",
+      "params": {
+        "from": "no-store",
+        "to": "no_store"
+      }
+    }
+  },
+  {
+    "name": "http_304_cacheable_operator_boundary",
+    "family": "operator_boundary",
+    "source_type": "mutation",
+    "repo": ".",
+    "test": "python -m pytest tests/test_httpcache.py::test_not_modified_status_is_cacheable",
+    "preferred": {
+      "file_path": "httpcache/policy.py",
+      "action": "change_operator",
+      "symbol": "is_cacheable_status",
+      "params": {
+        "from": "<",
+        "to": "<="
+      }
+    }
+  },
+  {
+    "name": "http_response_policy_max_age_dict_value",
+    "family": "mapping_value",
+    "source_type": "mutation",
+    "repo": ".",
+    "test": "python -m pytest tests/test_httpcache.py::test_default_response_policy_uses_minute_ttl",
+    "preferred": {
+      "file_path": "httpcache/policy.py",
+      "action": "change_dict_value",
+      "symbol": "build_response_policy",
+      "params": {
+        "key": "max_age",
+        "from": 59,
+        "to": 60
+      }
+    }
+  },
+  {
+    "name": "http_cache_key_argument_order",
+    "family": "call_order",
+    "source_type": "mutation",
+    "repo": ".",
+    "test": "python -m pytest tests/test_httpcache.py::test_cache_key_preserves_url_before_query",
+    "preferred": {
+      "file_path": "httpcache/policy.py",
+      "action": "swap_call_arg",
+      "symbol": "cache_key_for_request",
+      "params": {
+        "left": 0,
+        "right": 1
+      }
+    }
+  },
+  {
+    "name": "http_vary_preserve_case_keyword",
+    "family": "keyword_propagation",
+    "source_type": "mutation",
+    "repo": ".",
+    "test": "python -m pytest tests/test_httpcache.py::test_vary_members_can_preserve_header_case",
+    "preferred": {
+      "file_path": "httpcache/policy.py",
+      "action": "add_keyword_arg",
+      "symbol": "response_vary_members",
+      "params": {
+        "keyword": "preserve_case",
+        "value": "preserve_case",
+        "callee": "normalize_vary_header"
+      }
+    }
   }
 ]

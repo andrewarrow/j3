@@ -129,8 +129,8 @@ Use this shape for each worker handoff:
 - Result: added `transition-shadow-matrix-v1` with full local core suites
   (`greenshot_bugs`, `greenshot_3`, `greenshot_4`) and conservative
   name-filtered subsets for `greenshot_5` and `greenshot_6`.
-- Commit: this commit (`Add transition shadow matrix manifest`)
-- Push: pending after commit.
+- Commit: `71a3a44` (`Add transition shadow matrix manifest`)
+- Push: pushed to `origin/main`.
 - Next: implement `run-transition-shadow-matrix` to read the manifest, apply
   optional `task_names` filters for large suites, and aggregate per-suite
   outputs.

@@ -8,8 +8,8 @@ This file is the live progress log for `plans/today.md`. Keep
 - Current phase: productize transition scoring without fooling ourselves.
 - Completed iterations for this reset: 3.
 - Latest relevant commits:
-  - current iteration commit calibrates a V2 transition action scorer from
-    candidate outcomes.
+  - `6cd413e` calibrates a V2 transition action scorer from candidate
+    outcomes.
   - `86ce6c2` added transition bench product-readiness gates.
   - `26cca1d` removed the old today plan files.
   - `4cca638` documented transition bench reproduction.
@@ -193,8 +193,8 @@ Use this shape for each worker handoff:
   evaluation-only. V2 beats V1 on the full local candidate bench, but held-out
   validation does not beat existing rank order, so guarded opt-in remains
   blocked.
-- Commit: current iteration commit (`Calibrate transition action scorer v2`)
-- Push: succeeded to `main`.
+- Commit: `6cd413e` (`Calibrate transition action scorer v2`)
+- Push: succeeded to `main` (`646442a..6cd413e`)
 - Next: add shadow transition-scorer advice to real patch/eval planning.
 - Blockers: guarded opt-in remains blocked until a held-out scorer beats
   existing rank order.

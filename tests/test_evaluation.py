@@ -99,7 +99,7 @@ def test_load_greenshot_6_tasks() -> None:
     tasks = load_tasks(Path("examples/greenshot_6"))
     by_name = {task.name: task for task in tasks}
 
-    assert len(tasks) == 40
+    assert len(tasks) == 41
     assert tasks[0].name == "core_metadata_version_dict_value"
     assert tasks[0].family == "mapping_value"
     assert tasks[0].source_type == "mutation"
@@ -182,6 +182,22 @@ def test_load_greenshot_6_tasks() -> None:
         "params": {
             "from": "Control plane APIs for programatically building/deploying Chalice apps.",
             "to": "Control plane APIs for programmatically building/deploying Chalice apps.",
+        },
+    }
+    assert by_name["starlette_websocket_runtime_error_allowed_messages"].family == (
+        "websocket_state_error_message"
+    )
+    assert by_name["starlette_websocket_runtime_error_allowed_messages"].source_type == (
+        "git_history"
+    )
+    assert by_name["starlette_websocket_runtime_error_allowed_messages"].split == "train"
+    assert by_name["starlette_websocket_runtime_error_allowed_messages"].preferred_patch == {
+        "file_path": "websocketstate/websockets.py",
+        "action": "change_literal",
+        "symbol": "connecting_send_error_message",
+        "params": {
+            "from": 'Expected message "websocket.connect"',
+            "to": 'Expected message "websocket.accept" or "websocket.close"',
         },
     }
     assert by_name["chainlit_oauth_state_logging_percent_format"].family == (

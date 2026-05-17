@@ -681,6 +681,28 @@
     }
   },
   {
+    "name": "starlette_websocket_runtime_error_allowed_messages",
+    "family": "websocket_state_error_message",
+    "source_type": "git_history",
+    "split": "train",
+    "repo": ".",
+    "test": "python -m pytest tests/test_websocketstate.py::test_connecting_send_error_names_allowed_messages",
+    "source": {
+      "repo": "encode/starlette",
+      "commit": "7c4fd9cbf04ecd57e82fe4761f8d7976a9cb53bd",
+      "pr": 2141
+    },
+    "preferred": {
+      "file_path": "websocketstate/websockets.py",
+      "action": "change_literal",
+      "symbol": "connecting_send_error_message",
+      "params": {
+        "from": "Expected message \"websocket.connect\"",
+        "to": "Expected message \"websocket.accept\" or \"websocket.close\""
+      }
+    }
+  },
+  {
     "name": "cookie_default_secure_flag_dict_value",
     "family": "mapping_value",
     "source_type": "mutation",

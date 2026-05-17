@@ -962,12 +962,38 @@ Recent work:
   Raw GreenShot-6 now has 12 pass@1 misses, but every task has a tested
   preferred-positive row and the saved test-slice ranker places every
   preferred-positive candidate at trained rank 1.
+- GreenShot-6 now includes a twenty-second real-package-derived fixture domain,
+  `websocketstate`, with one `git_history` task modeled on `encode/starlette`
+  PR 2141 / merge commit `7c4fd9cbf04ecd57e82fe4761f8d7976a9cb53bd`.
+  The task `starlette_websocket_runtime_error_allowed_messages` repairs a
+  WebSocket connecting-state RuntimeError message so it names the allowed
+  `websocket.accept` / `websocket.close` messages instead of
+  `websocket.connect`, using the existing `change_literal` action family.
+- Focused loader/generator coverage passed for the Starlette-derived task:
+  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
+  `pytest tests/test_patching.py::test_patch_solves_starlette_websocket_runtime_error_allowed_messages -q`.
+- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
+  adding `websocketstate`. The persisted dataset at
+  `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` now covers 41
+  tasks and 302 tested candidates. Ranked eval solved all 41 tasks with
+  `pass@1=29/41` and average candidates `7.37`; the new Starlette-derived task
+  solves at raw rank 1 with the preferred `change_literal` candidate.
+- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
+  the websocketstate outcome refresh and stayed clean: solved=7/7,
+  pass@1=7/7, positive@1=7/7, avg_first_passing_index=1.0. Training used 382
+  rows, 77 passing rows, 327 training pairs, 794 features, and 4 margin
+  violations.
+- Refreshed raw/trained miss inspection after adding `websocketstate` found no
+  missing preferred-positive rows and no trained preferred-positive misses
+  across 41 GreenShot-6 tasks. Raw GreenShot-6 still has 12 pass@1 misses, but
+  every task has a tested preferred-positive row and the saved test-slice
+  ranker places every preferred-positive candidate at trained rank 1.
 
 Last focused verification:
 
 ```bash
 pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q
-pytest tests/test_patching.py::test_patch_solves_poetry_project_directory_unable_typo -q
+pytest tests/test_patching.py::test_patch_solves_starlette_websocket_runtime_error_allowed_messages -q
 python cli.py eval \
   --tasks examples/greenshot_6 \
   --checkpoint runs/apache-python-git/model.json \
@@ -995,7 +1021,7 @@ python cli.py outcome-summary \
   --candidate-outcomes runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl
 python - <<'PY'
 # Applied the refreshed test-slice ranker to all refreshed GreenShot-6 rows:
-# raw_pass1_misses=12, trained_preferred_positive_misses=0 across 40 tasks.
+# raw_pass1_misses=12, trained_preferred_positive_misses=0 across 41 tasks.
 PY
 git diff --check
 ```
@@ -1114,9 +1140,9 @@ GreenShot-6 outcome collection result:
 
 ```text
 ranked, runs/apache-python-git/model.json, explore-after-pass=5:
-  solved=39/39 pass@1=28/39 avg_candidates=7.13
-  rows=278 passing_rows=64 preferred_positive_rows=39
-  source_type pass@1: git_history=13/21 mutation=15/18
+  solved=41/41 pass@1=29/41 avg_candidates=7.37
+  rows=302 passing_rows=69 preferred_positive_rows=41
+  source_type pass@1: git_history=14/23 mutation=15/18
 ```
 
 Treat this as a smoke check, not a benchmark claim.
@@ -1135,8 +1161,8 @@ GreenShot-6 test-slice ranker validation result:
 
 ```text
 train-ranker, holdout-task includes all GreenShot-6 split:test tasks:
-  training rows=358 passing_rows=72 tasks=52 plans=52 pairs=305
-  training_accuracy=1.000 margin_violations=3 features=775
+  training rows=382 passing_rows=77 tasks=54 plans=54 pairs=327
+  training_accuracy=1.000 margin_violations=4 features=794
   validation solved=7/7 pass@1=7/7 positive@1=7/7
   validation avg_first_passing_index=1.0
 ```
@@ -1323,7 +1349,7 @@ The next context window should continue dataset growth by adding another
 real-package-derived GreenShot-6 task or small fixture domain. Do not tune broad
 handcrafted weights or add pass/preferred-label features from this state. The
 current GreenShot-6 `split: test` held-out validation is clean after the
-poetryenv outcome refresh.
+websocketstate outcome refresh.
 
 Immediate next sequence:
 

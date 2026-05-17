@@ -1085,6 +1085,33 @@ def test_patch_solves_poetry_project_directory_unable_typo(tmp_path) -> None:
     assert "Unable to determine the project's directory" in result.selected.patched_source
 
 
+def test_patch_solves_starlette_websocket_runtime_error_allowed_messages(tmp_path) -> None:
+    repo = tmp_path / "greenshot_6"
+    shutil.copytree("examples/greenshot_6", repo)
+
+    result = plan_and_maybe_apply_patch(
+        repo=repo,
+        test_command=(
+            "python -m pytest "
+            "tests/test_websocketstate.py::test_connecting_send_error_names_allowed_messages"
+        ),
+        dry_run=True,
+        timeout_seconds=10,
+    )
+
+    assert result.selected is not None
+    assert result.selected.file_path == "websocketstate/websockets.py"
+    assert result.selected.action.kind.value == "change_literal"
+    assert result.selected.action.params == {
+        "from": 'Expected message "websocket.connect"',
+        "to": 'Expected message "websocket.accept" or "websocket.close"',
+    }
+    assert (
+        'Expected message "websocket.accept" or "websocket.close"'
+        in result.selected.patched_source
+    )
+
+
 def test_generate_membership_operator_with_literal_needle_decoy(tmp_path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()

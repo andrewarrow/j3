@@ -6,7 +6,7 @@ This file is the live progress log for `plans/today.md`. Keep
 ## Status
 
 - Current phase: productize transition scoring without fooling ourselves.
-- Completed iterations for this reset: 1.
+- Completed iterations for this reset: 2.
 - Latest relevant commits:
   - `26cca1d` removed the old today plan files.
   - `4cca638` documented transition bench reproduction.
@@ -15,14 +15,14 @@ This file is the live progress log for `plans/today.md`. Keep
   - `3eb9c38` added transition action-choice groups.
   - `d95ebc7` defined the transition bench schema.
   - `7e3df39` added transition asset inventory.
-- Current blocker: the current V1 future scorer underperforms the existing rank
-  order on local candidate outcomes.
-- Next task: add product-readiness gates to transition bench reports.
+- Current blocker: the current V1 future scorer still underperforms the existing
+  rank order on local candidate outcomes and is not ready for guarded opt-in.
+- Next task: calibrate a V2 action scorer from candidate outcomes.
 
 ## Active Task Queue
 
 - [x] Harden real-data normalization for empty mined source rows.
-- [ ] Add product-readiness gates to transition bench reports.
+- [x] Add product-readiness gates to transition bench reports.
 - [ ] Calibrate a V2 action scorer from candidate outcomes.
 - [ ] Add shadow transition-scorer advice to real patch/eval planning.
 - [ ] Add guarded, non-default opt-in ranking with gate enforcement.
@@ -52,6 +52,9 @@ This file is the live progress log for `plans/today.md`. Keep
   - existing-rank-order pass@1: 65/88
   - deterministic-random-order pass@1: 21/88
   - stable-lexical-order pass@1: 13/88
+  - product readiness gate:
+    `not_ready_underperforms_existing_rank_order`
+  - V1 future scorer residual count: 58
   - zero hosted token/context usage
 - full local bench with mined transitions used to fail with
   `ValueError: git_transition.after_source must be a non-empty string`; this
@@ -135,3 +138,28 @@ Use this shape for each worker handoff:
 - Next: add product-readiness gates to transition bench reports.
 - Blockers: none for this slice; V1 future scorer still underperforms existing
   rank order.
+
+### Iteration 2: Add product-readiness gates to transition bench reports
+
+- Worker: Codex Worker Iteration 2
+- Goal: add an honest `product_readiness` section to
+  `transition-bench-demo-report-v1` comparing the V1 future scorer to existing
+  rank order on solved groups.
+- Files changed: `j3/transition_action_scoring.py`,
+  `j3/transition_bench_demo.py`, `tests/test_transition_action_scoring.py`,
+  `tests/test_transition_bench_demo.py`, `plans/today.progress.md`.
+- Tests run:
+  - `pytest tests/test_transition_action_scoring.py -q` passed, 8 tests.
+  - `pytest tests/test_transition_bench_demo.py -q` passed, 4 tests.
+  - `python cli.py demo-transition-bench --no-fixtures --embedding-dim 256 --top-k 3 --candidate-outcomes runs/apache-python-git/*candidate-outcomes.jsonl --out /tmp/j3-transition-bench-candidates-report.json` passed with product gate `not_ready_underperforms_existing_rank_order` and 58 residuals.
+  - `python -m json.tool /tmp/j3-transition-bench-candidates-report.json >/dev/null`
+    passed.
+- Result: reports now include solved-group pass@1, top-k, MRR, average
+  candidates validated before first pass, residual counts, and a gate result.
+  The 88-group candidate bench remains blocked from guarded opt-in because V1
+  underperforms existing rank order.
+- Commit: pending in this worker commit; final hash reported in worker response.
+- Push: pending.
+- Next: calibrate a V2 action scorer from candidate outcomes.
+- Blockers: none for this slice; the product gate correctly records the V1
+  scorer as not ready for guarded opt-in.

@@ -14,7 +14,13 @@ from j3.transition_action_choice import validate_transition_action_choice_group
 TRANSITION_ACTION_SCORING_EVAL_VERSION = "transition-action-scoring-eval-v1"
 TRANSITION_ACTION_SCORER_VERSION = "transition-action-future-scorer-v1"
 TRANSITION_ACTION_SCORER_FEATURE_VERSION = "transition-action-local-features-v1"
+TRANSITION_PRODUCT_READINESS_VERSION = "transition-product-readiness-v1"
 DEFAULT_TOP_K = 3
+
+GATE_NOT_READY_UNDERPERFORMS = "not_ready_underperforms_existing_rank_order"
+GATE_READY_FOR_SHADOW_MODE = "ready_for_shadow_mode"
+GATE_READY_FOR_GUARDED_OPT_IN = "ready_for_guarded_opt_in"
+EXISTING_RANK_ORDER_BASELINE = "existing-rank-order"
 
 
 def score_transition_action_candidate(
@@ -78,7 +84,7 @@ def rank_transition_action_candidates(
                 ),
             )
         )
-    if strategy == "existing-rank-order":
+    if strategy == EXISTING_RANK_ORDER_BASELINE:
         return tuple(sorted(candidates, key=lambda item: int(item["rank_index"])))
     if strategy == "stable-lexical-order":
         return tuple(sorted(candidates, key=_candidate_order_key))
@@ -117,7 +123,7 @@ def evaluate_transition_action_choices(
 
     strategy_names = [
         TRANSITION_ACTION_SCORER_VERSION,
-        "existing-rank-order",
+        EXISTING_RANK_ORDER_BASELINE,
         "stable-lexical-order",
     ]
     if include_random_baseline:
@@ -129,7 +135,10 @@ def evaluate_transition_action_choices(
     for group in validated_groups:
         baseline_record = _group_rank_record(
             group,
-            rank_transition_action_candidates(group, strategy="existing-rank-order"),
+            rank_transition_action_candidates(
+                group,
+                strategy=EXISTING_RANK_ORDER_BASELINE,
+            ),
             top_k=top_k,
         )
         for strategy in strategy_names:
@@ -179,6 +188,113 @@ def evaluate_transition_action_choices(
     }
 
 
+def evaluate_transition_product_readiness(
+    scoring_report: Mapping[str, object],
+    *,
+    scorer_name: str = TRANSITION_ACTION_SCORER_VERSION,
+    baseline_name: str = EXISTING_RANK_ORDER_BASELINE,
+) -> dict[str, object]:
+    """Compare the future scorer to the existing rank order for product gating."""
+
+    metrics = _mapping(scoring_report.get("metrics"))
+    scorer_metrics = _mapping(metrics.get(scorer_name))
+    baseline_metrics = _mapping(metrics.get(baseline_name))
+    solved_group_count = _int_metric(scoring_report.get("solved_group_count"))
+    if solved_group_count == 0:
+        solved_group_count = max(
+            _int_metric(scorer_metrics.get("solved_group_count")),
+            _int_metric(baseline_metrics.get("solved_group_count")),
+        )
+
+    pass_at_1 = _count_rate_comparison(
+        scorer_metrics,
+        baseline_metrics,
+        count_key="pass_at_1_count",
+        rate_key="pass_at_1_solved_rate",
+    )
+    top_k = _count_rate_comparison(
+        scorer_metrics,
+        baseline_metrics,
+        count_key="top_k_pass_count",
+        rate_key="top_k_pass_solved_rate",
+    )
+    mean_reciprocal_rank = _float_comparison(
+        scorer_metrics,
+        baseline_metrics,
+        key="mean_reciprocal_rank_solved",
+    )
+    average_candidates_before_first_pass = _float_comparison(
+        scorer_metrics,
+        baseline_metrics,
+        key="average_candidates_validated_before_first_pass",
+    )
+    scorer_residual_count = _int_metric(scorer_metrics.get("residual_count"))
+    baseline_residual_count = _int_metric(baseline_metrics.get("residual_count"))
+    reasons = _product_readiness_reasons(
+        solved_group_count=solved_group_count,
+        pass_at_1_delta=_float_or_none(pass_at_1.get("delta")),
+        top_k_delta=_float_or_none(top_k.get("delta")),
+        mrr_delta=_float_or_none(mean_reciprocal_rank.get("delta")),
+        candidates_before_delta=_float_or_none(
+            average_candidates_before_first_pass.get("delta")
+        ),
+    )
+    gate_result = _product_readiness_gate_result(
+        reasons=reasons,
+        pass_at_1_delta=_float_or_none(pass_at_1.get("delta")),
+        top_k_delta=_float_or_none(top_k.get("delta")),
+        mrr_delta=_float_or_none(mean_reciprocal_rank.get("delta")),
+        candidates_before_delta=_float_or_none(
+            average_candidates_before_first_pass.get("delta")
+        ),
+        residual_count=scorer_residual_count,
+    )
+
+    return {
+        "schema_version": TRANSITION_PRODUCT_READINESS_VERSION,
+        "scorer": scorer_name,
+        "baseline": baseline_name,
+        "comparison_scope": "solved_action_choice_groups",
+        "gate_result": gate_result,
+        "eligible_for_shadow_mode": gate_result in {
+            GATE_READY_FOR_SHADOW_MODE,
+            GATE_READY_FOR_GUARDED_OPT_IN,
+        },
+        "eligible_for_guarded_opt_in": gate_result == GATE_READY_FOR_GUARDED_OPT_IN,
+        "top_k": scoring_report.get("top_k"),
+        "solved_group_count": solved_group_count,
+        "candidate_count": scoring_report.get("candidate_count", 0),
+        "residual_count": scorer_residual_count,
+        "baseline_residual_count": baseline_residual_count,
+        "reasons": reasons,
+        "metrics": {
+            "pass_at_1": pass_at_1,
+            "top_k": top_k,
+            "mean_reciprocal_rank": mean_reciprocal_rank,
+            "average_candidates_validated_before_first_pass": {
+                **average_candidates_before_first_pass,
+                "lower_is_better": True,
+            },
+        },
+        "guarded_opt_in_requirements": {
+            "does_not_underperform_existing_rank_order": not reasons,
+            "pass_at_1_delta_positive": _positive(
+                _float_or_none(pass_at_1.get("delta"))
+            ),
+            "top_k_delta_non_negative": _non_negative(
+                _float_or_none(top_k.get("delta"))
+            ),
+            "mrr_delta_positive": _positive(
+                _float_or_none(mean_reciprocal_rank.get("delta"))
+            ),
+            "validates_no_more_candidates_before_first_pass": _non_positive(
+                _float_or_none(average_candidates_before_first_pass.get("delta"))
+            ),
+            "residual_count_zero": scorer_residual_count == 0,
+        },
+    }
+
+
 def _metrics_from_rank_records(records: Sequence[Mapping[str, object]]) -> dict[str, object]:
     group_count = len(records)
     solved_records = [
@@ -187,8 +303,9 @@ def _metrics_from_rank_records(records: Sequence[Mapping[str, object]]) -> dict[
     solved_group_count = len(solved_records)
     pass_at_1_count = sum(1 for record in records if record.get("pass_at_1") is True)
     top_k_pass_count = sum(1 for record in records if record.get("top_k_pass") is True)
-    reciprocal_ranks = [
-        float(record.get("reciprocal_rank", 0.0)) for record in records
+    reciprocal_ranks = [float(record.get("reciprocal_rank", 0.0)) for record in records]
+    solved_reciprocal_ranks = [
+        float(record.get("reciprocal_rank", 0.0)) for record in solved_records
     ]
     first_pass_ranks = [
         int(record["first_pass_rank"])
@@ -205,15 +322,19 @@ def _metrics_from_rank_records(records: Sequence[Mapping[str, object]]) -> dict[
         "solved_group_count": solved_group_count,
         "pass_at_1_count": pass_at_1_count,
         "pass_at_1_rate": _rate(pass_at_1_count, group_count),
+        "pass_at_1_solved_rate": _rate(pass_at_1_count, solved_group_count),
         "top_k_pass_count": top_k_pass_count,
         "top_k_pass_rate": _rate(top_k_pass_count, group_count),
+        "top_k_pass_solved_rate": _rate(top_k_pass_count, solved_group_count),
         "mean_reciprocal_rank": _mean(reciprocal_ranks),
+        "mean_reciprocal_rank_solved": _mean(solved_reciprocal_ranks),
         "average_first_passing_rank": _mean(first_pass_ranks),
         "average_candidates_validated_to_first_pass": _mean(first_pass_ranks),
         "average_candidates_validated_before_first_pass": _mean(
             [rank - 1 for rank in first_pass_ranks]
         ),
         "average_candidates_saved_vs_existing_rank_order": _mean(candidates_saved),
+        "residual_count": solved_group_count - pass_at_1_count,
     }
 
 
@@ -453,3 +574,114 @@ def _mean(values: Sequence[float | int]) -> float | None:
     if not values:
         return None
     return round(sum(float(value) for value in values) / len(values), 12)
+
+
+def _count_rate_comparison(
+    scorer_metrics: Mapping[str, object],
+    baseline_metrics: Mapping[str, object],
+    *,
+    count_key: str,
+    rate_key: str,
+) -> dict[str, object]:
+    scorer_rate = _float_or_none(scorer_metrics.get(rate_key))
+    baseline_rate = _float_or_none(baseline_metrics.get(rate_key))
+    return {
+        "scorer_count": _int_metric(scorer_metrics.get(count_key)),
+        "baseline_count": _int_metric(baseline_metrics.get(count_key)),
+        "scorer_rate": scorer_rate,
+        "baseline_rate": baseline_rate,
+        "delta": _delta(scorer_rate, baseline_rate),
+    }
+
+
+def _float_comparison(
+    scorer_metrics: Mapping[str, object],
+    baseline_metrics: Mapping[str, object],
+    *,
+    key: str,
+) -> dict[str, object]:
+    scorer_value = _float_or_none(scorer_metrics.get(key))
+    baseline_value = _float_or_none(baseline_metrics.get(key))
+    return {
+        "scorer": scorer_value,
+        "baseline": baseline_value,
+        "delta": _delta(scorer_value, baseline_value),
+    }
+
+
+def _product_readiness_reasons(
+    *,
+    solved_group_count: int,
+    pass_at_1_delta: float | None,
+    top_k_delta: float | None,
+    mrr_delta: float | None,
+    candidates_before_delta: float | None,
+) -> list[str]:
+    reasons: list[str] = []
+    if solved_group_count <= 0:
+        reasons.append("no_solved_action_choice_groups")
+    if _negative(pass_at_1_delta):
+        reasons.append("pass_at_1_under_existing_rank_order")
+    if _negative(top_k_delta):
+        reasons.append("top_k_under_existing_rank_order")
+    if _negative(mrr_delta):
+        reasons.append("mrr_under_existing_rank_order")
+    if _positive(candidates_before_delta):
+        reasons.append("validates_more_candidates_before_first_pass")
+    return reasons
+
+
+def _product_readiness_gate_result(
+    *,
+    reasons: Sequence[str],
+    pass_at_1_delta: float | None,
+    top_k_delta: float | None,
+    mrr_delta: float | None,
+    candidates_before_delta: float | None,
+    residual_count: int,
+) -> str:
+    if reasons:
+        return GATE_NOT_READY_UNDERPERFORMS
+    if (
+        _positive(pass_at_1_delta)
+        and _non_negative(top_k_delta)
+        and _positive(mrr_delta)
+        and _non_positive(candidates_before_delta)
+        and residual_count == 0
+    ):
+        return GATE_READY_FOR_GUARDED_OPT_IN
+    return GATE_READY_FOR_SHADOW_MODE
+
+
+def _delta(scorer_value: float | None, baseline_value: float | None) -> float | None:
+    if scorer_value is None or baseline_value is None:
+        return None
+    return round(scorer_value - baseline_value, 12)
+
+
+def _int_metric(value: object) -> int:
+    if isinstance(value, bool) or not isinstance(value, int):
+        return 0
+    return value
+
+
+def _float_or_none(value: object) -> float | None:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    return float(value)
+
+
+def _negative(value: float | None) -> bool:
+    return value is not None and value < -1e-12
+
+
+def _positive(value: float | None) -> bool:
+    return value is not None and value > 1e-12
+
+
+def _non_negative(value: float | None) -> bool:
+    return value is not None and value >= -1e-12
+
+
+def _non_positive(value: float | None) -> bool:
+    return value is not None and value <= 1e-12

@@ -14,6 +14,7 @@ from j3.transition_action_choice import (
 from j3.transition_action_scoring import (
     DEFAULT_TOP_K,
     TRANSITION_ACTION_SCORER_VERSION,
+    evaluate_transition_product_readiness,
     evaluate_transition_action_choices,
 )
 from j3.transition_assets import inspect_transition_assets
@@ -118,6 +119,7 @@ def run_transition_bench_demo(
         top_k=top_k,
         residual_limit=residual_limit,
     )
+    product_readiness = evaluate_transition_product_readiness(scoring)
     source_counts = Counter(
         _mapping(row.get("source")).get("kind", "unknown") for row in bench_rows
     )
@@ -170,6 +172,7 @@ def run_transition_bench_demo(
             ),
         },
         "action_scoring": scoring,
+        "product_readiness": product_readiness,
         "runtime": {
             "local_runtime_ms": runtime_ms,
             "hosted_llm_api_calls": 0,
@@ -207,6 +210,7 @@ def format_transition_bench_demo_report(report: Mapping[str, object]) -> str:
     scoring = _mapping(report.get("action_scoring"))
     runtime = _mapping(report.get("runtime"))
     metrics = _mapping(scoring.get("metrics"))
+    product_readiness = _mapping(report.get("product_readiness"))
     lines = [
         "j3 demo-transition-bench complete",
         "mode: evaluation-only",
@@ -231,6 +235,12 @@ def format_transition_bench_demo_report(report: Mapping[str, object]) -> str:
             f"mrr={_format_optional_float(section.get('mean_reciprocal_rank'))} "
             "avg_before_first_pass="
             f"{_format_optional_float(section.get('average_candidates_validated_before_first_pass'))}"
+        )
+    if product_readiness:
+        lines.append(
+            "product gate: "
+            f"{product_readiness.get('gate_result')} "
+            f"residuals={product_readiness.get('residual_count')}"
         )
     lines.extend(
         [

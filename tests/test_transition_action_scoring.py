@@ -7,8 +7,13 @@ import pytest
 
 from j3.transition_action_choice import build_transition_action_choice_groups
 from j3.transition_action_scoring import (
+    GATE_NOT_READY_UNDERPERFORMS,
+    GATE_READY_FOR_GUARDED_OPT_IN,
+    GATE_READY_FOR_SHADOW_MODE,
     TRANSITION_ACTION_SCORER_VERSION,
     TRANSITION_ACTION_SCORING_EVAL_VERSION,
+    TRANSITION_PRODUCT_READINESS_VERSION,
+    evaluate_transition_product_readiness,
     evaluate_transition_action_choices,
     rank_transition_action_candidates,
     score_transition_action_candidate,
@@ -43,10 +48,13 @@ def test_future_scorer_evaluates_fixture_against_rank_order_baseline() -> None:
     rank_order_metrics = report["metrics"]["existing-rank-order"]
     assert scorer_metrics["pass_at_1_count"] == 1
     assert scorer_metrics["pass_at_1_rate"] == 1.0
+    assert scorer_metrics["pass_at_1_solved_rate"] == 1.0
     assert scorer_metrics["mean_reciprocal_rank"] == 1.0
+    assert scorer_metrics["mean_reciprocal_rank_solved"] == 1.0
     assert scorer_metrics["average_first_passing_rank"] == 1.0
     assert scorer_metrics["average_candidates_validated_before_first_pass"] == 0.0
     assert scorer_metrics["average_candidates_saved_vs_existing_rank_order"] == 1.0
+    assert scorer_metrics["residual_count"] == 0
     assert rank_order_metrics["pass_at_1_count"] == 0
     assert rank_order_metrics["mean_reciprocal_rank"] == 0.5
     assert report["residual_examples"] == []
@@ -138,6 +146,126 @@ def test_residual_examples_capture_wrong_top_action_choice() -> None:
     assert residual["ranked_candidate_ranks"] == [1, 2]
 
 
+def test_product_readiness_gate_allows_guarded_opt_in_only_after_strict_gain() -> None:
+    groups = build_transition_action_choice_groups(
+        _fixture_candidate_rows(),
+        embedding_dim=8,
+    )
+
+    scoring_report = evaluate_transition_action_choices(
+        groups,
+        top_k=1,
+        include_random_baseline=False,
+    )
+    readiness = evaluate_transition_product_readiness(scoring_report)
+
+    assert readiness["schema_version"] == TRANSITION_PRODUCT_READINESS_VERSION
+    assert readiness["gate_result"] == GATE_READY_FOR_GUARDED_OPT_IN
+    assert readiness["eligible_for_shadow_mode"] is True
+    assert readiness["eligible_for_guarded_opt_in"] is True
+    assert readiness["comparison_scope"] == "solved_action_choice_groups"
+    assert readiness["residual_count"] == 0
+    assert readiness["metrics"]["pass_at_1"]["delta"] == 1.0
+    assert readiness["metrics"]["top_k"]["delta"] == 1.0
+    assert readiness["metrics"]["mean_reciprocal_rank"]["delta"] == 0.5
+    assert (
+        readiness["metrics"]["average_candidates_validated_before_first_pass"]["delta"]
+        == -1.0
+    )
+
+
+def test_product_readiness_gate_rejects_scorer_under_existing_rank_order() -> None:
+    groups = build_transition_action_choice_groups(
+        [
+            _candidate_row(
+                rank_index=1,
+                passed=True,
+                repair_plan_id="plan-regression",
+                params={"to": "+"},
+                first_passing_index=1,
+                model_score=0.0,
+                ranker_score=0.0,
+                failure_hint_score=0.0,
+                patched_source="def add(left, right):\n    return left + right\n",
+            ),
+            _candidate_row(
+                rank_index=2,
+                passed=False,
+                repair_plan_id="plan-regression",
+                params={"to": "*"},
+                first_passing_index=1,
+                model_score=1.0,
+                ranker_score=1.0,
+                failure_hint_score=1.0,
+                patched_source="def add(left, right):\n    return left * right\n",
+            ),
+        ],
+        embedding_dim=8,
+    )
+
+    scoring_report = evaluate_transition_action_choices(
+        groups,
+        top_k=1,
+        include_random_baseline=False,
+    )
+    readiness = evaluate_transition_product_readiness(scoring_report)
+
+    assert readiness["gate_result"] == GATE_NOT_READY_UNDERPERFORMS
+    assert readiness["eligible_for_shadow_mode"] is False
+    assert readiness["eligible_for_guarded_opt_in"] is False
+    assert readiness["residual_count"] == 1
+    assert readiness["metrics"]["pass_at_1"]["delta"] == -1.0
+    assert readiness["metrics"]["top_k"]["delta"] == -1.0
+    assert readiness["metrics"]["mean_reciprocal_rank"]["delta"] == -0.5
+    assert "pass_at_1_under_existing_rank_order" in readiness["reasons"]
+    assert "mrr_under_existing_rank_order" in readiness["reasons"]
+
+
+def test_product_readiness_gate_uses_shadow_mode_for_non_regressing_scorer() -> None:
+    groups = build_transition_action_choice_groups(
+        [
+            _candidate_row(
+                rank_index=1,
+                passed=True,
+                repair_plan_id="plan-equal",
+                params={"to": "+"},
+                first_passing_index=1,
+                model_score=1.0,
+                ranker_score=1.0,
+                failure_hint_score=1.0,
+                patched_source="def add(left, right):\n    return left + right\n",
+            ),
+            _candidate_row(
+                rank_index=2,
+                passed=False,
+                repair_plan_id="plan-equal",
+                params={"to": "*"},
+                first_passing_index=1,
+                model_score=0.0,
+                ranker_score=0.0,
+                failure_hint_score=0.0,
+                patched_source="def add(left, right):\n    return left * right\n",
+            ),
+        ],
+        embedding_dim=8,
+    )
+
+    scoring_report = evaluate_transition_action_choices(
+        groups,
+        top_k=1,
+        include_random_baseline=False,
+    )
+    readiness = evaluate_transition_product_readiness(scoring_report)
+
+    assert readiness["gate_result"] == GATE_READY_FOR_SHADOW_MODE
+    assert readiness["eligible_for_shadow_mode"] is True
+    assert readiness["eligible_for_guarded_opt_in"] is False
+    assert readiness["residual_count"] == 0
+    assert readiness["metrics"]["pass_at_1"]["delta"] == 0.0
+    assert readiness["metrics"]["mean_reciprocal_rank"]["delta"] == 0.0
+    assert readiness["reasons"] == []
+
+
 def test_evaluator_rejects_invalid_arguments() -> None:
     groups = build_transition_action_choice_groups(_fixture_candidate_rows(), embedding_dim=8)
 
@@ -172,6 +300,7 @@ def _candidate_row(
     passed: bool,
     repair_plan_id: str,
     params: dict[str, object],
+    first_passing_index: int = 2,
     model_score: float,
     ranker_score: float,
     failure_hint_score: float,
@@ -202,8 +331,8 @@ def _candidate_row(
         "passed": passed,
         "preferred": passed,
         "rank_index": rank_index,
-        "first_passing_index": 2,
-        "is_first_pass": passed,
+        "first_passing_index": first_passing_index,
+        "is_first_pass": passed and rank_index == first_passing_index,
         "passing_candidates": 1,
         "failure_hints": [
             {

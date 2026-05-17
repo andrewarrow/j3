@@ -3,7 +3,10 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from j3.transition_action_scoring import TRANSITION_ACTION_SCORER_VERSION
+from j3.transition_action_scoring import (
+    GATE_READY_FOR_GUARDED_OPT_IN,
+    TRANSITION_ACTION_SCORER_VERSION,
+)
 from j3.transition_bench_demo import (
     TRANSITION_BENCH_DEMO_REPORT_VERSION,
     format_transition_bench_demo_report,
@@ -63,6 +66,14 @@ def test_transition_bench_demo_runs_from_checked_in_fixtures(tmp_path: Path) -> 
     assert scorer_metrics["mean_reciprocal_rank"] == 1.0
     assert baseline_metrics["pass_at_1_rate"] == 0.0
     assert baseline_metrics["mean_reciprocal_rank"] == 0.5
+    readiness = report["product_readiness"]
+    assert readiness["gate_result"] == GATE_READY_FOR_GUARDED_OPT_IN
+    assert readiness["comparison_scope"] == "solved_action_choice_groups"
+    assert readiness["eligible_for_shadow_mode"] is True
+    assert readiness["eligible_for_guarded_opt_in"] is True
+    assert readiness["metrics"]["pass_at_1"]["delta"] == 1.0
+    assert readiness["metrics"]["mean_reciprocal_rank"]["delta"] == 0.5
+    assert readiness["residual_count"] == 0
     assert json.loads(out.read_text(encoding="utf-8")) == report
 
 
@@ -163,6 +174,7 @@ def test_transition_bench_demo_human_output_mentions_core_metrics() -> None:
     assert "existing-rank-order: pass@1=0/1" in output
     assert "top-k=" in output
     assert "mrr=" in output
+    assert f"product gate: {GATE_READY_FOR_GUARDED_OPT_IN} residuals=0" in output
     assert "local runtime ms:" in output
     assert "hosted_llm_prompt_tokens: 0" in output
     assert "hosted_repo_context_bytes: 0" in output

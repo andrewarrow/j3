@@ -6,8 +6,9 @@ This file is the live progress log for `plans/today.md`. Keep
 ## Status
 
 - Current phase: productize transition scoring without fooling ourselves.
-- Completed iterations for this reset: 5.
+- Completed iterations for this reset: 6.
 - Latest relevant commits:
+  - `106e1ed` documented transition bench product modes.
   - `882f9c4` added guarded, non-default transition-scorer ranking with product
     gate enforcement for patch/eval planning.
   - `6cdd621` added shadow transition-scorer advice for patch/eval planning.
@@ -266,10 +267,8 @@ Use this shape for each worker handoff:
   conservative default routing, skipped-row accounting, product-readiness
   gates, V2 calibration and held-out validation, shadow advice flags, guarded
   `--transition-scorer-rank` enforcement, and zero hosted usage.
-- Commit: this task commit; final hash reported in the worker handoff because
-  this progress entry is part of that commit.
-- Push: pending at the time this entry was written; final push result reported
-  in the worker handoff.
+- Commit: `106e1ed` (`Document transition bench product modes`)
+- Push: succeeded to `main` (`8f0fa51..106e1ed`)
 - Next: no queued task remains in `plans/today.progress.md`; watcher should
   choose the next slice from the current plan or refresh the plan.
 - Blockers: none for this documentation slice; guarded opt-in remains blocked

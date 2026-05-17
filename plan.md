@@ -1447,8 +1447,9 @@ Last focused verification:
 
 ```bash
 pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q
-pytest tests/test_patching.py::test_patch_solves_httpx_stream_read_docline_response_text -q
+pytest tests/test_patching.py::test_patch_solves_pydantic_core_use_default_docstring_typo -q
 python -m json.tool examples/greenshot_6/tasks.json >/dev/null
+git diff --check
 python cli.py eval \
   --tasks examples/greenshot_6 \
   --checkpoint runs/apache-python-git/model.json \
@@ -1472,7 +1473,8 @@ python cli.py train-ranker \
     cookie_pair_argument_order \
     cookie_scope_include_path_keyword \
   --out runs/apache-python-git/ranker-holdout-greenshot-6-test-slice
-git diff --check
+python cli.py outcome-summary \
+  --candidate-outcomes runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl
 ```
 
 GreenShot-5 outcome collection result:
@@ -1494,9 +1496,9 @@ GreenShot-6 outcome collection result:
 
 ```text
 ranked, runs/apache-python-git/model.json, explore-after-pass=5:
-  solved=65/65 pass@1=48/65 avg_candidates=7.66
-  rows=498 passing_rows=96 preferred_positive_rows=65
-  source_type pass@1: git_history=30/44 mutation=18/21
+  solved=68/68 pass@1=51/68 avg_candidates=7.59
+  rows=516 passing_rows=99 preferred_positive_rows=68
+  source_type pass@1: git_history=33/47 mutation=18/21
 ```
 
 Treat this as a smoke check, not a benchmark claim.
@@ -1515,7 +1517,7 @@ GreenShot-6 test-slice ranker validation result:
 
 ```text
 train-ranker, holdout-task includes all GreenShot-6 split:test tasks:
-  rows=572 passing_rows=103 tasks=77 plans=77 pairs=494
+  rows=596 passing_rows=107 tasks=81 plans=81 pairs=514
   training_accuracy=1.000 margin_violations=4 features=906
   validation solved=7/7 pass@1=7/7 positive@1=7/7
   validation rows=46 avg_first_passing_index=1.0
@@ -1700,49 +1702,49 @@ Start neural/JEPA work only when:
 
 ## Handoff Recommendation
 
-The next context window should start from the post-Flask-logging GreenShot-6
-refresh, not the older pytestdocs, typechecker, keyword-coverage, packaging
-parser, FastAPI OAuth2, Werkzeug AirPlay, flake8-bugbear B037, Seaborn
-plot-label, graphlayout/NetworkX, taskqueue/Celery, envwrite, v13 literal-key,
-scipyquad, raisemsg, attrvalidators, pytest-regex-label, HTTPX-docline, or
-smolagents-timing states. GreenShot-6 now has 67 tasks.
+The next context window should start from the post-pydantic-core GreenShot-6
+refresh, not the older Flask logging, pytestdocs, typechecker,
+keyword-coverage, packaging parser, FastAPI OAuth2, Werkzeug AirPlay,
+flake8-bugbear B037, Seaborn plot-label, graphlayout/NetworkX, taskqueue/Celery,
+envwrite, v13 literal-key, scipyquad, raisemsg, attrvalidators,
+pytest-regex-label, HTTPX-docline, or smolagents-timing states. GreenShot-6 now
+has 68 tasks.
 
 Latest addition:
 
-- Fixture domain: `flasklogging`
-- Task: `flask_create_logger_description_app_possessive`
-- Source: `pallets/flask` commit
-  `353d891561659a754ee92bb5e6576e82be58934a` / PR 3328
-- Repair shape: create-logger description text should say
-  `Get the Flask app's logger...`, not
-  `Get the the Flask apps's logger...`.
+- Fixture domain: `pydanticcore`
+- Task: `pydantic_core_use_default_docstring_typo`
+- Source: `pydantic/pydantic-core` commit
+  `4c02cbd0af5aaa80ae53039d6ec023f751ea65e5` / PR 1571
+- Repair shape: PydanticUseDefault docstring text should say `see the`, not
+  `seethe`.
 - Action: existing `change_literal`; no action family, ranker metadata, broad
   weight, or pass/preferred-label change was needed.
 
 Latest standard GreenShot-6 refresh with `--max-candidates 80 --phase ranked`
-and `--explore-after-pass 5` solved all 67 tasks: `pass@1=50/67`, average
-candidates `7.61`, rows `510`, passing rows `98`, and preferred-positive rows
-`67`. Source-type pass@1 is `git_history=32/46` and `mutation=18/21`. The new
-Flask-derived task passes at raw rank 1 with the preferred `change_literal`
-candidate.
+and `--explore-after-pass 5` solved all 68 tasks: `pass@1=51/68`, average
+candidates `7.59`, rows `516`, passing rows `99`, and preferred-positive rows
+`68`. Source-type pass@1 is `git_history=33/47` and `mutation=18/21`. The new
+pydantic-core-derived task passes at raw rank 1 with the preferred
+`change_literal` candidate.
 
 The same GreenShot-6 `split: test` held-out validation is clean:
 solved=7/7, pass@1=7/7, positive@1=7/7, validation rows=46, and
-avg_first_passing_index=1.0. Training used 590 rows, 106 passing rows, 509
+avg_first_passing_index=1.0. Training used 596 rows, 107 passing rows, 514
 training pairs, 906 features, and 4 margin violations.
 
 Latest inspection summary:
 
-- Before dataset growth, the post-smolagents-timing refresh had 17 raw pass@1
-  misses, every task had a tested preferred-positive row, and the saved
+- Before dataset growth, the post-Flask-logging refresh had 17 raw pass@1
+  misses, every task had a tested preferred-positive row, and the refreshed
   `split: test` ranker placed every preferred-positive candidate first across
-  all 66 tasks.
-- After adding `flask_create_logger_description_app_possessive`, raw GreenShot-6
-  still has 17 pass@1 misses under the standard refresh command. Every task
-  still has a tested preferred-positive row.
+  all 67 tasks.
+- After adding `pydantic_core_use_default_docstring_typo`, raw GreenShot-6 still
+  has 17 pass@1 misses under the standard refresh command. Every task still has
+  a tested preferred-positive row.
 - Applying the refreshed GreenShot-6 `split: test` ranker to all refreshed
   GreenShot-6 rows found no trained pass@1 or preferred-positive misses across
-  all 67 tasks.
+  all 68 tasks.
 - `HARD_NEGATIVES.md` was not updated this turn because no new verified
   residual appeared.
 

@@ -1186,6 +1186,28 @@
     }
   },
   {
+    "name": "pydantic_core_use_default_docstring_typo",
+    "family": "pydantic_core_docstring",
+    "source_type": "git_history",
+    "split": "train",
+    "repo": ".",
+    "test": "python -m pytest tests/test_pydanticcore.py::test_use_default_docstring_separates_see_the",
+    "source": {
+      "repo": "pydantic/pydantic-core",
+      "commit": "4c02cbd0af5aaa80ae53039d6ec023f751ea65e5",
+      "pr": 1571
+    },
+    "preferred": {
+      "file_path": "pydanticcore/use_default.py",
+      "action": "change_literal",
+      "symbol": "pydantic_use_default_docstring",
+      "params": {
+        "from": "For an additional example, seethe partial JSON parsing section.",
+        "to": "For an additional example, see the partial JSON parsing section."
+      }
+    }
+  },
+  {
     "name": "packaging_parser_docstring_ebnf_typo",
     "family": "requirement_parser_docstring",
     "source_type": "git_history",

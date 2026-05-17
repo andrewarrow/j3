@@ -99,7 +99,7 @@ def test_load_greenshot_6_tasks() -> None:
     tasks = load_tasks(Path("examples/greenshot_6"))
     by_name = {task.name: task for task in tasks}
 
-    assert len(tasks) == 67
+    assert len(tasks) == 68
     assert tasks[0].name == "core_metadata_version_dict_value"
     assert tasks[0].family == "mapping_value"
     assert tasks[0].source_type == "mutation"
@@ -121,6 +121,17 @@ def test_load_greenshot_6_tasks() -> None:
             "key": "Apache-2.0",
             "from": "License :: OSI Approved :: Apache License",
             "to": "License :: OSI Approved :: Apache Software License",
+        },
+    }
+    assert by_name["pydantic_core_use_default_docstring_typo"].source_type == "git_history"
+    assert by_name["pydantic_core_use_default_docstring_typo"].split == "train"
+    assert by_name["pydantic_core_use_default_docstring_typo"].preferred_patch == {
+        "file_path": "pydanticcore/use_default.py",
+        "action": "change_literal",
+        "symbol": "pydantic_use_default_docstring",
+        "params": {
+            "from": "For an additional example, seethe partial JSON parsing section.",
+            "to": "For an additional example, see the partial JSON parsing section.",
         },
     }
     assert by_name["pytest_expected_exception_message_sentence"].preferred_patch == {

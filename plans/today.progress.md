@@ -53,8 +53,9 @@ This file is the live progress log for `plans/today.md`. Keep
   - deterministic-random-order pass@1: 21/88
   - stable-lexical-order pass@1: 13/88
   - zero hosted token/context usage
-- full local bench with mined transitions currently fails with
-  `ValueError: git_transition.after_source must be a non-empty string`.
+- full local bench with mined transitions used to fail with
+  `ValueError: git_transition.after_source must be a non-empty string`; this
+  is now fixed by structured skipped-row accounting.
 - Empty `after_source` rows found:
   - `data/transitions/apache-python/Netflix__metaflow.jsonl` row 46
   - `data/transitions/apache-python/Netflix__metaflow.jsonl` row 47
@@ -129,8 +130,8 @@ Use this shape for each worker handoff:
 - Result: mined git rows with empty sources are skipped instead of crashing;
   skipped rows include source path, row index, reason, repo, file path, and
   commit; demo reports input, normalized, and skipped counts by source kind.
-- Commit: `Harden transition bench normalization`
-- Push: pending final worker push
+- Commit: `1859e9c` (`Harden transition bench normalization`)
+- Push: succeeded to `main` (`6c8eccf..1859e9c`)
 - Next: add product-readiness gates to transition bench reports.
 - Blockers: none for this slice; V1 future scorer still underperforms existing
   rank order.

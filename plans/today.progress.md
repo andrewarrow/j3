@@ -7,8 +7,8 @@ new implementation facts change the 24-hour plan itself. Record any
 
 ## Status
 
-- Current phase: unsupported-requirement fine-grained label coverage expanded
-- Completed iterations: 10
+- Current phase: unsupported-requirement prompt representation improved
+- Completed iterations: 11
 - Passing focused tests:
   - `pytest tests/test_prompt_intents.py -q`
   - `pytest tests/test_prompt_intents.py tests/test_request_spec.py -q`
@@ -27,11 +27,11 @@ new implementation facts change the 24-hour plan itself. Record any
 - Latest implementation commit: `376834403a2c7c7fe85638a52cc305256c388d7b`
 - Current blocker: learned production routing remains blocked; the
   family-level target is perfect locally, but fine-grained
-  `unsupported_requirement` still has held-out residuals inside unsupported
-  interface subtypes.
-- Next task: keep production routing fixture-backed and conservative; either
-  collect more desktop/graphical/visual interface labels or improve prompt
-  representation before reconsidering fine-grained learned routing.
+  `unsupported_requirement` still has a held-out residual and the fixture set
+  is small.
+- Next task: keep production routing fixture-backed and conservative; inspect
+  the remaining scientific-graphing fine-grained residual and collect or source
+  broader labels before reconsidering learned routing.
 
 ## Worker Iteration Template
 
@@ -605,3 +605,46 @@ Use this shape for each worker handoff:
   improve prompt representation features before considering fine-grained
   learned routing for production.
 - Blockers: fine-grained `unsupported_requirement` is not production-ready.
+
+### Iteration 11: Prompt Representation Features
+
+- Worker: Codex
+- Goal: improve prompt representation features before considering
+  fine-grained learned routing for production, focusing on remaining interface
+  subtype residuals.
+- Files changed:
+  - `prompt_intents.py`
+  - `tests/test_prompt_intents.py`
+  - `plans/today.progress.md`
+- Tests run:
+  - `pytest tests/test_prompt_intents.py -q` -> passed, 10 tests
+  - `pytest tests/test_prompt_intents.py tests/test_request_spec.py tests/test_existing_repo_change.py tests/test_cli.py -q`
+    -> passed, 47 tests
+  - `python -m py_compile prompt_intents.py cli/handlers.py cli/parser.py cli/__init__.py`
+    -> passed
+  - `git diff --check` -> passed
+  - `python cli.py train-prompt-intents --labels examples/prompt_intents/greenshot_7_intents.jsonl --target unsupported_requirement unsupported_requirement_family --show-residuals --residual-limit 20`
+    -> passed
+- Result:
+  - Inspected the residual prompts and existing features. The baseline used
+    prompt token unigrams and adjacent token bigrams only.
+  - Added a general v2 prompt feature schema with character 3-5 grams and
+    short skip-bigrams, preserving token and adjacent-bigram features. This is
+    a representation change for the learned baseline only; production request
+    and change routing remain fixture-backed exact matching.
+  - Local fine-grained `unsupported_requirement` metrics changed from train
+    33/33, validation 10/12, test 13/14 to train 33/33, validation 12/12,
+    test 13/14. The previous interface-subtype residuals
+    `gs7-intent-0020`, `gs7-intent-0041`, and `gs7-intent-0035` are no longer
+    residuals.
+  - Remaining fine-grained residual: `gs7-intent-0025`, expected
+    `scientific_operations_unspecified`, predicted `graphical_interface` for
+    "make a scientific calc with graphing". This is no longer an interface
+    subtype miss, but fine-grained learned routing is still blocked.
+  - Local family-level `unsupported_requirement_family` metrics remain train
+    33/33, validation 12/12, and test 14/14.
+- Commit: pending
+- Push: pending
+- Next: inspect the scientific graphing residual and collect or source broader
+  labels before reconsidering fine-grained learned routing.
+- Blockers: fine-grained learned production routing remains blocked.

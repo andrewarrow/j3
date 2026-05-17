@@ -19,6 +19,7 @@ from typing import Callable, Iterable, Sequence
 PROMPT_INTENT_SCHEMA_VERSION = "prompt-intent-label-v1"
 EVAL_SCHEMA_VERSION = "prompt-intent-eval-v1"
 LEARNED_BASELINE_SCHEMA_VERSION = "prompt-intent-token-perceptron-v1"
+PROMPT_FEATURE_SCHEMA_VERSION = "prompt-token-bigram-char-skipgram-v2"
 DEFAULT_PROMPT_INTENTS_PATH = Path("examples/prompt_intents/greenshot_7_intents.jsonl")
 TARGET_FIELDS = [
     "repo_mode",
@@ -254,7 +255,7 @@ class PromptIntentTokenPerceptronModel:
     weights: dict[str, dict[str, float]]
     train_split: str
     epochs: int
-    feature_schema: str = "prompt-token-unigram-bigram-v1"
+    feature_schema: str = PROMPT_FEATURE_SCHEMA_VERSION
 
     def predict_label(self, prompt: str) -> str:
         """Predict one scalar prompt-intent label from prompt text."""
@@ -853,11 +854,34 @@ def _prompt_token_features(prompt: str) -> Counter[str]:
         f"bigram={tokens[index]} {tokens[index + 1]}"
         for index in range(len(tokens) - 1)
     )
+    features.update(_prompt_character_ngram_features(tokens))
+    features.update(_prompt_skip_bigram_features(tokens))
     return features
 
 
 def _prompt_tokens(prompt: str) -> list[str]:
     return re.findall(r"\*\*|\^|[a-z0-9_]+", prompt.lower())
+
+
+def _prompt_character_ngram_features(tokens: Sequence[str]) -> Counter[str]:
+    normalized = f" {' '.join(tokens)} "
+    features: Counter[str] = Counter()
+    for width in range(3, 6):
+        features.update(
+            f"char{width}={normalized[index:index + width]}"
+            for index in range(len(normalized) - width + 1)
+        )
+    return features
+
+
+def _prompt_skip_bigram_features(tokens: Sequence[str]) -> Counter[str]:
+    features: Counter[str] = Counter()
+    for left_index, left in enumerate(tokens):
+        max_right_index = min(len(tokens), left_index + 4)
+        for right_index in range(left_index + 2, max_right_index):
+            distance = right_index - left_index
+            features[f"skip{distance}={left} {tokens[right_index]}"] += 1
+    return features
 
 
 def _predict_from_weights(

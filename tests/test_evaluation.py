@@ -99,7 +99,7 @@ def test_load_greenshot_6_tasks() -> None:
     tasks = load_tasks(Path("examples/greenshot_6"))
     by_name = {task.name: task for task in tasks}
 
-    assert len(tasks) == 60
+    assert len(tasks) == 61
     assert tasks[0].name == "core_metadata_version_dict_value"
     assert tasks[0].family == "mapping_value"
     assert tasks[0].source_type == "mutation"
@@ -498,6 +498,18 @@ def test_load_greenshot_6_tasks() -> None:
             "key": "gnu",
             "from": "KMGTPEZY",
             "to": "KMGTPEZYRQ",
+        },
+    }
+    assert by_name["humanize_binary_naturalsize_keyword"].split == "train"
+    assert by_name["humanize_binary_naturalsize_keyword"].source_type == "mutation"
+    assert by_name["humanize_binary_naturalsize_keyword"].preferred_patch == {
+        "file_path": "filesize/format.py",
+        "action": "add_keyword_arg",
+        "symbol": "binary_naturalsize",
+        "params": {
+            "keyword": "binary",
+            "value": True,
+            "callee": "naturalsize",
         },
     }
     assert by_name["packaging_pyemscripten_platform_config_var"].split == "train"

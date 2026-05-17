@@ -1330,8 +1330,64 @@ Recent work:
   cross-domain `change_dict_value` candidate ranks above the preferred
   `add_keyword_arg(include_path=True)` row. Details are in
   `HARD_NEGATIVES.md`.
+- Added independent non-held-out boolean-default keyword-propagation coverage
+  with `humanize_binary_naturalsize_keyword` (`split: train`) in the existing
+  `filesize` domain. It repairs a `binary_naturalsize` wrapper by adding
+  `binary=True` to `naturalsize(...)`, using the existing `add_keyword_arg`
+  action. No broad action/string/boolean weights, pass/preferred-label
+  features, or ranker metadata were changed.
+- Focused loader/generator coverage passed:
+  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
+  `pytest tests/test_patching.py::test_patch_solves_humanize_binary_naturalsize_keyword -q`.
+- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
+  adding the keyword-propagation coverage. The persisted dataset now covers 61
+  tasks and 473 tested candidates. Ranked eval solved all 61 tasks with
+  `pass@1=44/61` and average candidates `7.75`; outcome summary reports 92
+  passing rows and 61 preferred-positive rows.
+- The same GreenShot-6 `split: test` held-out ranker validation is clean again:
+  solved=7/7, pass@1=7/7, positive@1=7/7, and avg_first_passing_index=1.0.
+  Training used 553 rows, 100 passing rows, 478 training pairs, 849 features,
+  and 4 margin violations. The reopened `cookie_scope_include_path_keyword`
+  residual is resolved: the preferred `add_keyword_arg(include_path=True)` row
+  is trained rank 1 with score `16.625162`, above the false cross-domain
+  `change_dict_value count -> example.invalid/account` row at score
+  `10.771752`.
 
 Last focused verification:
+
+```bash
+pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q
+pytest tests/test_patching.py::test_patch_solves_humanize_binary_naturalsize_keyword -q
+python3 -m json.tool examples/greenshot_6/tasks.json >/tmp/greenshot6_tasks_check.json
+python cli.py eval \
+  --tasks examples/greenshot_6 \
+  --checkpoint runs/apache-python-git/model.json \
+  --timeout 10 \
+  --max-candidates 80 \
+  --phase ranked \
+  --explore-after-pass 5 \
+  --diagnostics runs/apache-python-git/greenshot-6-explore-diagnostics.json \
+  --candidate-outcomes runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl \
+  --quiet
+python cli.py outcome-summary \
+  --candidate-outcomes runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl
+python cli.py train-ranker \
+  --candidate-outcomes \
+    runs/apache-python-git/greenshot-5-candidate-outcomes.jsonl \
+    runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl \
+  --holdout-task \
+    apache_license_classifier_dict_value \
+    http_no_store_response_with_etag \
+    cookie_default_secure_flag_dict_value \
+    cookie_host_prefix_dict_value \
+    cookie_zero_max_age_operator_boundary \
+    cookie_pair_argument_order \
+    cookie_scope_include_path_keyword \
+  --out runs/apache-python-git/ranker-holdout-greenshot-6-test-slice
+git diff --check
+```
+
+Previous focused verification:
 
 ```bash
 pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q
@@ -1479,9 +1535,9 @@ GreenShot-6 outcome collection result:
 
 ```text
 ranked, runs/apache-python-git/model.json, explore-after-pass=5:
-  solved=60/60 pass@1=43/60 avg_candidates=7.75
-  rows=465 passing_rows=91 preferred_positive_rows=60
-  source_type pass@1: git_history=26/40 mutation=17/20
+  solved=61/61 pass@1=44/61 avg_candidates=7.75
+  rows=473 passing_rows=92 preferred_positive_rows=61
+  source_type pass@1: git_history=26/40 mutation=18/21
 ```
 
 Treat this as a smoke check, not a benchmark claim.
@@ -1500,10 +1556,10 @@ GreenShot-6 test-slice ranker validation result:
 
 ```text
 train-ranker, holdout-task includes all GreenShot-6 split:test tasks:
-  rows=545 passing_rows=99 tasks=73 plans=73 pairs=471
-  training_accuracy=1.000 margin_violations=3 features=856
-  validation solved=7/7 pass@1=6/7 positive@1=6/7
-  validation rows=46 avg_first_passing_index=1.1428571428571428
+  rows=553 passing_rows=100 tasks=74 plans=74 pairs=478
+  training_accuracy=1.000 margin_violations=4 features=849
+  validation solved=7/7 pass@1=7/7 positive@1=7/7
+  validation rows=46 avg_first_passing_index=1.0
 ```
 
 ## Next Right Things
@@ -1513,14 +1569,16 @@ Keep this section as the live queue. When work is completed, move it to
 
 Immediate next sequence:
 
-1. Inspect the reopened `cookie_scope_include_path_keyword` held-out residual
-   from the post-FastAPI refresh before adding more tasks or ranker features.
-2. Decide whether the cleanest fix is independent non-held-out
-   keyword-propagation coverage or narrow non-leaky metadata for cross-domain
-   locality/context. Do not tune broad action/string/boolean weights or add
-   pass/preferred-label features.
-3. After any fix, refresh GreenShot-6 outcomes with `--explore-after-pass 5`
-   and rerun the same GreenShot-6 `split: test` held-out validation.
+1. Inspect the refreshed GreenShot-6 raw pass@1 misses and trained
+   preferred-positive ranks after the `humanize_binary_naturalsize_keyword`
+   refresh. The held-out test slice is clean, so do not add ranker features or
+   broad weights unless this inspection finds a narrow new gap.
+2. If no narrow candidate-generation, outcome-quality, or ranker-metadata gap
+   appears, continue GreenShot-6 dataset growth with another real-package-derived
+   train-split task.
+3. Re-run GreenShot-6 with `--explore-after-pass 5` after the next dataset or
+   metadata change, then rerun the same GreenShot-6 `split: test` held-out
+   validation.
 
 ### 1. Make GreenShot-6 Real
 
@@ -1683,50 +1741,49 @@ Start neural/JEPA work only when:
 
 ## Handoff Recommendation
 
-The next context window should start from the post-FastAPI OAuth2 dataset
-growth, not the older Werkzeug AirPlay, flake8-bugbear B037, Seaborn
+The next context window should start from the post-keyword-coverage GreenShot-6
+refresh, not the older FastAPI OAuth2, Werkzeug AirPlay, flake8-bugbear B037, Seaborn
 plot-label, graphlayout/NetworkX, taskqueue/Celery, envwrite, v13 literal-key,
 scipyquad, raisemsg, attrvalidators, or pytest-regex-label states. GreenShot-6
-now has 60 tasks.
+now has 61 tasks.
 
 Latest addition:
 
-- Fixture domain: `securityforms`
-- Task: `fastapi_oauth2_client_secret_docstring`
-- Source: `fastapi/fastapi` commit
-  `fa3588c38c7473aca7536b12d686102de4b0f407`
-- Repair shape: an OAuth2 password form client-secret description should refer
-  to `client_secret` instead of `client_password`.
-- Action: existing `change_literal`; no action family or ranker metadata
-  change was needed.
+- Fixture domain: `filesize`
+- Task: `humanize_binary_naturalsize_keyword`
+- Source: `python-humanize/humanize`-derived mutation fixture
+- Repair shape: a `binary_naturalsize` wrapper should call
+  `naturalsize(value, binary=True)` instead of relying on the helper's
+  `binary=False` default.
+- Action: existing `add_keyword_arg`; no action family, ranker metadata, broad
+  weight, or pass/preferred-label change was needed.
 
-Latest GreenShot-6 refresh with `--explore-after-pass 5` solved all 60 tasks:
-`pass@1=43/60`, average candidates `7.75`, rows `465`, passing rows `91`, and
-preferred-positive rows `60`. Source-type pass@1 is `git_history=26/40` and
-`mutation=17/20`. The new FastAPI-derived task passes at raw rank 1 with the
-preferred `change_literal client_password -> client_secret` candidate.
+Latest GreenShot-6 refresh with `--explore-after-pass 5` solved all 61 tasks:
+`pass@1=44/61`, average candidates `7.75`, rows `473`, passing rows `92`, and
+preferred-positive rows `61`. Source-type pass@1 is `git_history=26/40` and
+`mutation=18/21`. The new keyword-propagation task passes at raw rank 1 with
+the preferred `add_keyword_arg binary=True` candidate.
 
-The same GreenShot-6 `split: test` held-out validation reopened one residual:
-solved=7/7, pass@1=6/7, positive@1=6/7, validation rows=46, and
-avg_first_passing_index=1.1428571428571428. Training used 545 rows, 99 passing
-rows, 471 training pairs, 856 features, and 3 margin violations.
+The same GreenShot-6 `split: test` held-out validation is clean again:
+solved=7/7, pass@1=7/7, positive@1=7/7, validation rows=46, and
+avg_first_passing_index=1.0. Training used 553 rows, 100 passing rows, 478
+training pairs, 849 features, and 4 margin violations.
 
-Residual to inspect next:
+Resolved residual:
 
 - `cookie_scope_include_path_keyword`: a false cross-domain
   `change_dict_value count: "count" -> "example.invalid/account"` candidate in
   `plotlabels/categorical.py` ranks above the preferred
-  `add_keyword_arg(include_path=True)` candidate in `webcookies/policy.py`.
-  The preferred row exists, passes, and is marked preferred-positive, so this
-  is ranking signal rather than a missing-action problem. Details are in
+  `add_keyword_arg(include_path=True)` candidate in `webcookies/policy.py`
+  before the new train-split keyword coverage. After refresh/retraining, the
+  preferred keyword row ranks first at score `16.625162`, above the false
+  cross-domain dictionary-value row at `10.771752`. Details are in
   `HARD_NEGATIVES.md`.
 
 Immediate next sequence:
 
-1. Inspect the reopened `cookie_scope_include_path_keyword` residual before
-   adding more dataset tasks or ranker features.
-2. Prefer independent non-held-out keyword-propagation coverage or narrow
-   non-leaky cross-domain locality/context metadata if the inspection supports
-   it.
-3. Do not tune broad handcrafted weights or add pass/preferred-label features
-   from this state.
+1. Inspect refreshed raw pass@1 misses and trained preferred-positive ranks.
+2. If no narrow residual appears, add the next real-package-derived GreenShot-6
+   train-split task.
+3. Keep the same GreenShot-6 `split: test` held-out validation as the
+   cookie-inclusive regression slice.

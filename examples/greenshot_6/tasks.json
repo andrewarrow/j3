@@ -422,6 +422,28 @@
     }
   },
   {
+    "name": "humanize_binary_naturalsize_keyword",
+    "family": "keyword_propagation",
+    "source_type": "mutation",
+    "split": "train",
+    "repo": ".",
+    "test": "python -m pytest tests/test_filesize.py::test_binary_naturalsize_uses_binary_units",
+    "source": {
+      "repo": "python-humanize/humanize",
+      "fixture": "binary naturalsize wrapper mutation"
+    },
+    "preferred": {
+      "file_path": "filesize/format.py",
+      "action": "add_keyword_arg",
+      "symbol": "binary_naturalsize",
+      "params": {
+        "keyword": "binary",
+        "value": true,
+        "callee": "naturalsize"
+      }
+    }
+  },
+  {
     "name": "packaging_pyemscripten_platform_config_var",
     "family": "platform_tag_config",
     "source_type": "git_history",

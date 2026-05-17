@@ -1644,3 +1644,58 @@ boolean literals, and AST net-count increases. Do not tune broad
 action/string/boolean weights from this single refresh. The next narrow work
 should inspect whether additional non-held-out keyword-propagation coverage or
 non-leaky cross-domain locality/context metadata is cleaner.
+
+### Boolean Keyword Coverage Follow-Up
+
+Implementation date: 2026-05-17.
+
+Decision: add independent non-held-out keyword-propagation coverage rather than
+ranker metadata. The inspection showed only two non-held-out passing
+`add_keyword_arg` examples and no positive boolean-default keyword example,
+while boolean/default keyword candidates from unrelated domains appeared as
+failing decoys in many train tasks. A cross-domain penalty would be broader and
+less direct than adding clean support for the missing repair shape.
+
+Added `humanize_binary_naturalsize_keyword` (`split: train`) in the existing
+`filesize` domain. It repairs a `binary_naturalsize` wrapper by changing:
+
+```text
+naturalsize(value) -> naturalsize(value, binary=True)
+```
+
+This uses the existing `add_keyword_arg` action and does not change action
+families, ranker metadata, broad action/string/boolean weights, or
+pass/preferred-label features.
+
+Focused verification passed:
+
+```bash
+pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q
+pytest tests/test_patching.py::test_patch_solves_humanize_binary_naturalsize_keyword -q
+```
+
+GreenShot-6 outcomes were refreshed with `--explore-after-pass 5`:
+
+| Slice | Tasks | Solved | Pass@1 | Rows | Passing rows | Preferred-positive rows |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| GreenShot-6 ranked explore | 61 | 61/61 | 44/61 | 473 | 92 | 61 |
+
+The same GreenShot-6 `split: test` held-out validation is clean again:
+
+| Slice | Plans | Solved | Pass@1 | Positive@1 | Avg first passing index |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| GreenShot-6 `split: test` holdout | 7 | 7/7 | 7/7 | 7/7 | 1.0 |
+
+Training used 553 rows, 100 passing rows, 478 training pairs, 849 features,
+and 4 margin violations.
+
+The reopened residual is resolved:
+
+| Trained rank after fix | Original rank | Passed | Preferred | Candidate | Score |
+| ---: | ---: | --- | --- | --- | ---: |
+| 1 | 1 | yes | yes | `add_keyword_arg`, `include_path=True` in `webcookies/policy.py` | 16.625162 |
+| 2 | 3 | no | no | `change_dict_value`, `count: "count" -> "example.invalid/account"` in `plotlabels/categorical.py` | 10.771752 |
+
+No further cross-domain locality metadata is justified from this state. The
+next useful inspection is the refreshed raw pass@1 misses and trained
+preferred-positive ranks.

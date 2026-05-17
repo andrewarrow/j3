@@ -854,6 +854,29 @@ def test_patch_solves_humanize_gnu_ronna_suffix(tmp_path) -> None:
     assert '"gnu": "KMGTPEZYRQ"' in result.selected.patched_source
 
 
+def test_patch_solves_humanize_binary_naturalsize_keyword(tmp_path) -> None:
+    repo = tmp_path / "greenshot_6"
+    shutil.copytree("examples/greenshot_6", repo)
+
+    result = plan_and_maybe_apply_patch(
+        repo=repo,
+        test_command="python -m pytest tests/test_filesize.py::test_binary_naturalsize_uses_binary_units",
+        dry_run=True,
+        timeout_seconds=10,
+    )
+
+    assert result.selected is not None
+    assert result.candidates_tested == 1
+    assert result.selected.file_path == "filesize/format.py"
+    assert result.selected.action.kind.value == "add_keyword_arg"
+    assert result.selected.action.params == {
+        "keyword": "binary",
+        "value": True,
+        "callee": "naturalsize",
+    }
+    assert "naturalsize(value, binary=True)" in result.selected.patched_source
+
+
 def test_patch_solves_packaging_pyemscripten_platform_config_var(tmp_path) -> None:
     repo = tmp_path / "greenshot_6"
     shutil.copytree("examples/greenshot_6", repo)

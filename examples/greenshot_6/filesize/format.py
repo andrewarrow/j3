@@ -12,6 +12,10 @@ def gnu_suffixes() -> str:
     return suffixes["gnu"]
 
 
+def binary_naturalsize(value: float | str) -> str:
+    return naturalsize(value)
+
+
 def naturalsize(
     value: float | str,
     binary: bool = False,

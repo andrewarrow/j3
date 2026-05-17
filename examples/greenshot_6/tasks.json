@@ -968,6 +968,28 @@
     }
   },
   {
+    "name": "attrs_gt_validator_docstring_operator",
+    "family": "validator_docstring",
+    "source_type": "git_history",
+    "split": "train",
+    "repo": ".",
+    "test": "python -m pytest tests/test_attrvalidators.py::test_gt_validator_docline_names_gt_operator",
+    "source": {
+      "repo": "python-attrs/attrs",
+      "commit": "3d42a6978ac60b487135db39218cfb742b100899",
+      "pr": 1423
+    },
+    "preferred": {
+      "file_path": "attrvalidators/validators.py",
+      "action": "change_literal",
+      "symbol": "gt_validator_docline",
+      "params": {
+        "from": "The validator uses `operator.ge` to compare the values.",
+        "to": "The validator uses `operator.gt` to compare the values."
+      }
+    }
+  },
+  {
     "name": "cookie_default_secure_flag_dict_value",
     "family": "mapping_value",
     "source_type": "mutation",

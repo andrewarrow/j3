@@ -1252,12 +1252,30 @@ Recent work:
   the NetworkX outcome refresh and stayed clean: solved=7/7, pass@1=7/7,
   positive@1=7/7, avg_first_passing_index=1.0. Training used 504 rows, 92
   passing rows, 436 training pairs, 826 features, and 5 margin violations.
+- GreenShot-6 now includes a thirty-fourth real-package-derived fixture domain,
+  `attrvalidators`, with one `git_history` task modeled on `python-attrs/attrs`
+  PR 1423 / commit `3d42a6978ac60b487135db39218cfb742b100899`. The task
+  `attrs_gt_validator_docstring_operator` repairs an attrs validator docstring
+  by changing `operator.ge` to `operator.gt`, using the existing
+  `change_literal` action family.
+- Focused loader/generator coverage passed for the attrs-derived task:
+  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
+  `pytest tests/test_patching.py::test_patch_solves_attrs_gt_validator_docstring_operator -q`.
+- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
+  adding `attrvalidators`. The persisted dataset now covers 55 tasks and 430
+  tested candidates. Ranked eval solved all 55 tasks with `pass@1=39/55` and
+  average candidates `7.82`; the new attrs-derived task passes at raw rank 1
+  with the preferred `change_literal` candidate.
+- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
+  the attrs outcome refresh and stayed clean: solved=7/7, pass@1=7/7,
+  positive@1=7/7, avg_first_passing_index=1.0. Training used 510 rows, 93
+  passing rows, 441 training pairs, 826 features, and 5 margin violations.
 
 Last focused verification:
 
 ```bash
 pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q
-pytest tests/test_patching.py::test_patch_solves_networkx_pydot_layout_relabelled_graph -q
+pytest tests/test_patching.py::test_patch_solves_attrs_gt_validator_docstring_operator -q
 python cli.py eval \
   --tasks examples/greenshot_6 \
   --checkpoint runs/apache-python-git/model.json \
@@ -1603,9 +1621,10 @@ Start neural/JEPA work only when:
 
 ## Handoff Recommendation
 
-The next context window should start from the post-graphlayout/NetworkX dataset
-growth, not the older taskqueue/Celery, envwrite, v13 literal-key, scipyquad, or
-raisemsg states. GreenShot-6 now has 54 tasks. The same `split: test` held-out
+The next context window should start from the post-attrvalidators/attrs dataset
+growth, not the older graphlayout/NetworkX, taskqueue/Celery, envwrite, v13
+literal-key, scipyquad, or raisemsg states. GreenShot-6 now has 55 tasks. The
+same `split: test` held-out
 validation is clean:
 solved=7/7, pass@1=7/7, positive@1=7/7, and avg_first_passing_index=1.0. Do not
 tune broad handcrafted weights or add pass/preferred-label features from this

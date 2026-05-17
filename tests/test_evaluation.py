@@ -99,7 +99,7 @@ def test_load_greenshot_6_tasks() -> None:
     tasks = load_tasks(Path("examples/greenshot_6"))
     by_name = {task.name: task for task in tasks}
 
-    assert len(tasks) == 54
+    assert len(tasks) == 55
     assert tasks[0].name == "core_metadata_version_dict_value"
     assert tasks[0].family == "mapping_value"
     assert tasks[0].source_type == "mutation"
@@ -164,6 +164,22 @@ def test_load_greenshot_6_tasks() -> None:
         "params": {
             "from": " declared as dynamic in but is defined",
             "to": ' declared as dynamic in "project.dynamic" but is defined',
+        },
+    }
+    assert by_name["attrs_gt_validator_docstring_operator"].family == (
+        "validator_docstring"
+    )
+    assert by_name["attrs_gt_validator_docstring_operator"].source_type == (
+        "git_history"
+    )
+    assert by_name["attrs_gt_validator_docstring_operator"].split == "train"
+    assert by_name["attrs_gt_validator_docstring_operator"].preferred_patch == {
+        "file_path": "attrvalidators/validators.py",
+        "action": "change_literal",
+        "symbol": "gt_validator_docline",
+        "params": {
+            "from": "The validator uses `operator.ge` to compare the values.",
+            "to": "The validator uses `operator.gt` to compare the values.",
         },
     }
     assert by_name["prettytable_missing_attribute_quote"].family == "table_legacy_attribute_error"

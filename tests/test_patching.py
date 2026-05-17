@@ -1462,6 +1462,30 @@ def test_patch_solves_networkx_pydot_layout_relabelled_graph(tmp_path) -> None:
     assert 'pydot_layout(H, prog="dot")' in result.selected.patched_source
 
 
+def test_patch_solves_attrs_gt_validator_docstring_operator(tmp_path) -> None:
+    repo = tmp_path / "greenshot_6"
+    shutil.copytree("examples/greenshot_6", repo)
+
+    result = plan_and_maybe_apply_patch(
+        repo=repo,
+        test_command=(
+            "python -m pytest "
+            "tests/test_attrvalidators.py::test_gt_validator_docline_names_gt_operator"
+        ),
+        dry_run=True,
+        timeout_seconds=10,
+    )
+
+    assert result.selected is not None
+    assert result.selected.file_path == "attrvalidators/validators.py"
+    assert result.selected.action.kind.value == "change_literal"
+    assert result.selected.action.params == {
+        "from": "The validator uses `operator.ge` to compare the values.",
+        "to": "The validator uses `operator.gt` to compare the values.",
+    }
+    assert "`operator.gt`" in result.selected.patched_source
+
+
 def test_generate_membership_operator_with_literal_needle_decoy(tmp_path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()

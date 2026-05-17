@@ -729,11 +729,34 @@ Recent work:
   no trained preferred-positive misses. For the new urllib3-derived task, the
   trained ranker places the preferred `change_literal` repair first, above the
   false `swap_call_arg` and literal decoys.
+- GreenShot-6 now includes a twelfth fixture domain, `tablefmt`, with one
+  real-package-derived `git_history` task modeled on `prettytable/prettytable`
+  PR 351 / commit `7df5d70`. The task
+  `prettytable_missing_attribute_quote` repairs a PrettyTable-style legacy
+  attribute error template by adding the missing closing quote after `{name}`,
+  using the existing `change_literal` action family.
+- Focused loader/generator coverage passed for the new PrettyTable-derived
+  task:
+  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks tests/test_patching.py::test_patch_solves_prettytable_missing_attribute_quote -q`.
+- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
+  adding `tablefmt`. The persisted dataset at
+  `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` now covers 31
+  tasks and 228 tested candidates. Ranked eval solved all 31 tasks with
+  `pass@1=22/31` and average candidates `7.35`; the new PrettyTable-derived
+  task solves at raw rank 2 with the preferred `change_literal` candidate.
+- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
+  the tablefmt outcome refresh and stayed clean: solved=7/7, pass@1=7/7,
+  positive@1=7/7. Training used 308 rows, 67 passing rows, 263 training pairs,
+  744 features, and 5 margin violations.
+- Applying the saved test-slice ranker to all refreshed GreenShot-6 rows found
+  no trained preferred-positive misses. For the new PrettyTable-derived task,
+  the trained ranker places the preferred `change_literal` repair first, above
+  the local operator and literal decoys.
 
 Last focused verification:
 
 ```bash
-pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q
+pytest tests/test_evaluation.py::test_load_greenshot_6_tasks tests/test_patching.py::test_patch_solves_prettytable_missing_attribute_quote -q
 pytest tests/test_patching.py::test_patch_solves_urllib3_getheader_warning_typo -q
 python cli.py eval \
   --tasks examples/greenshot_6 \
@@ -881,9 +904,9 @@ GreenShot-6 outcome collection result:
 
 ```text
 ranked, runs/apache-python-git/model.json, explore-after-pass=5:
-  solved=30/30 pass@1=22/30 avg_candidates=7.37
-  rows=221 passing_rows=58 preferred_positive_rows=30
-  source_type pass@1: git_history=7/12 mutation=15/18
+  solved=31/31 pass@1=22/31 avg_candidates=7.35
+  rows=228 passing_rows=59 preferred_positive_rows=31
+  source_type pass@1: git_history=7/13 mutation=15/18
 ```
 
 Treat this as a smoke check, not a benchmark claim.
@@ -902,8 +925,8 @@ GreenShot-6 test-slice ranker validation result:
 
 ```text
 train-ranker, holdout-task includes all GreenShot-6 split:test tasks:
-  training rows=301 passing_rows=66 tasks=43 plans=43 pairs=257
-  training_accuracy=1.000 margin_violations=3 features=707
+  training rows=308 passing_rows=67 tasks=44 plans=44 pairs=263
+  training_accuracy=1.000 margin_violations=5 features=744
   validation solved=7/7 pass@1=7/7 positive@1=7/7
   validation avg_first_passing_index=1.0
 ```
@@ -1090,7 +1113,7 @@ The next context window should resume dataset growth by adding another
 real-package-derived GreenShot-6 task or small fixture domain. Do not tune
 broad handcrafted weights or add pass/preferred-label features from this state.
 The current GreenShot-6 `split: test` held-out validation is clean after the
-marketdata outcome refresh.
+tablefmt outcome refresh.
 
 Immediate next sequence:
 

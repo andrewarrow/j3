@@ -464,6 +464,28 @@
     }
   },
   {
+    "name": "prettytable_missing_attribute_quote",
+    "family": "table_legacy_attribute_error",
+    "source_type": "git_history",
+    "split": "train",
+    "repo": ".",
+    "test": "python -m pytest tests/test_tablefmt.py::test_unknown_legacy_symbol_error_closes_attribute_quote",
+    "source": {
+      "repo": "prettytable/prettytable",
+      "commit": "7df5d70",
+      "pr": 351
+    },
+    "preferred": {
+      "file_path": "tablefmt/legacy.py",
+      "action": "change_literal",
+      "symbol": "resolve_legacy_symbol",
+      "params": {
+        "from": "module 'tablefmt.legacy' has no attribute '{name}",
+        "to": "module 'tablefmt.legacy' has no attribute '{name}'"
+      }
+    }
+  },
+  {
     "name": "cookie_default_secure_flag_dict_value",
     "family": "mapping_value",
     "source_type": "mutation",

@@ -99,7 +99,7 @@ def test_load_greenshot_6_tasks() -> None:
     tasks = load_tasks(Path("examples/greenshot_6"))
     by_name = {task.name: task for task in tasks}
 
-    assert len(tasks) == 30
+    assert len(tasks) == 31
     assert tasks[0].name == "core_metadata_version_dict_value"
     assert tasks[0].family == "mapping_value"
     assert tasks[0].source_type == "mutation"
@@ -143,6 +143,17 @@ def test_load_greenshot_6_tasks() -> None:
         "params": {
             "from": " declared as dynamic in but is defined",
             "to": ' declared as dynamic in "project.dynamic" but is defined',
+        },
+    }
+    assert by_name["prettytable_missing_attribute_quote"].family == "table_legacy_attribute_error"
+    assert by_name["prettytable_missing_attribute_quote"].source_type == "git_history"
+    assert by_name["prettytable_missing_attribute_quote"].preferred_patch == {
+        "file_path": "tablefmt/legacy.py",
+        "action": "change_literal",
+        "symbol": "resolve_legacy_symbol",
+        "params": {
+            "from": "module 'tablefmt.legacy' has no attribute '{name}",
+            "to": "module 'tablefmt.legacy' has no attribute '{name}'",
         },
     }
     assert by_name["http_no_store_directive_subscript_key"].preferred_patch == {

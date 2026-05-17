@@ -103,6 +103,7 @@ def test_help_menu_prints_project_summary(capsys) -> None:
     assert "train" in output
     assert "train-prompt-intents" in output
     assert "inspect-prompt-corpus" in output
+    assert "demo-prompt-jepa" in output
     assert "build-prompt-jepa-index" in output
     assert "query-prompt-jepa-index" in output
     assert "propose-from-prompt-jepa" in output
@@ -375,6 +376,146 @@ def test_inspect_prompt_corpus_command_reports_json_profile(capsys, tmp_path) ->
         (issue["field"], issue["value"])
         for issue in output["unsupported_scalar_labels"]
     } >= {("split", "holdout"), ("source_type", "test")}
+
+
+def test_demo_prompt_jepa_command_writes_local_report(capsys, tmp_path) -> None:
+    labels = tmp_path / "prompt-labels.jsonl"
+    labels.write_text(
+        "\n".join(
+            [
+                (
+                    '{"id":"train-calc","split":"train","source_type":"test",'
+                    '"task_type":"create_app","repo_mode":"new_repo",'
+                    '"domain":"calculator","prompt":"make me a simple cli calc",'
+                    '"expected":{"action":"emit_request_spec","clarify":false,'
+                    '"features":["add","subtract","multiply","divide"],'
+                    '"artifacts":["cli","tests"],"interfaces":["cli"]},'
+                    '"tags":["calculator","cli"]}'
+                ),
+                (
+                    '{"id":"train-spaceship","split":"train","source_type":"test",'
+                    '"task_type":"clarify","repo_mode":"new_repo",'
+                    '"domain":"calculator",'
+                    '"prompt":"make me a complex calc for spaceships",'
+                    '"expected":{"action":"ask_clarification","clarify":true,'
+                    '"clarification_fields":["feature_scope","operations"],'
+                    '"unsupported_requirements":["scientific_operations_unspecified"]},'
+                    '"tags":["ambiguous","calculator"]}'
+                ),
+                (
+                    '{"id":"train-power","split":"train","source_type":"test",'
+                    '"task_type":"add_feature","repo_mode":"existing_repo",'
+                    '"domain":"calculator","prompt":"add exponent support",'
+                    '"expected":{"action":"emit_existing_repo_change_spec",'
+                    '"clarify":false,"features":["power"],'
+                    '"artifacts":["calculator.py","tests"]},'
+                    '"tags":["calculator","power"]}'
+                ),
+                (
+                    '{"id":"train-todo","split":"train","source_type":"test",'
+                    '"task_type":"create_app","repo_mode":"new_repo",'
+                    '"domain":"todo_cli",'
+                    '"prompt":"build a small todo cli where I can add tasks and mark them done",'
+                    '"expected":{"action":"emit_request_spec","clarify":false,'
+                    '"features":["add_task","complete_task"],'
+                    '"artifacts":["cli","storage","tests"],"interfaces":["cli"]},'
+                    '"tags":["todo","cli"]}'
+                ),
+                (
+                    '{"id":"train-auth","split":"train","source_type":"test",'
+                    '"task_type":"clarify","repo_mode":"new_repo",'
+                    '"domain":"auth","prompt":"add auth",'
+                    '"expected":{"action":"ask_clarification","clarify":true,'
+                    '"clarification_fields":["domain"],'
+                    '"unsupported_requirements":["domain_unspecified"]},'
+                    '"tags":["auth","ambiguous"]}'
+                ),
+                (
+                    '{"id":"validation-calc","split":"validation","source_type":"test",'
+                    '"task_type":"create_app","repo_mode":"new_repo",'
+                    '"domain":"calculator","prompt":"build calculator cli",'
+                    '"expected":{"action":"emit_request_spec","clarify":false,'
+                    '"features":["add","subtract"],"artifacts":["cli"]},'
+                    '"tags":["calculator"]}'
+                ),
+                (
+                    '{"id":"test-power","split":"test","source_type":"test",'
+                    '"task_type":"add_feature","repo_mode":"existing_repo",'
+                    '"domain":"calculator","prompt":"add power operator",'
+                    '"expected":{"action":"emit_existing_repo_change_spec",'
+                    '"clarify":false,"features":["power"],"artifacts":["tests"]},'
+                    '"tags":["calculator","power"]}'
+                ),
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    out_dir = tmp_path / "demo"
+
+    assert (
+        main(
+            [
+                "demo-prompt-jepa",
+                "--labels",
+                str(labels),
+                "--out",
+                str(out_dir),
+                "--top-k",
+                "3",
+                "--embedding-dim",
+                "64",
+            ]
+        )
+        == 0
+    )
+
+    output = capsys.readouterr().out
+    report = json.loads((out_dir / "report.json").read_text(encoding="utf-8"))
+    outcome_rows = _jsonl_rows(out_dir / "outcomes.jsonl")
+
+    assert "j3 demo-prompt-jepa complete" in output
+    assert "hosted_llm_api_tokens: 0" in output
+    assert "hosted_repo_context_bytes: 0" in output
+    assert report["schema_version"] == "prompt-jepa-demo-report-v1"
+    assert report["decision"] == "demo_only_retrieval_not_wired_to_production"
+    assert report["top_k"] == 3
+    assert report["embedding_dim"] == 64
+    assert report["hosted_llm_api_tokens"] == 0
+    assert report["hosted_repo_context_bytes"] == 0
+    assert report["corpus"]["rows"] == 7
+    assert report["indexes"]["labels_index_rows"] == 7
+    assert report["indexes"]["mixed_index_rows"] == 10
+    assert (out_dir / "index.json").exists()
+    assert (out_dir / "labels-index.json").exists()
+    assert [row["record_kind"] for row in outcome_rows] == [
+        "greenshot_7_request_to_repo_attempt",
+        "greenshot_7_request_to_repo_attempt",
+        "greenshot_7_existing_repo_change_attempt",
+    ]
+    assert [row["passed"] for row in outcome_rows] == [True, False, True]
+    supported = report["generated_calculator_results"]["supported"]
+    blocked = report["generated_calculator_results"]["blocked"]
+    assert supported[0]["validation"]["status"] == "passed"
+    assert supported[1]["validation"]["status"] == "passed"
+    assert blocked[0]["status"] == "blocked"
+    assert blocked[0]["validation"]["status"] == "not_run"
+    behaviors = {
+        item["prompt"]: item["behavior"]["category"]
+        for item in report["representative_queries"]
+    }
+    assert behaviors["make me a simple cli calc"] == "supported"
+    assert behaviors["add exponent support"] == "supported"
+    assert behaviors["add auth"] == "blocked"
+    assert behaviors["build a small todo cli where I can add tasks and mark them done"] == (
+        "retrieval_only"
+    )
+    assert all(
+        proposal["mode"] == "dry_run" and proposal["applies_changes"] is False
+        for proposal in report["dry_run_proposals"]
+    )
+    assert report["artifact_sizes_bytes"]["index.json"] > 0
+    assert report["artifact_sizes_bytes"]["outcomes.jsonl"] > 0
 
 
 def test_build_prompt_jepa_index_command_writes_index(capsys, tmp_path) -> None:

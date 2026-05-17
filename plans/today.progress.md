@@ -8,27 +8,26 @@ new implementation facts change the 24-hour plan itself. Record any
 ## Status
 
 - Current phase: Prompt-JEPA developer demo and prompt corpus scale-up
-- Completed iterations: 2 for this reset; previous Prompt-JEPA index reset
+- Completed iterations: 3 for this reset; previous Prompt-JEPA index reset
   completed 8 iterations
 - Passing focused tests: `pytest tests/test_prompt_intents.py -q`;
   `pytest tests/test_cli.py -q`;
   `pytest tests/test_prompt_jepa.py -q`;
-  `python -m py_compile prompt_intents.py prompt_jepa.py cli/handlers.py cli/parser.py cli/__init__.py`;
+  `python -m py_compile prompt_jepa_demo.py prompt_jepa.py cli/handlers.py cli/parser.py cli/__init__.py`;
   `git diff --check`
-- Latest implementation commit: `0c5c51f`
+- Latest implementation commit: pending Iteration 3 commit
 - Current blocker: none
-- Next task: add a one-command Prompt-JEPA demo/report path with timings,
-  artifact sizes, representative queries, dry-run proposals, and hosted API
-  tokens `0`.
+- Next task: add a thin Python source-embedding sidecar for generated demo repos
+  using `features.embed_python_source`.
 
 ## Active Task Queue
 
 - [x] Add reproducible expanded prompt corpus under `../prompts` with clear
   provenance, stable splits, and roughly 300 to 350 total rows.
 - [x] Add a prompt corpus quality/profile command or equivalent tested path.
-- [ ] Add a one-command Prompt-JEPA demo/report path with timings, artifact
+- [x] Add a one-command Prompt-JEPA demo/report path with timings, artifact
   sizes, representative queries, dry-run proposals, and hosted API tokens `0`.
-- [ ] Generate real calculator outcome rows and build a mixed labels+records
+- [x] Generate real calculator outcome rows and build a mixed labels+records
   Prompt-JEPA demo index.
 - [ ] Add a thin Python source-embedding sidecar for generated demo repos using
   `features.embed_python_source`.
@@ -488,4 +487,38 @@ Use this shape for each worker handoff:
 - Push: succeeded to `main`
 - Next: add a one-command Prompt-JEPA demo/report path with timings, artifact
   sizes, representative queries, dry-run proposals, and hosted API tokens `0`.
+- Blockers: none.
+
+### Iteration 3: Prompt-JEPA one-command demo/report
+
+- Worker: Codex local iteration
+- Goal: add a one-command `demo-prompt-jepa` path with timings, artifact sizes,
+  representative queries, dry-run proposals, generated calculator validation,
+  blocked evidence, and hosted API tokens/context bytes `0`.
+- Files changed: `prompt_jepa_demo.py`, `cli/parser.py`, `cli/handlers.py`,
+  `cli/__init__.py`, `tests/test_cli.py`, `plans/today.progress.md`
+- Tests run: `pytest tests/test_cli.py::test_demo_prompt_jepa_command_writes_local_report -q`
+  passed; `pytest tests/test_prompt_jepa.py -q` passed with 13 tests;
+  `pytest tests/test_cli.py -q` passed with 37 tests; `python -m py_compile
+  prompt_jepa_demo.py prompt_jepa.py cli/handlers.py cli/parser.py
+  cli/__init__.py` passed; `python cli.py demo-prompt-jepa --labels
+  ../prompts/coding_agent_prompts_expanded_v0.jsonl --out
+  /tmp/j3-prompt-jepa-demo --top-k 5` passed; `python -m json.tool
+  /tmp/j3-prompt-jepa-demo/report.json >/dev/null` passed; `git diff --check`
+  passed.
+- Demo result: the expanded 320-row corpus produced a 320-row labels index and
+  a 323-row mixed labels+records index. The demo generated and validated a
+  simple calculator repo, applied and validated exponent support, recorded a
+  blocked `add auth` outcome, wrote `labels-index.json`, `index.json`,
+  `outcomes.jsonl`, and `report.json`, and printed
+  `hosted_llm_api_tokens: 0` plus `hosted_repo_context_bytes: 0`.
+- Representative behavior: `make me a simple cli calc` and
+  `add exponent support` are supported/validated calculator paths;
+  `make me a complex calc for spaceships` and the todo CLI prompt are reported
+  as retrieval-only; `add auth` is reported as blocked. Dry-run proposals remain
+  `applies_changes: false` and production routing is unchanged.
+- Commit: pending; exact hash reported by worker final response after commit.
+- Push: pending.
+- Next: add a thin Python source-embedding sidecar for generated demo repos
+  using `features.embed_python_source`.
 - Blockers: none.

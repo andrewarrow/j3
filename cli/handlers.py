@@ -45,6 +45,7 @@ from prompt_intents import (
     predict_prompt_intent,
     train_prompt_intent_token_baseline,
 )
+from prompt_jepa_demo import run_prompt_jepa_demo
 from prompt_jepa import (
     build_prompt_jepa_index_from_sources,
     compare_prompt_jepa_retrieval_modes_from_path,
@@ -467,6 +468,78 @@ def handle_inspect_prompt_corpus(args: argparse.Namespace) -> int:
     )
     print(f"missing required fields: {profile['missing_required_field_count']}")
     print(f"unsupported scalar labels: {profile['unsupported_scalar_label_count']}")
+    return 0
+
+
+def handle_demo_prompt_jepa(args: argparse.Namespace) -> int:
+    report = run_prompt_jepa_demo(
+        labels_path=args.labels,
+        out_dir=args.out,
+        top_k=args.top_k,
+        embedding_dim=args.embedding_dim,
+    )
+
+    print("j3 demo-prompt-jepa complete")
+    print(f"labels: {Path(str(report['labels']))}")
+    print(f"out: {Path(str(report['out']))}")
+    print(f"top k: {report['top_k']}")
+    corpus = report["corpus"]
+    if isinstance(corpus, dict):
+        print(f"corpus rows: {corpus['rows']}")
+        print(f"splits: {_format_counts(corpus['split_counts'])}")
+    indexes = report["indexes"]
+    if isinstance(indexes, dict):
+        print(f"labels index rows: {indexes['labels_index_rows']}")
+        print(f"mixed index rows: {indexes['mixed_index_rows']}")
+    print("timings seconds:")
+    timings = report["timings_seconds"]
+    if isinstance(timings, dict):
+        for name, seconds in sorted(timings.items()):
+            print(f"  {name}: {seconds}")
+    print("artifact sizes bytes:")
+    artifact_sizes = report["artifact_sizes_bytes"]
+    if isinstance(artifact_sizes, dict):
+        for name, size in sorted(artifact_sizes.items()):
+            print(f"  {name}: {size}")
+    print("representative prompts:")
+    for query in report["representative_queries"]:  # type: ignore[index]
+        if not isinstance(query, dict):
+            continue
+        behavior = query.get("behavior")
+        top_results = query.get("top_results")
+        top = top_results[0] if isinstance(top_results, list) and top_results else {}
+        metadata = top.get("target_metadata", {}) if isinstance(top, dict) else {}
+        category = (
+            behavior.get("category", "unknown")
+            if isinstance(behavior, dict)
+            else "unknown"
+        )
+        print(
+            "  "
+            f"{query.get('prompt')}: "
+            f"{category}; nearest={top.get('id', 'none') if isinstance(top, dict) else 'none'} "
+            f"expected_action={metadata.get('expected_action', 'unknown') if isinstance(metadata, dict) else 'unknown'}"
+        )
+    print("generated calculator validation:")
+    generated = report["generated_calculator_results"]
+    if isinstance(generated, dict):
+        for section in ("supported", "blocked"):
+            items = generated.get(section, [])
+            if not isinstance(items, list):
+                continue
+            for item in items:
+                if not isinstance(item, dict):
+                    continue
+                validation = item.get("validation", {})
+                status = validation.get("status", "unknown") if isinstance(validation, dict) else "unknown"
+                print(
+                    "  "
+                    f"{section}: {item.get('prompt')} "
+                    f"status={item.get('status')} validation={status}"
+                )
+    print(f"hosted_llm_api_tokens: {report['hosted_llm_api_tokens']}")
+    print(f"hosted_repo_context_bytes: {report['hosted_repo_context_bytes']}")
+    print(f"report: {report['report']}")
     return 0
 
 

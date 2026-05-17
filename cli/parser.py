@@ -10,6 +10,7 @@ from cli.handlers import (
     handle_build_prompt_jepa_index,
     handle_change,
     handle_compare_diagnostics,
+    handle_demo_prompt_jepa,
     handle_eval_prompt_jepa_index,
     handle_eval,
     handle_fix,
@@ -405,6 +406,43 @@ def build_parser() -> argparse.ArgumentParser:
         help="print the full corpus profile as JSON",
     )
     inspect_prompt_corpus_parser.set_defaults(handler=handle_inspect_prompt_corpus)
+
+    prompt_jepa_demo_parser = subparsers.add_parser(
+        "demo-prompt-jepa",
+        help="run the local Prompt-JEPA developer demo",
+        description=(
+            "Build a Prompt-JEPA index, run held-out retrieval eval, query "
+            "representative prompts, dry-run planner proposals, create and "
+            "validate calculator artifacts, and write a local report. This "
+            "does not call hosted LLM APIs or wire retrieval into production "
+            "routing."
+        ),
+    )
+    prompt_jepa_demo_parser.add_argument(
+        "--labels",
+        type=Path,
+        required=True,
+        help="prompt-intent JSONL labels to index and evaluate",
+    )
+    prompt_jepa_demo_parser.add_argument(
+        "--out",
+        type=Path,
+        required=True,
+        help="output directory for demo artifacts and report.json",
+    )
+    prompt_jepa_demo_parser.add_argument(
+        "--top-k",
+        type=int,
+        default=5,
+        help="retrieval/proposal cutoff for representative prompts (default: 5)",
+    )
+    prompt_jepa_demo_parser.add_argument(
+        "--embedding-dim",
+        type=int,
+        default=256,
+        help="hashed context/target embedding dimension (default: 256)",
+    )
+    prompt_jepa_demo_parser.set_defaults(handler=handle_demo_prompt_jepa)
 
     prompt_jepa_build_parser = subparsers.add_parser(
         "build-prompt-jepa-index",

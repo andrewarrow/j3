@@ -1,71 +1,475 @@
 # j3 Current Plan
 
-This file is the live handoff for the next context window. Keep it compact.
-Move long design notes into focused markdown files if they grow.
+This file is the live handoff for the project. Keep it current and remove stale
+status. Move long experiments, raw metrics, and hard-negative notes into focused
+markdown files instead of letting this plan become a changelog.
 
-## Long-Term Goal
+## Table of Contents
 
-Build a local-first, no-LLM Python coding agent that can repair and improve
-repositories by choosing structured edits, predicting their consequences,
-validating with tools, and iterating toward passing tests.
+- [Goal](#goal)
+- [Definition of No-LLM](#definition-of-no-llm)
+- [Core Thesis](#core-thesis)
+- [What Must Exist for Codex-Level Editing](#what-must-exist-for-codex-level-editing)
+- [Current Reality](#current-reality)
+- [Strategic Correction](#strategic-correction)
+- [System Architecture](#system-architecture)
+  - [1. Prompt and Intent Layer](#1-prompt-and-intent-layer)
+  - [2. Goal Specification Layer](#2-goal-specification-layer)
+  - [3. Repo and Observation Layer](#3-repo-and-observation-layer)
+  - [4. Structured Action Layer](#4-structured-action-layer)
+  - [5. Candidate Ranking Layer](#5-candidate-ranking-layer)
+  - [6. JEPA Transition Layer](#6-jepa-transition-layer)
+  - [7. Planning and Validation Layer](#7-planning-and-validation-layer)
+- [Prompt Understanding Track](#prompt-understanding-track)
+  - [Coding-Agent English](#coding-agent-english)
+  - [Implicit Requirement Expansion](#implicit-requirement-expansion)
+  - [Clarification Policy](#clarification-policy)
+  - [Prompt-to-Spec Schema](#prompt-to-spec-schema)
+  - [Prompt Data We Need](#prompt-data-we-need)
+  - [Prompt Data Sources](#prompt-data-sources)
+  - [Prompt Data Quality Rules](#prompt-data-quality-rules)
+- [Repair and Ranking Track](#repair-and-ranking-track)
+  - [Current Repair Capabilities](#current-repair-capabilities)
+  - [Current GreenShot Signal](#current-greenshot-signal)
+  - [Repair Data We Need](#repair-data-we-need)
+- [Greenfield Editing Track](#greenfield-editing-track)
+  - [Why This Exists](#why-this-exists)
+  - [Greenfield Actions](#greenfield-actions)
+  - [GreenShot-7 Request-to-Repo Ladder](#greenshot-7-request-to-repo-ladder)
+- [Model Tracks](#model-tracks)
+  - [Non-Neural Baselines](#non-neural-baselines)
+  - [Trainable Prompt Encoder](#trainable-prompt-encoder)
+  - [Trainable Candidate Ranker](#trainable-candidate-ranker)
+  - [Repo-State Encoder](#repo-state-encoder)
+  - [JEPA Repo-Transition Model](#jepa-repo-transition-model)
+  - [Planning Policy](#planning-policy)
+- [Evaluation Standards](#evaluation-standards)
+  - [Repair Evaluation](#repair-evaluation)
+  - [Prompt Understanding Evaluation](#prompt-understanding-evaluation)
+  - [Greenfield Evaluation](#greenfield-evaluation)
+  - [Benchmark Reporting](#benchmark-reporting)
+- [Immediate Next Step](#immediate-next-step)
+- [Next Queue](#next-queue)
+- [Stop Conditions](#stop-conditions)
 
-The intended path is:
+## Goal
 
-1. Reliable structured patch generation.
+Build a local, no-LLM Python coding agent that can eventually edit, repair,
+refactor, and improve Python repositories at Codex-level quality. The target is
+not autocomplete and not a patch-template toy. The target is an agent that can
+read a repo, understand a user request or failing observation, choose structured
+edits, predict their consequences, validate with tools, and iterate toward
+correct code without asking a large language model to write candidate patches.
+
+The long-term bar is intentionally high: become as good at Python code editing
+as Codex running a frontier GPT-5.5-style model with high reasoning effort. The
+path is staged:
+
+1. Reliable structured repair.
 2. Strong candidate-outcome data from real repair attempts.
-3. A trainable candidate ranker that beats handcrafted hint ordering on held-out
-   tasks.
-4. A repo-state and transition model that predicts which structured edit should
-   move the repo toward a better observed state.
-5. A bounded planning policy that can make multi-step repairs without free-form
-   patch generation.
+3. User-prompt understanding for the subset of English used to ask coding agents
+   for changes or new code.
+4. Greenfield structured editing for new files, tests, and project scaffolds.
+5. Trainable ranking and repo-state models.
+6. A JEPA-style repo-transition planner that predicts which structured edit
+   moves the repo toward the requested target state.
 
-Do not start the main neural/JEPA track until the benchmark and outcome data can
-separate missing actions, weak observations, bad ranking, and weak planning.
+## Definition of No-LLM
+
+No-LLM does not mean no learned language encoder. It means:
+
+- Do not ask a large autoregressive language model to write candidate patches.
+- Do not depend on free-form source generation as the core editing mechanism.
+- Do use local structured models that encode prompts, repo state, observations,
+  actions, and outcomes.
+- Do let models rank, predict, classify, retrieve, and plan over structured
+  records.
+
+The desired system can read natural-language coding requests, but it should turn
+them into structured goal specs and structured actions rather than sampling raw
+source code.
+
+## Core Thesis
+
+LLM coding agents are powerful because they combine language understanding,
+repo reading, patch generation, and tool feedback. j3 should split those skills
+into explicit local components:
+
+```text
+user prompt or tool observation
+  -> normalized goal / observation record
+  -> repo-state representation
+  -> structured candidate actions
+  -> predicted consequence
+  -> validation
+  -> next action or stop
+```
+
+The JEPA claim is not proven by repairing small literals. It is only credible if
+j3 learns to represent desired repo transitions and choose actions that move the
+repo toward them, including when the desired state starts as user intent rather
+than a failing pytest assertion.
+
+## What Must Exist for Codex-Level Editing
+
+j3 eventually needs all of these capabilities:
+
+- Prompt understanding for coding-agent English.
+- Repo understanding across files, imports, functions, classes, tests, config,
+  package metadata, and docs.
+- Structured actions for repair, refactor, creation, deletion, and test edits.
+- Candidate generation that is broad enough to contain the right edit.
+- Ranking that puts correct and preferred candidates early.
+- Validation with tests, type checks, lint, import checks, and hidden behavior
+  checks when available.
+- Multi-step planning when one edit exposes the next needed edit.
+- Ambiguity handling: infer common defaults when confidence is high, ask a
+  clarification when confidence is low.
+- Data splits that prove generalization across repos, task families, and prompt
+  phrasings.
+
+## Current Reality
+
+The current codebase is strongest as a structured Python repair prototype.
+
+Known useful pieces:
+
+- `j3 eval` can run ranked repair attempts and write candidate outcome JSONL.
+- Diagnostics record tested candidates, first passing index, passing candidates,
+  failure hints, target context, and preferred patch labels.
+- `train-ranker` can train from candidate outcome rows and validate held-out
+  tasks or families.
+- GreenShot-5 reached a 20-task ladder around multi-file repair, helper/API
+  boundaries, imports, warnings, config constants, dictionary keys, signature
+  propagation, and bounded multi-step repair.
+- GreenShot-6 currently has 69 tasks in the worktree:
+  - 48 `git_history`
+  - 21 `mutation`
+  - 50 `train`, 5 `test`, and 14 tasks with legacy deterministic split
+    assignment.
+- GreenShot-6 is useful real-package-derived signal, but it is skewed toward
+  small existing-file repairs:
+  - 39 `change_literal`
+  - 14 `change_dict_value`
+  - 6 `change_operator`
+  - 3 `add_keyword_arg`
+  - 2 `swap_call_arg`
+  - 1 each for `change_dict_key`, `change_subscript_key`,
+    `change_module_constant`, `modify_condition`, and `rename_symbol`.
+
+This is necessary foundation work. It is not enough for the full goal.
 
 ## Strategic Correction
 
-GreenShot-5 was useful for tightening the repair loop. It is now too easy to
-make progress look better by adding one handcrafted task and one handcrafted
-action at a time.
+The project is on track for a repair engine, but not yet on track for a
+Codex-level coding agent. The missing first-class track is user intent.
 
-The next phase should shift from toy ladder growth to held-out real-repo signal.
-GreenShot-6 is useful now, but still narrow: it has package-metadata mutations
-and one git-history-derived task inside one local `pkgmeta` fixture. Treat it as
-the start of real-derived evaluation, not evidence of broad package repair.
+Example:
 
-Default next move:
+```text
+make me a simple cli python app that's a basic calculator, it should let the
+user add two numbers, subtract, etc.
+```
 
-- Prefer mutation-generated and git-history-derived tasks from real repos.
-- Prefer dataset and validation tooling over broad action expansion.
-- Add a new action only when a held-out task proves the candidate is missing.
-- Improve hints/ranking when the right candidate exists but is late.
+The string `etc.` cannot be solved from Python AST repair data alone. A coding
+agent must infer that a "basic calculator" commonly includes add, subtract,
+multiply, and divide. That inference is prompt understanding plus product/task
+prior. It should become a structured prediction:
 
-## Current State
+```json
+{
+  "task_type": "new_python_cli_app",
+  "domain": "calculator",
+  "features": ["add", "subtract", "multiply", "divide"],
+  "interface": "interactive_cli",
+  "arity": 2
+}
+```
 
-Implemented repair loop capabilities:
+Then structured editing can take over.
 
-- `j3 eval` supports ranked, baseline, and both phases.
-- Eval output is task-level by default; candidate logs are behind `--verbose`.
-- Eval diagnostics record tested candidates, passing candidates, first passing
-  index, skipped phases, failure hints, target context, and exploration rows.
-- `j3 eval --candidate-outcomes PATH` writes one row per tested candidate.
-- `train-ranker` consumes diagnostics and candidate-outcome JSONL directly.
-- `train-ranker` supports held-out task names and task families from the same
-  input sources.
-- Candidate outcome rows carry compact failure hints, target context, preferred
-  patch labels, task families, source types, stable splits, language, scores,
-  pass labels, diff-size fields, and edit-locality fields.
-- Eval diagnostics aggregate pass@1 by action, task family, and source type.
-- `j3 outcome-summary` summarizes candidate outcome JSONL datasets by rows,
-  tasks, families, source types, splits, actions, preferred positives, average
-  candidates, and pass@1 slices.
-- The patching code is split under `repair/patching/`; root `patching.py` is a
-  compatibility shim.
-- The planner supports bounded multi-step repair when a candidate changes the
-  observed failure and exposes the next repair.
+Near-term correction:
 
-Implemented action families:
+- Stop treating GreenShot-6 growth alone as evidence of long-term progress.
+- Keep GreenShot-6 as the repair/ranking regression gate.
+- Start GreenShot-7 as request-to-repo work.
+- Add prompt/spec data and greenfield actions before adding many more typo-like
+  `change_literal` tasks.
+
+## System Architecture
+
+### 1. Prompt and Intent Layer
+
+Input:
+
+- User request.
+- Optional repo context.
+- Optional tool failure.
+- Optional existing tests, README, issues, or examples.
+
+Output:
+
+- Structured task spec.
+- Confidence scores.
+- Ambiguity fields.
+- Optional clarification action.
+
+### 2. Goal Specification Layer
+
+The task spec is the contract between natural language and code editing. It
+should describe what must exist after editing without containing raw source.
+
+Examples:
+
+- Create a Python CLI app.
+- Add a feature to an existing module.
+- Fix a failing behavior.
+- Refactor without behavior change.
+- Add tests for an existing function.
+- Update package metadata.
+
+### 3. Repo and Observation Layer
+
+Normalize repo state and observations:
+
+- Files, packages, imports, symbols, functions, classes, calls.
+- Tests, entrypoints, configs, docs, examples.
+- Pytest, mypy, ruff, traceback, stdout/stderr, and assertion hints.
+- Prompt-derived desired behavior.
+
+User prompts are observations too. A request like "basic calculator" is a
+target-state observation, not a test failure.
+
+### 4. Structured Action Layer
+
+Actions must be typed and inspectable:
+
+- Existing repair actions mutate AST or structured text.
+- Greenfield actions create files, functions, tests, CLI entrypoints, config,
+  package metadata, and docs.
+- Refactor actions preserve behavior while changing names, modules, or APIs.
+
+Actions should remain machine-readable so ranking, JEPA prediction, validation,
+and explanation can all consume them.
+
+### 5. Candidate Ranking Layer
+
+Rank candidates by predicted utility:
+
+- Does the action match the prompt/spec?
+- Does it address the failing observation?
+- Is the target local to the relevant repo graph?
+- Does the action produce a preferred patch when multiple patches pass?
+- Is the action small enough and semantically plausible?
+
+### 6. JEPA Transition Layer
+
+The JEPA state should include repo, request/spec, observations, and action
+history:
+
+```text
+s(repo, request_spec, observations, history) + a(edit) -> predicted next state
+```
+
+The model should predict whether an action moves the repo toward the requested
+target state before running expensive validation.
+
+### 7. Planning and Validation Layer
+
+The planner should:
+
+- Propose bounded candidate actions.
+- Use ranker and JEPA predictions to choose candidates.
+- Apply one or more structured edits.
+- Run selected validation.
+- Reparse observations.
+- Continue, ask a clarification, or stop.
+
+## Prompt Understanding Track
+
+### Coding-Agent English
+
+j3 does not need all of English. It needs the subset people use when asking a
+coding agent for code changes.
+
+This subset includes:
+
+- Creation verbs: make, create, build, scaffold, add, implement.
+- Repair verbs: fix, debug, make pass, handle, support.
+- Refactor verbs: rename, split, extract, clean up, move, simplify.
+- Test verbs: add tests, cover, assert, reproduce.
+- Artifact nouns: CLI, API, script, package, module, class, function, test,
+  config, README, pyproject, endpoint.
+- Behavior nouns: calculator, parser, cache, validator, serializer, logger.
+- Constraints: simple, basic, local-only, no dependencies, type hints, async,
+  backwards compatible.
+- Implied scope words: etc., basic, usual, standard, CRUD, REST, auth, config.
+- Acceptance phrases: should let the user, when I run, returns, prints, raises.
+
+### Implicit Requirement Expansion
+
+Some words imply conventional defaults. j3 should learn these as structured
+priors, not hard-code every phrase forever.
+
+Examples:
+
+- "basic calculator" usually implies add, subtract, multiply, divide.
+- "simple CLI app" usually implies an executable entrypoint, argument parsing or
+  an interactive loop, help text, and stdout behavior.
+- "CRUD API" usually implies create, read, update, delete operations.
+- "add auth" is ambiguous and should often ask a clarification unless repo
+  conventions strongly imply the method.
+- "etc." should expand only when the domain has a high-confidence canonical set.
+
+The model output should include confidence and source of inference:
+
+```json
+{
+  "inferred": [
+    {
+      "field": "features",
+      "value": ["multiply", "divide"],
+      "reason": "basic_calculator_default_operations",
+      "confidence": 0.86
+    }
+  ]
+}
+```
+
+### Clarification Policy
+
+When confidence is high, infer and proceed. When confidence is low, ask a short
+clarifying question instead of fabricating requirements.
+
+Examples:
+
+- Proceed: "basic calculator" -> add/subtract/multiply/divide.
+- Ask: "add auth" in an empty repo -> password, OAuth, token, or session?
+- Ask: "make it better" -> no concrete target.
+- Proceed with local convention: "add another endpoint like the existing one"
+  when route patterns and tests make the target clear.
+
+Clarification is a structured action:
+
+```json
+{"action": "ask_clarification", "field": "auth_method", "options": [...]}
+```
+
+### Prompt-to-Spec Schema
+
+Create a versioned request spec schema. Initial fields:
+
+- `schema_version`
+- `request_text`
+- `task_type`
+- `language`
+- `repo_mode`: `new_repo`, `existing_repo`, `unknown`
+- `domain`
+- `artifacts`
+- `features`
+- `interfaces`
+- `constraints`
+- `acceptance_tests`
+- `hidden_eval_expectations`
+- `clarifications_needed`
+- `inferred_defaults`
+- `confidence`
+- `source_type`
+- `split`
+
+Calculator example:
+
+```json
+{
+  "schema_version": "request-spec-v1",
+  "task_type": "create_app",
+  "language": "python",
+  "repo_mode": "new_repo",
+  "domain": "calculator",
+  "artifacts": ["calculator.py", "tests/test_calculator.py"],
+  "features": ["add", "subtract", "multiply", "divide"],
+  "interfaces": [{"kind": "cli", "style": "interactive_or_argparse"}],
+  "constraints": ["simple", "two_number_operations"],
+  "acceptance_tests": [
+    {"operation": "add", "inputs": [2, 3], "expected": 5},
+    {"operation": "subtract", "inputs": [5, 2], "expected": 3},
+    {"operation": "multiply", "inputs": [4, 3], "expected": 12},
+    {"operation": "divide", "inputs": [8, 2], "expected": 4}
+  ],
+  "inferred_defaults": [
+    {"field": "features", "value": ["multiply", "divide"], "confidence": 0.86}
+  ],
+  "clarifications_needed": []
+}
+```
+
+### Prompt Data We Need
+
+Training should cover prompt-to-spec, spec-to-plan, and plan-to-repo outcomes:
+
+- Prompt -> structured task spec.
+- Prompt + repo summary -> structured task spec.
+- Prompt + repo_before -> action sequence.
+- Prompt + repo_before -> repo_after latent target.
+- Prompt + spec -> hidden behavioral tests.
+- Prompt pairs with similar wording but different desired behavior.
+- Ambiguous prompts labeled with the clarification that should be asked.
+
+This is not general natural-language training. It is coding-agent request
+language aligned to repo changes.
+
+### Prompt Data Sources
+
+Use multiple sources and tag every record with provenance.
+
+1. Hand-authored seed tasks.
+   - Write small, precise prompts for CLI apps, library functions, config
+     changes, tests, docs, refactors, and bug fixes.
+   - Include vague variants with `etc.`, `simple`, `basic`, and missing details.
+
+2. Public issue/PR pairs.
+   - Link issue text or PR description to repo-before and accepted diff.
+   - Extract structured labels: task type, files touched, action kinds, tests.
+   - Use only data whose license and terms permit local training.
+
+3. Commit messages plus diffs.
+   - Useful when issue text is absent.
+   - Lower quality for prompt understanding, but useful for transition modeling.
+
+4. README and docs examples.
+   - Examples imply expected behavior.
+   - Useful for "make a CLI like this" and API usage tasks.
+
+5. Coding benchmark prompts.
+   - Use for prompt-to-behavior and hidden-test evaluation.
+   - Prefer repo-edit benchmarks over single-function-only tasks.
+
+6. Synthetic prompt/spec pairs from deterministic templates.
+   - Good for bootstrapping schema coverage.
+   - Must be marked synthetic and held out separately from real user-like text.
+
+7. Local human-authored prompts.
+   - Build a small curated set of prompts people would actually type into a
+     coding agent.
+   - Include shorthand, typos, ambiguity, and domain assumptions.
+
+### Prompt Data Quality Rules
+
+- Store raw prompt, normalized spec, repo-before hash, repo-after hash, and
+  validation command.
+- Keep stable splits by repo, domain, and prompt family.
+- Do not train and test on paraphrases of the same exact task.
+- Track whether defaults were explicit, inferred, or ambiguous.
+- Include negative examples where a tempting inference is wrong.
+- Include clarification examples, not only successful direct edits.
+- Do not use exact prompt strings as ranker features for held-out claims.
+- Keep licensing and source provenance in the dataset.
+
+## Repair and Ranking Track
+
+### Current Repair Capabilities
+
+Implemented action families include:
 
 - `replace_expr`
 - `insert_guard`
@@ -88,1559 +492,190 @@ Implemented action families:
 - `modify_condition`
 - `propagate_signature`
 
-Implemented observation/hint parsing:
+Observation parsing includes pytest failed nodes, assertion comparisons, numeric
+deltas, traceback frames, import/name/attribute/key/type errors, mypy, ruff, and
+selected pytest warning strings.
 
-- Pytest failed node ids.
-- Assertion comparisons and numeric deltas.
-- Pytest `AssertionError: assert ... == ...` comparison lines.
-- Traceback files, lines, and function frame context.
-- `NameError`, `ImportError`, `ModuleNotFoundError`, `AttributeError`,
-  `KeyError`, and TypeError argument names.
-- Mypy and ruff diagnostics.
-- Pytest warning `match=...` strings.
+### Current GreenShot Signal
 
-Recent work:
+Treat current GreenShot numbers as repair-loop smoke checks, not benchmark proof
+of broad coding competence.
 
-- GreenShot-5 reached 20 tasks.
-- GreenShot-6 now has 5 package-metadata mutation tasks using existing action
-  families.
-- GreenShot-6 now includes its first git-history-derived held-out repair task,
-  modeled on `pypa/pyproject-metadata` commit `604d388`, for a wrong
-  `project.readme.file` validation error key.
-- GreenShot-6 now includes three additional git-history-derived held-out repair
-  tasks: a `pypa/pyproject-metadata` dynamic-field error-message repair
-  modeled on commit `a52c477`, plus `psf/cachecontrol` no-store and Range-header
-  cache behavior repairs modeled on commits `a954e24` and `4e267a8`.
-- GreenShot-6 now includes a second fixture domain, `httpcache`, with 5
-  mutation-derived HTTP cache/header tasks using existing action families:
-  subscript-key repair, inclusive status-code boundary, dictionary value,
-  swapped call arguments, and keyword propagation.
-- Task manifests support `source_type`, defaulting to `handcrafted`.
-- `change_dict_value` now covers dictionary literal value repairs.
-- String literal alternatives now handle structured shared prefixes such as
-  MIME-style values (`text/plain` -> `text/markdown`).
-- String assertion comparisons rank the preferred dictionary-value edit at rank
-  1.
-- Planner failure signatures now normalize parsed list/dict assertion values
-  before using them for loop detection.
-- Candidate outcome rows now include `language`, diff line counts, edit line
-  spans/deltas, replacement lines, and target locality; ranker features consume
-  this metadata from both live candidates and persisted rows.
-- Candidate outcome rows now include compact before/after Python AST delta
-  metadata: parse status, added/removed AST feature maps, and aggregate delta
-  counts. Ranker features consume the same AST deltas from both live candidates
-  and persisted rows.
-- Candidate outcome rows now include candidate relation metadata: equivalent
-  candidate ranks, overlapping edit-span ranks, and passing-candidate subsets
-  for both relation types.
-- `j3 outcome-summary` covers candidate outcome JSONL files by rows, tasks,
-  families, source types, splits, actions, preferred positives, average
-  candidates, and pass@1 slices.
-- GreenShot-5 candidate outcomes were collected with `--explore-after-pass 5`
-  at `runs/apache-python-git/greenshot-5-candidate-outcomes.jsonl`.
-- Task manifests now support explicit `split` metadata; missing splits are
-  assigned deterministically from task identity and are written to diagnostics
-  and candidate outcome rows.
-- A current GreenShot-6 smoke run solves all 11 tasks, but pass@1 is 8/11. The
-  non-pass@1 tasks are useful ranking signal rather than missing-action signal:
-  inclusive operator boundary passes at rank 2, Apache classifier
-  dictionary-value repair passes at rank 5, and HTTP `no-store` subscript-key
-  repair passes at rank 19.
-- GreenShot-6 candidate outcomes were collected with `--explore-after-pass 5`
-  at `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl`.
-- Combined GreenShot-5 and GreenShot-6 candidate outcomes were used to train
-  the candidate ranker with `http_cache_directive` held out as a task-family
-  validation slice. The held-out plan solved but did not pass at rank 1
-  (`pass@1=0/1`, average first passing index 5.0), confirming it is useful
-  ranking signal for the next hard-negative inspection.
-- GreenShot-6 hard negatives for `http_cache_directive`, `mapping_value`, and
-  `operator_boundary` were inspected and summarized in `HARD_NEGATIVES.md`.
-  The issue is ranking signal, not missing actions: the correct candidates
-  exist, but local same-score decoys and multiple passing operator repairs need
-  richer metadata before ranker feature changes.
-- Candidate ranker feature extraction now consumes non-leaky equivalent and
-  overlapping candidate relation metadata from persisted outcome rows: relation
-  counts, before/after rank direction, and closest rank-distance buckets. The
-  feature version is `candidate-diagnostics-v5`.
-- A fresh temporary GreenShot-6 outcome collection with current AST delta and
-  relation metadata still solved all 11 tasks with pass@1 8/11. Training on
-  GreenShot-5 plus the fresh GreenShot-6 rows with `http_cache_directive` held
-  out produced 519 features and reduced margin violations from 6 to 3, but the
-  held-out task still did not pass at rank 1 (`pass@1=0/1`, positive@1=0/1).
-  Relation metadata alone is not enough for the HTTP `no-store` hard negative.
-- Candidate target context now records when a subscript-key candidate writes to
-  a local mapping returned by the target function, including whether the old or
-  replacement key matches an existing returned-mapping initializer key. Pytest
-  failure hints now also record asserted mapping subscript keys from assertion
-  source lines. Candidate ranker features consume both signals from live
-  candidates and persisted outcome rows. The feature version is
-  `candidate-diagnostics-v7`.
-- A fresh GreenShot-6 outcome collection with the new mapping-key observation
-  signal still solved all 11 tasks with pass@1 8/11. Training on GreenShot-5
-  plus the fresh GreenShot-6 rows with `http_cache_directive` held out produced
-  523 features and ranked the held-out HTTP `no-store` repair first
-  (`pass@1=1/1`, `positive@1=1/1`).
-- A current GreenShot-6 ranked smoke run solves all 14 tasks, including 4
-  git-history-derived tasks (`pass@1=9/14`, average candidates 3.00). The new
-  dynamic-field error-message task passes at rank 4, and the new Range-header
-  cache bypass task passes at rank 3, providing additional ranking signal
-  without adding action families.
-- GreenShot-6 candidate outcomes were refreshed with `--explore-after-pass 5`
-  after adding the 4 git-history-derived tasks. The persisted dataset at
-  `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` now covers 14
-  tasks and 110 tested candidates.
-- GreenShot-6 now includes a third fixture domain, `webcookies`, with 5
-  mutation-derived cookie policy/rendering tasks using existing action families:
-  dictionary value repair, inclusive max-age boundary, swapped call arguments,
-  and keyword propagation. The new tasks are explicitly marked `split: test`.
-- A focused GreenShot-6 ranked smoke run with
-  `runs/apache-python-git/model.json`, without outcome exploration, solves all
-  19 tasks (`pass@1=13/19`, average candidates 2.42).
-- GreenShot-6 candidate outcomes were refreshed with `--explore-after-pass 5`
-  after adding the 5 `webcookies` held-out mutation tasks. The persisted dataset
-  at `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` now covers
-  19 tasks and 141 tested candidates.
-- Refreshed GreenShot-5 and GreenShot-6 candidate outcomes were used for a
-  GreenShot-6 `split: test` held-out ranker validation slice that includes all
-  5 new `webcookies` tasks. The trained ranker solved all 7 held-out plans, but
-  pass@1 was 5/7 and positive@1 was 4/7. The old Apache classifier miss now
-  ranks first; the remaining held-out pass@1 misses are
-  `cookie_default_secure_flag_dict_value` and
-  `cookie_scope_include_path_keyword`, with an additional non-preferred passing
-  candidate ranked first for `http_no_store_response_with_etag`.
-- GreenShot-6 raw pass@1 misses are not concentrated only in the new cookie
-  domain: 6/19 tasks miss pass@1, split as `git_history=2/4` and
-  `mutation=4/15`, and by split as `test=2/7`, `train=3/9`,
-  `validation=1/3`. The new `webcookies` tasks account for 1 raw GreenShot-6
-  miss, while existing HTTP/cache hard negatives and git-history literal/message
-  repairs remain important ranking signal. Details are in `HARD_NEGATIVES.md`.
-- The held-out GreenShot-6 test-slice ranker misses were inspected. The next
-  narrow change should target same-mapping value/key decoys: the clearest miss
-  is `cookie_default_secure_flag_dict_value`, where the trained ranker promotes
-  a false `change_dict_key` candidate over the preferred `change_dict_value`
-  edit even though the assertion names the `secure` lookup key. Details are in
-  `HARD_NEGATIVES.md`.
-- Same-mapping asserted-key metadata was implemented for dictionary literal
-  value/key candidates: target context now records the dictionary keys plus
-  whether a candidate changes the value for an asserted key or renames/removes
-  that asserted key in the same mapping. Candidate ranker features consume the
-  metadata from both live candidates and persisted outcome rows. Focused
-  candidate-ranking tests passed.
-- GreenShot-6 outcomes were refreshed after the same-mapping metadata change,
-  then the GreenShot-6 `split: test` held-out ranker validation was rerun. The
-  validation stayed at solved=7/7, pass@1=5/7, positive@1=4/7, and
-  avg_first_passing_index=1.29. `cookie_default_secure_flag_dict_value` still
-  did not move to preferred rank 1; the false `change_dict_key` candidate
-  remains above the preferred `change_dict_value` candidate after training.
-- The residual `cookie_default_secure_flag_dict_value` same-mapping decoy was
-  inspected after the metadata change. The rows contain the new same-mapping
-  features, but the false `change_dict_key secure -> __Secure-` candidate still
-  scores 0.160615 above the preferred `change_dict_value secure: True -> False`
-  candidate because broad string-parameter features and boolean-parameter
-  penalties outweigh the sparse same-mapping weights. Details are in
-  `HARD_NEGATIVES.md`.
-- The exact same-mapping asserted-key assertion-value delta feature was added
-  for dictionary value edits. Candidate ranker features now emit
-  `same_mapping_asserted_key_value_matches_assertion_delta` when a
-  same-mapping asserted-key `change_dict_value` candidate changes its `from`
-  value from the observed assertion actual to the assertion expected value.
-  The feature is computed for both live candidates and persisted outcome rows.
-  The feature version is `candidate-diagnostics-v9`.
-- Focused ranker and candidate-outcome tests passed after the exact assertion
-  delta feature:
-  `pytest tests/test_candidate_ranking.py -q` and
-  `pytest tests/test_evaluation.py::test_write_candidate_outcomes_jsonl_records_one_row_per_tested_candidate -q`.
-- GreenShot-6 `split: test` held-out ranker validation improved to
-  solved=7/7, pass@1=6/7, positive@1=5/7. The specific residual target
-  `cookie_default_secure_flag_dict_value` now ranks the preferred
-  `change_dict_value secure: True -> False` candidate first. Remaining issues:
-  `cookie_scope_include_path_keyword` is still a pass@1 miss, and
-  `http_no_store_response_with_etag` still has a non-preferred passing
-  `swap_call_arg` candidate at rank 1 while the preferred repair is rank 3.
-- The two remaining GreenShot-6 `split: test` held-out issues were inspected in
-  the saved outcome rows and trained ranker scores. Details are in
-  `HARD_NEGATIVES.md`. `cookie_scope_include_path_keyword` is primarily missing
-  preferred-candidate signal: the preferred `add_keyword_arg(include_path=True)`
-  is not present in the tested rows, and the only passing tested row is an
-  accidental helper-level `modify_condition` repair. The tested-candidate
-  ranking also shows weak call-target metadata because a false `swap_call_arg`
-  at the hinted function outranks the downstream helper edit. For
-  `http_no_store_response_with_etag`, all tested candidates pass; the issue is
-  accidental-pass/preferred-positive ranking, where a `swap_call_arg` of
-  `headers.get("cache-control", "")` outranks the preferred local
-  `change_operator` repair. The smallest non-leaky next metadata signal is
-  call-site argument-role metadata for `swap_call_arg`, including whether a
-  swap breaks callee parameter-name alignment or swaps mapping `.get` key and
-  default roles.
-- Call-site argument-role metadata was implemented for `swap_call_arg`
-  candidates. Target context now records whether a swap repairs, preserves, or
-  breaks callee parameter-name alignment when the local/imported callee
-  signature is known, and records mapping `.get` key/default role swaps when
-  detectable. Candidate ranker features consume this metadata from both live
-  candidates and persisted outcome rows. The feature version is
-  `candidate-diagnostics-v10`.
-- Focused ranker and candidate-outcome coverage passed for the v10 call-site
-  metadata:
-  `pytest tests/test_candidate_ranking.py -q` and
-  `pytest tests/test_evaluation.py::test_write_candidate_outcomes_jsonl_records_one_row_per_tested_candidate tests/test_evaluation.py::test_write_candidate_outcomes_preserves_swap_call_role_metadata -q`.
-- GreenShot-6 outcomes were refreshed after the v10 call-site metadata change,
-  then the GreenShot-6 `split: test` held-out ranker validation was rerun. The
-  validation stayed at solved=7/7, pass@1=6/7, positive@1=5/7, and
-  avg_first_passing_index=1.1428571428571428. The HTTP preferred-positive rank
-  did not improve: for `http_no_store_response_with_etag`, the preferred
-  `change_operator` repair remains trained rank 3 while the non-preferred
-  passing `.get` `swap_call_arg` remains rank 1. `cookie_scope_include_path_keyword`
-  still lacks the preferred `add_keyword_arg(include_path=True)` candidate in
-  the tested rows.
-- The v10 feature/weight support for the residual held-out rows was inspected.
-  The `.get` key/default role-swap metadata is present on the held-out HTTP
-  row, but has no non-held-out GreenShot-5/6 coverage and learned zero weight.
-  The name-alignment metadata has sparse but usable coverage: breaking
-  alignment learned a combined `-0.5` contribution, while repairing alignment
-  learned `+1.0`. The HTTP residual is therefore partly missing independent
-  `.get` role-swap hard-negative coverage, and partly weak preferred-operator
-  context: the preferred `change_operator` row is still dragged down by broad
-  AST/operator-delta weights and lacks richer non-leaky predicate metadata.
-  Details are in `HARD_NEGATIVES.md`.
-- The `add_keyword_arg` candidate generator now records local callee literal
-  defaults and narrowly synthesizes missing boolean default keywords by adding
-  the opposite boolean value when no outer pass-through parameter exists. This
-  generates the preferred `add_keyword_arg(include_path=True)` candidate for
-  `cookie_scope_include_path_keyword` without adding a new action family and
-  without changing existing pass-through keyword behavior.
-- Focused coverage passed for both keyword paths:
-  `pytest tests/test_patching.py::test_generate_missing_keyword_argument_passthrough_candidate tests/test_patching.py::test_generate_missing_boolean_default_keyword_candidate tests/test_patching.py::test_patch_solves_missing_keyword_argument_passthrough tests/test_patching.py::test_patch_solves_cookie_scope_include_path_keyword -q`.
-- GreenShot-6 outcomes were refreshed after the boolean keyword-generation
-  change. The persisted dataset at
-  `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` now covers 19
-  tasks and 140 tested candidates; ranked eval solved all 19 tasks with
-  pass@1=14/19 and average candidates 7.37. The cookie scope task now solves
-  with `add_keyword_arg`.
-- The GreenShot-6 `split: test` held-out ranker validation was rerun after the
-  outcome refresh. The validation stayed at solved=7/7, pass@1=6/7,
-  positive@1=5/7, and avg_first_passing_index=1.1428571428571428. The cookie
-  scope task now ranks the preferred `add_keyword_arg(include_path=True)`
-  candidate first. Remaining validation issues are
-  `cookie_default_secure_flag_dict_value`, where the false `change_dict_key`
-  candidate is again above the preferred `change_dict_value`, and
-  `http_no_store_response_with_etag`, where a non-preferred passing
-  `change_literal` ranks above the preferred `change_operator`.
-- The refreshed GreenShot-6 `split: test` residuals were inspected before any
-  weight or task changes. `cookie_scope_include_path_keyword` is fixed in this
-  slice. For `cookie_default_secure_flag_dict_value`, the exact same-mapping
-  assertion-delta feature is present but still too sparse: the false
-  `change_dict_key secure -> __Secure-` candidate scores 12.363160, above the
-  preferred `change_dict_value secure: True -> False` candidate at 11.841018,
-  because broad string-parameter rewards and boolean-parameter penalties
-  outweigh the same-mapping signal. For `http_no_store_response_with_etag`, the
-  current rank-1 residual is a non-preferred passing `change_literal`
-  `"no-store" -> "no_store"` at 13.111906, while the preferred
-  `change_operator not in -> in` repair is rank 5 at 4.587461. Details are in
-  `HARD_NEGATIVES.md`.
-- Added independent non-held-out same-mapping boolean value-vs-key-rename
-  coverage for the cookie residual with the mutation task
-  `cookie_partitioned_default_dict_value` (`split: train`). It uses the
-  existing `change_dict_value` action and creates a same-mapping
-  `change_dict_key partitioned -> __Partitioned-` hard-negative shape without
-  changing broad action/string/boolean weights or pass/preferred-label
-  features.
-- Focused loader/generator coverage passed for the new task:
-  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
-  `pytest tests/test_patching.py::test_generate_same_mapping_boolean_value_with_key_rename_decoy -q`.
-- GreenShot-6 outcomes were refreshed after adding the independent cookie
-  coverage. The persisted dataset at
-  `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` now covers 20
-  tasks and 146 tested candidates. Ranked eval solved all 20 tasks with
-  `pass@1=15/20` and average candidates `7.30`.
-- The GreenShot-6 `split: test` held-out ranker validation was rerun after the
-  outcome refresh. Validation improved to solved=7/7, pass@1=7/7,
-  positive@1=6/7, and avg_first_passing_index=1.0. The cookie same-mapping
-  secure residual is fixed in this slice. The remaining issue is
-  `http_no_store_response_with_etag`: it passes at rank 1 but still does not
-  rank the preferred `change_operator not in -> in` repair first.
-- Membership-predicate target-context metadata was implemented for
-  `change_operator` and `change_literal` candidates. Target context now records
-  membership predicates, `in`/`not in` operator, operand kinds, branch-test
-  context, operator flips, literal changes, and whether a changed literal is
-  the membership needle. Candidate ranker features consume the metadata from
-  both live candidates and persisted outcome rows. The feature version is
-  `candidate-diagnostics-v11`.
-- Focused candidate-ranking coverage passed for the v11 predicate metadata.
-  GreenShot-6 outcomes were refreshed after the change; ranked eval still
-  solved all 20 tasks with `pass@1=15/20` and average candidates `7.30`.
-- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
-  the v11 outcome refresh. Validation stayed at solved=7/7, pass@1=7/7,
-  positive@1=6/7, and avg_first_passing_index=1.0. The HTTP residual is still
-  a preferred-positive miss: the preferred `change_operator not in -> in`
-  repair ranks below non-preferred passing `.get` swap and literal-needle
-  edits. The new metadata is present, but current non-held-out GreenShot-5/6
-  coverage has positive membership-literal signal and failing membership-operator
-  flips, so more independent predicate/operator hard-negative coverage is the
-  next clean step before any broad weight changes.
-- Added independent non-held-out HTTP membership-predicate coverage with
-  `http_no_cache_revalidation_with_etag` (`split: train`). It uses the existing
-  `change_operator` action for a local `"no-cache" not in cache_control` branch
-  repair and includes a tempting existing `change_literal` needle edit
-  `"no-cache" -> "no_cache"` in the tested rows. No broad action/string/boolean
-  weights or pass/preferred-label features were changed.
-- Focused loader/generator coverage passed for the new task:
-  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
-  `pytest tests/test_patching.py::test_generate_membership_operator_with_literal_needle_decoy -q`.
-- GreenShot-6 outcomes were refreshed after adding the independent HTTP
-  coverage. The persisted dataset at
-  `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` now covers 21
-  tasks and 152 tested candidates. Ranked eval solved all 21 tasks with
-  `pass@1=16/21` and average candidates `7.24`.
-- The GreenShot-6 `split: test` held-out ranker validation was rerun after the
-  outcome refresh. Validation is solved=7/7, pass@1=6/7, positive@1=5/7, and
-  avg_first_passing_index=1.1428571428571428. The new training coverage moved
-  `http_no_store_response_with_etag`'s preferred `change_operator` candidate to
-  trained rank 2, but a non-preferred passing `change_literal`
-  `"no-store" -> "no_store"` still ranks first. The cookie secure task remains
-  fixed in this slice.
-- Refreshed membership-predicate support and learned weights were inspected
-  after adding `http_no_cache_revalidation_with_etag`. The saved holdout ranker
-  uses `candidate-diagnostics-v11` with 663 learned features. For the held-out
-  `http_no_store_response_with_etag` task, the preferred
-  `change_operator not in -> in` repair is trained rank 2 with score
-  15.824030, just behind the non-preferred passing literal-needle edit
-  `"no-store" -> "no_store"` at 15.975122. Membership features still favor the
-  literal decoy (`+5.50`) and penalize the preferred operator (`-2.25`).
-  The added `http_no_cache_revalidation_with_etag` task has the intended raw
-  operator-vs-literal shape, but its literal-needle decoy also passes, so it
-  provides preference signal rather than a clean failing hard negative. Details
-  are in `HARD_NEGATIVES.md`.
-- Added a second independent non-held-out HTTP membership-predicate hard
-  negative with `http_stale_response_without_must_revalidate` (`split: train`).
-  It uses the existing `change_operator` action for a local
-  `"must-revalidate" not in cache_control` branch repair and includes a tempting
-  `change_literal` needle edit `"must-revalidate" -> "must_revalidate"` that
-  fails. No action family, broad action/string/boolean weights, or
-  pass/preferred-label features were added.
-- Focused loader/generator coverage passed for the new task:
-  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
-  `pytest tests/test_patching.py::test_generate_membership_operator_with_failing_literal_needle_decoy -q`.
-- GreenShot-6 outcomes were refreshed after adding the failing-decoy HTTP
-  coverage. The persisted dataset at
-  `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` now covers 22
-  tasks and 163 tested candidates. Ranked eval solved all 22 tasks with
-  `pass@1=17/22` and average candidates `7.41`.
-- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
-  the outcome refresh. Validation improved to solved=7/7, pass@1=7/7,
-  positive@1=7/7, and avg_first_passing_index=1.0. The preferred
-  `change_operator not in -> in` repair for `http_no_store_response_with_etag`
-  is now trained rank 1, above the literal-needle decoy.
-- The refreshed GreenShot-6 outcome rows and saved `split: test` held-out
-  metrics were inspected before adding more features. The held-out slice is
-  clean (`solved=7/7`, `pass@1=7/7`, `positive@1=7/7`). Raw GreenShot-6 still
-  solves all 22 tasks with `pass@1=17/22`, but the only trained
-  preferred-positive gap found with the saved test-slice ranker is
-  `dynamic_field_error_message`: the task manifest has a preferred f-string
-  fragment `change_literal`, but no tested row matches it. The passing rows
-  hardcode the full concrete error message instead of repairing the reusable
-  f-string suffix. Details are in `HARD_NEGATIVES.md`.
-- F-string literal-fragment candidate generation now emits reusable
-  `change_literal` repairs from concrete pytest `match=...` strings. This fixes
-  the `dynamic_field_error_message` outcome-quality gap by generating the
-  preferred fragment repair
-  ` declared as dynamic in but is defined` ->
-  ` declared as dynamic in "project.dynamic" but is defined`, instead of only
-  concrete whole-message replacements.
-- Focused patching coverage passed for the f-string fragment generator, and
-  refreshed GreenShot-6 outcomes now include a passing preferred-positive row
-  for `dynamic_field_error_message` at raw rank 10. The persisted GreenShot-6
-  dataset still covers 22 tasks and 163 tested candidates, with passing rows
-  increasing to 47 and preferred-positive rows increasing to 22.
-- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
-  the outcome refresh and stayed clean: solved=7/7, pass@1=7/7,
-  positive@1=7/7, avg_first_passing_index=1.0. Training used 243 rows, 55
-  passing rows, 207 training pairs, 650 features, and 3 margin violations.
-- The refreshed GreenShot-6 raw pass@1 misses and preferred-positive ranks were
-  inspected after the f-string fragment outcome refresh. Raw GreenShot-6 still
-  solves all 22 tasks with pass@1=17/22. The five raw pass@1 misses are
-  `apache_license_classifier_dict_value`, `dynamic_field_error_message`,
-  `http_no_store_directive_subscript_key`, `http_range_request_bypasses_cache`,
-  and `minimum_python_version_operator_boundary`. Each now has a tested
-  preferred-positive row, and the saved GreenShot-6 `split: test` held-out
-  ranker places the preferred-positive candidate at trained rank 1 for all five
-  raw misses. Details are in `HARD_NEGATIVES.md`.
-- The fresh inspection did not expose a narrow candidate-generation,
-  outcome-quality, or ranker-metadata gap. Do not tune broad handcrafted
-  action/string/boolean weights or add pass/preferred-label features from this
-  state. The next useful work should be adding the next real-package-derived
-  GreenShot-6 task or small fixture domain, then refreshing outcomes and
-  rerunning the same held-out validation.
-- GreenShot-6 now includes a fourth fixture domain, `cliformat`, with one
-  real-package-derived `git_history` task modeled on `pallets/click` PR 2728 /
-  merge commit `c021f05c838c1d0401ebc340d1de9b663c7fb578`. The task
-  `click_invalid_directory_filename_repr` repairs Click-style invalid path
-  formatting by changing the template from direct single-quoted `{filename}` to
-  `{filename!r}`, using the existing `change_literal` action.
-- Focused loader/generator coverage passed for the new task:
-  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
-  `pytest tests/test_patching.py::test_patch_solves_click_invalid_directory_filename_repr -q`.
-- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
-  adding `cliformat`. The persisted dataset at
-  `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` now covers 23
-  tasks and 169 tested candidates. Ranked eval solved all 23 tasks with
-  `pass@1=18/23` and average candidates `7.35`; the new Click-derived task
-  solves at raw rank 1 with the preferred `change_literal` candidate.
-- The GreenShot-6 `split: test` held-out ranker validation was rerun after the
-  outcome refresh and stayed clean: solved=7/7, pass@1=7/7, positive@1=7/7.
-  Training used 249 rows, 56 passing rows, 212 training pairs, 653 features,
-  and 3 margin violations.
-- Refreshed raw/trained miss inspection after adding `cliformat` found no new
-  gap. Raw GreenShot-6 still has the same five pass@1 misses:
-  `apache_license_classifier_dict_value`, `dynamic_field_error_message`,
-  `http_no_store_directive_subscript_key`, `http_range_request_bypasses_cache`,
-  and `minimum_python_version_operator_boundary`; every task has a tested
-  preferred-positive row, and the saved test-slice ranker places every
-  preferred-positive candidate at trained rank 1.
-- GreenShot-6 now includes a fifth fixture domain, `sampling`, with one
-  real-package-derived `git_history` task modeled on `Lightning-AI/litgpt`
-  commit `8c3ce130d52faa22da4a005cee3f0f6fdfe43099` / issue 2238. The task
-  `litgpt_zero_temperature_greedy_condition` repairs the zero-temperature
-  sampling gate by changing the boolean connective in
-  `temperature > 0.0 or top_p > 0.0` to `and`, using the existing
-  `modify_condition` action family.
-- `modify_condition` generation now emits a narrow boolean connective repair
-  for `BoolOp` conditions before broader condition negation. This was needed
-  because the held-out litgpt-derived repair shape was otherwise missing from
-  the existing candidate set; no new action family was added.
-- Focused loader/generator coverage passed for the new sampling task:
-  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
-  `pytest tests/test_patching.py::test_patch_solves_litgpt_zero_temperature_greedy_condition -q`.
-- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
-  adding `sampling`. The persisted dataset at
-  `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` now covers 24
-  tasks and 176 tested candidates. Ranked eval solved all 24 tasks with
-  `pass@1=18/24` and average candidates `7.33`.
-- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
-  the sampling outcome refresh and stayed clean: solved=7/7, pass@1=7/7,
-  positive@1=7/7. Training used 256 rows, 59 passing rows, 218 training pairs,
-  674 features, and 3 margin violations.
-- Refreshed raw/trained miss inspection after adding `sampling` found one new
-  raw preferred-positive miss, `litgpt_zero_temperature_greedy_condition`: raw
-  checkpoint ordering tries comparison-operator decoys before the preferred
-  boolean-connective repair. The saved test-slice ranker places every
-  GreenShot-6 preferred-positive candidate at trained rank 1, including the new
-  sampling task.
-- GreenShot-6 now includes a sixth fixture domain, `dateparse`, with one
-  real-package-derived `git_history` task modeled on `dateutil/dateutil` PR 822
-  / commit `91ba90e61941ddbcd16dbe8ef8441d0b8e51a084`. The task
-  `dateutil_lowercase_z_utc_suffix` repairs lowercase `z` UTC timezone suffix
-  handling by changing the `UTC_ZONE_NAMES` module constant from
-  `"UTC GMT Z"` to `"UTC GMT Z z"`, using the existing
-  `change_module_constant` action family.
-- Focused loader/generator coverage passed for the new dateparse task:
-  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
-  `pytest tests/test_patching.py::test_patch_solves_dateutil_lowercase_z_utc_suffix -q`.
-- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
-  adding `dateparse`. The persisted dataset at
-  `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` now covers 25
-  tasks and 182 tested candidates. Ranked eval solved all 25 tasks with
-  `pass@1=19/25` and average candidates `7.28`; the new dateutil-derived task
-  solves at raw rank 1 with the preferred `change_module_constant` candidate.
-- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
-  the dateparse outcome refresh and stayed clean: solved=7/7, pass@1=7/7,
-  positive@1=7/7. Training used 262 rows, 60 passing rows, 223 training pairs,
-  674 features, and 3 margin violations.
-- Refreshed raw/trained miss inspection after adding `dateparse` found no new
-  missing preferred-positive candidates and no trained preferred-positive
-  misses. Raw GreenShot-6 now has six pass@1 misses:
-  `apache_license_classifier_dict_value`, `dynamic_field_error_message`,
-  `http_no_store_directive_subscript_key`,
-  `http_range_request_bypasses_cache`,
-  `litgpt_zero_temperature_greedy_condition`, and
-  `minimum_python_version_operator_boundary`; every task has a tested
-  preferred-positive row, and the saved test-slice ranker places every
-  preferred-positive candidate at trained rank 1.
-- GreenShot-6 now includes a seventh fixture domain, `headers`, with one
-  real-package-derived `git_history` task modeled on `tornadoweb/tornado`
-  commit `7c3290fee1ea9cefa977c052aa2bb75a0d1af96b`. The task
-  `tornado_header_newline_forbidden_regex` repairs header validation by
-  changing the forbidden-character regex from excluding selected control
-  characters to excluding the contiguous `\x0A-\x1F` range, using the existing
-  `change_literal` action family.
-- Focused loader/generator coverage passed for the new headers task:
-  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
-  `pytest tests/test_patching.py::test_patch_solves_tornado_header_newline_forbidden_regex -q`.
-- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
-  adding `headers`. The persisted dataset at
-  `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` now covers 26
-  tasks and 188 tested candidates. Ranked eval solved all 26 tasks with
-  `pass@1=20/26` and average candidates `7.23`; the new Tornado-derived task
-  solves at raw rank 1 with the preferred `change_literal` candidate.
-- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
-  the headers outcome refresh and stayed clean: solved=7/7, pass@1=7/7,
-  positive@1=7/7. Training used 268 rows, 61 passing rows, 228 training pairs,
-  704 features, and 3 margin violations.
-- Refreshed raw/trained miss inspection after adding `headers` found no new
-  missing preferred-positive candidates and no trained preferred-positive
-  misses. Raw GreenShot-6 still has six pass@1 misses:
-  `apache_license_classifier_dict_value`, `dynamic_field_error_message`,
-  `http_no_store_directive_subscript_key`,
-  `http_range_request_bypasses_cache`,
-  `litgpt_zero_temperature_greedy_condition`, and
-  `minimum_python_version_operator_boundary`; every task has a tested
-  preferred-positive row, and the saved test-slice ranker places every
-  preferred-positive candidate at trained rank 1.
-- GreenShot-6 now includes an eighth fixture domain, `filesize`, with one
-  real-package-derived `git_history` task modeled on `python-humanize/humanize`
-  commit `77112a4cf39d57e233848f15cc0520776744d087` / PR 142. The task
-  `humanize_gnu_ronna_suffix` repairs GNU filesize suffix support by changing
-  the `suffixes["gnu"]` dictionary value from `"KMGTPEZY"` to `"KMGTPEZYRQ"`,
-  using the existing `change_dict_value` action family.
-- The `change_dict_value` generator now also covers module-level dictionary
-  assignments. This was needed because the real-derived repair is a
-  module-level suffix table; no new action family was added.
-- Focused loader/generator coverage passed for the new filesize task:
-  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks tests/test_patching.py::test_patch_solves_humanize_gnu_ronna_suffix -q`.
-- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
-  adding `filesize`. The persisted dataset at
-  `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` now covers 27
-  tasks and 194 tested candidates. Ranked eval solved all 27 tasks with
-  `pass@1=21/27` and average candidates `7.19`; the new humanize-derived task
-  solves at raw rank 1 with the preferred `change_dict_value` candidate.
-- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
-  the filesize outcome refresh. Validation is solved=7/7, pass@1=6/7,
-  positive@1=5/7, and avg_first_passing_index=1.1428571428571428. Training used
-  274 rows, 62 passing rows, 233 training pairs, 761 features, and 2 margin
-  violations.
-- Refreshed raw/trained miss inspection after adding `filesize` found no missing
-  preferred-positive rows. Raw GreenShot-6 has the same six pass@1 misses as
-  before. The trained holdout residuals are `cookie_host_prefix_dict_value`,
-  where a false `change_dict_value host: "__Host" -> "host"` now ranks above
-  the preferred `host: "__Host" -> "__Host-"`, and
-  `http_no_store_response_with_etag`, where a non-preferred passing
-  `change_literal "no-store" -> "no_store"` again ranks above the preferred
-  `change_operator not in -> in`. Details are in `HARD_NEGATIVES.md`.
-- The two filesize-refresh trained holdout residuals were inspected without
-  code changes. `cookie_host_prefix_dict_value` needs narrow scalar
-  assertion-delta metadata for dictionary value edits: the rows already contain
-  assertion actual/expected values, but current features do not encode that the
-  preferred edit changes `params.from` from the assertion actual to
-  `params.to` equal to the assertion expected. `http_no_store_response_with_etag`
-  is already described by v11 membership-predicate metadata and has a very
-  small residual gap, so prefer more independent non-held-out
-  membership-predicate coverage only if it remains after the cookie metadata
-  fix and outcome refresh. Details are in `HARD_NEGATIVES.md`.
-- Scalar assertion-delta ranker features were implemented for dictionary value
-  candidates. For `change_dict_value`, ranker features now record exact scalar
-  assertion actual-to-expected matches plus near-miss cases where only
-  `params.from` matches the assertion actual or only `params.to` matches the
-  assertion expected. The feature is computed from non-leaky failure hints and
-  candidate params for both live candidates and persisted outcome rows. The
-  feature version is `candidate-diagnostics-v12`.
-- Focused candidate-ranker and candidate-outcome coverage passed for the new
-  scalar dictionary-value assertion-delta feature, including the
-  `cookie_host_prefix_dict_value` same-key shape where `host: "__Host"` can be
-  changed either to the expected `"__Host-"` or the false `"host"` value.
-- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after the
-  scalar assertion-delta feature. The persisted dataset at
-  `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` still covers 27
-  tasks and 194 tested candidates. Ranked eval solved all 27 tasks with
-  `pass@1=21/27` and average candidates `7.19`.
-- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
-  the outcome refresh and is clean: solved=7/7, pass@1=7/7,
-  positive@1=7/7, avg_first_passing_index=1.0. Training used 274 rows, 62
-  passing rows, 233 training pairs, 742 features, and 3 margin violations.
-  `cookie_host_prefix_dict_value` now ranks the preferred
-  `change_dict_value host: "__Host" -> "__Host-"` repair first, and
-  `http_no_store_response_with_etag` now ranks the preferred
-  `change_operator not in -> in` repair first. No independent HTTP
-  membership-predicate coverage is needed from this state.
-- GreenShot-6 now includes a ninth fixture domain, `platformtags`, with one
-  real-package-derived `git_history` task modeled on `pypa/packaging` commit
-  `37b023285c27bc51940f33e50c1ebf692acf92c5` / PR 1160. The task
-  `packaging_pyemscripten_platform_config_var` repairs Emscripten platform tag
-  generation by changing the sysconfig key literal from
-  `PYEMSCRIPTEN_ABI_VERSION` to `PYEMSCRIPTEN_PLATFORM_VERSION`, using the
-  existing `change_literal` action family.
-- Focused loader/generator coverage passed for the new packaging-derived task:
-  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
-  `pytest tests/test_patching.py::test_patch_solves_packaging_pyemscripten_platform_config_var -q`.
-- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
-  adding `platformtags`. The persisted dataset at
-  `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` now covers 28
-  tasks and 206 tested candidates. Ranked eval solved all 28 tasks with
-  `pass@1=21/28` and average candidates `7.36`; the new packaging-derived task
-  solves at raw rank 7 with the preferred `change_literal` candidate.
-- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
-  the platformtags outcome refresh and stayed clean: solved=7/7, pass@1=7/7,
-  positive@1=7/7. Training used 286 rows, 63 passing rows, 244 training pairs,
-  777 features, and 2 margin violations.
-- Refreshed raw/trained miss inspection after adding `platformtags` found no
-  missing preferred-positive rows and no trained preferred-positive misses. Raw
-  GreenShot-6 now has seven pass@1 misses:
-  `apache_license_classifier_dict_value`, `dynamic_field_error_message`,
-  `http_no_store_directive_subscript_key`,
-  `http_range_request_bypasses_cache`,
-  `litgpt_zero_temperature_greedy_condition`,
-  `minimum_python_version_operator_boundary`, and
-  `packaging_pyemscripten_platform_config_var`; every task has a tested
-  preferred-positive row, and the saved test-slice ranker places every
-  preferred-positive candidate at trained rank 1.
-- GreenShot-6 now includes a tenth fixture domain, `marketdata`, with one
-  real-package-derived `git_history` task modeled on `ranaroussi/yfinance`
-  commit `64bd1baa79c7c37c169b6f6d76def262fec7ca71`. The task
-  `yfinance_market_data_error_typo` repairs a market-data error f-string by
-  changing `recieved` to `received`, using the existing `change_literal` action
-  family.
-- Focused loader/generator coverage passed for the new yfinance-derived task:
-  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
-  `pytest tests/test_patching.py::test_patch_solves_yfinance_market_data_error_typo -q`.
-- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
-  adding `marketdata`. The persisted dataset at
-  `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` now covers 29
-  tasks and 212 tested candidates. Ranked eval solved all 29 tasks with
-  `pass@1=22/29` and average candidates `7.31`; the new yfinance-derived task
-  solves at raw rank 1, while its reusable preferred literal-fragment repair is
-  present and passing at raw rank 2.
-- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
-  the marketdata outcome refresh and stayed clean: solved=7/7, pass@1=7/7,
-  positive@1=7/7. Training used 292 rows, 65 passing rows, 249 training pairs,
-  705 features, and 3 margin violations.
-- Applying the saved test-slice ranker to all refreshed GreenShot-6 rows found
-  no trained preferred-positive misses. For the new yfinance-derived task, the
-  trained ranker places the preferred reusable `change_literal` repair first,
-  above the concrete whole-message passing candidate.
-- GreenShot-6 now includes an eleventh fixture domain, `httpresponse`, with one
-  real-package-derived `git_history` task modeled on `urllib3/urllib3` commit
-  `6d022020b41ffbd184f644f0fa645b85c159b50b`. The task
-  `urllib3_getheader_warning_typo` repairs a deprecated `getheader` warning by
-  changing `HTTResponse.headers.get(name, default)` to
-  `HTTPResponse.headers.get(name, default)`, using the existing
-  `change_literal` action family.
-- Focused loader/generator coverage passed for the new urllib3-derived task:
-  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
-  `pytest tests/test_patching.py::test_patch_solves_urllib3_getheader_warning_typo -q`.
-- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
-  adding `httpresponse`. The persisted dataset at
-  `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` now covers 30
-  tasks and 221 tested candidates. Ranked eval solved all 30 tasks with
-  `pass@1=22/30` and average candidates `7.37`; the new urllib3-derived task
-  solves at raw rank 3 with the preferred `change_literal` candidate.
-- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
-  the httpresponse outcome refresh and stayed clean: solved=7/7, pass@1=7/7,
-  positive@1=7/7. Training used 301 rows, 66 passing rows, 257 training pairs,
-  707 features, and 3 margin violations.
-- Applying the saved test-slice ranker to all refreshed GreenShot-6 rows found
-  no trained preferred-positive misses. For the new urllib3-derived task, the
-  trained ranker places the preferred `change_literal` repair first, above the
-  false `swap_call_arg` and literal decoys.
-- GreenShot-6 now includes a twelfth fixture domain, `tablefmt`, with one
-  real-package-derived `git_history` task modeled on `prettytable/prettytable`
-  PR 351 / commit `7df5d70`. The task
-  `prettytable_missing_attribute_quote` repairs a PrettyTable-style legacy
-  attribute error template by adding the missing closing quote after `{name}`,
-  using the existing `change_literal` action family.
-- Focused loader/generator coverage passed for the new PrettyTable-derived
-  task:
-  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks tests/test_patching.py::test_patch_solves_prettytable_missing_attribute_quote -q`.
-- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
-  adding `tablefmt`. The persisted dataset at
-  `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` now covers 31
-  tasks and 228 tested candidates. Ranked eval solved all 31 tasks with
-  `pass@1=22/31` and average candidates `7.35`; the new PrettyTable-derived
-  task solves at raw rank 2 with the preferred `change_literal` candidate.
-- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
-  the tablefmt outcome refresh and stayed clean: solved=7/7, pass@1=7/7,
-  positive@1=7/7. Training used 308 rows, 67 passing rows, 263 training pairs,
-  744 features, and 5 margin violations.
-- Applying the saved test-slice ranker to all refreshed GreenShot-6 rows found
-  no trained preferred-positive misses. For the new PrettyTable-derived task,
-  the trained ranker places the preferred `change_literal` repair first, above
-  the local operator and literal decoys.
-- GreenShot-6 now includes a thirteenth fixture domain, `cellwidth`, with one
-  real-package-derived `git_history` task modeled on `Textualize/rich` commit
-  `68e1b6386db241d49f7713dae4ba3b59c0d30ba6`. The task
-  `rich_common_cell_width_ascii_range` repairs Rich-style common cell-width
-  regex matching by changing the printable ASCII range endpoint from `\u006f`
-  to `\u007f`, using the existing `change_literal` action family.
-- Focused loader/generator coverage passed for the new Rich-derived task:
-  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
-  `pytest tests/test_patching.py::test_patch_solves_rich_common_cell_width_ascii_range -q`.
-- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
-  adding `cellwidth`. The persisted dataset at
-  `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` now covers 32
-  tasks and 234 tested candidates. Ranked eval solved all 32 tasks with
-  `pass@1=23/32` and average candidates `7.31`; the new Rich-derived task
-  solves at raw rank 1 with the preferred `change_literal` candidate.
-- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
-  the cellwidth outcome refresh and stayed clean: solved=7/7, pass@1=7/7,
-  positive@1=7/7. Training used 314 rows, 68 passing rows, 268 training pairs,
-  744 features, and 5 margin violations.
-- Applying the saved test-slice ranker to all refreshed GreenShot-6 rows found
-  no trained preferred-positive misses. For the new Rich-derived task, the
-  trained ranker places the preferred regex `change_literal` repair first.
-- GreenShot-6 now includes a fourteenth fixture domain, `fieldopts`, with one
-  real-package-derived `git_history` task modeled on `pydantic/pydantic` commit
-  `20914e367fe6b7fac8486c0023f8d212f4948054` / PR 5734. The task
-  `pydantic_field_regex_pattern_message` repairs a Field-style removed-keyword
-  error message by changing `Pattern` to `pattern`, using the existing
-  `change_literal` action family.
-- Focused loader/generator coverage passed for the new pydantic-derived task:
-  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
-  `pytest tests/test_patching.py::test_patch_solves_pydantic_field_regex_pattern_message -q`.
-- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
-  adding `fieldopts`. The persisted dataset at
-  `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` now covers 33
-  tasks and 243 tested candidates. Ranked eval solved all 33 tasks with
-  `pass@1=23/33` and average candidates `7.36`; the new pydantic-derived task
-  solves at raw rank 4 with the preferred `change_literal` candidate.
-- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
-  the fieldopts outcome refresh and stayed clean: solved=7/7, pass@1=7/7,
-  positive@1=7/7. Training used 323 rows, 69 passing rows, 276 training pairs,
-  814 features, and 4 margin violations.
-- Applying the saved test-slice ranker to all refreshed GreenShot-6 rows found
-  no trained preferred-positive misses. For the new pydantic-derived task, the
-  trained ranker places the preferred literal repair first, above the local
-  operator and partial-literal decoys.
-- GreenShot-6 now includes a fifteenth fixture domain, `piplist`, with one
-  real-package-derived `git_history` task modeled on `pypa/pip` commit
-  `fdc262f06936fb406af2af74ad6b0946ac1f4bd8`. The task
-  `pip_list_outdated_freeze_error_message` repairs a pip-list option conflict
-  message by changing `can not be used with` to
-  `cannot be used together with`, using the existing `change_literal` action
-  family.
-- Focused loader/generator coverage passed for the new pip-derived task:
-  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
-  `pytest tests/test_patching.py::test_patch_solves_pip_list_outdated_freeze_error_message -q`.
-- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
-  adding `piplist`. The persisted dataset at
-  `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` now covers 34
-  tasks and 258 tested candidates. Ranked eval solved all 34 tasks with
-  `pass@1=23/34` and average candidates `7.59`; the new pip-derived task
-  solves with the preferred `change_literal` candidate.
-- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
-  the piplist outcome refresh and stayed clean: solved=7/7, pass@1=7/7,
-  positive@1=7/7. Training used 338 rows, 70 passing rows, 290 training pairs,
-  810 features, and 3 margin violations.
-- Applying the saved test-slice ranker to all refreshed GreenShot-6 rows found
-  no trained preferred-positive misses across 34 tasks.
-- GreenShot-6 now includes a sixteenth fixture domain, `apidocs`, with one
-  real-package-derived `git_history` task modeled on `aws/chalice` commit
-  `d8ba1ad1e1e8787d3bf1dd445691c99eebb9c528` / PR 2148. The task
-  `chalice_control_plane_programmatically_docstring` repairs a Chalice control
-  plane API description typo by changing `programatically` to
-  `programmatically`, using the existing `change_literal` action family.
-- Focused loader/generator coverage passed for the new Chalice-derived task:
-  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
-  `pytest tests/test_patching.py::test_patch_solves_chalice_control_plane_programmatically_docstring -q`.
-- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
-  adding `apidocs`. The persisted dataset at
-  `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` now covers 35
-  tasks and 264 tested candidates. Ranked eval solved all 35 tasks with
-  `pass@1=24/35` and average candidates `7.54`; the new Chalice-derived task
-  solves with the preferred `change_literal` candidate.
-- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
-  the apidocs outcome refresh and stayed clean: solved=7/7, pass@1=7/7,
-  positive@1=7/7. Training used 344 rows, 71 passing rows, 295 training pairs,
-  810 features, and 3 margin violations.
-- Applying the saved test-slice ranker to all refreshed GreenShot-6 rows found
-  no trained preferred-positive misses across 35 tasks.
-- GreenShot-6 now includes a seventeenth fixture domain, `httpclient`, with one
-  real-package-derived `git_history` task modeled on `encode/httpx` commit
-  `4189b7f051c6c51ce74c3bee1a5f269f9c50c6b2` / PR 3519. The task
-  `httpx_async_client_sync_request_article` repairs an AsyncClient RuntimeError
-  article typo by changing `an sync request` to `a sync request`, using the
-  existing `change_literal` action family.
-- Candidate generation now walks `AsyncFunctionDef` targets alongside ordinary
-  `FunctionDef` targets. This was needed because the HTTPX-derived preferred
-  repair lives inside an async method; no new action family was added.
-- Focused loader/generator coverage passed for the new HTTPX-derived task:
-  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
-  `pytest tests/test_patching.py::test_patch_solves_httpx_async_client_sync_request_article -q`.
-- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
-  adding `httpclient`. The persisted dataset at
-  `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` now covers 36
-  tasks and 272 tested candidates. Ranked eval solved all 36 tasks with
-  `pass@1=24/36` and average candidates `7.56`; the new HTTPX-derived task is
-  a raw rank-3 pass with the preferred `change_literal` candidate.
-- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
-  the httpclient outcome refresh and stayed clean: solved=7/7, pass@1=7/7,
-  positive@1=7/7. Training used 352 rows, 72 passing rows, 302 training pairs,
-  810 features, and 3 margin violations.
-- Applying the saved test-slice ranker to all refreshed GreenShot-6 rows found
-  no trained preferred-positive misses across 36 tasks.
-- GreenShot-6 now includes an eighteenth fixture domain, `pathparams`, with one
-  real-package-derived `git_history` task modeled on `darrenburns/posting`
-  commit `175e8e6435b5e4032a2c95920bd50bb2b7067117`. The task
-  `posting_escaped_path_param_regex` repairs escaped path-parameter matching by
-  changing the regex from `:([A-Za-z_][A-Za-z0-9_]*)` to
-  `(?<!:):([A-Za-z_][A-Za-z0-9_]*)`, using the existing `change_literal`
-  action family.
-- Focused loader/generator coverage passed for the new Posting-derived task:
-  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
-  `pytest tests/test_patching.py::test_patch_solves_posting_escaped_path_param_regex -q`.
-- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
-  adding `pathparams`. The persisted dataset at
-  `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` now covers 37
-  tasks and 278 tested candidates. Ranked eval solved all 37 tasks with
-  `pass@1=25/37` and average candidates `7.51`; the new Posting-derived task
-  solves at raw rank 1 with the preferred `change_literal` candidate.
-- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
-  the pathparams outcome refresh and stayed clean: solved=7/7, pass@1=7/7,
-  positive@1=7/7, avg_first_passing_index=1.0. Training used 358 rows, 73
-  passing rows, 307 training pairs, 794 features, and 4 margin violations.
-- Refreshed raw/trained miss inspection after adding `pathparams` found no
-  missing preferred-positive rows and no trained preferred-positive misses.
-  Raw GreenShot-6 now has 12 pass@1 misses, but every task has a tested
-  preferred-positive row and the saved test-slice ranker places every
-  preferred-positive candidate at trained rank 1.
-- GreenShot-6 now includes a nineteenth fixture domain, `logformat`, with one
-  real-package-derived `git_history` task modeled on `Chainlit/chainlit` PR
-  2841 / commit `cead389b7d5ef5307dedb47c4ce7dffb29242c7d`. The task
-  `chainlit_oauth_state_logging_percent_format` repairs OAuth state validation
-  logging by changing the invalid percent-format specifier from `%1` to `%s`,
-  using the existing `change_literal` action family.
-- Focused loader/generator coverage passed for the new Chainlit-derived task:
-  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
-  `pytest tests/test_patching.py::test_patch_solves_chainlit_oauth_state_logging_percent_format -q`.
-- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
-  adding `logformat`. The persisted dataset at
-  `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` now covers 38
-  tasks and 284 tested candidates. Ranked eval solved all 38 tasks with
-  `pass@1=26/38` and average candidates `7.47`; the new Chainlit-derived task
-  solves at raw rank 1 with the preferred `change_literal` candidate.
-- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
-  the logformat outcome refresh and stayed clean: solved=7/7, pass@1=7/7,
-  positive@1=7/7, avg_first_passing_index=1.0. Training used 364 rows, 74
-  passing rows, 312 training pairs, 794 features, and 4 margin violations.
-- Refreshed raw/trained miss inspection after adding `logformat` found no
-  missing preferred-positive rows and no trained preferred-positive misses.
-  Raw GreenShot-6 still has 12 pass@1 misses, but every task has a tested
-  preferred-positive row and the saved test-slice ranker places every
-  preferred-positive candidate at trained rank 1.
-- GreenShot-6 now includes a twentieth fixture domain, `i18nmsgs`, with one
-  real-package-derived `git_history` task modeled on `django/django` commit
-  `501a3714114b9c72e7dc4d8add76663bb8c83e3a`. The task
-  `django_makemessages_locale_directory_exists` repairs a makemessages-style
-  no-locale-path error phrase by changing `the 'locale' directory exist in an
-  app` to `the 'locale' directory exists in an app`, using the existing
-  `change_literal` action family.
-- Focused loader/generator coverage passed for the new Django-derived task:
-  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
-  `pytest tests/test_patching.py::test_patch_solves_django_makemessages_locale_directory_exists -q`.
-- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
-  adding `i18nmsgs`. The persisted dataset at
-  `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` now covers 39
-  tasks and 278 tested candidates. Ranked eval solved all 39 tasks with
-  `pass@1=28/39` and average candidates `7.13`; the new Django-derived task
-  solves at raw rank 1 with the preferred `change_literal` candidate.
-- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
-  the i18nmsgs outcome refresh and stayed clean: solved=7/7, pass@1=7/7,
-  positive@1=7/7. Training used 358 rows, 72 passing rows, 305 training pairs,
-  775 features, and 3 margin violations.
-- Refreshed raw/trained miss inspection after adding `i18nmsgs` found no
-  missing preferred-positive rows and no trained preferred-positive misses.
-  Raw GreenShot-6 now has 11 pass@1 misses, but every task has a tested
-  preferred-positive row and the saved test-slice ranker places every
-  preferred-positive candidate at trained rank 1.
-- GreenShot-6 now includes a twenty-first fixture domain, `poetryenv`, with
-  one real-package-derived `git_history` task modeled on `python-poetry/poetry`
-  PR 325 / commit `d98f168941e9e7ffab9888686c2cc0a13fbea887`. The task
-  `poetry_project_directory_unable_typo` repairs a Poetry virtualenv
-  RuntimeError message typo by changing `Unbale` to `Unable`, using the
-  existing `change_literal` action family.
-- Focused loader/generator coverage passed for the new Poetry-derived task:
-  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
-  `pytest tests/test_patching.py::test_patch_solves_poetry_project_directory_unable_typo -q`.
-- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
-  adding `poetryenv`. The persisted dataset at
-  `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` now covers 40
-  tasks and 296 tested candidates. Ranked eval solved all 40 tasks with
-  `pass@1=28/40` and average candidates `7.40`; the new Poetry-derived task
-  solves at raw rank 1 with the preferred `change_literal` candidate.
-- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
-  the poetryenv outcome refresh and stayed clean: solved=7/7, pass@1=7/7,
-  positive@1=7/7. Training used 376 rows, 76 passing rows, 322 training pairs,
-  794 features, and 4 margin violations.
-- Refreshed raw/trained miss inspection after adding `poetryenv` found no
-  missing preferred-positive rows and no trained preferred-positive misses.
-  Raw GreenShot-6 now has 12 pass@1 misses, but every task has a tested
-  preferred-positive row and the saved test-slice ranker places every
-  preferred-positive candidate at trained rank 1.
-- GreenShot-6 now includes a twenty-second real-package-derived fixture domain,
-  `websocketstate`, with one `git_history` task modeled on `encode/starlette`
-  PR 2141 / merge commit `7c4fd9cbf04ecd57e82fe4761f8d7976a9cb53bd`.
-  The task `starlette_websocket_runtime_error_allowed_messages` repairs a
-  WebSocket connecting-state RuntimeError message so it names the allowed
-  `websocket.accept` / `websocket.close` messages instead of
-  `websocket.connect`, using the existing `change_literal` action family.
-- Focused loader/generator coverage passed for the Starlette-derived task:
-  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
-  `pytest tests/test_patching.py::test_patch_solves_starlette_websocket_runtime_error_allowed_messages -q`.
-- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
-  adding `websocketstate`. The persisted dataset at
-  `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` now covers 41
-  tasks and 302 tested candidates. Ranked eval solved all 41 tasks with
-  `pass@1=29/41` and average candidates `7.37`; the new Starlette-derived task
-  solves at raw rank 1 with the preferred `change_literal` candidate.
-- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
-  the websocketstate outcome refresh and stayed clean: solved=7/7,
-  pass@1=7/7, positive@1=7/7, avg_first_passing_index=1.0. Training used 382
-  rows, 77 passing rows, 327 training pairs, 794 features, and 4 margin
-  violations.
-- Refreshed raw/trained miss inspection after adding `websocketstate` found no
-  missing preferred-positive rows and no trained preferred-positive misses
-  across 41 GreenShot-6 tasks. Raw GreenShot-6 still has 12 pass@1 misses, but
-  every task has a tested preferred-positive row and the saved test-slice
-  ranker places every preferred-positive candidate at trained rank 1.
-- GreenShot-6 now includes a twenty-third real-package-derived fixture domain,
-  `flaskcli`, with one `git_history` task modeled on `pallets/flask` PR 5344 /
-  commit `1d5abfadd7132c9a78e14e5ba6c07aed47115280`. The task
-  `flask_ssl_context_key_option_quote` repairs a Flask CLI SSL option
-  BadParameter message by adding the missing closing quote in `--key`, using
-  the existing `change_literal` action family.
-- Focused loader/generator coverage passed for the Flask-derived task:
-  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
-  `pytest tests/test_patching.py::test_patch_solves_flask_ssl_context_key_option_quote -q`.
-- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
-  adding `flaskcli`. The persisted dataset at
-  `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` now covers 42
-  tasks and 309 tested candidates. Ranked eval solved all 42 tasks with
-  `pass@1=29/42` and average candidates `7.36`; the new Flask-derived task is
-  a raw rank-2 pass with the preferred `change_literal` candidate.
-- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
-  the flaskcli outcome refresh and stayed clean: solved=7/7, pass@1=7/7,
-  positive@1=7/7, avg_first_passing_index=1.0. Training used 389 rows, 78
-  passing rows, 333 training pairs, 794 features, and 4 margin violations.
-- Applying the saved test-slice ranker to all refreshed GreenShot-6 rows found
-  no trained preferred-positive misses across 42 tasks. For the new Flask-derived
-  task, the trained ranker places the preferred literal repair first above the
-  false swap and literal decoys.
-- GreenShot-6 now includes a twenty-fourth real-package-derived fixture domain,
-  `dvchooks`, with one `git_history` task modeled on `treeverse/dvc` PR 10920 /
-  commit `cb96cf14872e842f461e84510ca73d337f5ace8e`. The task
-  `dvc_pre_commit_repo_treeverse_url` repairs a DVC pre-commit hook repository
-  URL by changing the hook config dictionary value from
-  `https://github.com/iterative/dvc` to
-  `https://github.com/treeverse/dvc`, using the existing `change_dict_value`
-  action family.
-- Focused loader/generator coverage passed for the DVC-derived task:
-  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
-  `pytest tests/test_patching.py::test_patch_solves_dvc_pre_commit_repo_treeverse_url -q`.
-- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
-  adding `dvchooks`. The persisted dataset at
-  `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` now covers 43
-  tasks and 318 tested candidates. Ranked eval solved all 43 tasks with
-  `pass@1=30/43` and average candidates `7.40`; the new DVC-derived task
-  solves at raw rank 1 with the preferred `change_dict_value` candidate.
-- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
-  the DVC outcome refresh and stayed clean: solved=7/7, pass@1=7/7,
-  positive@1=7/7, avg_first_passing_index=1.0. Training used 398 rows, 79
-  passing rows, 341 training pairs, 819 features, and 3 margin violations.
-- Applying the saved test-slice ranker to all refreshed GreenShot-6 rows found
-  no trained preferred-positive misses across 43 tasks. Raw GreenShot-6 has 13
-  pass@1 misses, but every task has a tested preferred-positive row.
-- GreenShot-6 now includes a twenty-fifth real-package-derived fixture domain,
-  `playwrightlog`, with one `git_history` task modeled on
-  `scrapy-plugins/scrapy-playwright` PR 312 / commit
-  `662747694cbaec87045f55be1f7fc53c3be810ab`. The task
-  `scrapy_playwright_download_log_typo` repairs a download wait log message
-  template typo by changing `dowload` to `download`, using the existing
-  `change_literal` action family.
-- Focused loader/generator coverage passed for the scrapy-playwright-derived
-  task:
-  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
-  `pytest tests/test_patching.py::test_patch_solves_scrapy_playwright_download_log_typo -q`.
-- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
-  adding `playwrightlog`. The persisted dataset at
-  `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` now covers 44
-  tasks and 324 tested candidates. Ranked eval solved all 44 tasks with
-  `pass@1=31/44` and average candidates `7.36`; the new
-  scrapy-playwright-derived task solves at raw rank 1 with the preferred
-  `change_literal` candidate.
-- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
-  the playwrightlog outcome refresh and stayed clean: solved=7/7,
-  pass@1=7/7, positive@1=7/7, avg_first_passing_index=1.0. Training used 404
-  rows, 80 passing rows, 346 training pairs, 819 features, and 3 margin
-  violations.
-- Applying the saved test-slice ranker to all refreshed GreenShot-6 rows found
-  no trained preferred-positive misses across 44 tasks. Raw GreenShot-6 has 13
-  pass@1 misses, but every task has a tested preferred-positive row.
-- GreenShot-6 now includes a twenty-sixth real-package-derived fixture domain,
-  `requestdocs`, with one `git_history` task modeled on `psf/requests` PR 7395
-  / commit `27e0981962d355b9532256f4dcb3d42f64b04d9c`. The task
-  `requests_prepared_request_docline_typo` repairs a Requests adapter
-  documentation typo by changing `PreparedReqest` to `PreparedRequest`, using
-  the existing `change_literal` action family.
-- Focused loader/generator coverage passed for the Requests-derived task:
-  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
-  `pytest tests/test_patching.py::test_patch_solves_requests_prepared_request_docline_typo -q`.
-- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
-  adding `requestdocs`. The persisted dataset at
-  `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` now covers 45
-  tasks and 332 tested candidates. Ranked eval solved all 45 tasks with
-  `pass@1=32/45` and average candidates `7.38`; the new Requests-derived task
-  solves at raw rank 1 with the preferred `change_literal` candidate.
-- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
-  the requestdocs outcome refresh and stayed clean: solved=7/7, pass@1=7/7,
-  positive@1=7/7, avg_first_passing_index=1.0. Training used 412 rows, 81
-  passing rows, 353 training pairs, 834 features, and 5 margin violations.
-- No fresh hard-negative or missing preferred-positive gap was found in this
-  refresh. Do not tune broad ranker weights or add pass/preferred-label
-  features from this state. The next useful step remains dataset growth from
-  another real-package-derived repair using an existing action family where
-  possible.
-- GreenShot-6 now includes a twenty-seventh real-package-derived fixture
-  domain, `envwrite`, with one `git_history` task modeled on
-  `theskumar/python-dotenv` PR 330 / commit `b3c3195`. The task
-  `dotenv_auto_quote_alnum_value` repairs auto quote-mode behavior so
-  alphanumeric values remain unquoted, using the existing `change_dict_value`
-  action family.
-- Focused loader/generator coverage passed for the python-dotenv-derived task:
-  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
-  `pytest tests/test_patching.py::test_patch_solves_dotenv_auto_quote_alnum_value -q`.
-- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
-  adding `envwrite`. The persisted dataset at
-  `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` now covers 46
-  tasks and 367 tested candidates. Ranked eval solved all 46 tasks with
-  `pass@1=32/46` and average candidates `7.98`; the new dotenv-derived task is
-  a raw hard negative that solves with the preferred `change_dict_value`
-  candidate after earlier unrelated candidates.
-- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
-  the envwrite outcome refresh. Validation is solved=7/7, pass@1=6/7,
-  positive@1=6/7, and avg_first_passing_index=1.1428571428571428. Training used
-  447 rows, 82 passing rows, 387 training pairs, 811 features, and 6 margin
-  violations.
-- The refreshed held-out residual was inspected and summarized in
-  `HARD_NEGATIVES.md`. The reopened miss is
-  `cookie_host_prefix_dict_value`: a false `change_literal host -> __Host-`
-  ranks above the preferred `change_dict_value host: "__Host" -> "__Host-"`
-  repair. This is ranking signal, not a missing-action or preferred-positive
-  row gap. Do not tune broad action/string/boolean weights from this state.
-- The reopened `cookie_host_prefix_dict_value` residual was inspected in the
-  refreshed outcome rows and saved ranker scores. The false literal-key edit
-  was trained rank 1 even though the preferred dictionary-value edit had the
-  exact scalar assertion-delta feature. A narrow v13 feature now records
-  literal dictionary-key edits whose replacement matches the scalar assertion
-  expected value without changing from the assertion actual value.
-- Added independent train-split coverage for the literal-key versus
-  dictionary-value decoy shape with `readme_rst_content_type_dict_value` and
-  `cookie_legacy_secure_prefix_dict_value`. No action family, broad
-  action/string/boolean weight, or pass/preferred-label feature was added.
-- GreenShot-6 outcomes were refreshed after the v13 feature and coverage
-  additions. The persisted dataset now covers 48 tasks and 379 tested
-  candidates. Ranked eval solved all 48 tasks with `pass@1=34/48` and average
-  candidates `7.90`.
-- The same GreenShot-6 `split: test` held-out ranker validation is clean again:
-  solved=7/7, pass@1=7/7, positive@1=7/7,
-  avg_first_passing_index=1.0. Training used 459 rows, 86 passing rows, 397
-  training pairs, 843 features, and 4 margin violations. The preferred
-  `change_dict_value host: "__Host" -> "__Host-"` candidate now ranks first for
-  `cookie_host_prefix_dict_value`.
-- GreenShot-6 now includes a twenty-eighth real-package-derived fixture
-  domain, `scipyquad`, with one `git_history` task modeled on `scipy/scipy`
-  commit `dec9d9c0137ab47d385ea8be78edc5e5e33bf2b3`. The task
-  `scipy_quad_runtime_error_typo` repairs a Quadpack exception class typo by
-  changing `RunTimeError` to `RuntimeError`, using the existing
-  `rename_symbol` action family.
-- `rename_symbol` generation now considers close built-in names in addition to
-  local/module symbols. This was needed because the SciPy-derived preferred
-  candidate was otherwise missing; no new action family, broad ranker weight,
-  or pass/preferred-label feature was added.
-- Focused loader/generator coverage passed for the SciPy-derived task:
-  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
-  `pytest tests/test_patching.py::test_generate_rename_symbol_candidate_for_builtin_exception_typo tests/test_patching.py::test_patch_solves_scipy_quad_runtime_error_typo -q`.
-- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
-  adding `scipyquad`. The persisted dataset now covers 49 tasks and 386 tested
-  candidates. Ranked eval solved all 49 tasks with `pass@1=34/49` and average
-  candidates `7.88`; the new SciPy-derived task solves with the preferred
-  `rename_symbol` candidate after 7 tested candidates.
-- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
-  the SciPy outcome refresh and stayed clean: solved=7/7, pass@1=7/7,
-  positive@1=7/7. Training used 466 rows, 87 passing rows, 403 training pairs,
-  816 features, and 4 margin violations.
-- GreenShot-6 now includes a twenty-ninth real-package-derived fixture domain,
-  `raisemsg`, with one `git_history` task modeled on `pytest-dev/pytest` PR
-  13861 / commit `e3facc0f8115a52606151c436ab3cb0816dbc0c3`. The task
-  `pytest_expected_exception_message_sentence` repairs pytest-style expected
-  exception wording by changing
-  `expected exception must be a BaseException type, not 'str'` to
-  `Expected a BaseException type, but got 'str'`, using the existing
-  `change_literal` action family.
-- Focused loader/generator coverage passed for the pytest-derived task:
-  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
-  `pytest tests/test_patching.py::test_patch_solves_pytest_expected_exception_message_sentence -q`.
-- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
-  adding `raisemsg`. The persisted dataset now covers 50 tasks and 392 tested
-  candidates. Ranked eval solved all 50 tasks with `pass@1=35/50` and average
-  candidates `7.84`; the new pytest-derived task solves at raw rank 1 with the
-  preferred `change_literal` candidate.
-- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
-  the pytest outcome refresh and stayed clean: solved=7/7, pass@1=7/7,
-  positive@1=7/7, avg_first_passing_index=1.0. Training used 472 rows, 88
-  passing rows, 408 training pairs, 862 features, and 4 margin violations.
-- GreenShot-6 now includes a thirtieth real-package-derived fixture domain,
-  `securecompare`, with one `git_history` task modeled on
-  `pallets/itsdangerous` PR 138 / commit
-  `1e3a10002994f15f882fe8170cc388dd82ccf722`. The task
-  `itsdangerous_constant_time_compare_doc_typo` repairs constant-time compare
-  documentation by changing `comparision` to `comparison`, using the existing
-  `change_literal` action family.
-- Focused loader/generator coverage passed for the ItsDangerous-derived task:
-  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
-  `pytest tests/test_patching.py::test_patch_solves_itsdangerous_constant_time_compare_doc_typo -q`.
-- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
-  adding `securecompare`. The persisted dataset now covers 51 tasks and 398
-  tested candidates. Ranked eval solved all 51 tasks with `pass@1=36/51` and
-  average candidates `7.80`; the new ItsDangerous-derived task solves at raw
-  rank 1 with the preferred `change_literal` candidate.
-- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
-  the ItsDangerous outcome refresh and stayed clean: solved=7/7,
-  pass@1=7/7, positive@1=7/7, avg_first_passing_index=1.0. Training used 478
-  rows, 89 passing rows, 413 training pairs, 862 features, and 4 margin
-  violations.
-- GreenShot-6 now includes a thirty-first real-package-derived fixture domain,
-  `taskqueue`, with one `git_history` task modeled on `celery/celery` PR 7675 /
-  merge commit `bdbf6d6ae1aca9addd81800b5dd2e8c3477afb18`. The task
-  `celery_unknown_task_header_typo` repairs an unknown-task diagnostic by
-  changing `Thw full contents of the message headers:` to
-  `The full contents of the message headers:`, using the existing
-  `change_literal` action family.
-- Focused loader/generator coverage passed for the Celery-derived task:
-  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
-  `pytest tests/test_patching.py::test_patch_solves_celery_unknown_task_header_typo -q`.
-- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
-  adding `taskqueue`. The persisted dataset now covers 52 tasks and 404 tested
-  candidates. Ranked eval solved all 52 tasks with `pass@1=37/52` and average
-  candidates `7.77`; the new Celery-derived task solves at raw rank 1 with the
-  preferred `change_literal` candidate.
-- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
-  the taskqueue outcome refresh and stayed clean: solved=7/7, pass@1=7/7,
-  positive@1=7/7, avg_first_passing_index=1.0. Training used 484 rows, 90
-  passing rows, 418 training pairs, 862 features, and 4 margin violations.
-- GreenShot-6 now includes a thirty-second real-package-derived fixture domain,
-  `templating`, with one `git_history` task modeled on `pallets/jinja` commit
-  `48baa10f1e018691c23ab9441be0e1b06faf6731`. The task
-  `jinja_async_loop_filter_error_message` repairs a Jinja-style async loop
-  filter error message by changing `currently if the` to `unavailable if the`,
-  using the existing `change_literal` action family.
-- Focused loader/generator coverage passed for the Jinja-derived task:
-  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
-  `pytest tests/test_patching.py::test_patch_solves_jinja_async_loop_filter_error_message -q`.
-- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
-  adding `templating`. The persisted dataset now covers 53 tasks and 418
-  tested candidates. Ranked eval solved all 53 tasks with `pass@1=37/53` and
-  average candidates `7.89`; the new Jinja-derived task is a raw rank-14 pass
-  with the preferred `change_literal` candidate.
-- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
-  the Jinja outcome refresh and stayed clean: solved=7/7, pass@1=7/7,
-  positive@1=7/7, avg_first_passing_index=1.0. Training used 498 rows, 91
-  passing rows, 431 training pairs, 862 features, and 4 margin violations.
-  Applying the saved test-slice ranker to all refreshed GreenShot-6 rows found
-  no trained preferred-positive misses across 53 tasks.
-- GreenShot-6 now includes a thirty-third real-package-derived fixture domain,
-  `graphlayout`, with one `git_history` task modeled on `networkx/networkx`
-  PR 7572 / commit `7d195ae`. The task
-  `networkx_pydot_layout_relabelled_graph` repairs a NetworkX-style
-  `nx_pydot.pydot_layout` documentation example by changing the relabelled
-  layout call from `G` to `H`, using the existing `change_literal` action
-  family.
-- Focused loader/generator coverage passed for the NetworkX-derived task:
-  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
-  `pytest tests/test_patching.py::test_patch_solves_networkx_pydot_layout_relabelled_graph -q`.
-- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
-  adding `graphlayout`. The persisted dataset now covers 54 tasks and 424
-  tested candidates. Ranked eval solved all 54 tasks with `pass@1=38/54` and
-  average candidates `7.85`; the new NetworkX-derived task passes at raw rank
-  1 with the preferred `change_literal` candidate.
-- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
-  the NetworkX outcome refresh and stayed clean: solved=7/7, pass@1=7/7,
-  positive@1=7/7, avg_first_passing_index=1.0. Training used 504 rows, 92
-  passing rows, 436 training pairs, 826 features, and 5 margin violations.
-- GreenShot-6 now includes a thirty-fourth real-package-derived fixture domain,
-  `attrvalidators`, with one `git_history` task modeled on `python-attrs/attrs`
-  PR 1423 / commit `3d42a6978ac60b487135db39218cfb742b100899`. The task
-  `attrs_gt_validator_docstring_operator` repairs an attrs validator docstring
-  by changing `operator.ge` to `operator.gt`, using the existing
-  `change_literal` action family.
-- Focused loader/generator coverage passed for the attrs-derived task:
-  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
-  `pytest tests/test_patching.py::test_patch_solves_attrs_gt_validator_docstring_operator -q`.
-- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
-  adding `attrvalidators`. The persisted dataset now covers 55 tasks and 430
-  tested candidates. Ranked eval solved all 55 tasks with `pass@1=39/55` and
-  average candidates `7.82`; the new attrs-derived task passes at raw rank 1
-  with the preferred `change_literal` candidate.
-- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
-  the attrs outcome refresh and stayed clean: solved=7/7, pass@1=7/7,
-  positive@1=7/7, avg_first_passing_index=1.0. Training used 510 rows, 93
-  passing rows, 441 training pairs, 826 features, and 5 margin violations.
-- GreenShot-6 now includes a thirty-sixth real-package-derived task,
-  `seaborn_countplot_stat_label_capitalization`, modeled on
-  `mwaskom/seaborn` PR 3806 / commit `52b291c`. The task repairs a countplot
-  stat label from `count` to `Count`, using the existing `change_dict_value`
-  action family against a local label table. No action family or ranker
-  metadata change was needed.
-- Focused loader/generator coverage passed for the Seaborn-derived task:
-  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
-  `pytest tests/test_patching.py::test_patch_solves_seaborn_countplot_stat_label_capitalization -q`.
-- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
-  adding `plotlabels`. The persisted dataset now covers 57 tasks and 446
-  tested candidates. Ranked eval solved all 57 tasks with `pass@1=40/57` and
-  average candidates `7.82`; the new Seaborn-derived task solves at raw rank 1
-  with the preferred `change_dict_value` candidate. Outcome summary reports 88
-  passing rows and 57 preferred-positive rows.
-- The same GreenShot-6 `split: test` held-out ranker validation stayed clean:
-  solved=7/7, pass@1=7/7, positive@1=7/7. Training used 526 rows, 96 passing
-  rows, 455 training pairs, 852 features, and 2 margin violations.
-- GreenShot-6 now includes a thirty-seventh real-package-derived task,
-  `bugbear_b037_message_extra_and`, modeled on `PyCQA/flake8-bugbear` PR 495 /
-  commit `ea13615e9528bd0194bdeff7717c635d0fbff5e9`. The task repairs the B037
-  diagnostic text by changing `return or yield and any values` to
-  `return or yield any values`, using the existing `change_literal` action
-  family. No action family or ranker metadata change was needed.
-- Focused loader/generator coverage passed for the flake8-bugbear-derived task:
-  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
-  `pytest tests/test_patching.py::test_patch_solves_bugbear_b037_message_extra_and -q`.
-- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
-  adding `lintchecks`. The persisted dataset now covers 58 tasks and 452
-  tested candidates. Ranked eval solved all 58 tasks with `pass@1=41/58` and
-  average candidates `7.79`; the new B037 task solves at raw rank 1 with the
-  preferred `change_literal` candidate. Outcome summary reports 89 passing rows
-  and 58 preferred-positive rows.
-- The same GreenShot-6 `split: test` held-out ranker validation stayed clean:
-  solved=7/7, pass@1=7/7, positive@1=7/7, avg_first_passing_index=1.0.
-  Training used 532 rows, 97 passing rows, 460 training pairs, 852 features,
-  and 2 margin violations.
-- GreenShot-6 now includes a thirty-eighth real-package-derived task,
-  `fastapi_oauth2_client_secret_docstring`, modeled on `fastapi/fastapi`
-  commit `fa3588c38c7473aca7536b12d686102de4b0f407`. The task repairs an
-  OAuth2 password form client-secret description token from `client_password`
-  to `client_secret`, using the existing `change_literal` action family. No
-  action family or ranker metadata change was needed.
-- Focused loader/generator coverage passed for the FastAPI-derived task:
-  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
-  `pytest tests/test_patching.py::test_patch_solves_fastapi_oauth2_client_secret_docstring -q`.
-- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
-  adding `securityforms`. The persisted dataset now covers 60 tasks and 465
-  tested candidates. Ranked eval solved all 60 tasks with `pass@1=43/60` and
-  average candidates `7.75`; the new FastAPI-derived task solves at raw rank 1
-  with the preferred `change_literal` candidate. Outcome summary reports 91
-  passing rows and 60 preferred-positive rows.
-- The same GreenShot-6 `split: test` held-out ranker validation reopened one
-  residual: solved=7/7, pass@1=6/7, positive@1=6/7,
-  avg_first_passing_index=1.1428571428571428. Training used 545 rows, 99
-  passing rows, 471 training pairs, 856 features, and 3 margin violations.
-  The residual is `cookie_scope_include_path_keyword`, where a false
-  cross-domain `change_dict_value` candidate ranks above the preferred
-  `add_keyword_arg(include_path=True)` row. Details are in
-  `HARD_NEGATIVES.md`.
-- Added independent non-held-out boolean-default keyword-propagation coverage
-  with `humanize_binary_naturalsize_keyword` (`split: train`) in the existing
-  `filesize` domain. It repairs a `binary_naturalsize` wrapper by adding
-  `binary=True` to `naturalsize(...)`, using the existing `add_keyword_arg`
-  action. No broad action/string/boolean weights, pass/preferred-label
-  features, or ranker metadata were changed.
-- Focused loader/generator coverage passed:
-  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
-  `pytest tests/test_patching.py::test_patch_solves_humanize_binary_naturalsize_keyword -q`.
-- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
-  adding the keyword-propagation coverage. The persisted dataset now covers 61
-  tasks and 473 tested candidates. Ranked eval solved all 61 tasks with
-  `pass@1=44/61` and average candidates `7.75`; outcome summary reports 92
-  passing rows and 61 preferred-positive rows.
-- The same GreenShot-6 `split: test` held-out ranker validation is clean again:
-  solved=7/7, pass@1=7/7, positive@1=7/7, and avg_first_passing_index=1.0.
-  Training used 553 rows, 100 passing rows, 478 training pairs, 849 features,
-  and 4 margin violations. The reopened `cookie_scope_include_path_keyword`
-  residual is resolved: the preferred `add_keyword_arg(include_path=True)` row
-  is trained rank 1 with score `16.625162`, above the false cross-domain
-  `change_dict_value count -> example.invalid/account` row at score
-  `10.771752`.
-- Refreshed raw/trained miss inspection after the keyword-coverage refresh found
-  no missing preferred-positive rows and no trained preferred-positive misses
-  across 61 tasks. Raw GreenShot-6 had 17 pass@1 misses, all with tested
-  preferred-positive rows; the saved test-slice ranker placed every preferred
-  candidate at trained rank 1.
-- GreenShot-6 now includes a thirty-ninth real-package-derived task,
-  `packaging_parser_docstring_ebnf_typo`, modeled on `pypa/packaging` PR 784 /
-  commit `757f559404ff6cc1cdef59a2c3628ccdaa505ac4`. The task repairs the
-  `_parser` docstring typo from `ENBF-inspired grammar` to
-  `EBNF-inspired grammar`, using the existing `change_literal` action family.
-  No action family, ranker metadata, broad action/string/boolean weights, or
-  pass/preferred-label features were changed.
-- Focused loader/generator coverage passed for the packaging parser task:
-  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
-  `pytest tests/test_patching.py::test_patch_solves_packaging_parser_docstring_ebnf_typo -q`.
-- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
-  adding `requireparse`. The persisted dataset now covers 62 tasks and 479
-  tested candidates. Ranked eval solved all 62 tasks with `pass@1=45/62` and
-  average candidates `7.73`; outcome summary reports 93 passing rows and 62
-  preferred-positive rows. The new packaging parser task solves at raw rank 1
-  with the preferred `change_literal` candidate.
-- The same GreenShot-6 `split: test` held-out ranker validation stayed clean:
-  solved=7/7, pass@1=7/7, positive@1=7/7. Training used 559 rows, 101 passing
-  rows, 483 training pairs, 849 features, and 4 margin violations.
-- Refreshed raw/trained miss inspection after adding `requireparse` found no
-  missing preferred-positive rows and no trained preferred-positive misses
-  across 62 tasks. Raw GreenShot-6 still has 17 pass@1 misses, but every task
-  has a tested preferred-positive row and the saved test-slice ranker places
-  every preferred-positive candidate at trained rank 1.
-- Refreshed raw/trained miss inspection after the 62-task packaging parser
-  refresh found no narrow candidate-generation, outcome-quality, or
-  ranker-metadata residual. Raw GreenShot-6 had 17 pass@1 misses; every task
-  had a tested preferred-positive row, and the saved GreenShot-6 `split: test`
-  ranker placed every preferred-positive candidate at trained rank 1.
-- GreenShot-6 now includes a fortieth real-package-derived task,
-  `mypy_overload_docs_duplicate_also`, modeled on `python/mypy` PR 21482 /
-  commit `9b4e31c2738d1dd1dcc84e9d6e30b48e99299793`. The task repairs a
-  duplicated `also` phrase in overload compatibility text, using the existing
-  `change_literal` action family. No action family, ranker metadata, broad
-  action/string/boolean weights, or pass/preferred-label features were changed.
-- Focused loader/generator coverage passed for the mypy-derived task:
-  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
-  `pytest tests/test_patching.py::test_patch_solves_mypy_overload_docs_duplicate_also -q`.
-- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
-  adding `typechecker`. The persisted dataset now covers 63 tasks and 485
-  tested candidates. Ranked eval solved all 63 tasks with `pass@1=46/63` and
-  average candidates `7.70`; outcome summary reports 94 passing rows and 63
-  preferred-positive rows. Source-type pass@1 is `git_history=28/42` and
-  `mutation=18/21`. The new mypy-derived task solves at raw rank 1 with the
-  preferred `change_literal` candidate.
-- The same GreenShot-6 `split: test` held-out ranker validation stayed clean:
-  solved=7/7, pass@1=7/7, positive@1=7/7, validation rows=46, and
-  avg_first_passing_index=1.0. Training used 565 rows, 102 passing rows, 488
-  training pairs, 849 features, and 4 margin violations.
-- Refreshed raw/trained miss inspection after adding `typechecker` found no
-  missing preferred-positive rows and no trained preferred-positive misses
-  across 63 tasks. Raw GreenShot-6 still has 17 pass@1 misses, but every task
-  has a tested preferred-positive row and the saved test-slice ranker places
-  every preferred-positive candidate at trained rank 1.
-- Refreshed raw/trained miss inspection after the typechecker refresh again
-  found no narrow candidate-generation, outcome-quality, or ranker-metadata
-  residual: raw GreenShot-6 had 17 pass@1 misses, every task had a tested
-  preferred-positive row, and the saved GreenShot-6 `split: test` ranker placed
-  every preferred-positive candidate at trained rank 1.
-- GreenShot-6 now includes a forty-first real-package-derived task,
-  `pytest_usage_filename_pattern_escape`, modeled on `pytest-dev/pytest`
-  commit `2f09ddc84ea6a7ccd56f19b0b998c8d2c51a4652` / PR 14191. The task
-  repairs pytest usage documentation so the file discovery pattern says
-  `*_test.py` instead of `\*_test.py`, using the existing `change_literal`
-  action family. No action family, ranker metadata, broad action/string/boolean
-  weights, or pass/preferred-label features were changed.
-- Focused loader/generator coverage passed for the pytestdocs task:
-  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q`,
-  `pytest tests/test_patching.py::test_patch_solves_pytest_usage_filename_pattern_escape -q`,
-  and `python -m json.tool examples/greenshot_6/tasks.json >/dev/null`.
-- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
-  adding `pytestdocs`. The persisted dataset now covers 64 tasks and 492
-  tested candidates. Ranked eval solved all 64 tasks with `pass@1=47/64` and
-  average candidates `7.69`; outcome rows include 95 passing rows and 64
-  preferred-positive rows. The new pytest-derived task solves at raw rank 1
-  with the preferred `change_literal` candidate.
-- The same GreenShot-6 `split: test` held-out ranker validation stayed clean:
-  solved=7/7, pass@1=7/7, positive@1=7/7, validation rows=46, and
-  avg_first_passing_index=1.0. Training used 572 rows, 103 passing rows, 494
-  training pairs, 906 features, and 4 margin violations.
-- Refreshed raw/trained miss inspection after adding `pytestdocs` found no
-  missing preferred-positive rows and no trained preferred-positive misses
-  across 64 tasks. Raw GreenShot-6 still has 17 pass@1 misses, but every task
-  has a tested preferred-positive row and the saved test-slice ranker places
-  every preferred-positive candidate at trained rank 1.
-
-Last focused verification:
-
-```bash
-pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q
-pytest tests/test_patching.py::test_patch_solves_pydantic_core_use_default_docstring_typo -q
-python -m json.tool examples/greenshot_6/tasks.json >/dev/null
-git diff --check
-python cli.py eval \
-  --tasks examples/greenshot_6 \
-  --checkpoint runs/apache-python-git/model.json \
-  --timeout 10 \
-  --max-candidates 80 \
-  --phase ranked \
-  --explore-after-pass 5 \
-  --diagnostics runs/apache-python-git/greenshot-6-explore-diagnostics.json \
-  --candidate-outcomes runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl \
-  --quiet
-python cli.py train-ranker \
-  --candidate-outcomes \
-    runs/apache-python-git/greenshot-5-candidate-outcomes.jsonl \
-    runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl \
-  --holdout-task \
-    apache_license_classifier_dict_value \
-    http_no_store_response_with_etag \
-    cookie_default_secure_flag_dict_value \
-    cookie_host_prefix_dict_value \
-    cookie_zero_max_age_operator_boundary \
-    cookie_pair_argument_order \
-    cookie_scope_include_path_keyword \
-  --out runs/apache-python-git/ranker-holdout-greenshot-6-test-slice
-python cli.py outcome-summary \
-  --candidate-outcomes runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl
-```
-
-GreenShot-5 outcome collection result:
+Current worktree:
 
 ```text
-ranked, runs/apache-python-git/model.json, explore-after-pass=5:
-  solved=20/20 pass@1=14/20 avg_candidates=6.30
-  rows=126 passing_rows=24 preferred_positive_rows=8
+GreenShot-6 tasks: 69
+source_type: git_history=48, mutation=21
+split: train=50, test=5, legacy deterministic=14
+dominant action: change_literal=39
 ```
 
-GreenShot-6 smoke result:
+Latest known standard refresh before the newest task solved all 68 tasks with
+`pass@1=51/68`, average candidates `7.59`, and a clean GreenShot-6 `split:test`
+held-out ranker validation. After adding the current task, refresh outcomes
+before claiming new metrics.
+
+### Repair Data We Need
+
+- More real git-history repairs that are not only typo/message literals.
+- More held-out tasks where the correct candidate exists but ranking is hard.
+- More tasks where missing actions are exposed by real data, not invented lists.
+- More candidate outcomes with stable splits, source type, task family, action
+  kind, pass label, preferred-positive label, AST delta, locality, and relation
+  metadata.
+- More multi-step repairs where the first edit changes the observed failure.
+
+## Greenfield Editing Track
+
+### Why This Exists
+
+Repair benchmarks start from failing code. Codex-level work often starts from a
+request and an empty or partial repo. j3 needs greenfield editing to handle:
+
+- "make me a simple CLI app"
+- "add a small FastAPI endpoint"
+- "create tests for this parser"
+- "add pyproject metadata"
+- "split this script into a package"
+
+### Greenfield Actions
+
+Add actions only as benchmarks demand them:
+
+- `create_file`
+- `create_package`
+- `create_test_file`
+- `add_function_def`
+- `add_class_def`
+- `add_argparse_cli`
+- `add_interactive_cli_loop`
+- `add_pyproject_script`
+- `add_import_for_created_symbol`
+- `add_readme_usage`
+- `add_hidden_behavior_test`
+- `wire_entrypoint_to_function`
+
+These should build AST and config structures through typed builders where
+possible, not paste free-form source blobs.
+
+### GreenShot-7 Request-to-Repo Ladder
+
+GreenShot-7 should be the first prompt-to-repo benchmark.
+
+Initial ladder:
+
+1. Empty repo -> basic calculator CLI.
+   - Prompt includes `etc.`.
+   - Expected inference: add, subtract, multiply, divide.
+   - Hidden tests check CLI behavior.
+
+2. Empty repo -> one-file library function plus tests.
+   - Prompt describes behavior in English.
+   - Hidden tests check edge cases not stated verbatim.
+
+3. Existing tiny repo -> add one feature following local conventions.
+   - Prompt references "like the existing command".
+   - Tests check convention following.
+
+4. Existing repo -> add test coverage only.
+   - Prompt asks for tests, not behavior changes.
+   - Validation checks no production change unless needed.
+
+5. Ambiguous prompt -> ask clarification.
+   - Prompt lacks a necessary choice.
+   - Correct action is `ask_clarification`, not editing.
+
+## Model Tracks
+
+### Non-Neural Baselines
+
+Before neural claims, keep simple baselines:
+
+- Rule-based prompt-to-spec for a few domains.
+- Handwritten action generation.
+- Linear or sparse ranker over structured features.
+- Retrieval over prior specs and action outcomes.
+
+These baselines make it clear what the neural track actually improves.
+
+### Trainable Prompt Encoder
+
+Train a local model to encode coding-agent English into structured spec fields:
+
+- Task type.
+- Artifact type.
+- Domain.
+- Feature set.
+- Constraints.
+- Interface.
+- Explicit vs inferred requirements.
+- Ambiguity and clarification fields.
+
+The prompt encoder should predict structured labels, not source code.
+
+### Trainable Candidate Ranker
+
+Continue ranking structured edit candidates using:
+
+- Action kind and params.
+- Target node and repo context.
+- Parsed observations.
+- Prompt/spec fields.
+- AST and config deltas.
+- Candidate pass/fail outcomes.
+- Preferred-positive labels when multiple patches pass.
+
+### Repo-State Encoder
+
+Build a compact repo graph:
+
+- Files, modules, imports.
+- Functions, classes, methods.
+- Calls and symbol references.
+- Tests and fixtures.
+- Config and entrypoints.
+- Docs and examples.
+
+The encoder should support both repair and greenfield planning.
+
+### JEPA Repo-Transition Model
+
+Train from:
+
+- Synthetic structured transitions.
+- Mined git-history transitions.
+- Candidate outcome rows.
+- Prompt/spec/repo-before/repo-after triples.
+- Failed candidate negatives.
+
+Prediction target:
 
 ```text
-ranked, no candidate ranker:
-  solved=11/11 pass@1=8/11 avg_candidates=3.09
+s(repo_before, request_spec, observations) + a
+  -> predicted latent repo_after / observation_delta / utility
 ```
 
-GreenShot-6 outcome collection result:
+### Planning Policy
 
-```text
-ranked, runs/apache-python-git/model.json, explore-after-pass=5:
-  solved=68/68 pass@1=51/68 avg_candidates=7.59
-  rows=516 passing_rows=99 preferred_positive_rows=68
-  source_type pass@1: git_history=33/47 mutation=18/21
-```
+The planner should choose between:
 
-Treat this as a smoke check, not a benchmark claim.
+- Apply a repair candidate.
+- Create or modify files for a request spec.
+- Run a validation command.
+- Ask a clarification.
+- Stop and report success/failure.
 
-Combined GreenShot-5/6 ranker validation result:
+It should be bounded, observable, and trained from action outcomes.
 
-```text
-train-ranker, holdout-task-family=http_cache_directive:
-  training rows=191 passing_rows=42 tasks=30 plans=30 pairs=160
-  training_accuracy=1.000 margin_violations=6 features=412
-  validation solved=1/1 pass@1=0/1 positive@1=0/1
-  validation rows=19 avg_first_passing_index=5.0
-```
+## Evaluation Standards
 
-GreenShot-6 test-slice ranker validation result:
+### Repair Evaluation
 
-```text
-train-ranker, holdout-task includes all GreenShot-6 split:test tasks:
-  rows=596 passing_rows=107 tasks=81 plans=81 pairs=514
-  training_accuracy=1.000 margin_violations=4 features=906
-  validation solved=7/7 pass@1=7/7 positive@1=7/7
-  validation rows=46 avg_first_passing_index=1.0
-```
-
-## Next Right Things
-
-Keep this section as the live queue. When work is completed, move it to
-`Recent work` or `Current State` and remove it from these next-task lists.
-
-Immediate next sequence:
-
-1. Inspect the refreshed GreenShot-6 raw pass@1 misses and trained
-   preferred-positive ranks after the `pytest_usage_filename_pattern_escape`
-   refresh. The held-out test slice is clean, so do not add ranker features or
-   broad weights unless this inspection finds a narrow new gap.
-2. If no narrow candidate-generation, outcome-quality, or ranker-metadata gap
-   appears, continue GreenShot-6 dataset growth with another real-package-derived
-   train-split task.
-3. Re-run GreenShot-6 with `--explore-after-pass 5` after the next dataset or
-   metadata change, then rerun the same GreenShot-6 `split: test` held-out
-   validation.
-
-### 1. Make GreenShot-6 Real
-
-Goal: GreenShot-6 should use small real packages or real-package-derived
-fixtures, not invented toy modules.
-
-Next tasks:
-
-- Continue marking every task with a task family and source type:
-  `handcrafted`, `mutation`, or `git_history`.
-- Prefer additional fixture domains/packages over more `pkgmeta` metadata tasks
-  when the next dataset expansion is needed.
-
-### 2. Improve Outcome Dataset Quality
-
-Goal: make candidate outcome rows useful for learning, validation, and later
-transition modeling.
-
-Next tasks:
-
-- Ensure future git-history-derived tasks with preferred patches actually
-  produce matching preferred-positive candidate rows before using them as
-  ranking evidence.
-- Add independent `.get` key/default swap hard-negative coverage only if a
-  fresh inspection reopens the HTTP residual.
-
-### 3. Collect Hard Negatives
-
-Goal: train on candidates the current system actually finds tempting.
-
-Next tasks:
-
-- Use GreenShot-5 and GreenShot-6 rows for ranker training and validation.
-- Prefer held-out family/source-type validation over in-sample pass@1.
-- Keep the GreenShot-6 `split: test` holdout available as a cookie-inclusive
-  validation slice before changing ranker features.
-- Re-run GreenShot-6 with `--explore-after-pass 5` after the next batch of
-  real-derived tasks or after changing candidate generation/ranking metadata.
-
-Use a command like:
-
-```bash
-python cli.py eval \
-  --tasks examples/greenshot_6 \
-  --checkpoint runs/apache-python-git/model.json \
-  --timeout 10 \
-  --max-candidates 80 \
-  --phase ranked \
-  --explore-after-pass 5 \
-  --diagnostics runs/apache-python-git/greenshot-6-explore-diagnostics.json \
-  --candidate-outcomes runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl \
-  --quiet
-```
-
-Run this after adding more real-derived GreenShot-6 tasks or after changing
-candidate generation/ranking metadata.
-
-### 4. Strengthen Observations Before Model Complexity
-
-Goal: ranker and future JEPA inputs should use normalized observations, not raw
-test output text.
-
-Next tasks:
-
-- Parse pytest diff hunks into structured value differences.
-- Extract expected/actual string fragments from substring failures.
-- Extract mapping key/value expectations from assertion diffs.
-- Compute traceback distance from each candidate target.
-- Compute call graph distance from failing frame to candidate target.
-- Record whether a candidate target is in test, public API, helper, model code,
-  or config code.
-- Add confidence/source fields to hints.
-- Add tests for ambiguous or conflicting hints.
-
-### 5. Only Then Expand Actions
-
-Known missing or incomplete action families:
-
-- Remove wrong keyword argument.
-- Change call target to nearby helper.
-- Replace attribute chain segment.
-- Add simple branch case.
-- Add early return for `None`.
-- Add fallback for missing mapping key.
-- Insert narrow exception handler around non-return statements.
-- Propagate rename across multiple files.
-- Update imports after symbol movement.
-- Support bounded multi-edit actions.
-- Deduplicate equivalent candidates before test execution.
-- Store action schemas in a machine-readable registry.
-
-Do not work this list top-down. Let held-out tasks choose the next action.
-
-## Evaluation Rules
-
-For benchmark-style reports, include:
+Report:
 
 - solved / total
 - pass@1
-- average candidates tested
-- median candidates tested
+- average and median candidates tested
 - missing-action count
 - bad-ranking count
 - weak-hint count
@@ -1650,109 +685,107 @@ For benchmark-style reports, include:
 - source-type pass@1
 - average test runtime
 
-For focused implementation checks, prefer the smallest relevant test:
+### Prompt Understanding Evaluation
 
-```bash
-pytest tests/test_failure_hints.py -q
-pytest tests/test_candidate_ranking.py -q
-pytest tests/test_patching.py -q
-pytest tests/test_evaluation.py -q
-```
+Report:
 
-Run full `pytest -q` only as an intentional integration gate after broad shared
-behavior changes or before merging.
+- prompt-to-spec exact field accuracy
+- semantic feature accuracy
+- inferred-default precision and recall
+- ambiguity detection precision and recall
+- clarification accuracy
+- robustness to paraphrase
+- generalization to held-out domains and repos
 
-Use GreenShot-4 only as a periodic regression/reporting gate:
+### Greenfield Evaluation
 
-```bash
-python cli.py eval \
-  --tasks examples/greenshot_4 \
-  --checkpoint runs/apache-python-git/model.json \
-  --timeout 10 \
-  --phase both \
-  --quiet \
-  --diagnostics runs/apache-python-git/greenshot-4-diagnostics.json
-```
+Report:
+
+- hidden-test pass rate
+- repo builds/imports
+- generated entrypoint works
+- requested files exist
+- no unnecessary files
+- no dependency additions unless requested
+- prompt requirements satisfied
+- inferred requirements satisfied when confidence was high
+- clarification chosen when confidence was low
+
+### Benchmark Reporting
+
+Keep GreenShot-4 as a periodic regression gate.
+Keep GreenShot-5/6 as repair and ranking gates.
+Create GreenShot-7 for prompt-to-repo.
+
+For day-to-day work, use the smallest focused test that proves the touched
+behavior. Run full `pytest -q` only as an intentional integration gate.
+
+## Immediate Next Step
+
+Do this next, before adding more GreenShot-6 literal/typo tasks:
+
+1. Finish the current GreenShot-6 bookkeeping.
+   - Run the focused loader and patching tests for the current 69-task state.
+   - Refresh GreenShot-6 outcomes with `--explore-after-pass 5`.
+   - Rerun the GreenShot-6 `split:test` held-out ranker validation.
+   - Update this plan only with fresh metrics that were actually run.
+
+2. Add `REQUEST_SPEC.md`.
+   - Define `request-spec-v1`.
+   - Include the calculator prompt with `etc.` expanded to multiply/divide as a
+     high-confidence inferred default.
+   - Include at least one ambiguous prompt where the correct action is
+     clarification.
+
+3. Start GreenShot-7 with the calculator CLI request-to-repo task.
+   - Empty repo input.
+   - Prompt: "make me a simple cli python app that's a basic calculator, it
+     should let the user add two numbers, subtract, etc."
+   - Expected spec: add, subtract, multiply, divide.
+   - Hidden tests validate behavior.
+   - The first implementation may use deterministic prompt-to-spec rules, but
+     the data record must be suitable for later training.
+
+## Next Queue
+
+After the immediate step:
+
+- Implement a request-spec loader and validator.
+- Add `j3 implement` or equivalent command path for request-to-repo tasks.
+- Add the first greenfield actions: `create_file`, `add_function_def`,
+  `create_test_file`, and `add_argparse_cli` or `add_interactive_cli_loop`.
+- Add five GreenShot-7 seed tasks across creation, feature addition, tests-only,
+  convention following, and clarification.
+- Create a prompt/spec JSONL dataset format with provenance and stable splits.
+- Mine a small issue/PR sample and manually normalize it into request specs.
+- Keep GreenShot-6 as the repair regression gate while GreenShot-7 grows.
 
 ## Stop Conditions
 
+Pause GreenShot-6 task growth when:
+
+- New tasks are mostly more typo-like `change_literal` examples.
+- The held-out ranker is already clean and no new hard negative appears.
+- Dataset size increases without new action, ranking, observation, or prompt
+  signal.
+
 Pause action expansion when:
 
-- pass@1 is not improving despite passing candidates existing.
-- new tasks repeat existing action families without new signal.
-- candidate generation grows faster than ranking quality.
-- the next action is motivated only by a handcrafted fixture.
+- The right candidate already exists and ranking is the actual problem.
+- Candidate generation grows faster than validation and deduplication.
+- The action is motivated only by a handcrafted fixture.
 
-Pause ranker work when:
+Pause prompt inference when:
 
-- diagnostics mostly show missing actions.
-- hints are obviously wrong.
-- outcome data has too few independent tasks.
-- improvements come only from memorizing exact task or reason strings.
+- The system guesses low-confidence requirements instead of asking.
+- Prompt/spec data is mostly synthetic templates.
+- Evaluation uses exact prompt strings instead of held-out paraphrases,
+  domains, and repos.
 
-Start neural/JEPA work only when:
+Start serious JEPA model work only when:
 
-- GreenShot-5/6 include at least 50 diverse tasks.
-- GreenShot-6 includes real-package-derived held-out tasks.
-- Candidate outcomes include hundreds or thousands of labeled rows.
-- Stable split metadata exists.
-- Held-out task families and source types exist.
-- A non-neural ranker has clearly plateaued.
-- Failures are categorized well enough to diagnose neural regressions.
-
-## Handoff Recommendation
-
-The next context window should start from the post-pydantic-core GreenShot-6
-refresh, not the older Flask logging, pytestdocs, typechecker,
-keyword-coverage, packaging parser, FastAPI OAuth2, Werkzeug AirPlay,
-flake8-bugbear B037, Seaborn plot-label, graphlayout/NetworkX, taskqueue/Celery,
-envwrite, v13 literal-key, scipyquad, raisemsg, attrvalidators,
-pytest-regex-label, HTTPX-docline, or smolagents-timing states. GreenShot-6 now
-has 68 tasks.
-
-Latest addition:
-
-- Fixture domain: `pydanticcore`
-- Task: `pydantic_core_use_default_docstring_typo`
-- Source: `pydantic/pydantic-core` commit
-  `4c02cbd0af5aaa80ae53039d6ec023f751ea65e5` / PR 1571
-- Repair shape: PydanticUseDefault docstring text should say `see the`, not
-  `seethe`.
-- Action: existing `change_literal`; no action family, ranker metadata, broad
-  weight, or pass/preferred-label change was needed.
-
-Latest standard GreenShot-6 refresh with `--max-candidates 80 --phase ranked`
-and `--explore-after-pass 5` solved all 68 tasks: `pass@1=51/68`, average
-candidates `7.59`, rows `516`, passing rows `99`, and preferred-positive rows
-`68`. Source-type pass@1 is `git_history=33/47` and `mutation=18/21`. The new
-pydantic-core-derived task passes at raw rank 1 with the preferred
-`change_literal` candidate.
-
-The same GreenShot-6 `split: test` held-out validation is clean:
-solved=7/7, pass@1=7/7, positive@1=7/7, validation rows=46, and
-avg_first_passing_index=1.0. Training used 596 rows, 107 passing rows, 514
-training pairs, 906 features, and 4 margin violations.
-
-Latest inspection summary:
-
-- Before dataset growth, the post-Flask-logging refresh had 17 raw pass@1
-  misses, every task had a tested preferred-positive row, and the refreshed
-  `split: test` ranker placed every preferred-positive candidate first across
-  all 67 tasks.
-- After adding `pydantic_core_use_default_docstring_typo`, raw GreenShot-6 still
-  has 17 pass@1 misses under the standard refresh command. Every task still has
-  a tested preferred-positive row.
-- Applying the refreshed GreenShot-6 `split: test` ranker to all refreshed
-  GreenShot-6 rows found no trained pass@1 or preferred-positive misses across
-  all 68 tasks.
-- `HARD_NEGATIVES.md` was not updated this turn because no new verified
-  residual appeared.
-
-Immediate next sequence:
-
-1. Inspect refreshed raw pass@1 misses and trained preferred-positive ranks.
-2. If no narrow candidate-generation, outcome-quality, or ranker-metadata
-   residual appears, add the next real-package-derived GreenShot-6 train-split
-   task using an existing action family where possible.
-3. Keep the same GreenShot-6 `split: test` held-out validation as the
-   cookie-inclusive regression slice.
+- Repair candidate outcomes have stable, diverse splits.
+- Prompt-to-spec records exist for real coding-agent requests.
+- GreenShot-7 has request-to-repo tasks with hidden behavioral tests.
+- The non-neural baselines are strong enough to be worth beating.
+- Failures are categorized well enough to diagnose model regressions.

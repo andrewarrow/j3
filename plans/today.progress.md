@@ -56,3 +56,21 @@ Use this shape for each worker handoff:
 - Current next step: start Step 1 from `plans/today.md` by adding
   `REQUEST_SPEC.md` for `request-spec-v1`, including calculator `etc.`
   inference and at least one clarification example.
+
+### Iteration 1: Add request spec docs
+
+- Worker: Codex Worker Iteration 1
+- Goal: Add `REQUEST_SPEC.md` documenting `request-spec-v1` for the
+  GreenShot-7 calculator request-to-repo path.
+- Files changed:
+  - `REQUEST_SPEC.md`
+  - `plans/today.progress.md`
+- Tests run:
+  - `test -s REQUEST_SPEC.md`
+- Result: Added the bounded request spec documentation with purpose, day-one
+  schema fields, calculator prompt examples, high-confidence `etc.` inference,
+  operation aliases, validation expectations, and clarification examples.
+- Commit: `Add request spec docs`
+- Push: pending
+- Next: Implement deterministic prompt-to-`request-spec-v1` parsing fixtures.
+- Blockers: none

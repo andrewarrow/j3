@@ -147,6 +147,7 @@ def _candidate_outcome_rows(summary: EvalSummary) -> Iterable[dict[str, object]]
             passing_candidates = _passing_candidates(plan)
             passing_count = len(passing_candidates)
             candidate_hints = _candidate_hints_by_rank(plan)
+            candidate_relations = _candidate_relation_metadata(plan)
             for rank_index, candidate in enumerate(plan.tested_candidates, start=1):
                 passed = _candidate_passed(candidate, plan)
                 failure_hints = [
@@ -180,6 +181,7 @@ def _candidate_outcome_rows(summary: EvalSummary) -> Iterable[dict[str, object]]
                     "passing_candidates": passing_count,
                     "other_candidates_also_passed": passing_count > 1,
                     "failure_hints": failure_hints,
+                    **candidate_relations[rank_index - 1],
                     **_candidate_edit_metadata(candidate),
                 }
 
@@ -261,6 +263,66 @@ def _candidate_edit_metadata(candidate: CandidatePatch) -> dict[str, object]:
         "edit_is_single_line": edit.start_line == edit.end_line and replacement_lines <= 1,
         **python_ast_delta_metadata(candidate.original_source, candidate.patched_source),
     }
+
+
+def _candidate_relation_metadata(plan: PatchPlanResult) -> tuple[dict[str, object], ...]:
+    candidates = plan.tested_candidates
+    passing_ranks = {
+        rank_index
+        for rank_index, candidate in enumerate(candidates, start=1)
+        if _candidate_passed(candidate, plan)
+    }
+    rows: list[dict[str, object]] = []
+    for rank_index, candidate in enumerate(candidates, start=1):
+        equivalent_ranks: list[int] = []
+        overlapping_ranks: list[int] = []
+        for other_rank, other in enumerate(candidates, start=1):
+            if other_rank == rank_index:
+                continue
+            if _candidates_equivalent(candidate, other):
+                equivalent_ranks.append(other_rank)
+            elif _candidate_edits_overlap(candidate, other):
+                overlapping_ranks.append(other_rank)
+
+        equivalent_passing_ranks = [
+            other_rank for other_rank in equivalent_ranks if other_rank in passing_ranks
+        ]
+        overlapping_passing_ranks = [
+            other_rank for other_rank in overlapping_ranks if other_rank in passing_ranks
+        ]
+        rows.append(
+            {
+                "equivalent_candidate_ranks": equivalent_ranks,
+                "overlapping_candidate_ranks": overlapping_ranks,
+                "equivalent_candidate_count": len(equivalent_ranks),
+                "overlapping_candidate_count": len(overlapping_ranks),
+                "has_equivalent_candidate": bool(equivalent_ranks),
+                "has_overlapping_candidate": bool(overlapping_ranks),
+                "equivalent_passing_candidate_ranks": equivalent_passing_ranks,
+                "overlapping_passing_candidate_ranks": overlapping_passing_ranks,
+                "equivalent_passing_candidate_count": len(equivalent_passing_ranks),
+                "overlapping_passing_candidate_count": len(overlapping_passing_ranks),
+                "has_equivalent_passing_candidate": bool(equivalent_passing_ranks),
+                "has_overlapping_passing_candidate": bool(overlapping_passing_ranks),
+            }
+        )
+    return tuple(rows)
+
+
+def _candidates_equivalent(left: CandidatePatch, right: CandidatePatch) -> bool:
+    return left.file_path == right.file_path and left.patched_source == right.patched_source
+
+
+def _candidate_edits_overlap(left: CandidatePatch, right: CandidatePatch) -> bool:
+    if left.file_path != right.file_path:
+        return False
+    left_edit = left.edit
+    right_edit = right.edit
+    if left_edit.end_line < right_edit.start_line or right_edit.end_line < left_edit.start_line:
+        return False
+    if left_edit.start_line == left_edit.end_line == right_edit.start_line == right_edit.end_line:
+        return left_edit.start_col < right_edit.end_col and right_edit.start_col < left_edit.end_col
+    return True
 
 
 def _diff_line_counts(diff_text: str) -> tuple[int, int]:

@@ -126,6 +126,9 @@ Recent work:
   metadata: parse status, added/removed AST feature maps, and aggregate delta
   counts. Ranker features consume the same AST deltas from both live candidates
   and persisted rows.
+- Candidate outcome rows now include candidate relation metadata: equivalent
+  candidate ranks, overlapping edit-span ranks, and passing-candidate subsets
+  for both relation types.
 - `j3 outcome-summary` covers candidate outcome JSONL files by rows, tasks,
   families, source types, splits, actions, preferred positives, average
   candidates, and pass@1 slices.
@@ -153,6 +156,13 @@ Recent work:
   richer metadata before ranker feature changes.
 
 Last focused verification:
+
+```bash
+pytest tests/test_evaluation.py -q
+git diff --check
+```
+
+Previous GreenShot-6/ranker verification:
 
 ```bash
 pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q
@@ -225,10 +235,9 @@ Keep this section as the live queue. When work is completed, move it to
 
 Immediate next sequence:
 
-1. Record whether candidates are equivalent or overlapping.
-2. Use the GreenShot-6 hard-negative notes in `HARD_NEGATIVES.md` when
+1. Use the GreenShot-6 hard-negative notes in `HARD_NEGATIVES.md` when
    validating ranker feature changes.
-3. Add more real git-history tasks only after the current hard-negative/ranker
+2. Add more real git-history tasks only after the current hard-negative/ranker
    signal has been used.
 
 ### 1. Make GreenShot-6 Real
@@ -251,7 +260,8 @@ transition modeling.
 
 Next tasks:
 
-- Record whether candidates are equivalent or overlapping.
+- Use equivalent/overlap metadata in ranker feature changes only after checking
+  the GreenShot-6 hard negatives in `HARD_NEGATIVES.md`.
 
 ### 3. Collect Hard Negatives
 

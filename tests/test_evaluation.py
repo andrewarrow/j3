@@ -396,6 +396,10 @@ def test_write_candidate_outcomes_jsonl_records_one_row_per_tested_candidate(tmp
     assert all(row["first_passing_index"] == 1 for row in rows)
     assert all(row["passing_candidates"] == 2 for row in rows)
     assert all(row["other_candidates_also_passed"] is True for row in rows)
+    assert [row["equivalent_candidate_ranks"] for row in rows] == [[], [], []]
+    assert [row["overlapping_candidate_ranks"] for row in rows] == [[2, 3], [1, 3], [1, 2]]
+    assert [row["overlapping_passing_candidate_ranks"] for row in rows] == [[2], [1], [1, 2]]
+    assert [row["has_overlapping_candidate"] for row in rows] == [True, True, True]
     assert all("failure_hints" in row for row in rows)
     assert all(isinstance(row["failure_hints"], list) for row in rows)
     assert all("target_context" in row for row in rows)
@@ -424,6 +428,10 @@ def test_write_candidate_outcomes_jsonl_records_one_row_per_tested_candidate(tmp
         "ast_delta_removed_count",
         "ast_delta_net_count",
         "preferred",
+        "equivalent_candidate_ranks",
+        "overlapping_candidate_ranks",
+        "equivalent_passing_candidate_ranks",
+        "overlapping_passing_candidate_ranks",
     }.issubset(rows[0])
     assert all(row["diff_changed_lines"] >= 1 for row in rows)
     assert all(row["edit_line_span"] >= 1 for row in rows)
@@ -432,9 +440,54 @@ def test_write_candidate_outcomes_jsonl_records_one_row_per_tested_candidate(tmp
     assert any(row["ast_delta_added_features"] for row in rows)
 
 
-def _candidate_patch(*, ranker_score: float | None) -> CandidatePatch:
+def test_candidate_outcomes_record_equivalent_candidate_metadata(tmp_path) -> None:
+    first = _candidate_patch(to=2, ranker_score=1.0)
+    equivalent = _candidate_patch(to=2, ranker_score=0.5)
+    overlapping = _candidate_patch(to=3, ranker_score=0.25)
+    plan = PatchPlanResult(
+        repo=tmp_path,
+        test_command="python -m pytest",
+        baseline_exit_code=1,
+        candidates_generated=3,
+        candidates_tested=3,
+        selected=first,
+        applied=True,
+        test_output="",
+        tested_candidates=(first, equivalent, overlapping),
+        first_passing_index=1,
+        passing_candidates=(first, equivalent),
+    )
+    summary = EvalSummary(
+        tasks=[
+            TaskEvalResult(
+                task=RepairTask(
+                    name="equivalent_candidates",
+                    repo=tmp_path,
+                    test_command="python -m pytest",
+                ),
+                baseline=None,
+                ranked=plan,
+            )
+        ]
+    )
+
+    outcomes = write_candidate_outcomes(summary, tmp_path / "candidate_outcomes.jsonl")
+    rows = [
+        json.loads(line)
+        for line in outcomes.read_text(encoding="utf-8").splitlines()
+    ]
+
+    assert [row["passed"] for row in rows] == [True, True, False]
+    assert [row["equivalent_candidate_ranks"] for row in rows] == [[2], [1], []]
+    assert [row["equivalent_passing_candidate_ranks"] for row in rows] == [[2], [1], []]
+    assert [row["overlapping_candidate_ranks"] for row in rows] == [[3], [3], [1, 2]]
+    assert [row["overlapping_passing_candidate_ranks"] for row in rows] == [[], [], [1, 2]]
+    assert [row["has_equivalent_passing_candidate"] for row in rows] == [True, True, False]
+
+
+def _candidate_patch(*, to: int = 2, ranker_score: float | None) -> CandidatePatch:
     source = "def answer() -> int:\n    return 1\n"
-    patched = "def answer() -> int:\n    return 2\n"
+    patched = f"def answer() -> int:\n    return {to}\n"
     return CandidatePatch(
         file_path="bug.py",
         action=PatchAction(
@@ -446,12 +499,12 @@ def _candidate_patch(*, ranker_score: float | None) -> CandidatePatch:
                 symbol="answer",
                 node_kind="Constant",
             ),
-            params={"from": 1, "to": 2},
+            params={"from": 1, "to": to},
         ),
-        edit=SourceEdit(start_line=2, start_col=11, end_line=2, end_col=12, replacement="2"),
+        edit=SourceEdit(start_line=2, start_col=11, end_line=2, end_col=12, replacement=str(to)),
         original_source=source,
         patched_source=patched,
-        reason="try nearby literal 2",
+        reason=f"try nearby literal {to}",
         ranker_score=ranker_score,
     )
 

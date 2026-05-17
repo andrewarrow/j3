@@ -6,7 +6,7 @@ This file is the live progress log for `plans/today.md`. Keep
 ## Status
 
 - Current phase: evidence matrix and guarded product trial.
-- Completed iterations for this reset: 3.
+- Completed iterations for this reset: 4.
 - Latest relevant commits:
   - `c6dbe26` closed the shadow suite loop.
   - `aedb04a` documented the transition shadow suite workflow.
@@ -17,7 +17,7 @@ This file is the live progress log for `plans/today.md`. Keep
 - Current blocker: the checked-in shadow suite reports
   `ready_for_shadow_mode`, not `ready_for_guarded_opt_in`; guarded production
   ranking remains blocked unless broader matrix evidence passes product gates.
-- Next task: produce a release-quality matrix evidence bundle.
+- Next task: decide guarded trial eligibility from matrix gates.
 
 ## Active Task Queue
 
@@ -25,7 +25,7 @@ This file is the live progress log for `plans/today.md`. Keep
 - [x] Define a checked-in shadow matrix manifest.
 - [x] Add a matrix runner over standard shadow suites.
 - [x] Add cross-suite residual reporting.
-- [ ] Produce a release-quality matrix evidence bundle.
+- [x] Produce a release-quality matrix evidence bundle.
 - [ ] Decide guarded trial eligibility from matrix gates.
 - [ ] Update docs and README only if needed.
 
@@ -193,3 +193,36 @@ Use this shape for each worker handoff:
 - Blockers: none. The fresh `greenshot_bugs` smoke matrix had zero residual
   failures, so it produced no failing examples; the focused fixture covers
   bounded failing examples.
+
+### Iteration 4: Matrix transition evidence bundle
+
+- Worker: Codex worker iteration 4
+- Goal: extend the evidence bundle command so a transition shadow matrix output
+  can be packaged as release-quality local evidence without copying generated
+  JSONL files by default.
+- Files changed: `j3/transition_evidence_bundle.py`, `cli/parser.py`,
+  `cli/handlers.py`, `tests/test_transition_evidence_bundle.py`,
+  `plans/today.progress.md`
+- Tests run:
+  - `pytest tests/test_transition_evidence_bundle.py -q` passed.
+  - `pytest tests/test_transition_shadow_matrix.py -q` passed.
+  - `pytest tests/test_transition_residuals.py -q` passed.
+  - `pytest tests/test_cli.py -q` passed.
+  - `python cli.py run-transition-shadow-matrix --matrix examples/transition_shadow_matrix.json --out /tmp/j3-transition-shadow-matrix --only greenshot_bugs --force` passed.
+  - `python cli.py build-transition-evidence-bundle --matrix /tmp/j3-transition-shadow-matrix --out /tmp/j3-transition-matrix-evidence --force` passed.
+  - `python -m json.tool` passed for all top-level bundle JSON artifacts.
+  - `shasum -a 256 -c /tmp/j3-transition-matrix-evidence/checksums.sha256`
+    passed from `/tmp`.
+  - `git diff --check` passed.
+- Result: `build-transition-evidence-bundle` now accepts mutually exclusive
+  `--bench-report` or `--matrix` inputs. Matrix bundles include the matrix
+  manifest, matrix summary, per-suite product gates, matrix residual report,
+  zero-hosted usage assertions, reproduction commands, and SHA-256 checksums
+  with absolute artifact paths so verification works from any directory. No
+  top-level JSONL files are packaged by default.
+- Commit: pending.
+- Push: pending.
+- Next: decide guarded trial eligibility from matrix gates.
+- Blockers: none. The one-suite smoke matrix remains
+  `ready_for_shadow_mode`, so guarded opt-in eligibility is exposed as data but
+  not decided in this slice.

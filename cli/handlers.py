@@ -77,6 +77,7 @@ from j3.transition_bench_demo import (
     run_transition_bench_demo,
 )
 from j3.transition_evidence_bundle import (
+    build_transition_matrix_evidence_bundle,
     build_transition_evidence_bundle,
     format_transition_evidence_bundle_summary,
 )
@@ -1126,6 +1127,35 @@ def handle_evaluate_transition_shadow_scorer(args: argparse.Namespace) -> int:
 
 
 def handle_build_transition_evidence_bundle(args: argparse.Namespace) -> int:
+    if args.matrix is not None:
+        resolved_matrix = args.matrix.expanduser().resolve()
+        if not resolved_matrix.exists():
+            raise SystemExit(f"matrix output directory does not exist: {resolved_matrix}")
+        if not resolved_matrix.is_dir():
+            raise SystemExit(f"matrix output path is not a directory: {resolved_matrix}")
+        try:
+            summary = build_transition_matrix_evidence_bundle(
+                matrix_dir=args.matrix,
+                out_dir=args.out,
+                repo_root=args.repo_root,
+                residual_example_limit=args.residual_example_limit,
+                force=args.force,
+            )
+        except (
+            FileExistsError,
+            FileNotFoundError,
+            IsADirectoryError,
+            NotADirectoryError,
+            ValueError,
+        ) as error:
+            raise SystemExit(str(error)) from error
+
+        if args.json:
+            print(json.dumps(summary, indent=2, sort_keys=True))
+        else:
+            print(format_transition_evidence_bundle_summary(summary))
+        return 0
+
     resolved_bench = args.bench_report.expanduser().resolve()
     if not resolved_bench.exists():
         raise SystemExit(f"transition bench report does not exist: {resolved_bench}")

@@ -1065,11 +1065,18 @@ def build_parser() -> argparse.ArgumentParser:
             "commands. The bundle is verifiable without hosted APIs."
         ),
     )
-    transition_evidence_bundle_parser.add_argument(
+    evidence_input_group = transition_evidence_bundle_parser.add_mutually_exclusive_group(
+        required=True
+    )
+    evidence_input_group.add_argument(
         "--bench-report",
         type=Path,
-        required=True,
         help="transition-bench-demo-report-v1 JSON report to package",
+    )
+    evidence_input_group.add_argument(
+        "--matrix",
+        type=Path,
+        help="run-transition-shadow-matrix output directory to package",
     )
     transition_evidence_bundle_parser.add_argument(
         "--out",
@@ -1100,6 +1107,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--shadow-scorer-report",
         type=Path,
         help="optional transition-action-future-scorer-v3 report to package",
+    )
+    transition_evidence_bundle_parser.add_argument(
+        "--residual-example-limit",
+        type=int,
+        default=20,
+        help="maximum matrix residual examples to include when --matrix is used (default: 20)",
     )
     transition_evidence_bundle_parser.add_argument(
         "--force",

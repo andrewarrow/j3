@@ -8,11 +8,11 @@ new implementation facts change the 24-hour plan itself. Record any
 ## Status
 
 - Current phase: pre-implementation setup for GreenShot-7 calculator slice
-- Completed iterations: 0
-- Passing focused tests: prompt seed JSONL validation only
-- Latest commit: none yet in this loop
+- Completed iterations: 1
+- Passing focused tests: prompt seed JSONL validation, `test -s REQUEST_SPEC.md`
+- Latest commit: `25ac8e153e170c89278f668f1c6c716c36d3d2b1` (`Add request spec docs`)
 - Current blocker: none
-- Next task: add `REQUEST_SPEC.md` for `request-spec-v1`
+- Next task: implement deterministic prompt-to-`request-spec-v1` parsing fixtures
 
 ## Worker Iteration Template
 
@@ -70,7 +70,7 @@ Use this shape for each worker handoff:
 - Result: Added the bounded request spec documentation with purpose, day-one
   schema fields, calculator prompt examples, high-confidence `etc.` inference,
   operation aliases, validation expectations, and clarification examples.
-- Commit: `Add request spec docs`
-- Push: pending
+- Commit: `25ac8e153e170c89278f668f1c6c716c36d3d2b1` (`Add request spec docs`)
+- Push: succeeded to `origin/main`
 - Next: Implement deterministic prompt-to-`request-spec-v1` parsing fixtures.
 - Blockers: none

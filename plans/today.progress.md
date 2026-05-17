@@ -8,7 +8,7 @@ new implementation facts change the 24-hour plan itself. Record any
 ## Status
 
 - Current phase: Prompt+Repo JEPA transition V0
-- Completed iterations: 1 for this reset; Prompt-JEPA developer demo reset
+- Completed iterations: 3 for this reset; Prompt-JEPA developer demo reset
   completed 5 iterations; previous Prompt-JEPA index reset completed 8
   iterations
 - Passing focused tests: `pytest tests/test_prompt_intents.py -q`;
@@ -22,16 +22,18 @@ new implementation facts change the 24-hour plan itself. Record any
   `pytest tests/test_repo_state.py -q`;
   `python -m py_compile j3/repo_state.py`;
   `python cli.py --help`;
+  `pytest tests/test_prompt_repo_transitions.py -q`;
+  `python -m py_compile j3/prompt_repo_transitions.py`;
   `git diff --check`
-- Latest implementation/demo commit: repo-state encoder worker commit
+- Latest implementation/demo commit: transition predictor V0 worker commit
 - Current blocker: none
-- Next task: build `prompt-repo-transition-v1` rows from demo outcomes.
+- Next task: add consequence-prediction metrics and residuals.
 
 ## Active Task Queue
 
 - [x] Add reusable repo-state encoder artifact over Python source files.
-- [ ] Build `prompt-repo-transition-v1` rows from demo outcomes.
-- [ ] Add a tiny evaluation-only transition predictor V0.
+- [x] Build `prompt-repo-transition-v1` rows from demo outcomes.
+- [x] Add a tiny evaluation-only transition predictor V0.
 - [ ] Add consequence-prediction metrics and residuals.
 - [ ] Wire transition rows/model/eval into `demo-prompt-jepa` report artifacts.
 - [ ] Update developer docs with the state/action/target transition story.
@@ -672,4 +674,26 @@ Use this shape for each worker handoff:
 - Commit: `8a5b58e`
 - Push: succeeded to `main`.
 - Next: add a tiny evaluation-only transition predictor V0.
+- Blockers: none.
+
+### Iteration 3: Transition predictor V0
+
+- Worker: Codex Worker Iteration 3
+- Goal: add a tiny deterministic evaluation-only predictor over
+  `prompt-repo-transition-v1` rows.
+- Files changed: `j3/prompt_repo_transitions.py`,
+  `tests/test_prompt_repo_transitions.py`, `plans/today.progress.md`
+- Tests run: `pytest tests/test_prompt_repo_transitions.py -q` passed with 7
+  tests; `python -m py_compile j3/prompt_repo_transitions.py` passed;
+  `git diff --check` passed.
+- Result: implemented `prompt-repo-transition-predictor-v0` with prompt
+  context, repo-before, structured action, outcome, and validation/status
+  features; source/no-change repo-after embedding targets; blocked
+  clarification targets; deterministic nearest-context/action-delta
+  predictions; JSON-serializable model metadata; and predictor JSON
+  save/load helpers. The predictor is explicitly evaluation-only and not wired
+  into production routing.
+- Commit: pending; final hash reported by worker.
+- Push: pending until commit is created.
+- Next: add consequence-prediction metrics and residuals.
 - Blockers: none.

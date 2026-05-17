@@ -19,9 +19,19 @@ from j3.prompt_jepa import (
 
 PROMPT_REPO_TRANSITION_SCHEMA_VERSION = "prompt-repo-transition-v1"
 PROMPT_REPO_TRANSITION_TARGET_SCHEMA_VERSION = "prompt-repo-transition-target-v1"
+PROMPT_REPO_TRANSITION_PREDICTOR_SCHEMA_VERSION = "prompt-repo-transition-predictor-v0"
+PROMPT_REPO_TRANSITION_FEATURE_SCHEMA_VERSION = "prompt-repo-transition-feature-v1"
+PROMPT_REPO_TRANSITION_PREDICTION_SCHEMA_VERSION = (
+    "prompt-repo-transition-prediction-v0"
+)
+NEAREST_ACTION_DELTA_PREDICTOR_KIND = "nearest_context_action_delta"
+EVALUATION_ONLY_DECISION = "evaluation-only"
 TRANSITION_ARTIFACT = "transitions.jsonl"
 HOSTED_LLM_API_TOKENS = 0
 HOSTED_REPO_CONTEXT_BYTES = 0
+ACTION_FEATURE_WEIGHT = 0.12
+PROMPT_CONTEXT_FEATURE_WEIGHT = 0.44
+REPO_BEFORE_FEATURE_WEIGHT = 0.44
 
 
 @dataclass(frozen=True, slots=True)
@@ -30,6 +40,107 @@ class PromptRepoOutcomeState:
 
     repo_before: Mapping[str, object]
     repo_after: Mapping[str, object] | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class PromptRepoTransitionPredictorV0:
+    """Evaluation-only V0 predictor over prompt-repo transition rows."""
+
+    schema_version: str
+    predictor_kind: str
+    decision: str
+    embedding_dim: int
+    train_row_ids: tuple[str, ...]
+    global_source_delta: tuple[float, ...]
+    action_source_deltas: Mapping[str, tuple[float, ...]]
+    train_examples: tuple[dict[str, object], ...]
+
+    def to_record(self) -> dict[str, object]:
+        return {
+            "schema_version": self.schema_version,
+            "predictor_kind": self.predictor_kind,
+            "decision": self.decision,
+            "feature_schema_version": PROMPT_REPO_TRANSITION_FEATURE_SCHEMA_VERSION,
+            "prediction_schema_version": PROMPT_REPO_TRANSITION_PREDICTION_SCHEMA_VERSION,
+            "embedding_dim": self.embedding_dim,
+            "train_rows": len(self.train_row_ids),
+            "train_row_ids": list(self.train_row_ids),
+            "global_source_delta": list(self.global_source_delta),
+            "action_source_deltas": {
+                key: list(self.action_source_deltas[key])
+                for key in sorted(self.action_source_deltas)
+            },
+            "train_examples": [_json_copy(example) for example in self.train_examples],
+        }
+
+    def predict(self, row: Mapping[str, object]) -> dict[str, object]:
+        """Predict the transition target for one row without applying changes."""
+
+        validate_prompt_repo_transition_predictor(self)
+        _validate_transition_row(row)
+        row_dim = _transition_embedding_dim(row)
+        if row_dim != self.embedding_dim:
+            raise ValueError(
+                "transition row embedding dimension does not match predictor "
+                f"dimension {self.embedding_dim}"
+            )
+
+        query_vector = _transition_input_vector(row, dim=self.embedding_dim)
+        nearest = max(
+            self.train_examples,
+            key=lambda example: (
+                _dot(query_vector, _float_tuple(example["input_vector"])),
+                str(example["row_id"]),
+            ),
+        )
+        action_kind = _transition_action_kind(row)
+        target_kind = str(nearest["target_kind"])
+
+        if target_kind == "repo_after_embedding":
+            delta = self.action_source_deltas.get(action_kind, self.global_source_delta)
+            if not delta:
+                delta = _float_tuple(nearest.get("source_delta", []))
+            repo_before = _repo_embedding_from_transition(row, field="repo_before")
+            predicted_embedding = _vector_add(repo_before, delta)
+            return {
+                "schema_version": PROMPT_REPO_TRANSITION_PREDICTION_SCHEMA_VERSION,
+                "decision": EVALUATION_ONLY_DECISION,
+                "predictor_kind": self.predictor_kind,
+                "nearest_train_row_id": str(nearest["row_id"]),
+                "input_features": _input_feature_summary(row),
+                "target": {
+                    "kind": "repo_after_embedding",
+                    "outcome_kind": str(nearest["outcome_kind"]),
+                    "outcome_status": nearest.get("outcome_status"),
+                    "validation_status": nearest.get("validation_status"),
+                    "embedding_dim": self.embedding_dim,
+                    "repo_after_embedding": list(predicted_embedding),
+                    "source_delta_kind": (
+                        "action_conditioned_average"
+                        if action_kind in self.action_source_deltas
+                        else "global_average"
+                    ),
+                },
+            }
+
+        return {
+            "schema_version": PROMPT_REPO_TRANSITION_PREDICTION_SCHEMA_VERSION,
+            "decision": EVALUATION_ONLY_DECISION,
+            "predictor_kind": self.predictor_kind,
+            "nearest_train_row_id": str(nearest["row_id"]),
+            "input_features": _input_feature_summary(row),
+            "target": {
+                "kind": "blocked_or_clarification",
+                "outcome_kind": str(nearest["outcome_kind"]),
+                "outcome_status": nearest.get("outcome_status"),
+                "validation_status": nearest.get("validation_status"),
+                "failure_kind": nearest.get("failure_kind"),
+                "clarification_fields": list(
+                    _string_list(nearest.get("clarification_fields", []))
+                ),
+                "repo_after_embedding": None,
+            },
+        }
 
 
 def build_prompt_repo_transition_rows(
@@ -178,6 +289,430 @@ def load_prompt_repo_transition_rows(path: Path) -> tuple[dict[str, object], ...
                 raise ValueError(f"transition row {line_index} must be an object")
             rows.append(row)
     return tuple(rows)
+
+
+def fit_prompt_repo_transition_predictor_v0(
+    rows: Sequence[Mapping[str, object]],
+) -> PromptRepoTransitionPredictorV0:
+    """Fit a tiny deterministic evaluation-only transition predictor."""
+
+    if not rows:
+        raise ValueError("at least one transition row is required")
+
+    validated_rows = tuple(rows)
+    for row in validated_rows:
+        _validate_transition_row(row)
+
+    embedding_dim = _transition_embedding_dim(validated_rows[0])
+    for row in validated_rows:
+        row_dim = _transition_embedding_dim(row)
+        if row_dim != embedding_dim:
+            raise ValueError(
+                "all transition rows must share embedding dimension "
+                f"{embedding_dim}; found {row_dim}"
+            )
+
+    train_examples: list[dict[str, object]] = []
+    source_deltas_by_action: dict[str, list[tuple[float, ...]]] = {}
+    all_source_deltas: list[tuple[float, ...]] = []
+
+    for row in validated_rows:
+        target = _transition_training_target(row, dim=embedding_dim)
+        action_kind = _transition_action_kind(row)
+        source_delta = target.get("source_delta")
+        if isinstance(source_delta, tuple):
+            source_deltas_by_action.setdefault(action_kind, []).append(source_delta)
+            all_source_deltas.append(source_delta)
+        train_examples.append(
+            {
+                "row_id": _transition_row_id(row),
+                "input_vector": list(_transition_input_vector(row, dim=embedding_dim)),
+                "action_kind": action_kind,
+                "outcome_kind": _transition_outcome_kind(row),
+                "outcome_status": _optional_str(
+                    _mapping_field(row, "outcome", index=0).get("status")
+                ),
+                "validation_status": _optional_str(
+                    _mapping_field(row, "validation", index=0).get("status")
+                ),
+                "target_kind": target["kind"],
+                "failure_kind": target.get("failure_kind"),
+                "clarification_fields": list(
+                    _string_list(target.get("clarification_fields", []))
+                ),
+                "repo_after_embedding": list(
+                    _float_tuple(target.get("repo_after_embedding", []))
+                )
+                if target.get("kind") == "repo_after_embedding"
+                else None,
+                "source_delta": list(source_delta)
+                if isinstance(source_delta, tuple)
+                else [],
+            }
+        )
+
+    zero_delta = tuple(0.0 for _ in range(embedding_dim))
+    predictor = PromptRepoTransitionPredictorV0(
+        schema_version=PROMPT_REPO_TRANSITION_PREDICTOR_SCHEMA_VERSION,
+        predictor_kind=NEAREST_ACTION_DELTA_PREDICTOR_KIND,
+        decision=EVALUATION_ONLY_DECISION,
+        embedding_dim=embedding_dim,
+        train_row_ids=tuple(str(example["row_id"]) for example in train_examples),
+        global_source_delta=(
+            _mean_vectors(all_source_deltas, dim=embedding_dim)
+            if all_source_deltas
+            else zero_delta
+        ),
+        action_source_deltas={
+            action_kind: _mean_vectors(action_deltas, dim=embedding_dim)
+            for action_kind, action_deltas in sorted(source_deltas_by_action.items())
+        },
+        train_examples=tuple(train_examples),
+    )
+    validate_prompt_repo_transition_predictor(predictor)
+    return predictor
+
+
+def predict_prompt_repo_transition_target_v0(
+    predictor: PromptRepoTransitionPredictorV0,
+    row: Mapping[str, object],
+) -> dict[str, object]:
+    """Predict one transition target with a fitted V0 predictor."""
+
+    return predictor.predict(row)
+
+
+def write_prompt_repo_transition_predictor_json(
+    predictor: PromptRepoTransitionPredictorV0,
+    path: Path,
+) -> Path:
+    """Persist a transition predictor artifact as deterministic JSON."""
+
+    validate_prompt_repo_transition_predictor(predictor)
+    resolved = path.expanduser().resolve()
+    resolved.parent.mkdir(parents=True, exist_ok=True)
+    resolved.write_text(
+        json.dumps(predictor.to_record(), indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    return resolved
+
+
+def load_prompt_repo_transition_predictor_json(
+    path: Path,
+) -> PromptRepoTransitionPredictorV0:
+    """Load a persisted transition predictor artifact."""
+
+    data = json.loads(path.expanduser().resolve().read_text(encoding="utf-8"))
+    if not isinstance(data, dict):
+        raise ValueError("transition predictor artifact must be a JSON object")
+    predictor = _predictor_from_record(data)
+    validate_prompt_repo_transition_predictor(predictor)
+    return predictor
+
+
+def validate_prompt_repo_transition_predictor(
+    predictor: PromptRepoTransitionPredictorV0,
+) -> None:
+    """Validate a transition predictor artifact and vector dimensions."""
+
+    if predictor.schema_version != PROMPT_REPO_TRANSITION_PREDICTOR_SCHEMA_VERSION:
+        raise ValueError(
+            "unsupported prompt-repo transition predictor schema "
+            f"{predictor.schema_version!r}"
+        )
+    if predictor.predictor_kind != NEAREST_ACTION_DELTA_PREDICTOR_KIND:
+        raise ValueError(
+            f"unsupported prompt-repo transition predictor kind {predictor.predictor_kind!r}"
+        )
+    if predictor.decision != EVALUATION_ONLY_DECISION:
+        raise ValueError("prompt-repo transition predictor must be evaluation-only")
+    if predictor.embedding_dim < 1:
+        raise ValueError("predictor embedding_dim must be positive")
+    if not predictor.train_row_ids:
+        raise ValueError("predictor must include train row ids")
+    if len(set(predictor.train_row_ids)) != len(predictor.train_row_ids):
+        raise ValueError("predictor train row ids must be unique")
+    if len(predictor.global_source_delta) != predictor.embedding_dim:
+        raise ValueError("global source delta dimension mismatch")
+    for action_kind, delta in predictor.action_source_deltas.items():
+        if not action_kind:
+            raise ValueError("action source delta key must be non-empty")
+        if len(delta) != predictor.embedding_dim:
+            raise ValueError(f"source delta dimension mismatch for {action_kind!r}")
+    if len(predictor.train_examples) != len(predictor.train_row_ids):
+        raise ValueError("predictor train examples must match train row ids")
+    for index, example in enumerate(predictor.train_examples, start=1):
+        row_id = example.get("row_id")
+        if not isinstance(row_id, str) or not row_id:
+            raise ValueError(f"predictor train example {index} row_id must be a string")
+        vector = _float_tuple(example.get("input_vector", []))
+        if len(vector) != predictor.embedding_dim:
+            raise ValueError(
+                f"predictor train example {row_id!r} input dimension mismatch"
+            )
+        target_kind = example.get("target_kind")
+        if target_kind not in {"repo_after_embedding", "blocked_or_clarification"}:
+            raise ValueError(
+                f"predictor train example {row_id!r} has invalid target kind"
+            )
+        if target_kind == "repo_after_embedding":
+            target_embedding = _float_tuple(example.get("repo_after_embedding", []))
+            if len(target_embedding) != predictor.embedding_dim:
+                raise ValueError(
+                    f"predictor train example {row_id!r} target dimension mismatch"
+                )
+
+
+def _predictor_from_record(record: Mapping[str, object]) -> PromptRepoTransitionPredictorV0:
+    embedding_dim = record.get("embedding_dim")
+    if not isinstance(embedding_dim, int) or isinstance(embedding_dim, bool):
+        raise ValueError("transition predictor embedding_dim must be an integer")
+    action_source_deltas_raw = record.get("action_source_deltas", {})
+    if not isinstance(action_source_deltas_raw, Mapping):
+        raise ValueError("transition predictor action_source_deltas must be an object")
+    train_examples_raw = record.get("train_examples", [])
+    if not isinstance(train_examples_raw, list):
+        raise ValueError("transition predictor train_examples must be a list")
+    train_examples: list[dict[str, object]] = []
+    for index, example in enumerate(train_examples_raw, start=1):
+        if not isinstance(example, Mapping):
+            raise ValueError(
+                f"transition predictor train example {index} must be an object"
+            )
+        copied = _json_copy(example)
+        if not isinstance(copied, dict):
+            raise ValueError(
+                f"transition predictor train example {index} must be an object"
+            )
+        train_examples.append(copied)
+    return PromptRepoTransitionPredictorV0(
+        schema_version=_required_str(record, "schema_version", index=0),
+        predictor_kind=_required_str(record, "predictor_kind", index=0),
+        decision=_required_str(record, "decision", index=0),
+        embedding_dim=embedding_dim,
+        train_row_ids=tuple(_string_list(record.get("train_row_ids", []))),
+        global_source_delta=_float_tuple(record.get("global_source_delta", [])),
+        action_source_deltas={
+            str(action_kind): _float_tuple(delta)
+            for action_kind, delta in action_source_deltas_raw.items()
+        },
+        train_examples=tuple(train_examples),
+    )
+
+
+def _validate_transition_row(row: Mapping[str, object]) -> None:
+    if row.get("schema_version") != PROMPT_REPO_TRANSITION_SCHEMA_VERSION:
+        raise ValueError("transition row must use prompt-repo-transition-v1")
+    _transition_row_id(row)
+    dim = _transition_embedding_dim(row)
+    prompt_context = _mapping_field(row, "prompt_context", index=0)
+    if len(_float_tuple(prompt_context.get("embedding", []))) != dim:
+        raise ValueError("prompt context embedding dimension mismatch")
+    _repo_embedding_from_transition(row, field="repo_before")
+    outcome_kind = _transition_outcome_kind(row)
+    repo_after = _mapping_field(row, "repo_after", index=0)
+    if outcome_kind in {"source_changed", "source_unchanged"}:
+        _repo_embedding_from_transition(row, field="repo_after")
+    elif outcome_kind != "blocked_no_change":
+        raise ValueError(f"unsupported transition outcome kind {outcome_kind!r}")
+    if repo_after.get("kind") != outcome_kind:
+        raise ValueError("repo_after kind must match outcome kind")
+
+
+def _transition_embedding_dim(row: Mapping[str, object]) -> int:
+    prompt_context = _mapping_field(row, "prompt_context", index=0)
+    dim = prompt_context.get("embedding_dim")
+    if not isinstance(dim, int) or isinstance(dim, bool) or dim < 1:
+        raise ValueError("transition prompt_context.embedding_dim must be positive")
+    return dim
+
+
+def _transition_row_id(row: Mapping[str, object]) -> str:
+    row_id = row.get("id")
+    if not isinstance(row_id, str) or not row_id:
+        raise ValueError("transition row id must be a non-empty string")
+    return row_id
+
+
+def _transition_action_kind(row: Mapping[str, object]) -> str:
+    action = _mapping_field(row, "structured_action", index=0)
+    kind = action.get("kind")
+    if not isinstance(kind, str) or not kind:
+        raise ValueError("transition structured_action.kind must be a string")
+    return kind
+
+
+def _transition_outcome_kind(row: Mapping[str, object]) -> str:
+    outcome = _mapping_field(row, "outcome", index=0)
+    kind = outcome.get("kind")
+    if not isinstance(kind, str) or not kind:
+        raise ValueError("transition outcome.kind must be a string")
+    return kind
+
+
+def _transition_input_vector(
+    row: Mapping[str, object],
+    *,
+    dim: int,
+) -> tuple[float, ...]:
+    prompt_context = _mapping_field(row, "prompt_context", index=0)
+    prompt_embedding = _float_tuple(prompt_context.get("embedding", []))
+    repo_before_embedding = _repo_embedding_from_transition(row, field="repo_before")
+    categorical_embedding = _hash_feature_vector(
+        _transition_categorical_features(row),
+        dim=dim,
+    )
+    if len(prompt_embedding) != dim:
+        raise ValueError("prompt context embedding dimension mismatch")
+    if len(repo_before_embedding) != dim:
+        raise ValueError("repo-before embedding dimension mismatch")
+    return _normalize(
+        tuple(
+            (PROMPT_CONTEXT_FEATURE_WEIGHT * prompt_embedding[index])
+            + (REPO_BEFORE_FEATURE_WEIGHT * repo_before_embedding[index])
+            + (ACTION_FEATURE_WEIGHT * categorical_embedding[index])
+            for index in range(dim)
+        )
+    )
+
+
+def _transition_categorical_features(row: Mapping[str, object]) -> tuple[str, ...]:
+    action = _mapping_field(row, "structured_action", index=0)
+    outcome = _mapping_field(row, "outcome", index=0)
+    validation = _mapping_field(row, "validation", index=0)
+    source = _mapping_field(row, "source_outcome", index=0)
+    features: list[str] = []
+    for prefix, mapping, fields in (
+        ("source", source, ("record_kind",)),
+        ("action", action, ("kind", "repo_mode", "task_type", "domain")),
+        ("outcome", outcome, ("kind", "status", "failure_kind")),
+        ("validation", validation, ("status",)),
+    ):
+        for field in fields:
+            value = mapping.get(field)
+            if isinstance(value, str) and value:
+                features.append(f"{prefix}:{field}:{value}")
+    for field in ("features", "target_files", "action_kinds"):
+        for value in _string_list(action.get(field, [])):
+            features.append(f"action:{field}:{value}")
+    return tuple(features)
+
+
+def _transition_training_target(
+    row: Mapping[str, object],
+    *,
+    dim: int,
+) -> dict[str, object]:
+    outcome_kind = _transition_outcome_kind(row)
+    if outcome_kind in {"source_changed", "source_unchanged"}:
+        before = _repo_embedding_from_transition(row, field="repo_before")
+        after = _repo_embedding_from_transition(row, field="repo_after")
+        if len(before) != dim or len(after) != dim:
+            raise ValueError("repo target embedding dimension mismatch")
+        return {
+            "kind": "repo_after_embedding",
+            "repo_after_embedding": after,
+            "source_delta": tuple(
+                after_value - before_value
+                for before_value, after_value in zip(before, after, strict=True)
+            ),
+        }
+
+    target_summary = _mapping_field(
+        _mapping_field(row, "prompt_jepa_target", index=0),
+        "summary",
+        index=0,
+    )
+    outcome = _mapping_field(row, "outcome", index=0)
+    return {
+        "kind": "blocked_or_clarification",
+        "failure_kind": outcome.get("failure_kind"),
+        "clarification_fields": _string_list(
+            target_summary.get("clarification_fields", [])
+        ),
+    }
+
+
+def _repo_embedding_from_transition(
+    row: Mapping[str, object],
+    *,
+    field: str,
+) -> tuple[float, ...]:
+    wrapper = _mapping_field(row, field, index=0)
+    state = _repo_state_record(_mapping_field(wrapper, "state", index=0), field=field)
+    dim = _transition_embedding_dim(row)
+    embedding = _float_tuple(state.get("repo_embedding", []))
+    if len(embedding) != dim:
+        raise ValueError(f"{field} repo_embedding dimension mismatch")
+    return embedding
+
+
+def _input_feature_summary(row: Mapping[str, object]) -> dict[str, object]:
+    return {
+        "feature_schema_version": PROMPT_REPO_TRANSITION_FEATURE_SCHEMA_VERSION,
+        "prompt_context_embedding": True,
+        "repo_before_embedding": True,
+        "categorical_features": list(_transition_categorical_features(row)),
+    }
+
+
+def _hash_feature_vector(features: Sequence[str], *, dim: int) -> tuple[float, ...]:
+    vector = [0.0 for _ in range(dim)]
+    for feature in features:
+        digest = sha256(feature.encode("utf-8")).digest()
+        index = int.from_bytes(digest[:8], "big") % dim
+        sign = 1.0 if digest[8] % 2 == 0 else -1.0
+        vector[index] += sign
+    return _normalize(tuple(vector))
+
+
+def _mean_vectors(vectors: Sequence[Sequence[float]], *, dim: int) -> tuple[float, ...]:
+    if not vectors:
+        return tuple(0.0 for _ in range(dim))
+    return tuple(
+        sum(vector[index] for vector in vectors) / len(vectors)
+        for index in range(dim)
+    )
+
+
+def _vector_add(
+    left: Sequence[float],
+    right: Sequence[float],
+) -> tuple[float, ...]:
+    if len(left) != len(right):
+        raise ValueError("cannot add vectors with different dimensions")
+    return tuple(
+        left_value + right_value
+        for left_value, right_value in zip(left, right, strict=True)
+    )
+
+
+def _dot(left: Sequence[float], right: Sequence[float]) -> float:
+    if len(left) != len(right):
+        raise ValueError("cannot compare vectors with different dimensions")
+    return sum(
+        left_value * right_value
+        for left_value, right_value in zip(left, right, strict=True)
+    )
+
+
+def _normalize(vector: Sequence[float]) -> tuple[float, ...]:
+    magnitude = sum(value * value for value in vector) ** 0.5
+    if magnitude == 0.0:
+        return tuple(float(value) for value in vector)
+    return tuple(float(value) / magnitude for value in vector)
+
+
+def _float_tuple(value: object) -> tuple[float, ...]:
+    if not isinstance(value, list | tuple):
+        raise ValueError("expected a numeric vector")
+    floats: list[float] = []
+    for item in value:
+        if not isinstance(item, int | float) or isinstance(item, bool):
+            raise ValueError("expected a numeric vector")
+        floats.append(float(item))
+    return tuple(floats)
 
 
 def _structured_action(

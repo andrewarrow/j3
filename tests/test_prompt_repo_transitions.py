@@ -10,9 +10,16 @@ from j3.prompt_jepa import (
     REQUEST_REPO_ATTEMPT_KIND,
 )
 from j3.prompt_repo_transitions import (
+    EVALUATION_ONLY_DECISION,
+    NEAREST_ACTION_DELTA_PREDICTOR_KIND,
+    PROMPT_REPO_TRANSITION_PREDICTOR_SCHEMA_VERSION,
     PROMPT_REPO_TRANSITION_SCHEMA_VERSION,
     PromptRepoOutcomeState,
     build_prompt_repo_transition_rows,
+    fit_prompt_repo_transition_predictor_v0,
+    load_prompt_repo_transition_predictor_json,
+    predict_prompt_repo_transition_target_v0,
+    write_prompt_repo_transition_predictor_json,
     write_prompt_repo_transitions_jsonl,
 )
 from j3.repo_state import encode_repo_state_record
@@ -136,6 +143,74 @@ def test_write_prompt_repo_transitions_jsonl_is_deterministic(tmp_path: Path) ->
     assert loaded[0]["schema_version"] == PROMPT_REPO_TRANSITION_SCHEMA_VERSION
 
 
+def test_fit_transition_predictor_v0_returns_evaluation_only_metadata(
+    tmp_path: Path,
+) -> None:
+    rows = _sample_transition_rows(tmp_path)
+
+    predictor = fit_prompt_repo_transition_predictor_v0(rows)
+    record = predictor.to_record()
+
+    assert json.loads(json.dumps(record, sort_keys=True)) == record
+    assert record["schema_version"] == PROMPT_REPO_TRANSITION_PREDICTOR_SCHEMA_VERSION
+    assert record["predictor_kind"] == NEAREST_ACTION_DELTA_PREDICTOR_KIND
+    assert record["decision"] == EVALUATION_ONLY_DECISION
+    assert record["embedding_dim"] == 16
+    assert record["train_row_ids"] == [row["id"] for row in rows]
+    assert set(record["action_source_deltas"]) == {"create_repo", "modify_repo"}
+    assert len(record["train_examples"]) == 3
+    assert record["train_examples"][0]["target_kind"] == "repo_after_embedding"  # type: ignore[index]
+    assert record["train_examples"][0]["repo_after_embedding"] == (  # type: ignore[index]
+        rows[0]["repo_after"]["state"]["repo_embedding"]  # type: ignore[index]
+    )
+    assert record["train_examples"][1]["target_kind"] == "blocked_or_clarification"  # type: ignore[index]
+
+
+def test_write_and_load_transition_predictor_v0_json(tmp_path: Path) -> None:
+    rows = _sample_transition_rows(tmp_path)
+    predictor = fit_prompt_repo_transition_predictor_v0(rows)
+
+    out = write_prompt_repo_transition_predictor_json(
+        predictor,
+        tmp_path / "transition-model.json",
+    )
+    loaded = load_prompt_repo_transition_predictor_json(out)
+
+    assert json.loads(out.read_text(encoding="utf-8")) == predictor.to_record()
+    assert loaded.to_record() == predictor.to_record()
+
+
+def test_predict_transition_target_v0_handles_source_and_blocked_targets(
+    tmp_path: Path,
+) -> None:
+    rows = _sample_transition_rows(tmp_path)
+    predictor = fit_prompt_repo_transition_predictor_v0(rows)
+
+    source_prediction = predict_prompt_repo_transition_target_v0(predictor, rows[0])
+    expected_after = rows[0]["repo_after"]["state"]["repo_embedding"]  # type: ignore[index]
+    assert source_prediction["schema_version"] == "prompt-repo-transition-prediction-v0"
+    assert source_prediction["decision"] == EVALUATION_ONLY_DECISION
+    assert source_prediction["nearest_train_row_id"] == rows[0]["id"]
+    assert source_prediction["target"]["kind"] == "repo_after_embedding"  # type: ignore[index]
+    assert source_prediction["target"]["source_delta_kind"] == (  # type: ignore[index]
+        "action_conditioned_average"
+    )
+    assert source_prediction["target"]["repo_after_embedding"] == expected_after  # type: ignore[index]
+    assert source_prediction["input_features"]["prompt_context_embedding"] is True  # type: ignore[index]
+    assert source_prediction["input_features"]["repo_before_embedding"] is True  # type: ignore[index]
+
+    blocked_prediction = predict_prompt_repo_transition_target_v0(predictor, rows[1])
+    assert blocked_prediction["nearest_train_row_id"] == rows[1]["id"]
+    assert blocked_prediction["target"]["kind"] == "blocked_or_clarification"  # type: ignore[index]
+    assert blocked_prediction["target"]["outcome_kind"] == "blocked_no_change"  # type: ignore[index]
+    assert blocked_prediction["target"]["validation_status"] == "not_run"  # type: ignore[index]
+    assert blocked_prediction["target"]["failure_kind"] == "blocking_clarification"  # type: ignore[index]
+    assert blocked_prediction["target"]["clarification_fields"] == [  # type: ignore[index]
+        "unsupported_requirement"
+    ]
+    assert blocked_prediction["target"]["repo_after_embedding"] is None  # type: ignore[index]
+
+
 def test_source_changing_transition_requires_repo_after(tmp_path: Path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()
@@ -151,6 +226,53 @@ def test_source_changing_transition_requires_repo_after(tmp_path: Path) -> None:
             ],
             embedding_dim=16,
         )
+
+
+def _sample_transition_rows(tmp_path: Path) -> tuple[dict[str, object], ...]:
+    empty_repo = tmp_path / "empty"
+    created_repo = tmp_path / "created"
+    blocked_repo = tmp_path / "blocked"
+    before_repo = tmp_path / "before"
+    after_repo = tmp_path / "after"
+    for repo in (empty_repo, created_repo, blocked_repo, before_repo, after_repo):
+        repo.mkdir()
+    (created_repo / "calculator.py").write_text(
+        "def add(left, right):\n    return left + right\n",
+        encoding="utf-8",
+    )
+    (before_repo / "calculator.py").write_text(
+        "def calculate(left, operator, right):\n    return left + right\n",
+        encoding="utf-8",
+    )
+    (after_repo / "calculator.py").write_text(
+        "def calculate(left, operator, right):\n"
+        "    if operator == '**':\n"
+        "        return left ** right\n"
+        "    return left + right\n",
+        encoding="utf-8",
+    )
+    return build_prompt_repo_transition_rows(
+        [
+            _request_outcome_row(blocked=False),
+            _request_outcome_row(blocked=True),
+            _change_outcome_row(),
+        ],
+        [
+            PromptRepoOutcomeState(
+                repo_before=encode_repo_state_record(empty_repo, embedding_dim=16),
+                repo_after=encode_repo_state_record(created_repo, embedding_dim=16),
+            ),
+            PromptRepoOutcomeState(
+                repo_before=encode_repo_state_record(blocked_repo, embedding_dim=16),
+                repo_after=encode_repo_state_record(blocked_repo, embedding_dim=16),
+            ),
+            PromptRepoOutcomeState(
+                repo_before=encode_repo_state_record(before_repo, embedding_dim=16),
+                repo_after=encode_repo_state_record(after_repo, embedding_dim=16),
+            ),
+        ],
+        embedding_dim=16,
+    )
 
 
 def _request_outcome_row(*, blocked: bool) -> dict[str, object]:

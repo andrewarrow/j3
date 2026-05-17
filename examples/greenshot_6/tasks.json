@@ -1165,6 +1165,27 @@
     }
   },
   {
+    "name": "pytest_usage_filename_pattern_escape",
+    "family": "pytest_usage_doc_text",
+    "source_type": "git_history",
+    "split": "train",
+    "repo": ".",
+    "test": "python -m pytest tests/test_pytestdocs.py::test_filename_discovery_pattern_is_not_escaped",
+    "source": {
+      "repo": "pytest-dev/pytest",
+      "commit": "2f09ddc84ea6a7ccd56f19b0b998c8d2c51a4652"
+    },
+    "preferred": {
+      "file_path": "pytestdocs/usage.py",
+      "action": "change_literal",
+      "symbol": "filename_discovery_sentence",
+      "params": {
+        "from": "pytest discovers files matching test_*.py or \\*_test.py",
+        "to": "pytest discovers files matching test_*.py or *_test.py"
+      }
+    }
+  },
+  {
     "name": "cookie_default_secure_flag_dict_value",
     "family": "mapping_value",
     "source_type": "mutation",

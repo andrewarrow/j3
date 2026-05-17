@@ -99,7 +99,7 @@ def test_load_greenshot_6_tasks() -> None:
     tasks = load_tasks(Path("examples/greenshot_6"))
     by_name = {task.name: task for task in tasks}
 
-    assert len(tasks) == 63
+    assert len(tasks) == 64
     assert tasks[0].name == "core_metadata_version_dict_value"
     assert tasks[0].family == "mapping_value"
     assert tasks[0].source_type == "mutation"
@@ -291,6 +291,22 @@ def test_load_greenshot_6_tasks() -> None:
                 "The variants must also also be compatible with the implementation"
             ),
             "to": "The variants must also be compatible with the implementation",
+        },
+    }
+    assert by_name["pytest_usage_filename_pattern_escape"].family == (
+        "pytest_usage_doc_text"
+    )
+    assert by_name["pytest_usage_filename_pattern_escape"].source_type == (
+        "git_history"
+    )
+    assert by_name["pytest_usage_filename_pattern_escape"].split == "train"
+    assert by_name["pytest_usage_filename_pattern_escape"].preferred_patch == {
+        "file_path": "pytestdocs/usage.py",
+        "action": "change_literal",
+        "symbol": "filename_discovery_sentence",
+        "params": {
+            "from": "pytest discovers files matching test_*.py or \\*_test.py",
+            "to": "pytest discovers files matching test_*.py or *_test.py",
         },
     }
     assert by_name["prettytable_missing_attribute_quote"].family == "table_legacy_attribute_error"

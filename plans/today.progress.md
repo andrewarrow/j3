@@ -8,7 +8,7 @@ new implementation facts change the 24-hour plan itself. Record any
 ## Status
 
 - Current phase: Transition bench and action selection V1
-- Completed iterations: 3 for this reset; Prompt+Repo JEPA transition V0
+- Completed iterations: 4 for this reset; Prompt+Repo JEPA transition V0
   completed 6 iterations; Prompt-JEPA developer demo reset
   completed 5 iterations; previous Prompt-JEPA index reset completed 8
   iterations
@@ -36,12 +36,14 @@ new implementation facts change the 24-hour plan itself. Record any
   `pytest tests/test_transition_bench.py -q`;
   `python -m py_compile j3/transition_bench.py`;
   `pytest tests/test_transition_action_choice.py -q`;
+  `pytest tests/test_transition_action_scoring.py -q`;
   `python -m py_compile j3/transition_action_choice.py`;
+  `python -m py_compile j3/transition_action_scoring.py`;
   `git diff --check`
 - Latest implementation/demo commit: `3eb9c38` (`Add transition action choice groups`)
 - Latest documentation commit: `ef99279` (`Rewrite README for Prompt Repo JEPA`)
 - Current blocker: none
-- Next task: add an evaluation-only future scorer with pass@1/top-k/MRR metrics.
+- Next task: add a one-command transition bench demo/report.
 
 ## Active Task Queue
 
@@ -49,7 +51,7 @@ new implementation facts change the 24-hour plan itself. Record any
   artifacts.
 - [x] Define `transition-bench-v1` rows with checked-in fixtures.
 - [x] Build `transition-action-choice-v1` groups from candidate outcomes.
-- [ ] Add an evaluation-only future scorer with pass@1/top-k/MRR metrics.
+- [x] Add an evaluation-only future scorer with pass@1/top-k/MRR metrics.
 - [ ] Add a one-command transition bench demo/report.
 - [ ] Document reproduction, ignored data boundaries, and future release
   packaging.
@@ -171,6 +173,30 @@ Use this shape for each worker handoff:
 - Commit: `3eb9c38` (`Add transition action choice groups`)
 - Push: succeeded to `main`.
 - Next: add an evaluation-only future scorer with pass@1/top-k/MRR metrics.
+- Blockers: none.
+
+### Iteration 4: Evaluation-only transition action scorer
+
+- Worker: Codex worker iteration 4
+- Goal: add an evaluation-only future scorer with pass@1/top-k/MRR metrics for
+  `transition-action-choice-v1` groups.
+- Files changed: `j3/transition_action_scoring.py`,
+  `tests/test_transition_action_scoring.py`, `plans/today.progress.md`
+- Tests run: `pytest tests/test_transition_action_scoring.py -q` passed with 5
+  tests; `pytest tests/test_transition_action_choice.py -q` passed with 5
+  tests; `python -m py_compile j3/transition_action_scoring.py` passed;
+  `git diff --check` passed.
+- Result: added deterministic local scoring over action-choice candidates using
+  non-label local features: source and candidate-after embedding availability,
+  action kind/params, model/ranker/failure-hint scores, target context, and
+  failure-hint shape. The evaluator compares the scorer to existing rank order,
+  stable lexical order, and deterministic random order; reports pass@1, top-k
+  pass rate, MRR, average first-passing rank, candidates validated before/to
+  first pass, candidates saved vs existing rank order, residual wrong-top
+  choices, local runtime, and zero hosted token/context fields.
+- Commit: pending before commit (`Add transition action scorer`)
+- Push: pending before push.
+- Next: add a one-command transition bench demo/report.
 - Blockers: none.
 
 - Rewrote `README.md` into a much smaller developer-focused JEPA pitch using

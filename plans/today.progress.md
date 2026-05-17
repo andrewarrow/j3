@@ -20,7 +20,7 @@ new implementation facts change the 24-hour plan itself. Record any
   - `python -m py_compile existing_repo_change.py cli/handlers.py cli/parser.py cli/__init__.py`
 - `python cli.py train-prompt-intents --labels ../prompts/coding_agent_prompts_seed.jsonl --target expected_action repo_mode`
 - `python -m py_compile prompt_intents.py cli/handlers.py cli/parser.py cli/__init__.py`
-- Latest implementation commit: `fc9dc87a9b734234e9ebdcbd883147f9dea3d7f7`
+- Latest implementation commit: `b369919971d86d77f6d25c0c687ae705ea4dc4ed`
 - Current blocker: none
 - Next task: add targeted labels or a second-stage target for ambiguous
   clarification and existing-repo config/refactor routing before considering
@@ -305,8 +305,8 @@ Use this shape for each worker handoff:
     config, package, and CI-oriented requests.
   - Production routing remains fixture-backed and conservative; no learned
     model is wired into request-spec or change-spec behavior.
-- Commit: pending; reported by worker final
-- Push: pending; reported by worker final
+- Commit: `b369919971d86d77f6d25c0c687ae705ea4dc4ed`
+- Push: succeeded to `main`
 - Next: add targeted train/validation/test labels or a second-stage target for
   `ask_clarification` vs concrete existing-repo work and for config/refactor/
   package artifact routing. Keep graphical/unsupported-interface labels as a

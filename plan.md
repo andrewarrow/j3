@@ -988,12 +988,35 @@ Recent work:
   across 41 GreenShot-6 tasks. Raw GreenShot-6 still has 12 pass@1 misses, but
   every task has a tested preferred-positive row and the saved test-slice
   ranker places every preferred-positive candidate at trained rank 1.
+- GreenShot-6 now includes a twenty-third real-package-derived fixture domain,
+  `flaskcli`, with one `git_history` task modeled on `pallets/flask` PR 5344 /
+  commit `1d5abfadd7132c9a78e14e5ba6c07aed47115280`. The task
+  `flask_ssl_context_key_option_quote` repairs a Flask CLI SSL option
+  BadParameter message by adding the missing closing quote in `--key`, using
+  the existing `change_literal` action family.
+- Focused loader/generator coverage passed for the Flask-derived task:
+  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
+  `pytest tests/test_patching.py::test_patch_solves_flask_ssl_context_key_option_quote -q`.
+- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
+  adding `flaskcli`. The persisted dataset at
+  `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` now covers 42
+  tasks and 309 tested candidates. Ranked eval solved all 42 tasks with
+  `pass@1=29/42` and average candidates `7.36`; the new Flask-derived task is
+  a raw rank-2 pass with the preferred `change_literal` candidate.
+- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
+  the flaskcli outcome refresh and stayed clean: solved=7/7, pass@1=7/7,
+  positive@1=7/7, avg_first_passing_index=1.0. Training used 389 rows, 78
+  passing rows, 333 training pairs, 794 features, and 4 margin violations.
+- Applying the saved test-slice ranker to all refreshed GreenShot-6 rows found
+  no trained preferred-positive misses across 42 tasks. For the new Flask-derived
+  task, the trained ranker places the preferred literal repair first above the
+  false swap and literal decoys.
 
 Last focused verification:
 
 ```bash
 pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q
-pytest tests/test_patching.py::test_patch_solves_starlette_websocket_runtime_error_allowed_messages -q
+pytest tests/test_patching.py::test_patch_solves_flask_ssl_context_key_option_quote -q
 python cli.py eval \
   --tasks examples/greenshot_6 \
   --checkpoint runs/apache-python-git/model.json \
@@ -1021,7 +1044,7 @@ python cli.py outcome-summary \
   --candidate-outcomes runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl
 python - <<'PY'
 # Applied the refreshed test-slice ranker to all refreshed GreenShot-6 rows:
-# raw_pass1_misses=12, trained_preferred_positive_misses=0 across 41 tasks.
+# raw_pass1_misses=13, trained_preferred_positive_misses=0 across 42 tasks.
 PY
 git diff --check
 ```
@@ -1349,7 +1372,7 @@ The next context window should continue dataset growth by adding another
 real-package-derived GreenShot-6 task or small fixture domain. Do not tune broad
 handcrafted weights or add pass/preferred-label features from this state. The
 current GreenShot-6 `split: test` held-out validation is clean after the
-websocketstate outcome refresh.
+flaskcli outcome refresh.
 
 Immediate next sequence:
 

@@ -1112,6 +1112,30 @@ def test_patch_solves_starlette_websocket_runtime_error_allowed_messages(tmp_pat
     )
 
 
+def test_patch_solves_flask_ssl_context_key_option_quote(tmp_path) -> None:
+    repo = tmp_path / "greenshot_6"
+    shutil.copytree("examples/greenshot_6", repo)
+
+    result = plan_and_maybe_apply_patch(
+        repo=repo,
+        test_command=(
+            "python -m pytest "
+            "tests/test_flaskcli.py::test_ssl_context_key_error_message_quotes_key_option"
+        ),
+        dry_run=True,
+        timeout_seconds=10,
+    )
+
+    assert result.selected is not None
+    assert result.selected.file_path == "flaskcli/ssl.py"
+    assert result.selected.action.kind.value == "change_literal"
+    assert result.selected.action.params == {
+        "from": 'When "--cert" is an SSLContext object, "--key is not used.',
+        "to": 'When "--cert" is an SSLContext object, "--key" is not used.',
+    }
+    assert '"--key" is not used' in result.selected.patched_source
+
+
 def test_generate_membership_operator_with_literal_needle_decoy(tmp_path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()

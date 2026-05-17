@@ -99,7 +99,7 @@ def test_load_greenshot_6_tasks() -> None:
     tasks = load_tasks(Path("examples/greenshot_6"))
     by_name = {task.name: task for task in tasks}
 
-    assert len(tasks) == 41
+    assert len(tasks) == 42
     assert tasks[0].name == "core_metadata_version_dict_value"
     assert tasks[0].family == "mapping_value"
     assert tasks[0].source_type == "mutation"
@@ -198,6 +198,20 @@ def test_load_greenshot_6_tasks() -> None:
         "params": {
             "from": 'Expected message "websocket.connect"',
             "to": 'Expected message "websocket.accept" or "websocket.close"',
+        },
+    }
+    assert by_name["flask_ssl_context_key_option_quote"].family == (
+        "cli_ssl_error_message"
+    )
+    assert by_name["flask_ssl_context_key_option_quote"].source_type == "git_history"
+    assert by_name["flask_ssl_context_key_option_quote"].split == "train"
+    assert by_name["flask_ssl_context_key_option_quote"].preferred_patch == {
+        "file_path": "flaskcli/ssl.py",
+        "action": "change_literal",
+        "symbol": "validate_key",
+        "params": {
+            "from": 'When "--cert" is an SSLContext object, "--key is not used.',
+            "to": 'When "--cert" is an SSLContext object, "--key" is not used.',
         },
     }
     assert by_name["chainlit_oauth_state_logging_percent_format"].family == (

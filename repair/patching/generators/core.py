@@ -98,7 +98,11 @@ def generate_candidate_patches(repo: Path) -> list[CandidatePatch]:
                 repo_string_literals,
             )
         )
-        for function in [node for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)]:
+        for function in [
+            node
+            for node in ast.walk(tree)
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+        ]:
             arg_names = {arg.arg for arg in function.args.args}
             arg_types = _function_arg_types(function)
             local_symbols = module_symbols | _local_symbols(function)

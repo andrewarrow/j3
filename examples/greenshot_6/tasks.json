@@ -464,6 +464,28 @@
     }
   },
   {
+    "name": "httpx_async_client_sync_request_article",
+    "family": "http_client_error_message",
+    "source_type": "git_history",
+    "split": "train",
+    "repo": ".",
+    "test": "python -m pytest tests/test_httpclient.py::test_async_client_sync_request_error_message_uses_a",
+    "source": {
+      "repo": "encode/httpx",
+      "commit": "4189b7f051c6c51ce74c3bee1a5f269f9c50c6b2",
+      "pr": 3519
+    },
+    "preferred": {
+      "file_path": "httpclient/client.py",
+      "action": "change_literal",
+      "symbol": "send",
+      "params": {
+        "from": "Attempted to send an sync request with an AsyncClient instance.",
+        "to": "Attempted to send a sync request with an AsyncClient instance."
+      }
+    }
+  },
+  {
     "name": "prettytable_missing_attribute_quote",
     "family": "table_legacy_attribute_error",
     "source_type": "git_history",

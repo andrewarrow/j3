@@ -840,12 +840,36 @@ Recent work:
   810 features, and 3 margin violations.
 - Applying the saved test-slice ranker to all refreshed GreenShot-6 rows found
   no trained preferred-positive misses across 35 tasks.
+- GreenShot-6 now includes a seventeenth fixture domain, `httpclient`, with one
+  real-package-derived `git_history` task modeled on `encode/httpx` commit
+  `4189b7f051c6c51ce74c3bee1a5f269f9c50c6b2` / PR 3519. The task
+  `httpx_async_client_sync_request_article` repairs an AsyncClient RuntimeError
+  article typo by changing `an sync request` to `a sync request`, using the
+  existing `change_literal` action family.
+- Candidate generation now walks `AsyncFunctionDef` targets alongside ordinary
+  `FunctionDef` targets. This was needed because the HTTPX-derived preferred
+  repair lives inside an async method; no new action family was added.
+- Focused loader/generator coverage passed for the new HTTPX-derived task:
+  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
+  `pytest tests/test_patching.py::test_patch_solves_httpx_async_client_sync_request_article -q`.
+- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
+  adding `httpclient`. The persisted dataset at
+  `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` now covers 36
+  tasks and 272 tested candidates. Ranked eval solved all 36 tasks with
+  `pass@1=24/36` and average candidates `7.56`; the new HTTPX-derived task is
+  a raw rank-3 pass with the preferred `change_literal` candidate.
+- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
+  the httpclient outcome refresh and stayed clean: solved=7/7, pass@1=7/7,
+  positive@1=7/7. Training used 352 rows, 72 passing rows, 302 training pairs,
+  810 features, and 3 margin violations.
+- Applying the saved test-slice ranker to all refreshed GreenShot-6 rows found
+  no trained preferred-positive misses across 36 tasks.
 
 Last focused verification:
 
 ```bash
 pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q
-pytest tests/test_patching.py::test_patch_solves_chalice_control_plane_programmatically_docstring -q
+pytest tests/test_patching.py::test_patch_solves_httpx_async_client_sync_request_article -q
 python cli.py eval \
   --tasks examples/greenshot_6 \
   --checkpoint runs/apache-python-git/model.json \
@@ -873,7 +897,7 @@ python cli.py outcome-summary \
   --candidate-outcomes runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl
 python - <<'PY'
 # Applied the refreshed test-slice ranker to all refreshed GreenShot-6 rows;
-# no trained preferred-positive residuals were found across 35 tasks.
+# no trained preferred-positive residuals were found across 36 tasks.
 PY
 git diff --check
 ```
@@ -1201,7 +1225,7 @@ The next context window should continue dataset growth by adding another
 real-package-derived GreenShot-6 task or small fixture domain. Do not tune broad
 handcrafted weights or add pass/preferred-label features from this state. The
 current GreenShot-6 `split: test` held-out validation is clean after the
-apidocs outcome refresh.
+httpclient outcome refresh.
 
 Immediate next sequence:
 

@@ -99,7 +99,7 @@ def test_load_greenshot_6_tasks() -> None:
     tasks = load_tasks(Path("examples/greenshot_6"))
     by_name = {task.name: task for task in tasks}
 
-    assert len(tasks) == 35
+    assert len(tasks) == 36
     assert tasks[0].name == "core_metadata_version_dict_value"
     assert tasks[0].family == "mapping_value"
     assert tasks[0].source_type == "mutation"
@@ -339,6 +339,17 @@ def test_load_greenshot_6_tasks() -> None:
         "params": {
             "from": "HTTResponse.headers.get(name, default)",
             "to": "HTTPResponse.headers.get(name, default)",
+        },
+    }
+    assert by_name["httpx_async_client_sync_request_article"].split == "train"
+    assert by_name["httpx_async_client_sync_request_article"].source_type == "git_history"
+    assert by_name["httpx_async_client_sync_request_article"].preferred_patch == {
+        "file_path": "httpclient/client.py",
+        "action": "change_literal",
+        "symbol": "send",
+        "params": {
+            "from": "Attempted to send an sync request with an AsyncClient instance.",
+            "to": "Attempted to send a sync request with an AsyncClient instance.",
         },
     }
     assert by_name["rich_common_cell_width_ascii_range"].split == "train"

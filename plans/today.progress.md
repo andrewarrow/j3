@@ -482,8 +482,8 @@ Use this shape for each worker handoff:
   required fields, and unsupported scalar labels. The expanded 320-row corpus
   currently reports no duplicate normalized prompts, no prompt-family leakage,
   no missing required fields, and no unsupported scalar labels.
-- Commit: pending
-- Push: pending
+- Commit: `0c5c51f`
+- Push: succeeded to `main`
 - Next: add a one-command Prompt-JEPA demo/report path with timings, artifact
   sizes, representative queries, dry-run proposals, and hosted API tokens `0`.
 - Blockers: none.

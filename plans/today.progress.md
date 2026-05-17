@@ -8,7 +8,7 @@ new implementation facts change the 24-hour plan itself. Record any
 ## Status
 
 - Current phase: Transition bench and action selection V1
-- Completed iterations: 1 for this reset; Prompt+Repo JEPA transition V0
+- Completed iterations: 2 for this reset; Prompt+Repo JEPA transition V0
   completed 6 iterations; Prompt-JEPA developer demo reset
   completed 5 iterations; previous Prompt-JEPA index reset completed 8
   iterations
@@ -33,17 +33,19 @@ new implementation facts change the 24-hour plan itself. Record any
   `pytest tests/test_transition_assets.py -q`;
   `python -m py_compile j3/transition_assets.py cli/handlers.py cli/parser.py cli/__init__.py`;
   `python cli.py inspect-transition-assets --json`;
+  `pytest tests/test_transition_bench.py -q`;
+  `python -m py_compile j3/transition_bench.py`;
   `git diff --check`
-- Latest implementation/demo commit: `7e3df39` (`Add transition asset inventory`)
+- Latest implementation/demo commit: current task commit (`Define transition bench schema`)
 - Latest documentation commit: `ef99279` (`Rewrite README for Prompt Repo JEPA`)
 - Current blocker: none
-- Next task: define `transition-bench-v1` rows with checked-in fixtures.
+- Next task: build `transition-action-choice-v1` groups from candidate outcomes.
 
 ## Active Task Queue
 
 - [x] Add a transition asset inventory over prompt/demo/mined/candidate
   artifacts.
-- [ ] Define `transition-bench-v1` rows with checked-in fixtures.
+- [x] Define `transition-bench-v1` rows with checked-in fixtures.
 - [ ] Build `transition-action-choice-v1` groups from candidate outcomes.
 - [ ] Add an evaluation-only future scorer with pass@1/top-k/MRR metrics.
 - [ ] Add a one-command transition bench demo/report.
@@ -118,6 +120,32 @@ Use this shape for each worker handoff:
 - Commit: `7e3df39` (`Add transition asset inventory`)
 - Push: succeeded to `main`.
 - Next: define `transition-bench-v1` rows with checked-in fixtures.
+- Blockers: none.
+
+### Iteration 2: Transition bench schema
+
+- Worker: Codex worker iteration 2
+- Goal: define `transition-bench-v1` rows with deterministic JSONL helpers and
+  tiny checked-in fixtures.
+- Files changed: `j3/transition_bench.py`,
+  `tests/test_transition_bench.py`,
+  `tests/fixtures/transition_bench/prompt_repo_transitions.jsonl`,
+  `tests/fixtures/transition_bench/mined_git_transitions.jsonl`,
+  `tests/fixtures/transition_bench/candidate_outcomes.jsonl`,
+  `plans/today.progress.md`
+- Tests run: `pytest tests/test_transition_bench.py -q` passed with 4 tests;
+  `python -m py_compile j3/transition_bench.py` passed; `git diff --check`
+  passed.
+- Result: added `transition-bench-v1` normalization for
+  `prompt-repo-transition-v1` demo rows, mined `git_transition` before/after
+  source rows, and repair candidate outcome rows. The helper preserves
+  source kind, source row identity, task/repo/file identity, before/context
+  state or source, structured/candidate action metadata, target/after
+  embedding when present, validation outcome when present, and zero-hosted
+  cost fields.
+- Commit: current task commit (`Define transition bench schema`)
+- Push: succeeded to `main`.
+- Next: build `transition-action-choice-v1` groups from candidate outcomes.
 - Blockers: none.
 
 - Rewrote `README.md` into a much smaller developer-focused JEPA pitch using

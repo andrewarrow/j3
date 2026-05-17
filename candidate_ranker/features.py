@@ -18,6 +18,7 @@ from .feature_params import (
     _add_param_features,
     _add_target_context_features,
 )
+from .feature_relations import _add_candidate_relation_features
 from .types import CandidateLike
 from .values import _float_value, _int_value
 
@@ -112,6 +113,7 @@ def _candidate_record_features(candidate: dict[str, object], hints: object) -> d
     edit_metadata = _record_edit_metadata(candidate)
     if edit_metadata is not None:
         _add_edit_metadata_features(features, action, **edit_metadata)
+    _add_candidate_relation_features(features, action, candidate)
     features.update(ast_delta_feature_map(candidate))
 
     if isinstance(hints, list):

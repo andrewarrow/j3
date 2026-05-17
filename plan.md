@@ -154,11 +154,37 @@ Recent work:
   The issue is ranking signal, not missing actions: the correct candidates
   exist, but local same-score decoys and multiple passing operator repairs need
   richer metadata before ranker feature changes.
+- Candidate ranker feature extraction now consumes non-leaky equivalent and
+  overlapping candidate relation metadata from persisted outcome rows: relation
+  counts, before/after rank direction, and closest rank-distance buckets. The
+  feature version is `candidate-diagnostics-v5`.
+- A fresh temporary GreenShot-6 outcome collection with current AST delta and
+  relation metadata still solved all 11 tasks with pass@1 8/11. Training on
+  GreenShot-5 plus the fresh GreenShot-6 rows with `http_cache_directive` held
+  out produced 519 features and reduced margin violations from 6 to 3, but the
+  held-out task still did not pass at rank 1 (`pass@1=0/1`, positive@1=0/1).
+  Relation metadata alone is not enough for the HTTP `no-store` hard negative.
 
 Last focused verification:
 
 ```bash
-pytest tests/test_evaluation.py -q
+pytest tests/test_candidate_ranking.py -q
+python cli.py eval \
+  --tasks examples/greenshot_6 \
+  --checkpoint runs/apache-python-git/model.json \
+  --timeout 10 \
+  --max-candidates 80 \
+  --phase ranked \
+  --explore-after-pass 5 \
+  --diagnostics /tmp/j3-ranker-validation/greenshot-6-explore-diagnostics.json \
+  --candidate-outcomes /tmp/j3-ranker-validation/greenshot-6-candidate-outcomes.jsonl \
+  --quiet
+python cli.py train-ranker \
+  --candidate-outcomes \
+    runs/apache-python-git/greenshot-5-candidate-outcomes.jsonl \
+    /tmp/j3-ranker-validation/greenshot-6-candidate-outcomes.jsonl \
+  --holdout-task-family http_cache_directive \
+  --out /tmp/j3-ranker-validation/ranker-holdout-http-cache-directive
 git diff --check
 ```
 
@@ -235,10 +261,12 @@ Keep this section as the live queue. When work is completed, move it to
 
 Immediate next sequence:
 
-1. Use the GreenShot-6 hard-negative notes in `HARD_NEGATIVES.md` when
-   validating ranker feature changes.
+1. Use the `http_no_store_directive_subscript_key` note in
+   `HARD_NEGATIVES.md` to add non-leaky observation or target-context features
+   that connect a subscript write to a returned mapping key, then validate with
+   the `http_cache_directive` held-out ranker slice.
 2. Add more real git-history tasks only after the current hard-negative/ranker
-   signal has been used.
+   signal has been exhausted or this immediate sequence is changed.
 
 ### 1. Make GreenShot-6 Real
 
@@ -260,8 +288,8 @@ transition modeling.
 
 Next tasks:
 
-- Use equivalent/overlap metadata in ranker feature changes only after checking
-  the GreenShot-6 hard negatives in `HARD_NEGATIVES.md`.
+- No immediate metadata task. Equivalent/overlap relation features are wired;
+  the remaining hard negative needs better observation or target-context signal.
 
 ### 3. Collect Hard Negatives
 

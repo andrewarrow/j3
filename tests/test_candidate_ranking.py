@@ -609,6 +609,71 @@ def test_candidate_record_features_include_ast_delta() -> None:
     assert features["ast_delta_net_count:same"] == 1.0
 
 
+def test_candidate_record_features_include_relation_metadata_without_pass_leakage() -> None:
+    record = {
+        **_candidate_record(to=">=", passed=True),
+        "rank_index": 3,
+        "equivalent_candidate_ranks": [5],
+        "equivalent_candidate_count": 1,
+        "overlapping_candidate_ranks": [1, 4, 7],
+        "overlapping_candidate_count": 3,
+        "equivalent_passing_candidate_ranks": [5],
+        "overlapping_passing_candidate_ranks": [4],
+        "has_equivalent_passing_candidate": True,
+        "has_overlapping_passing_candidate": True,
+    }
+
+    features = _candidate_record_features(record, [])
+
+    assert features["has_equivalent_candidate"] == 1.0
+    assert features["action_has_equivalent_candidate:change_operator"] == 1.0
+    assert features["equivalent_candidate_count:1"] == 1.0
+    assert features["equivalent_candidate_after"] == 1.0
+    assert features["overlapping_candidate_count:2_3"] == 1.0
+    assert features["overlapping_candidate_before"] == 1.0
+    assert features["overlapping_candidate_after"] == 1.0
+    assert features["overlapping_candidate_rank_distance:1"] == 1.0
+    assert "has_equivalent_passing_candidate" not in features
+    assert "has_overlapping_passing_candidate" not in features
+
+
+def test_train_candidate_ranker_uses_relation_metadata_from_outcomes(tmp_path) -> None:
+    outcomes = tmp_path / "candidate-outcomes.jsonl"
+    rows = [
+        {
+            "task": "boundary",
+            "phase": "ranked",
+            **_candidate_record(to="<", passed=False),
+            "rank_index": 1,
+            "first_passing_index": 2,
+            "is_first_pass": False,
+            "overlapping_candidate_ranks": [2],
+            "overlapping_candidate_count": 1,
+        },
+        {
+            "task": "boundary",
+            "phase": "ranked",
+            **_candidate_record(to=">=", passed=True),
+            "rank_index": 2,
+            "first_passing_index": 2,
+            "is_first_pass": True,
+            "overlapping_candidate_ranks": [],
+            "overlapping_candidate_count": 0,
+        },
+    ]
+    outcomes.write_text(
+        "\n".join(json.dumps(row) for row in rows) + "\n",
+        encoding="utf-8",
+    )
+
+    result = train_candidate_ranker(candidate_outcome_paths=[outcomes], out_dir=tmp_path / "run")
+    model = json.loads(result.ranker_path.read_text(encoding="utf-8"))
+
+    assert result.training_pairs == 1
+    assert "has_overlapping_candidate" in model["weights"]
+    assert model["weights"]["has_overlapping_candidate"] < 0
+
+
 def test_candidate_features_include_target_context_call_graph() -> None:
     candidate = _discounted_subtotal_candidate()
 

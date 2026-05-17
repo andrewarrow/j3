@@ -1456,9 +1456,9 @@ GreenShot-6 outcome collection result:
 
 ```text
 ranked, runs/apache-python-git/model.json, explore-after-pass=5:
-  solved=58/58 pass@1=41/58 avg_candidates=7.79
-  rows=452 passing_rows=89 preferred_positive_rows=58
-  source_type pass@1: git_history=24/38 mutation=17/20
+  solved=59/59 pass@1=42/59 avg_candidates=7.76
+  rows=458 passing_rows=90 preferred_positive_rows=59
+  source_type pass@1: git_history=25/39 mutation=17/20
 ```
 
 Treat this as a smoke check, not a benchmark claim.
@@ -1477,8 +1477,8 @@ GreenShot-6 test-slice ranker validation result:
 
 ```text
 train-ranker, holdout-task includes all GreenShot-6 split:test tasks:
-  rows=532 passing_rows=97 tasks=71 plans=71 pairs=460
-  training_accuracy=1.000 margin_violations=2 features=852
+  rows=538 passing_rows=98 tasks=72 plans=72 pairs=465
+  training_accuracy=1.000 margin_violations=3 features=818
   validation solved=7/7 pass@1=7/7 positive@1=7/7
   validation rows=46 avg_first_passing_index=1.0
 ```
@@ -1659,31 +1659,35 @@ Start neural/JEPA work only when:
 
 ## Handoff Recommendation
 
-The next context window should start from the post-flake8-bugbear B037 dataset
-growth, not the older Seaborn plot-label, graphlayout/NetworkX, taskqueue/Celery,
-envwrite, v13 literal-key, scipyquad, raisemsg, attrvalidators, or
-pytest-regex-label states. GreenShot-6 now has 58 tasks.
+The next context window should start from the post-Werkzeug AirPlay dataset
+growth, not the older flake8-bugbear B037, Seaborn plot-label,
+graphlayout/NetworkX, taskqueue/Celery, envwrite, v13 literal-key, scipyquad,
+raisemsg, attrvalidators, or pytest-regex-label states. GreenShot-6 now has 59
+tasks.
 
 Latest addition:
 
-- Fixture domain: `lintchecks`
-- Task: `bugbear_b037_message_extra_and`
-- Source: `PyCQA/flake8-bugbear` PR 495 / commit
-  `ea13615e9528bd0194bdeff7717c635d0fbff5e9`
-- Repair shape: B037 diagnostics should say `return or yield any values`
-  without the extra `and`.
+- Fixture domain: `devserver`
+- Task: `werkzeug_airplay_setting_hint`
+- Source: `pallets/werkzeug` commit
+  `81b879a523e1c05485729a8cdfae812f69500a20`
+- Repair shape: the macOS AirPlay port-collision hint should point to
+  `System Preferences -> General -> AirDrop & Handoff` instead of
+  `System Preferences -> Sharing`.
 - Action: existing `change_literal`; no action family or ranker metadata
   change was needed.
 
-Latest GreenShot-6 refresh with `--explore-after-pass 5` solved all 58 tasks:
-`pass@1=41/58`, average candidates `7.79`, rows `452`, passing rows `89`, and
-preferred-positive rows `58`. The new flake8-bugbear-derived task passes at raw
-rank 1 with the preferred `change_literal` candidate.
+Latest GreenShot-6 refresh with `--explore-after-pass 5` solved all 59 tasks:
+`pass@1=42/59`, average candidates `7.76`, rows `458`, passing rows `90`, and
+preferred-positive rows `59`. Source-type pass@1 is `git_history=25/39` and
+`mutation=17/20`. The new Werkzeug-derived task passes at raw rank 1 with the
+preferred `change_literal` candidate.
 
 The same GreenShot-6 `split: test` held-out validation is clean:
 solved=7/7, pass@1=7/7, positive@1=7/7, validation rows=46, and
-avg_first_passing_index=1.0. Do not tune broad handcrafted weights or add
-pass/preferred-label features from this state.
+avg_first_passing_index=1.0. Training used 538 non-held-out rows, 98 passing
+rows, 465 training pairs, 818 features, and 3 margin violations. Do not tune
+broad handcrafted weights or add pass/preferred-label features from this state.
 
 Immediate next sequence:
 

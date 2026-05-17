@@ -99,7 +99,7 @@ def test_load_greenshot_6_tasks() -> None:
     tasks = load_tasks(Path("examples/greenshot_6"))
     by_name = {task.name: task for task in tasks}
 
-    assert len(tasks) == 58
+    assert len(tasks) == 59
     assert tasks[0].name == "core_metadata_version_dict_value"
     assert tasks[0].family == "mapping_value"
     assert tasks[0].source_type == "mutation"
@@ -229,6 +229,18 @@ def test_load_greenshot_6_tasks() -> None:
             "to": (
                 "B037 Class `__init__` methods must not return or yield any values."
             ),
+        },
+    }
+    assert by_name["werkzeug_airplay_setting_hint"].family == "devserver_hint_message"
+    assert by_name["werkzeug_airplay_setting_hint"].source_type == "git_history"
+    assert by_name["werkzeug_airplay_setting_hint"].split == "train"
+    assert by_name["werkzeug_airplay_setting_hint"].preferred_patch == {
+        "file_path": "devserver/serving.py",
+        "action": "change_literal",
+        "symbol": "airplay_settings_location",
+        "params": {
+            "from": "System Preferences -> Sharing",
+            "to": "System Preferences -> General -> AirDrop & Handoff",
         },
     }
     assert by_name["prettytable_missing_attribute_quote"].family == "table_legacy_attribute_error"

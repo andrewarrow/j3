@@ -1057,6 +1057,27 @@
     }
   },
   {
+    "name": "werkzeug_airplay_setting_hint",
+    "family": "devserver_hint_message",
+    "source_type": "git_history",
+    "split": "train",
+    "repo": ".",
+    "test": "python -m pytest tests/test_devserver.py::test_airplay_conflict_hint_points_to_current_macos_setting",
+    "source": {
+      "repo": "pallets/werkzeug",
+      "commit": "81b879a523e1c05485729a8cdfae812f69500a20"
+    },
+    "preferred": {
+      "file_path": "devserver/serving.py",
+      "action": "change_literal",
+      "symbol": "airplay_settings_location",
+      "params": {
+        "from": "System Preferences -> Sharing",
+        "to": "System Preferences -> General -> AirDrop & Handoff"
+      }
+    }
+  },
+  {
     "name": "cookie_default_secure_flag_dict_value",
     "family": "mapping_value",
     "source_type": "mutation",

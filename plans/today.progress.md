@@ -14,7 +14,8 @@ new implementation facts change the 24-hour plan itself. Record any
   GreenShot-7 fixture JSON validation, `pytest tests/test_request_spec.py -q`,
   `pytest tests/test_greenfield_calculator.py -q`, `pytest tests/test_cli.py -q`,
   direct `python cli.py implement ...` smoke, `git diff --check`
-- Latest implementation commit: pending final Worker Iteration 7 commit
+- Latest implementation commit: `f8d50c70690724265d81f98e7cab47b79059e40b`
+  (`Record request-to-repo outcomes`)
 - Current blocker: none
 - Next task: add the bounded GreenShot-7 task runner, without broadening beyond
   calculator request-to-repo
@@ -231,7 +232,8 @@ Use this shape for each worker handoff:
   pass/fail, failure observation, output repo path, and schema metadata. The
   `implement` CLI now appends one row when `--record PATH` is supplied for
   validated builds, `--no-validate` builds, and blocked clarification prompts.
-- Commit: pending final worker commit
-- Push: pending final worker push
+- Commit: `f8d50c70690724265d81f98e7cab47b79059e40b`
+  (`Record request-to-repo outcomes`)
+- Push: succeeded to `origin/main`
 - Next: Add the bounded GreenShot-7 task runner.
 - Blockers: none

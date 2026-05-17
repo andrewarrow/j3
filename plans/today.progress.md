@@ -8,15 +8,16 @@ new implementation facts change the 24-hour plan itself. Record any
 ## Status
 
 - Current phase: reset to Prompt-JEPA encoder and index implementation
-- Completed iterations: 5 for this reset
+- Completed iterations: 6 for this reset
 - Passing focused tests: `pytest tests/test_cli.py -q`;
   `pytest tests/test_prompt_jepa.py -q`;
   `python -m py_compile prompt_jepa.py cli/handlers.py cli/parser.py cli/__init__.py`;
   `git diff --check`
-- Latest implementation commit: `f11c9d2`
+- Latest implementation commit: `4df56c1`
 - Current blocker: none
-- Next task: add Prompt-JEPA indexing for real prompt/spec/action/outcome rows,
-  not just labeled prompt-intent fixtures.
+- Next task: build an outcome index from accumulated real `--record` rows and
+  inspect nearest-neighbor quality before considering any retrieval-assisted
+  planner proposal path.
 
 ## Worker Iteration Template
 
@@ -230,4 +231,30 @@ Use this shape for each worker handoff:
 - Push: succeeded to `main`
 - Next: add Prompt-JEPA indexing for real prompt/spec/action/outcome rows, not
   just labeled prompt-intent fixtures.
+- Blockers: none.
+
+### Iteration 6: Prompt-JEPA outcome row indexing
+
+- Worker: Codex worker iteration 6
+- Goal: add Prompt-JEPA indexing for real prompt/spec/action/outcome rows
+  produced by `implement --record` and `change --record`, without wiring
+  retrieval into production routing.
+- Files changed: `prompt_jepa.py`, `cli/parser.py`, `cli/handlers.py`,
+  `tests/test_prompt_jepa.py`, `tests/test_cli.py`, `plans/today.progress.md`
+- Tests run: `pytest tests/test_prompt_jepa.py -q` passed with 12 tests;
+  `pytest tests/test_cli.py -q` passed with 34 tests;
+  `python -m py_compile prompt_jepa.py cli/handlers.py cli/parser.py cli/__init__.py`
+  passed; `git diff --check` passed.
+- Result: added normalization for supported real outcome JSONL rows
+  (`greenshot_7_request_to_repo_attempt` and
+  `greenshot_7_existing_repo_change_attempt`) into JEPA target records that
+  preserve request/change specs, structured actions, validation status,
+  pass/fail, files written/changed, and nested outcome details. Added
+  `build-prompt-jepa-index --records` alongside `--labels`, including mixed
+  source support, while leaving `implement` and `change` routing unchanged.
+- Commit: `4df56c1`
+- Push: succeeded to `main`
+- Next: build an outcome index from accumulated real `--record` rows and
+  inspect nearest-neighbor quality before considering any retrieval-assisted
+  planner proposal path.
 - Blockers: none.

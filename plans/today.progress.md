@@ -38,7 +38,7 @@ new implementation facts change the 24-hour plan itself. Record any
   `pytest tests/test_transition_action_choice.py -q`;
   `python -m py_compile j3/transition_action_choice.py`;
   `git diff --check`
-- Latest implementation/demo commit: pending for worker iteration 3
+- Latest implementation/demo commit: `3eb9c38` (`Add transition action choice groups`)
 - Latest documentation commit: `ef99279` (`Rewrite README for Prompt Repo JEPA`)
 - Current blocker: none
 - Next task: add an evaluation-only future scorer with pass@1/top-k/MRR metrics.
@@ -168,8 +168,8 @@ Use this shape for each worker handoff:
   negatives, include action and target-context records, carry source/before and
   candidate-after source or embeddings when present, and mark unavailable
   after-state embeddings explicitly as null.
-- Commit: pending for this worker commit.
-- Push: pending for this worker commit.
+- Commit: `3eb9c38` (`Add transition action choice groups`)
+- Push: succeeded to `main`.
 - Next: add an evaluation-only future scorer with pass@1/top-k/MRR metrics.
 - Blockers: none.
 

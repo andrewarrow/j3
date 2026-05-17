@@ -250,8 +250,8 @@ Use this shape for each worker handoff:
   guarded eligible, and matrix/per-suite residual counts are zero. The fresh
   one-suite `greenshot_bugs` smoke reported `decision: remain_shadow_only`
   because its gate is only `ready_for_shadow_mode`.
-- Commit: pending.
-- Push: pending.
+- Commit: `4c64be6` (`Add guarded trial matrix decision`)
+- Push: pushed to `origin/main`.
 - Next: update docs and README only if needed.
 - Blockers: guarded opt-in remains blocked for the current one-suite smoke
   matrix.

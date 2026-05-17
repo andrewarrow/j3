@@ -8,6 +8,7 @@ This file is the live progress log for `plans/today.md`. Keep
 - Current phase: shadow suite and residual-driven readiness.
 - Completed iterations for this reset: 3.
 - Latest relevant commits:
+  - `1c47171` improved transition scorer change features.
   - `23f37ac` added the transition residual report.
   - `f9ed963` recorded shadow suite completion.
   - `0aae784` added the transition shadow suite command.
@@ -20,7 +21,7 @@ This file is the live progress log for `plans/today.md`. Keep
   - `f962018` closed the previous transition scoring queue.
 - Current blocker: held-out V2/V3 product gates are still the product boundary.
   Guarded ranking must remain non-default and blocked unless evidence passes.
-- Next task: run a narrow guarded trial only if held-out gates pass.
+- Next task: update evidence and product docs for the shadow suite.
 
 ## Active Task Queue
 
@@ -28,7 +29,8 @@ This file is the live progress log for `plans/today.md`. Keep
 - [x] Add a repeatable shadow eval suite command.
 - [x] Add a V3/shadow residual report.
 - [x] Improve one scorer feature or action-choice metadata path from residuals.
-- [ ] Run a narrow guarded trial only if held-out gates pass.
+- [x] Run a narrow guarded trial only if held-out gates pass. Skipped by policy:
+  the current gate remains `ready_for_shadow_mode`, not guarded-opt-in.
 - [ ] Update evidence and product docs for the shadow suite.
 
 ## Current Facts
@@ -203,11 +205,26 @@ Use this shape for each worker handoff:
   learned features, gate `ready_for_shadow_mode`, pass@1 1/1. After suite: V3
   feature version `transition-action-shadow-features-v4`, 41 learned features
   including `change_ast_*`, gate `ready_for_shadow_mode`, pass@1 1/1.
-- Commit: pending.
-- Push: pending.
+- Commit: `1c47171` (`Improve transition scorer change features`).
+- Push: succeeded to `main`.
 - Next: because the gate remains shadow-mode only and guarded opt-in is still
   not eligible, skip guarded production use and update evidence/docs or choose
   another residual-driven feature slice.
 - Blockers: no failing residuals were exposed by the small checked-in shadow
   suite; the improvement is based on missing non-label metadata observed in the
   same candidate outcomes.
+
+### Watcher gate decision: guarded trial remains blocked
+
+- Worker: watcher
+- Goal: decide whether the conditional guarded trial task is eligible after
+  Iteration 3.
+- Evidence: the after suite reported V3 feature version
+  `transition-action-shadow-features-v4`, gate `ready_for_shadow_mode`, and
+  pass@1 1/1 on the small checked-in suite.
+- Result: guarded production ranking was not run. The plan requires a guarded
+  trial only if held-out gates pass, and this gate remains shadow-mode only.
+- Tests run: reviewed Worker 3's suite and residual-report verification; no
+  additional product-routing test was needed because the trial was blocked.
+- Next: update evidence and product docs for the shadow suite.
+- Blockers: held-out gate is not `ready_for_guarded_opt_in`.

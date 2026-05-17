@@ -36,7 +36,7 @@ new implementation facts change the 24-hour plan itself. Record any
   `pytest tests/test_transition_bench.py -q`;
   `python -m py_compile j3/transition_bench.py`;
   `git diff --check`
-- Latest implementation/demo commit: current task commit (`Define transition bench schema`)
+- Latest implementation/demo commit: `d95ebc7` (`Define transition bench schema`)
 - Latest documentation commit: `ef99279` (`Rewrite README for Prompt Repo JEPA`)
 - Current blocker: none
 - Next task: build `transition-action-choice-v1` groups from candidate outcomes.
@@ -143,7 +143,7 @@ Use this shape for each worker handoff:
   state or source, structured/candidate action metadata, target/after
   embedding when present, validation outcome when present, and zero-hosted
   cost fields.
-- Commit: current task commit (`Define transition bench schema`)
+- Commit: `d95ebc7` (`Define transition bench schema`)
 - Push: succeeded to `main`.
 - Next: build `transition-action-choice-v1` groups from candidate outcomes.
 - Blockers: none.

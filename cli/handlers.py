@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
+from pathlib import Path
 
 from actions import PatchActionKind
 from candidate_ranking import train_candidate_ranker
@@ -21,9 +23,14 @@ from cli.progress import (
 from diagnostics_compare import compare_diagnostics, format_diagnostics_comparison
 from evaluation import evaluate_tasks, write_candidate_outcomes, write_eval_diagnostics
 from fixing import run_fix_workflow
+from greenfield import build_calculator_repo
 from mining import mine_git_transitions
 from patching import plan_and_maybe_apply_patch
+from request_spec import RequestSpec, parse_request_to_spec
 from training import train_from_paths
+
+
+REQUEST_SPEC_ARTIFACT = "request-spec.json"
 
 
 def handle_actions(args: argparse.Namespace) -> int:
@@ -33,6 +40,57 @@ def handle_actions(args: argparse.Namespace) -> int:
     else:
         for name in names:
             print(name)
+    return 0
+
+
+def handle_implement(args: argparse.Namespace) -> int:
+    spec = parse_request_to_spec(args.prompt)
+    out_dir = args.out.expanduser().resolve()
+
+    if spec.clarifications_needed:
+        print("j3 implement blocked")
+        print(f"task type: {spec.task_type}")
+        print("status: blocked")
+        print(f"domain: {spec.domain}")
+        print("clarifications:")
+        for clarification in spec.clarifications_needed:
+            field = clarification.get("field", "request")
+            question = clarification.get("question", "Clarification is required.")
+            print(f"  {field}: {question}")
+        return 1
+
+    if (out_dir / REQUEST_SPEC_ARTIFACT).exists():
+        raise FileExistsError(
+            f"refusing to overwrite existing file: {out_dir / REQUEST_SPEC_ARTIFACT}"
+        )
+
+    result = build_calculator_repo(spec, out_dir)
+    spec_artifact = _write_request_spec_artifact(spec, out_dir)
+
+    files_written = [*result.files_written, spec_artifact.name]
+    validation = (
+        _run_generated_repo_validation(out_dir)
+        if not args.no_validate
+        else {
+            "status": "skipped",
+            "command": "python -m pytest tests/test_calculator_cli.py -q",
+            "exit_code": None,
+        }
+    )
+
+    print("j3 implement complete")
+    print(f"task type: {spec.task_type}")
+    print(f"status: {result.status}")
+    print(f"domain: {spec.domain}")
+    print(f"out: {out_dir}")
+    print(f"features: {', '.join(spec.features)}")
+    print("files written:")
+    for path in files_written:
+        print(f"  {path}")
+    print(_format_validation_result(validation))
+
+    if validation["status"] == "failed":
+        return int(validation["exit_code"]) or 1
     return 0
 
 
@@ -396,3 +454,43 @@ def _confirm(prompt: str) -> bool:
         return input(prompt).strip().lower() in {"y", "yes"}
     except EOFError:
         return False
+
+
+def _write_request_spec_artifact(spec: RequestSpec, out_dir: Path) -> Path:
+    path = out_dir / REQUEST_SPEC_ARTIFACT
+    if path.exists():
+        raise FileExistsError(f"refusing to overwrite existing file: {path}")
+    path.write_text(
+        json.dumps(spec.to_record(), indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    return path
+
+
+def _run_generated_repo_validation(out_dir: Path) -> dict[str, object]:
+    command = ["python", "-m", "pytest", "tests/test_calculator_cli.py", "-q"]
+    completed = subprocess.run(
+        command,
+        cwd=out_dir,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    status = "passed" if completed.returncode == 0 else "failed"
+    return {
+        "status": status,
+        "command": " ".join(command),
+        "exit_code": completed.returncode,
+        "stdout": completed.stdout,
+        "stderr": completed.stderr,
+    }
+
+
+def _format_validation_result(validation: dict[str, object]) -> str:
+    status = validation["status"]
+    command = validation["command"]
+    if status == "skipped":
+        return f"validation: skipped ({command})"
+    if status == "passed":
+        return f"validation: passed ({command})"
+    return f"validation: failed exit={validation['exit_code']} ({command})"

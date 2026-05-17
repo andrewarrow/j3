@@ -7,17 +7,18 @@ new implementation facts change the 24-hour plan itself. Record any
 
 ## Status
 
-- Current phase: calculator repo materialization complete; ready for CLI wiring
-  or GreenShot-7 runner work
-- Completed iterations: 5
+- Current phase: prompt-to-repo CLI wiring complete; ready for GreenShot-7
+  runner work or training row recording
+- Completed iterations: 6
 - Passing focused tests: prompt seed JSONL validation, `test -s REQUEST_SPEC.md`,
   GreenShot-7 fixture JSON validation, `pytest tests/test_request_spec.py -q`,
-  `pytest tests/test_greenfield_calculator.py -q`, `git diff --check`
-- Latest implementation commit: `6e018c8e07e77d338cc521a1d6b6c4db579aaa36`
-  (`Build calculator repos from plans`)
+  `pytest tests/test_greenfield_calculator.py -q`, `pytest tests/test_cli.py -q`,
+  direct `python cli.py implement ...` smoke, `git diff --check`
+- Latest implementation commit: Iteration 6 `Add implement CLI command` (hash in
+  worker report)
 - Current blocker: none
-- Next task: add CLI entry point wiring for prompt-to-repo implementation, without
-  expanding beyond the calculator request-to-repo path
+- Next task: add prompt/spec/action/outcome row recording or the bounded
+  GreenShot-7 task runner, without broadening beyond calculator request-to-repo
 
 ## Worker Iteration Template
 
@@ -172,4 +173,33 @@ Use this shape for each worker handoff:
 - Push: succeeded to `origin/main`
 - Next: Add CLI entry point wiring for prompt-to-repo implementation without
   broadening the calculator slice.
+- Blockers: none
+
+### Iteration 6: Add implement CLI command
+
+- Worker: Codex Worker Iteration 6
+- Goal: Add CLI wiring for prompt-to-repo calculator implementation without
+  adding training row recording or a broader GreenShot-7 runner.
+- Files changed:
+  - `cli/parser.py`
+  - `cli/handlers.py`
+  - `cli/__init__.py`
+  - `tests/test_cli.py`
+  - `plans/today.progress.md`
+- Tests run:
+  - `pytest tests/test_cli.py -q`
+  - `pytest tests/test_greenfield_calculator.py -q`
+  - `pytest tests/test_request_spec.py -q`
+  - `git diff --check`
+  - `python cli.py implement --prompt "make me a simple cli calc" --out /tmp/j3-calc-demo`
+  - `python /tmp/j3-calc-demo/calculator.py 2 + 3`
+- Result: Added `j3 implement --prompt ... --out ...` for the calculator
+  request-to-repo path. The command parses prompts into `request-spec-v1`,
+  builds the generated repo, writes `request-spec.json`, runs generated pytest
+  validation by default, supports `--no-validate`, and exits non-zero with a
+  clarification message for blocked prompts without writing calculator files.
+- Commit: `Add implement CLI command` (hash reported by worker after commit)
+- Push: pending
+- Next: Add prompt/spec/action/outcome row recording or the bounded GreenShot-7
+  task runner.
 - Blockers: none

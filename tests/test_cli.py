@@ -16,6 +16,7 @@ def test_help_menu_prints_project_summary(capsys) -> None:
 
     output = capsys.readouterr().out
     assert "local-first JEPA coding agent" in output
+    assert "implement" in output
     assert "patch" in output
     assert "fix" in output
     assert "train" in output
@@ -31,6 +32,92 @@ def test_actions_command_lists_structured_actions(capsys) -> None:
     output = capsys.readouterr().out
     assert "change_operator" in output
     assert "modify_condition" in output
+
+
+def test_implement_command_builds_repo_and_request_spec_artifact(capsys, tmp_path) -> None:
+    out_dir = tmp_path / "calc"
+
+    assert (
+        main(
+            [
+                "implement",
+                "--prompt",
+                "make me a simple cli calc",
+                "--out",
+                str(out_dir),
+                "--no-validate",
+            ]
+        )
+        == 0
+    )
+
+    output = capsys.readouterr().out
+    assert "j3 implement complete" in output
+    assert "task type: create_app" in output
+    assert "status: built" in output
+    assert "features: add, subtract, multiply, divide" in output
+    assert "  calculator.py" in output
+    assert "  tests/test_calculator_cli.py" in output
+    assert "  request-spec.json" in output
+    assert "validation: skipped" in output
+
+    assert (out_dir / "calculator.py").exists()
+    assert (out_dir / "tests/test_calculator_cli.py").exists()
+    request_spec = json.loads(
+        (out_dir / "request-spec.json").read_text(encoding="utf-8")
+    )
+    assert request_spec["schema_version"] == "request-spec-v1"
+    assert request_spec["prompt"] == "make me a simple cli calc"
+    assert request_spec["features"] == ["add", "subtract", "multiply", "divide"]
+
+
+def test_implement_command_validates_generated_repo_by_default(capsys, tmp_path) -> None:
+    out_dir = tmp_path / "calc"
+
+    assert (
+        main(
+            [
+                "implement",
+                "--prompt",
+                "make cli app to add two numbers",
+                "--out",
+                str(out_dir),
+            ]
+        )
+        == 0
+    )
+
+    output = capsys.readouterr().out
+    assert "validation: passed (python -m pytest tests/test_calculator_cli.py -q)" in output
+    assert (out_dir / "request-spec.json").exists()
+
+
+def test_implement_command_blocks_clarification_without_calculator_files(
+    capsys,
+    tmp_path,
+) -> None:
+    out_dir = tmp_path / "blocked"
+
+    assert (
+        main(
+            [
+                "implement",
+                "--prompt",
+                "make a math thing",
+                "--out",
+                str(out_dir),
+            ]
+        )
+        == 1
+    )
+
+    output = capsys.readouterr().out
+    assert "j3 implement blocked" in output
+    assert "status: blocked" in output
+    assert "domain: unknown" in output
+    assert "Should this be a basic CLI calculator" in output
+    assert not (out_dir / "calculator.py").exists()
+    assert not (out_dir / "tests/test_calculator_cli.py").exists()
 
 
 def test_train_ranker_command_prints_artifact_summary(capsys, tmp_path) -> None:

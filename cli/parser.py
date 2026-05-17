@@ -10,6 +10,7 @@ from cli.handlers import (
     handle_compare_diagnostics,
     handle_eval,
     handle_fix,
+    handle_implement,
     handle_mine,
     handle_outcome_summary,
     handle_patch,
@@ -47,6 +48,32 @@ def build_parser() -> argparse.ArgumentParser:
         help="print action names as JSON",
     )
     actions_parser.set_defaults(handler=handle_actions)
+
+    implement_parser = subparsers.add_parser(
+        "implement",
+        help="create a repo from a supported coding-agent prompt",
+        description=(
+            "Parse a supported prompt into request-spec-v1, build a deterministic "
+            "greenfield repo, and validate the generated project."
+        ),
+    )
+    implement_parser.add_argument(
+        "--prompt",
+        required=True,
+        help='coding-agent prompt, for example "make me a simple cli calc"',
+    )
+    implement_parser.add_argument(
+        "--out",
+        type=Path,
+        required=True,
+        help="output directory for the generated repo",
+    )
+    implement_parser.add_argument(
+        "--no-validate",
+        action="store_true",
+        help="write the repo without running its generated pytest validation",
+    )
+    implement_parser.set_defaults(handler=handle_implement)
 
     patch_parser = subparsers.add_parser(
         "patch",

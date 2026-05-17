@@ -1,6 +1,19 @@
 # j3
 
-`j3` is an experiment in building a local-first JEPA coding agent.
+`j3` is a local-first bet on the next generation of coding agents.
+
+The future is not a chatbot that keeps guessing bigger patches from longer
+prompts. The future is a repo-world model: an agent that understands a codebase
+as state, treats prompts and test failures as observations, predicts the
+consequences of structured actions, and chooses the cheapest validated path
+toward the desired target state.
+
+This project is motivated by
+[the Yann LeCun JEPA/world-model talk](https://www.youtube.com/watch?v=ngBraLDqzdI)
+summarized in `yann.md`: capable agents need predictive models, planning in
+abstract representation space, and objective-driven constraints. Language
+remains useful as an interface, but the core editing loop should not depend on
+autoregressive source generation.
 
 The goal is simple and ambitious: turn user requests or failing observations
 into structured repo actions by predicting useful transitions in latent space,
@@ -11,6 +24,8 @@ without asking an LLM to generate patches or source files first.
 Most coding agents are language models wrapped in tools. They read files, guess
 a patch, run tests, inspect the failure, and repeat. That can work, but it is
 expensive, token-heavy, and often blind to the actual dynamics of a codebase.
+It also puts the hardest part of the job in the least reliable place: free-form
+generation.
 
 `j3` treats a repository as a world:
 
@@ -23,7 +38,8 @@ expensive, token-heavy, and often blind to the actual dynamics of a codebase.
 Instead of generating arbitrary source text token by token, `j3` starts with
 structured specs and actions. The model chooses an action type, target, and
 parameters. Deterministic builders and patch engines turn that decision into a
-real repo change.
+real repo change. That makes the loop inspectable, trainable, locally runnable,
+and able to improve from concrete outcomes instead of only from better prompts.
 
 ## Current Progress: GreenShot-7 Prompt-JEPA
 

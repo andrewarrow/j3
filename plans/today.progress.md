@@ -7,19 +7,13 @@ new implementation facts change the 24-hour plan itself. Record any
 
 ## Status
 
-- Current phase: bounded GreenShot-7 runner complete; ready for runner review or
-  the next request-to-repo slice
-- Completed iterations: 8
-- Passing focused tests: prompt seed JSONL validation, `test -s REQUEST_SPEC.md`,
-  GreenShot-7 fixture JSON validation, `pytest tests/test_request_spec.py -q`,
-  `pytest tests/test_greenfield_calculator.py -q`, `pytest tests/test_cli.py -q`,
-  `pytest tests/test_greenshot_7.py -q`, direct `python cli.py implement ...`
-  smoke, direct `python cli.py greenshot-7 ...` smoke, `git diff --check`
-- Latest implementation commit: `2314027a9018a0152baa5d1f9828d56b05943485`
-  (`Add GreenShot-7 runner`)
+- Current phase: reset complete; ready to implement intent-fidelity fixtures
+- Completed iterations: 0
+- Passing focused tests: none yet for this reset slice
+- Latest implementation commit: none yet in this reset slice
 - Current blocker: none
-- Next task: review the bounded runner output/records and choose the next
-  GreenShot-7 request-to-repo slice
+- Next task: add fixtures and tests proving `make me a complex graphic calc app`
+  asks clarification instead of generating the simple CLI calculator
 
 ## Worker Iteration Template
 
@@ -41,237 +35,20 @@ Use this shape for each worker handoff:
 
 ## 2026-05-17
 
-- Created the active 24-hour plan in `plans/today.md`.
-- Created the prompt seed corpus in `../prompts/`:
-  - `README.md`
-  - `coding_agent_prompts_seed.jsonl`
-- Validated the seed corpus shape:
-  - 80 rows
-  - train=53, validation=15, test=12
-  - 8 clarification rows
-- Rewrote `AGENTS.md` so fresh context windows read:
-  1. `AGENTS.md`
-  2. `plans/today.md`
-  3. `plans/today.progress.md`
-- Tightened `AGENTS.md` verification guidance for the active GreenShot-7 slice:
-  create and run focused tests such as `tests/test_request_spec.py`,
-  `tests/test_greenfield_calculator.py`, and `tests/test_greenshot_7.py` as the
-  implementation is built.
-- Clarified the documentation policy: ordinary progress goes here, while
-  `plans/today.md` may be updated narrowly if new discoveries change the actual
-  24-hour execution plan.
-- Current next step: start Step 1 from `plans/today.md` by adding
-  `REQUEST_SPEC.md` for `request-spec-v1`, including calculator `etc.`
-  inference and at least one clarification example.
-
-### Iteration 1: Add request spec docs
-
-- Worker: Codex Worker Iteration 1
-- Goal: Add `REQUEST_SPEC.md` documenting `request-spec-v1` for the
-  GreenShot-7 calculator request-to-repo path.
-- Files changed:
-  - `REQUEST_SPEC.md`
-  - `plans/today.progress.md`
-- Tests run:
-  - `test -s REQUEST_SPEC.md`
-- Result: Added the bounded request spec documentation with purpose, day-one
-  schema fields, calculator prompt examples, high-confidence `etc.` inference,
-  operation aliases, validation expectations, and clarification examples.
-- Commit: `25ac8e153e170c89278f668f1c6c716c36d3d2b1` (`Add request spec docs`)
-- Push: succeeded to `origin/main`
-- Next: Implement deterministic prompt-to-`request-spec-v1` parsing fixtures.
-- Blockers: none
-
-### Iteration 2: Add GreenShot-7 prompt fixtures
-
-- Worker: Codex Worker Iteration 2
-- Goal: Add deterministic calculator prompt fixtures for the GreenShot-7
-  prompt-to-`request-spec-v1` parser slice without implementing parser code.
-- Files changed:
-  - `examples/greenshot_7/tasks.json`
-  - `plans/today.progress.md`
-- Tests run:
-  - `python -m json.tool examples/greenshot_7/tasks.json >/dev/null`
-  - Inline Python validation for 10 rows, 8 `emit_request_spec` positives, 2
-    `ask_clarification` rows, matching task names, prompts, and features.
-- Result: Added a single structured manifest with the eight day-one calculator
-  prompts and two clarification prompts from `plans/today.md`, including stable
-  task names, prompt text, expected actions, expected features, and expected
-  `request-spec-v1` fields for later parser tests.
-- Commit: `9a9f93b094e9c35b2bbeb6965556681480accc4f` (`Add GreenShot-7 prompt fixtures`)
-- Push: succeeded to `origin/main`
-- Next: Implement the deterministic prompt-to-`request-spec-v1` baseline parser
-  against `examples/greenshot_7/tasks.json`.
-- Blockers: none
-
-### Iteration 3: Add request spec parser
-
-- Worker: Codex Worker Iteration 3
-- Goal: Implement the deterministic prompt-to-`request-spec-v1` baseline parser
-  for the GreenShot-7 calculator fixture manifest.
-- Files changed:
-  - `request_spec.py`
-  - `tests/test_request_spec.py`
-  - `pyproject.toml`
-  - `plans/today.progress.md`
-- Tests run:
-  - `pytest tests/test_request_spec.py -q`
-  - `git diff --check`
-- Result: Added `RequestSpec` and `parse_request_to_spec`, covering the eight
-  positive calculator prompts and two clarification prompts in
-  `examples/greenshot_7/tasks.json`, including operation aliases, inferred
-  defaults, blocking clarifications, and validation fields.
-- Commit: `60ac8ae4af704fee01e63b9c9066246cd32df89a` (`Add request spec parser`)
-- Push: succeeded to `origin/main`
-- Next: Build structured greenfield calculator action planning from
-  `request-spec-v1`; do not generate repos until that slice is assigned.
-- Blockers: none
-
-### Iteration 4: Add greenfield action planning
-
-- Worker: Codex Worker Iteration 4
-- Goal: Implement structured GreenShot-7 calculator repo planning from
-  `request-spec-v1` without materializing output repos.
-- Files changed:
-  - `greenfield.py`
-  - `tests/test_greenfield_calculator.py`
-  - `pyproject.toml`
-  - `plans/today.progress.md`
-- Tests run:
-  - `pytest tests/test_greenfield_calculator.py -q`
-  - `pytest tests/test_request_spec.py -q`
-  - `git diff --check`
-- Result: Added `greenfield-plan-v1` records with ordered add-only actions for
-  calculator source and test files, operation dispatch derived from spec
-  features and aliases, CLI entrypoint planning, behavior test planning, and a
-  blocked clarification plan for non-actionable specs.
-- Commit: `8b1d6891e7611ff06962f43d1b1016f9d1d6958f` (`Add greenfield action planning`)
-- Push: succeeded to `origin/main`
-- Next: Materialize generated calculator repos from `greenfield-plan-v1`
-  actions and run subprocess smoke checks.
-- Blockers: none
-
-### Iteration 5: Build calculator repos from plans
-
-- Worker: Codex Worker Iteration 5
-- Goal: Materialize deterministic calculator repos from `greenfield-plan-v1`
-  action payloads and validate generated repos with subprocess smoke checks.
-- Files changed:
-  - `greenfield.py`
-  - `tests/test_greenfield_calculator.py`
-  - `plans/today.progress.md`
-- Tests run:
-  - `pytest tests/test_greenfield_calculator.py -q`
-  - `pytest tests/test_request_spec.py -q`
-  - `git diff --check`
-- Result: Added `BuildResult`, `build_calculator_repo`, and
-  `materialize_calculator_repo`; generated dependency-free `calculator.py` and
-  subprocess pytest coverage from structured action payloads; covered
-  four-operation, add-only, hidden-like subprocess, and blocked clarification
-  cases.
-- Commit: `6e018c8e07e77d338cc521a1d6b6c4db579aaa36`
-  (`Build calculator repos from plans`)
-- Push: succeeded to `origin/main`
-- Next: Add CLI entry point wiring for prompt-to-repo implementation without
-  broadening the calculator slice.
-- Blockers: none
-
-### Iteration 6: Add implement CLI command
-
-- Worker: Codex Worker Iteration 6
-- Goal: Add CLI wiring for prompt-to-repo calculator implementation without
-  adding training row recording or a broader GreenShot-7 runner.
-- Files changed:
-  - `cli/parser.py`
-  - `cli/handlers.py`
-  - `cli/__init__.py`
-  - `tests/test_cli.py`
-  - `plans/today.progress.md`
-- Tests run:
-  - `pytest tests/test_cli.py -q`
-  - `pytest tests/test_greenfield_calculator.py -q`
-  - `pytest tests/test_request_spec.py -q`
-  - `git diff --check`
-  - `python cli.py implement --prompt "make me a simple cli calc" --out /tmp/j3-calc-demo`
-  - `python /tmp/j3-calc-demo/calculator.py 2 + 3`
-- Result: Added `j3 implement --prompt ... --out ...` for the calculator
-  request-to-repo path. The command parses prompts into `request-spec-v1`,
-  builds the generated repo, writes `request-spec.json`, runs generated pytest
-  validation by default, supports `--no-validate`, and exits non-zero with a
-  clarification message for blocked prompts without writing calculator files.
-- Commit: `8bc36d67953df204a45ece8e590046fec4f4c78d`
-  (`Add implement CLI command`)
-- Push: succeeded to `origin/main`
-- Next: Add prompt/spec/action/outcome row recording or the bounded GreenShot-7
-  task runner.
-- Blockers: none
-
-### Iteration 7: Record request-to-repo outcomes
-
-- Worker: Codex Worker Iteration 7
-- Goal: Add prompt/spec/action/outcome JSONL row recording for calculator
-  request-to-repo attempts and wire it into `j3 implement --record`.
-- Files changed:
-  - `request_outcomes.py`
-  - `cli/parser.py`
-  - `cli/handlers.py`
-  - `tests/test_cli.py`
-  - `pyproject.toml`
-  - `plans/today.progress.md`
-- Tests run:
-  - `pytest tests/test_cli.py -q`
-  - `pytest tests/test_greenfield_calculator.py -q`
-  - `pytest tests/test_request_spec.py -q`
-  - `git diff --check`
-  - `python cli.py implement --prompt "make me a simple cli calc" --out /tmp/j3-calc-demo --record /tmp/j3-records.jsonl`
-  - JSONL inspection confirmed one row with schema
-    `request-repo-attempt-v1`, passed validation, exit code `0`, and expected
-    files.
-- Result: Added `request-repo-attempt-v1` JSONL rows with raw prompt,
-  normalized request spec, inferred defaults, clarification decision,
-  greenfield plan/actions, build result and files written, validation status,
-  pass/fail, failure observation, output repo path, and schema metadata. The
-  `implement` CLI now appends one row when `--record PATH` is supplied for
-  validated builds, `--no-validate` builds, and blocked clarification prompts.
-- Commit: `f8d50c70690724265d81f98e7cab47b79059e40b`
-  (`Record request-to-repo outcomes`)
-- Push: succeeded to `origin/main`
-- Next: Add the bounded GreenShot-7 task runner.
-- Blockers: none
-
-### Iteration 8: Add GreenShot-7 runner
-
-- Worker: Codex Worker Iteration 8
-- Goal: Add the bounded GreenShot-7 task runner for calculator
-  request-to-repo fixtures.
-- Files changed:
-  - `greenshot_7.py`
-  - `cli/parser.py`
-  - `cli/handlers.py`
-  - `cli/__init__.py`
-  - `request_outcomes.py`
-  - `tests/test_greenshot_7.py`
-  - `tests/test_cli.py`
-  - `pyproject.toml`
-  - `plans/today.progress.md`
-- Tests run:
-  - `pytest tests/test_greenshot_7.py -q`
-  - `pytest tests/test_cli.py -q`
-  - `pytest tests/test_greenfield_calculator.py -q`
-  - `pytest tests/test_request_spec.py -q`
-  - `git diff --check`
-  - `python cli.py greenshot-7 --tasks examples/greenshot_7/tasks.json --out /tmp/.../out --record /tmp/.../records.jsonl`
-  - JSONL smoke inspection confirmed 10 `request-repo-attempt-v1` rows: 8
-    built and 2 blocked.
-- Result: Added `run_greenshot_7_tasks(...)` for the bounded calculator
-  fixture manifest. The runner parses each prompt, plans/builds deterministic
-  per-task repos for the eight positive fixtures, runs generated pytest
-  validation, verifies the two clarification fixtures remain blocked without
-  writing calculator files, appends outcome rows when requested, and returns a
-  JSON-compatible summary. Added narrow `j3 greenshot-7` CLI wiring.
-- Commit: `2314027a9018a0152baa5d1f9828d56b05943485`
-  (`Add GreenShot-7 runner`)
-- Push: succeeded to `origin/main`
-- Next: Review the bounded runner output/records and choose the next
-  GreenShot-7 request-to-repo slice.
-- Blockers: none
+- Reset `plans/today.md` from the completed GreenShot-7 calculator
+  request-to-repo slice to a new intent-fidelity and existing-repo change slice.
+- Reset this progress log to start a fresh loop at iteration 0.
+- New regression target:
+  - `python cli.py implement --prompt "make me a complex graphic calc app" --out ../sample2`
+  - Expected future behavior: blocked clarification, no generated simple CLI
+    calculator files.
+- New existing-repo target:
+  - generate a calculator repo
+  - run a prompt-driven existing-repo change such as `add exponent support`
+  - validate `python calculator.py 2 ^ 3` -> `8`
+- Confirmed prompt corpus exists for profiling:
+  - `../prompts/README.md`
+  - `../prompts/coding_agent_prompts_seed.jsonl`
+- Current next step: add unsupported-interface and existing-repo-change fixtures,
+  then make the request parser fail the graphical calculator regression in the
+  right direction.

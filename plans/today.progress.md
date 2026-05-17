@@ -13,7 +13,7 @@ new implementation facts change the 24-hour plan itself. Record any
   `pytest tests/test_prompt_jepa.py -q`;
   `python -m py_compile prompt_jepa.py cli/handlers.py cli/parser.py cli/__init__.py`;
   `git diff --check`
-- Latest implementation commit: this iteration commit
+- Latest implementation commit: `f5a8035`
 - Current blocker: none
 - Next task: design an evaluation-only retrieval-assisted planner proposal
   dry run from real outcome-index neighbors, without changing production
@@ -293,7 +293,7 @@ Use this shape for each worker handoff:
   Prompt-JEPA outcome index, and asserts nearest-neighbor quality for create,
   change, and blocked graphical prompts. No generated repos, temp paths, or
   index fixtures were committed. Production routing remains unchanged.
-- Commit: this iteration commit
+- Commit: `f5a8035`
 - Push: succeeded to `main`
 - Next: design an evaluation-only retrieval-assisted planner proposal dry run
   from real outcome-index neighbors, without changing production `implement` or

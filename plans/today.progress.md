@@ -8,7 +8,7 @@ This file is the live progress log for `plans/today.md`. Keep
 - Current phase: shadow-to-gate transition scoring.
 - Completed iterations for this reset: 5.
 - Latest relevant commits:
-  - pending Worker 5 commit adds the transition evidence bundle command.
+  - `a53b377` added the transition evidence bundle command.
   - `2f13892` added the held-out shadow V3 scorer.
   - `e65e38d` added the transition shadow outcome training surface.
   - `a85b258` documented and smoked the real shadow eval loop.
@@ -273,7 +273,7 @@ Use this shape for each worker handoff:
   required inputs, refuses nonzero hosted usage fields, records the effective
   product gate, and emits absolute checksum entries so verification works from
   any current directory.
-- Commit: pending (`Add transition evidence bundle`).
-- Push: pending.
+- Commit: `a53b377` (`Add transition evidence bundle`).
+- Push: pushed to `origin/main`; implementation commit `a53b377`.
 - Next: update product docs for shadow-to-gate evidence.
 - Blockers: none.

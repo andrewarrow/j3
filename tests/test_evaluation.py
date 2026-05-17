@@ -99,7 +99,7 @@ def test_load_greenshot_6_tasks() -> None:
     tasks = load_tasks(Path("examples/greenshot_6"))
     by_name = {task.name: task for task in tasks}
 
-    assert len(tasks) == 42
+    assert len(tasks) == 43
     assert tasks[0].name == "core_metadata_version_dict_value"
     assert tasks[0].family == "mapping_value"
     assert tasks[0].source_type == "mutation"
@@ -461,6 +461,18 @@ def test_load_greenshot_6_tasks() -> None:
         "params": {
             "from": "`regex` is removed. use `Pattern` instead",
             "to": "`regex` is removed. use `pattern` instead",
+        },
+    }
+    assert by_name["dvc_pre_commit_repo_treeverse_url"].split == "train"
+    assert by_name["dvc_pre_commit_repo_treeverse_url"].source_type == "git_history"
+    assert by_name["dvc_pre_commit_repo_treeverse_url"].preferred_patch == {
+        "file_path": "dvchooks/install.py",
+        "action": "change_dict_value",
+        "symbol": "pre_commit_hook_entry",
+        "params": {
+            "key": "repo",
+            "from": "https://github.com/iterative/dvc",
+            "to": "https://github.com/treeverse/dvc",
         },
     }
     assert by_name["cookie_default_secure_flag_dict_value"].split == "test"

@@ -726,6 +726,29 @@
     }
   },
   {
+    "name": "dvc_pre_commit_repo_treeverse_url",
+    "family": "repo_config_url",
+    "source_type": "git_history",
+    "split": "train",
+    "repo": ".",
+    "test": "python -m pytest tests/test_dvchooks.py::test_pre_commit_hook_repo_uses_treeverse_remote",
+    "source": {
+      "repo": "treeverse/dvc",
+      "commit": "cb96cf14872e842f461e84510ca73d337f5ace8e",
+      "pr": 10920
+    },
+    "preferred": {
+      "file_path": "dvchooks/install.py",
+      "action": "change_dict_value",
+      "symbol": "pre_commit_hook_entry",
+      "params": {
+        "key": "repo",
+        "from": "https://github.com/iterative/dvc",
+        "to": "https://github.com/treeverse/dvc"
+      }
+    }
+  },
+  {
     "name": "cookie_default_secure_flag_dict_value",
     "family": "mapping_value",
     "source_type": "mutation",

@@ -1136,6 +1136,31 @@ def test_patch_solves_flask_ssl_context_key_option_quote(tmp_path) -> None:
     assert '"--key" is not used' in result.selected.patched_source
 
 
+def test_patch_solves_dvc_pre_commit_repo_treeverse_url(tmp_path) -> None:
+    repo = tmp_path / "greenshot_6"
+    shutil.copytree("examples/greenshot_6", repo)
+
+    result = plan_and_maybe_apply_patch(
+        repo=repo,
+        test_command=(
+            "python -m pytest "
+            "tests/test_dvchooks.py::test_pre_commit_hook_repo_uses_treeverse_remote"
+        ),
+        dry_run=True,
+        timeout_seconds=10,
+    )
+
+    assert result.selected is not None
+    assert result.selected.file_path == "dvchooks/install.py"
+    assert result.selected.action.kind.value == "change_dict_value"
+    assert result.selected.action.params == {
+        "key": "repo",
+        "from": "https://github.com/iterative/dvc",
+        "to": "https://github.com/treeverse/dvc",
+    }
+    assert "https://github.com/treeverse/dvc" in result.selected.patched_source
+
+
 def test_generate_membership_operator_with_literal_needle_decoy(tmp_path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()

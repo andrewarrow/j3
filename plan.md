@@ -1011,12 +1011,36 @@ Recent work:
   no trained preferred-positive misses across 42 tasks. For the new Flask-derived
   task, the trained ranker places the preferred literal repair first above the
   false swap and literal decoys.
+- GreenShot-6 now includes a twenty-fourth real-package-derived fixture domain,
+  `dvchooks`, with one `git_history` task modeled on `treeverse/dvc` PR 10920 /
+  commit `cb96cf14872e842f461e84510ca73d337f5ace8e`. The task
+  `dvc_pre_commit_repo_treeverse_url` repairs a DVC pre-commit hook repository
+  URL by changing the hook config dictionary value from
+  `https://github.com/iterative/dvc` to
+  `https://github.com/treeverse/dvc`, using the existing `change_dict_value`
+  action family.
+- Focused loader/generator coverage passed for the DVC-derived task:
+  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
+  `pytest tests/test_patching.py::test_patch_solves_dvc_pre_commit_repo_treeverse_url -q`.
+- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
+  adding `dvchooks`. The persisted dataset at
+  `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` now covers 43
+  tasks and 318 tested candidates. Ranked eval solved all 43 tasks with
+  `pass@1=30/43` and average candidates `7.40`; the new DVC-derived task
+  solves at raw rank 1 with the preferred `change_dict_value` candidate.
+- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
+  the DVC outcome refresh and stayed clean: solved=7/7, pass@1=7/7,
+  positive@1=7/7, avg_first_passing_index=1.0. Training used 398 rows, 79
+  passing rows, 341 training pairs, 819 features, and 3 margin violations.
+- Applying the saved test-slice ranker to all refreshed GreenShot-6 rows found
+  no trained preferred-positive misses across 43 tasks. Raw GreenShot-6 has 13
+  pass@1 misses, but every task has a tested preferred-positive row.
 
 Last focused verification:
 
 ```bash
 pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q
-pytest tests/test_patching.py::test_patch_solves_flask_ssl_context_key_option_quote -q
+pytest tests/test_patching.py::test_patch_solves_dvc_pre_commit_repo_treeverse_url -q
 python cli.py eval \
   --tasks examples/greenshot_6 \
   --checkpoint runs/apache-python-git/model.json \
@@ -1044,7 +1068,7 @@ python cli.py outcome-summary \
   --candidate-outcomes runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl
 python - <<'PY'
 # Applied the refreshed test-slice ranker to all refreshed GreenShot-6 rows:
-# raw_pass1_misses=13, trained_preferred_positive_misses=0 across 42 tasks.
+# raw_pass1_misses=13, trained_preferred_positive_misses=0 across 43 tasks.
 PY
 git diff --check
 ```
@@ -1163,9 +1187,9 @@ GreenShot-6 outcome collection result:
 
 ```text
 ranked, runs/apache-python-git/model.json, explore-after-pass=5:
-  solved=41/41 pass@1=29/41 avg_candidates=7.37
-  rows=302 passing_rows=69 preferred_positive_rows=41
-  source_type pass@1: git_history=14/23 mutation=15/18
+  solved=43/43 pass@1=30/43 avg_candidates=7.40
+  rows=318 passing_rows=71 preferred_positive_rows=43
+  source_type pass@1: git_history=15/25 mutation=15/18
 ```
 
 Treat this as a smoke check, not a benchmark claim.
@@ -1184,8 +1208,8 @@ GreenShot-6 test-slice ranker validation result:
 
 ```text
 train-ranker, holdout-task includes all GreenShot-6 split:test tasks:
-  training rows=382 passing_rows=77 tasks=54 plans=54 pairs=327
-  training_accuracy=1.000 margin_violations=4 features=794
+  training rows=398 passing_rows=79 tasks=56 plans=56 pairs=341
+  training_accuracy=1.000 margin_violations=3 features=819
   validation solved=7/7 pass@1=7/7 positive@1=7/7
   validation avg_first_passing_index=1.0
 ```

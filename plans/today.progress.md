@@ -8,7 +8,7 @@ new implementation facts change the 24-hour plan itself. Record any
 ## Status
 
 - Current phase: Transition bench and action selection V1
-- Completed iterations: 0 for this reset; Prompt+Repo JEPA transition V0
+- Completed iterations: 1 for this reset; Prompt+Repo JEPA transition V0
   completed 6 iterations; Prompt-JEPA developer demo reset
   completed 5 iterations; previous Prompt-JEPA index reset completed 8
   iterations
@@ -30,16 +30,18 @@ new implementation facts change the 24-hour plan itself. Record any
   `python cli.py eval-prompt-repo-transitions --transitions /tmp/j3-prompt-jepa-demo/transitions.jsonl --top-k 3 --json`;
   `python -m json.tool /tmp/j3-prompt-jepa-demo/transition-model.json >/dev/null`;
   `python -m json.tool /tmp/j3-prompt-jepa-demo/transition-eval.json >/dev/null`;
+  `pytest tests/test_transition_assets.py -q`;
+  `python -m py_compile j3/transition_assets.py cli/handlers.py cli/parser.py cli/__init__.py`;
+  `python cli.py inspect-transition-assets --json`;
   `git diff --check`
 - Latest implementation/demo commit: `1783df6` (`Wire transition artifacts into demo`)
 - Latest documentation commit: `ef99279` (`Rewrite README for Prompt Repo JEPA`)
 - Current blocker: none
-- Next task: add a transition asset inventory and manifest path that works
-  with or without ignored local data.
+- Next task: define `transition-bench-v1` rows with checked-in fixtures.
 
 ## Active Task Queue
 
-- [ ] Add a transition asset inventory over prompt/demo/mined/candidate
+- [x] Add a transition asset inventory over prompt/demo/mined/candidate
   artifacts.
 - [ ] Define `transition-bench-v1` rows with checked-in fixtures.
 - [ ] Build `transition-action-choice-v1` groups from candidate outcomes.
@@ -93,6 +95,29 @@ Use this shape for each worker handoff:
   groups, a local future scorer, one-command report, and reproduction docs.
 - Tests run: `git diff --check` passed.
 - Next: implement Step 1, the transition asset inventory.
+- Blockers: none.
+
+### Iteration 1: Transition asset inventory
+
+- Worker: Codex worker iteration 1
+- Goal: add a transition asset inventory and manifest path that works with or
+  without ignored local data.
+- Files changed: `j3/transition_assets.py`, `cli/parser.py`,
+  `cli/handlers.py`, `cli/__init__.py`, `tests/test_transition_assets.py`,
+  `tests/test_cli.py`, `plans/today.progress.md`
+- Tests run: `pytest tests/test_transition_assets.py -q` passed with 3 tests;
+  `pytest tests/test_cli.py -q` passed with 40 tests;
+  `python -m py_compile j3/transition_assets.py cli/handlers.py cli/parser.py cli/__init__.py`
+  passed; `python cli.py inspect-transition-assets --json` passed and reported
+  local ignored assets when present; `git diff --check` passed.
+- Result: implemented `transition-asset-inventory-v1` manifests with stable
+  path, size, row count, and SHA-256 summaries for prompt corpus files, mined
+  git transition JSONL files, candidate outcome JSONL files, Prompt+Repo demo
+  artifacts, and prototype model metadata. Missing ignored `data/` and `runs/`
+  assets are reported normally.
+- Commit: pending before commit; final hash in worker report.
+- Push: pending before push; final result in worker report.
+- Next: define `transition-bench-v1` rows with checked-in fixtures.
 - Blockers: none.
 
 - Rewrote `README.md` into a much smaller developer-focused JEPA pitch using

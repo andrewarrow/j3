@@ -62,6 +62,11 @@ from j3.prompt_repo_transitions import (
 from j3.request_outcomes import append_request_repo_attempt
 from j3.request_spec import RequestSpec, parse_request_to_spec
 from j3.training import train_from_paths
+from j3.transition_assets import (
+    format_transition_asset_inventory,
+    inspect_transition_assets,
+    write_transition_asset_manifest,
+)
 
 
 REQUEST_SPEC_ARTIFACT = "request-spec.json"
@@ -472,6 +477,25 @@ def handle_inspect_prompt_corpus(args: argparse.Namespace) -> int:
     )
     print(f"missing required fields: {profile['missing_required_field_count']}")
     print(f"unsupported scalar labels: {profile['unsupported_scalar_label_count']}")
+    return 0
+
+
+def handle_inspect_transition_assets(args: argparse.Namespace) -> int:
+    manifest = inspect_transition_assets(
+        repo_root=args.repo_root,
+        prompt_corpus=args.prompt_corpus,
+    )
+    written_path = (
+        write_transition_asset_manifest(manifest, args.out) if args.out else None
+    )
+
+    if args.json:
+        print(json.dumps(manifest, indent=2, sort_keys=True))
+        return 0
+
+    print(format_transition_asset_inventory(manifest))
+    if written_path is not None:
+        print(f"manifest: {written_path}")
     return 0
 
 

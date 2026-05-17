@@ -18,6 +18,7 @@ from cli.handlers import (
     handle_greenshot_7,
     handle_implement,
     handle_inspect_prompt_corpus,
+    handle_inspect_transition_assets,
     handle_mine,
     handle_outcome_summary,
     handle_patch,
@@ -407,6 +408,41 @@ def build_parser() -> argparse.ArgumentParser:
         help="print the full corpus profile as JSON",
     )
     inspect_prompt_corpus_parser.set_defaults(handler=handle_inspect_prompt_corpus)
+
+    inspect_transition_assets_parser = subparsers.add_parser(
+        "inspect-transition-assets",
+        help="inventory local transition benchmark assets",
+        description=(
+            "Summarize local prompt, Prompt+Repo demo, mined transition, "
+            "candidate outcome, and prototype model assets. Missing ignored "
+            "data and run artifacts are reported as normal, not errors."
+        ),
+    )
+    inspect_transition_assets_parser.add_argument(
+        "--repo-root",
+        type=Path,
+        default=Path("."),
+        help="repository root to inspect (default: current directory)",
+    )
+    inspect_transition_assets_parser.add_argument(
+        "--prompt-corpus",
+        type=Path,
+        default=Path("../prompts/coding_agent_prompts_expanded_v0.jsonl"),
+        help="prompt corpus JSONL path to include in the inventory",
+    )
+    inspect_transition_assets_parser.add_argument(
+        "--out",
+        type=Path,
+        help="optional JSON manifest path to write",
+    )
+    inspect_transition_assets_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print the inventory manifest as JSON",
+    )
+    inspect_transition_assets_parser.set_defaults(
+        handler=handle_inspect_transition_assets
+    )
 
     prompt_jepa_demo_parser = subparsers.add_parser(
         "demo-prompt-jepa",

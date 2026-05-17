@@ -243,6 +243,7 @@ def test_help_menu_prints_project_summary(capsys) -> None:
     assert "train" in output
     assert "train-prompt-intents" in output
     assert "inspect-prompt-corpus" in output
+    assert "inspect-transition-assets" in output
     assert "demo-prompt-jepa" in output
     assert "build-prompt-jepa-index" in output
     assert "query-prompt-jepa-index" in output
@@ -517,6 +518,41 @@ def test_inspect_prompt_corpus_command_reports_json_profile(capsys, tmp_path) ->
         (issue["field"], issue["value"])
         for issue in output["unsupported_scalar_labels"]
     } >= {("split", "holdout"), ("source_type", "test")}
+
+
+def test_inspect_transition_assets_command_reports_json_manifest(
+    capsys,
+    tmp_path,
+) -> None:
+    prompt_corpus = tmp_path / "prompt-corpus.jsonl"
+    prompt_corpus.write_text(
+        '{"id":"one","prompt":"make me a simple cli calc"}\n',
+        encoding="utf-8",
+    )
+
+    assert (
+        main(
+            [
+                "inspect-transition-assets",
+                "--repo-root",
+                str(tmp_path),
+                "--prompt-corpus",
+                str(prompt_corpus),
+                "--json",
+            ]
+        )
+        == 0
+    )
+
+    output = json.loads(capsys.readouterr().out)
+    assert output["schema_version"] == "transition-asset-inventory-v1"
+    assert output["repo_root"] == str(tmp_path.resolve())
+    assert output["prompt_corpus"]["present"] is True
+    assert output["prompt_corpus"]["rows"] == 1
+    assert output["mined_git_transitions"]["file_count"] == 0
+    assert output["candidate_outcomes"]["file_count"] == 0
+    assert output["prototype_models"]["model_count"] == 0
+    assert output["totals"]["prompt_corpus_rows"] == 1
 
 
 def test_demo_prompt_jepa_command_writes_local_report(capsys, tmp_path) -> None:

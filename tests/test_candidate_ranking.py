@@ -5,7 +5,7 @@ import json
 from actions import PatchAction, PatchActionKind, PatchTarget
 from candidate_ranking import CandidateRankerModel, candidate_features, train_candidate_ranker
 from candidate_ranker.features import _candidate_record_features
-from failure_hints import PytestFailureHint
+from failure_hints import AssertionComparison, PytestFailureHint
 from patching import CandidatePatch, prioritize_candidate_patches, rank_with_candidate_ranker
 from repair.patching.context import attach_target_context
 from synth import SourceEdit
@@ -753,7 +753,12 @@ def test_candidate_features_distinguish_same_mapping_asserted_key_value_and_key_
         tmp_path,
         [value_candidate, key_candidate],
     )
-    hints = [PytestFailureHint(asserted_mapping_keys={"secure"})]
+    hints = [
+        PytestFailureHint(
+            asserted_mapping_keys={"secure"},
+            assertions=[AssertionComparison(actual=True, operator="is", expected=False)],
+        )
+    ]
 
     value_features = candidate_features(value_with_context, hints=hints)
     key_features = candidate_features(key_with_context, hints=hints)
@@ -763,11 +768,24 @@ def test_candidate_features_distinguish_same_mapping_asserted_key_value_and_key_
     assert value_features["same_mapping_asserted_key_value_changed"] == 1.0
     assert (
         value_features[
+            "same_mapping_asserted_key_value_matches_assertion_delta"
+        ]
+        == 1.0
+    )
+    assert (
+        value_features[
+            "action_same_mapping_asserted_key_value_matches_assertion_delta:change_dict_value"
+        ]
+        == 1.0
+    )
+    assert (
+        value_features[
             "action_same_mapping_asserted_key_value_changed:change_dict_value"
         ]
         == 1.0
     )
     assert key_features["same_mapping_asserted_key_renamed_or_removed"] == 1.0
+    assert "same_mapping_asserted_key_value_matches_assertion_delta" not in key_features
     assert (
         key_features[
             "action_same_mapping_asserted_key_renamed_or_removed:change_dict_key"
@@ -860,7 +878,12 @@ def test_candidate_record_features_include_asserted_mapping_key_matches() -> Non
 
 
 def test_candidate_record_features_distinguish_same_mapping_asserted_key_value_and_key_decoy() -> None:
-    hints = [{"asserted_mapping_keys": ["secure"]}]
+    hints = [
+        {
+            "asserted_mapping_keys": ["secure"],
+            "assertions": [{"actual": True, "operator": "is", "expected": False}],
+        }
+    ]
 
     value_features = _candidate_record_features(_cookie_secure_value_record(passed=True), hints)
     key_features = _candidate_record_features(_cookie_secure_key_record(passed=False), hints)
@@ -868,11 +891,24 @@ def test_candidate_record_features_distinguish_same_mapping_asserted_key_value_a
     assert value_features["same_mapping_asserted_key_value_changed"] == 1.0
     assert (
         value_features[
+            "same_mapping_asserted_key_value_matches_assertion_delta"
+        ]
+        == 1.0
+    )
+    assert (
+        value_features[
+            "action_same_mapping_asserted_key_value_matches_assertion_delta:change_dict_value"
+        ]
+        == 1.0
+    )
+    assert (
+        value_features[
             "action_same_mapping_asserted_key_value_changed:change_dict_value"
         ]
         == 1.0
     )
     assert key_features["same_mapping_asserted_key_renamed_or_removed"] == 1.0
+    assert "same_mapping_asserted_key_value_matches_assertion_delta" not in key_features
     assert (
         key_features[
             "action_same_mapping_asserted_key_renamed_or_removed:change_dict_key"

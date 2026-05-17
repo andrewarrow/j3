@@ -268,3 +268,50 @@ from `True` to `False`, while the false key candidate leaves the value as
 `True` and removes the asserted lookup key. A narrow feature such as
 `same_mapping_asserted_key_value_matches_assertion_delta` would distinguish
 this pair without adding tasks, action families, or broad handcrafted weights.
+
+### Exact Assertion Delta Follow-Up
+
+Implementation result: the exact same-mapping asserted-key assertion-value delta
+feature was implemented for dictionary value edits. Candidate ranker features
+now emit `same_mapping_asserted_key_value_matches_assertion_delta` when a
+same-mapping asserted-key `change_dict_value` candidate changes its `from`
+value from the observed assertion actual to the assertion expected value. The
+feature is available for both live candidates and persisted outcome rows. The
+feature version is `candidate-diagnostics-v9`.
+
+Focused verification passed:
+
+```bash
+pytest tests/test_candidate_ranking.py -q
+pytest tests/test_evaluation.py::test_write_candidate_outcomes_jsonl_records_one_row_per_tested_candidate -q
+git diff --check
+```
+
+GreenShot-6 `split: test` held-out ranker validation result after the feature:
+
+| Slice | Plans | Solved | Pass@1 | Positive@1 |
+| --- | ---: | ---: | ---: | ---: |
+| GreenShot-6 `split: test` holdout | 7 | 7/7 | 6/7 | 5/7 |
+
+`cookie_default_secure_flag_dict_value` now ranks the preferred
+`change_dict_value secure: True -> False` candidate first. The false
+`change_dict_key secure -> __Secure-` candidate is now second for that task.
+
+Remaining held-out issues:
+
+- `cookie_scope_include_path_keyword` is still a pass@1 miss. The top-ranked
+  candidate is a false `swap_call_arg` in `cookie_scope_key`; the passing repair
+  is still rank 2, and the preferred `add_keyword_arg(include_path=True)` is not
+  present in the tested rows.
+- `http_no_store_response_with_etag` still ranks a non-preferred passing
+  `swap_call_arg` candidate first; the preferred `change_operator` repair is
+  rank 3. This should be treated as accidental-pass/preferred-repair ranking
+  signal, not a missing-action problem.
+
+Next inspection sequence: focus on these two residual held-out issues before
+adding tasks, action families, or broad handcrafted weights. For
+`cookie_scope_include_path_keyword`, determine whether the problem is missing
+preferred-candidate signal or weak call-target/locality metadata. For
+`http_no_store_response_with_etag`, inspect non-leaky metadata that can
+distinguish the preferred local operator repair from a broader accidentally
+passing call-argument edit.

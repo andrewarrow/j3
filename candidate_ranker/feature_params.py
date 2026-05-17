@@ -10,6 +10,9 @@ from .feature_hints import _hint_function_name_set
 from .values import _int_value, _normalize_value
 
 
+_MISSING = object()
+
+
 def _add_param_features(features: dict[str, float], action: str, params: Mapping[str, object]) -> None:
     for key, value in sorted(params.items()):
         normalized = _normalize_value(value)
@@ -134,6 +137,7 @@ def _add_target_context_features(
     features: dict[str, float],
     *,
     action: str,
+    params: Mapping[str, object],
     target_context: object,
     hints: list[object] | tuple[object, ...],
     symbol: object,
@@ -182,6 +186,7 @@ def _add_target_context_features(
     _add_same_mapping_asserted_key_features(
         features,
         action=action,
+        params=params,
         target_context=target_context,
         hints=hints,
     )
@@ -247,6 +252,7 @@ def _add_same_mapping_asserted_key_features(
     features: dict[str, float],
     *,
     action: str,
+    params: Mapping[str, object],
     target_context: Mapping[str, object],
     hints: list[object] | tuple[object, ...],
 ) -> None:
@@ -273,6 +279,11 @@ def _add_same_mapping_asserted_key_features(
     ):
         features["same_mapping_asserted_key_value_changed"] = 1.0
         features[f"action_same_mapping_asserted_key_value_changed:{action}"] = 1.0
+        if _matches_assertion_value_delta(params, hints):
+            features["same_mapping_asserted_key_value_matches_assertion_delta"] = 1.0
+            features[
+                f"action_same_mapping_asserted_key_value_matches_assertion_delta:{action}"
+            ] = 1.0
         return
 
     original_key = target_context.get("dict_key_from")
@@ -307,6 +318,53 @@ def _asserted_mapping_key_set(hints: list[object] | tuple[object, ...]) -> set[s
             raw_keys = getattr(hint, "asserted_mapping_keys", set())
         keys.update(_string_set(raw_keys))
     return keys
+
+
+def _matches_assertion_value_delta(
+    params: Mapping[str, object],
+    hints: list[object] | tuple[object, ...],
+) -> bool:
+    original = params.get("from", _MISSING)
+    replacement = params.get("to", _MISSING)
+    if original is _MISSING or replacement is _MISSING:
+        return False
+    for hint in hints:
+        assertions = (
+            hint.get("assertions", [])
+            if isinstance(hint, Mapping)
+            else getattr(hint, "assertions", [])
+        )
+        if not isinstance(assertions, list):
+            continue
+        for assertion in assertions:
+            if _assertion_operator(assertion) not in {"==", "is"}:
+                continue
+            actual = _assertion_value(assertion, "actual")
+            expected = _assertion_value(assertion, "expected")
+            if actual is _MISSING or expected is _MISSING:
+                continue
+            if (
+                _exact_value_equal(original, actual)
+                and _exact_value_equal(replacement, expected)
+            ):
+                return True
+    return False
+
+
+def _assertion_operator(assertion: object) -> object:
+    if isinstance(assertion, Mapping):
+        return assertion.get("operator")
+    return getattr(assertion, "operator", None)
+
+
+def _assertion_value(assertion: object, key: str) -> object:
+    if isinstance(assertion, Mapping):
+        return assertion.get(key, _MISSING)
+    return getattr(assertion, key, _MISSING)
+
+
+def _exact_value_equal(left: object, right: object) -> bool:
+    return type(left) is type(right) and left == right
 
 
 def _string_set(value: object) -> set[str]:

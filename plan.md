@@ -239,6 +239,24 @@ Recent work:
   candidate because broad string-parameter features and boolean-parameter
   penalties outweigh the sparse same-mapping weights. Details are in
   `HARD_NEGATIVES.md`.
+- The exact same-mapping asserted-key assertion-value delta feature was added
+  for dictionary value edits. Candidate ranker features now emit
+  `same_mapping_asserted_key_value_matches_assertion_delta` when a
+  same-mapping asserted-key `change_dict_value` candidate changes its `from`
+  value from the observed assertion actual to the assertion expected value.
+  The feature is computed for both live candidates and persisted outcome rows.
+  The feature version is `candidate-diagnostics-v9`.
+- Focused ranker and candidate-outcome tests passed after the exact assertion
+  delta feature:
+  `pytest tests/test_candidate_ranking.py -q` and
+  `pytest tests/test_evaluation.py::test_write_candidate_outcomes_jsonl_records_one_row_per_tested_candidate -q`.
+- GreenShot-6 `split: test` held-out ranker validation improved to
+  solved=7/7, pass@1=6/7, positive@1=5/7. The specific residual target
+  `cookie_default_secure_flag_dict_value` now ranks the preferred
+  `change_dict_value secure: True -> False` candidate first. Remaining issues:
+  `cookie_scope_include_path_keyword` is still a pass@1 miss, and
+  `http_no_store_response_with_etag` still has a non-preferred passing
+  `swap_call_arg` candidate at rank 1 while the preferred repair is rank 3.
 
 Last focused verification:
 
@@ -343,11 +361,13 @@ GreenShot-6 test-slice ranker validation result:
 ```text
 train-ranker, holdout-task includes all GreenShot-6 split:test tasks:
   training rows=220 passing_rows=45 tasks=32 plans=32 pairs=186
-  training_accuracy=1.000 margin_violations=4 features=544
-  validation solved=7/7 pass@1=5/7 positive@1=4/7
-  validation rows=47 avg_first_passing_index=1.29
-  residual: cookie_default_secure_flag_dict_value still does not rank the
-  preferred change_dict_value candidate first
+  training_accuracy=1.000 margin_violations=4 features=546
+  validation solved=7/7 pass@1=6/7 positive@1=5/7
+  residual: cookie_default_secure_flag_dict_value now ranks the preferred
+  change_dict_value candidate first
+  remaining: cookie_scope_include_path_keyword misses pass@1, and
+  http_no_store_response_with_etag ranks a non-preferred passing candidate
+  first while the preferred repair is rank 3
 ```
 
 ## Next Right Things
@@ -357,16 +377,22 @@ Keep this section as the live queue. When work is completed, move it to
 
 Immediate next sequence:
 
-1. Add the smallest ranker signal identified in `HARD_NEGATIVES.md`: an exact
-   assertion-value delta feature for same-mapping asserted-key dictionary value
-   edits, so a candidate changing the asserted key from the observed actual
-   value to the expected value can separate from key-rename/removal decoys.
-2. Keep the implementation narrow and ranker-focused. Do not add tasks,
-   action families, or broad handcrafted weights until the residual miss is
+1. Inspect the remaining GreenShot-6 `split: test` holdout misses in the saved
+   outcome rows and trained ranker scores:
+   `cookie_scope_include_path_keyword` pass@1 miss, plus
+   `http_no_store_response_with_etag` ranking a non-preferred passing candidate
+   first while the preferred repair is rank 3.
+2. For `cookie_scope_include_path_keyword`, determine whether this is missing
+   preferred-candidate signal, bad ranking among generated candidates, or weak
+   call-target/locality metadata. Do not add an action family unless the
+   inspected rows show the preferred repair is absent.
+3. For `http_no_store_response_with_etag`, inspect why the accidental
+   `swap_call_arg` pass outranks the preferred `change_operator` repair, and
+   prefer non-leaky metadata that distinguishes preferred local repairs from
+   accidental passing broader edits.
+4. Keep the next implementation narrow and ranker-focused. Do not add tasks,
+   action families, or broad handcrafted weights until the residual misses are
    explained from held-out rows.
-3. Re-run the GreenShot-6 `split: test` holdout ranker validation after the
-   next metadata/feature change, and specifically check whether
-   `cookie_default_secure_flag_dict_value` moves to preferred rank 1.
 
 ### 1. Make GreenShot-6 Real
 
@@ -387,11 +413,10 @@ transition modeling.
 
 Next tasks:
 
-- Add exact assertion-value delta metadata/features for same-mapping asserted-key
-  dictionary value edits. Equivalent/overlap relation features and same-mapping
-  asserted-key features are already wired; the current narrow gap is connecting
-  the asserted key's observed actual/expected values to the candidate's
-  `from`/`to` value change.
+- Inspect whether the remaining GreenShot-6 `split: test` holdout misses need
+  additional non-leaky outcome metadata, starting with call-target/locality for
+  `cookie_scope_include_path_keyword` and accidental-pass distinction for
+  `http_no_store_response_with_etag`.
 
 ### 3. Collect Hard Negatives
 

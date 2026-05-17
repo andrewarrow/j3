@@ -73,6 +73,7 @@ def candidate_features(
     _add_target_context_features(
         features,
         action=action,
+        params=params,
         target_context=getattr(candidate, "target_context", {}),
         hints=hints,
         symbol=candidate.action.target.symbol,
@@ -135,6 +136,7 @@ def _candidate_record_features(candidate: dict[str, object], hints: object) -> d
     _add_target_context_features(
         features,
         action=action,
+        params=params if isinstance(params, dict) else {},
         target_context=candidate.get("target_context", {}),
         hints=hints if isinstance(hints, list) else [],
         symbol=candidate.get("symbol"),

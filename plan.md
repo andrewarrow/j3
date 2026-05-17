@@ -797,12 +797,34 @@ Recent work:
   no trained preferred-positive misses. For the new pydantic-derived task, the
   trained ranker places the preferred literal repair first, above the local
   operator and partial-literal decoys.
+- GreenShot-6 now includes a fifteenth fixture domain, `piplist`, with one
+  real-package-derived `git_history` task modeled on `pypa/pip` commit
+  `fdc262f06936fb406af2af74ad6b0946ac1f4bd8`. The task
+  `pip_list_outdated_freeze_error_message` repairs a pip-list option conflict
+  message by changing `can not be used with` to
+  `cannot be used together with`, using the existing `change_literal` action
+  family.
+- Focused loader/generator coverage passed for the new pip-derived task:
+  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
+  `pytest tests/test_patching.py::test_patch_solves_pip_list_outdated_freeze_error_message -q`.
+- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
+  adding `piplist`. The persisted dataset at
+  `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` now covers 34
+  tasks and 258 tested candidates. Ranked eval solved all 34 tasks with
+  `pass@1=23/34` and average candidates `7.59`; the new pip-derived task
+  solves with the preferred `change_literal` candidate.
+- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
+  the piplist outcome refresh and stayed clean: solved=7/7, pass@1=7/7,
+  positive@1=7/7. Training used 338 rows, 70 passing rows, 290 training pairs,
+  810 features, and 3 margin violations.
+- Applying the saved test-slice ranker to all refreshed GreenShot-6 rows found
+  no trained preferred-positive misses across 34 tasks.
 
 Last focused verification:
 
 ```bash
 pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q
-pytest tests/test_patching.py::test_patch_solves_pydantic_field_regex_pattern_message -q
+pytest tests/test_patching.py::test_patch_solves_pip_list_outdated_freeze_error_message -q
 python cli.py eval \
   --tasks examples/greenshot_6 \
   --checkpoint runs/apache-python-git/model.json \
@@ -830,7 +852,7 @@ python cli.py outcome-summary \
   --candidate-outcomes runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl
 python - <<'PY'
 # Applied the refreshed test-slice ranker to all refreshed GreenShot-6 rows;
-# no trained preferred-positive residuals were found across 33 tasks.
+# no trained preferred-positive residuals were found across 34 tasks.
 PY
 git diff --check
 ```
@@ -1158,7 +1180,7 @@ The next context window should resume dataset growth by adding another
 real-package-derived GreenShot-6 task or small fixture domain. Do not tune
 broad handcrafted weights or add pass/preferred-label features from this state.
 The current GreenShot-6 `split: test` held-out validation is clean after the
-fieldopts outcome refresh.
+piplist outcome refresh.
 
 Immediate next sequence:
 

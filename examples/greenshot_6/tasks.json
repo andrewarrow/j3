@@ -529,6 +529,27 @@
     }
   },
   {
+    "name": "pip_list_outdated_freeze_error_message",
+    "family": "pip_list_option_error",
+    "source_type": "git_history",
+    "split": "train",
+    "repo": ".",
+    "test": "python -m pytest tests/test_piplist.py::test_outdated_freeze_format_error_matches_pip_message",
+    "source": {
+      "repo": "pypa/pip",
+      "commit": "fdc262f06936fb406af2af74ad6b0946ac1f4bd8"
+    },
+    "preferred": {
+      "file_path": "piplist/listing.py",
+      "action": "change_literal",
+      "symbol": "validate_list_options",
+      "params": {
+        "from": "List format 'freeze' can not be used with the --outdated option.",
+        "to": "List format 'freeze' cannot be used together with the --outdated option."
+      }
+    }
+  },
+  {
     "name": "cookie_default_secure_flag_dict_value",
     "family": "mapping_value",
     "source_type": "mutation",

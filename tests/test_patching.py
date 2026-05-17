@@ -916,6 +916,30 @@ def test_patch_solves_pydantic_field_regex_pattern_message(tmp_path) -> None:
     assert "use `pattern` instead" in result.selected.patched_source
 
 
+def test_patch_solves_pip_list_outdated_freeze_error_message(tmp_path) -> None:
+    repo = tmp_path / "greenshot_6"
+    shutil.copytree("examples/greenshot_6", repo)
+
+    result = plan_and_maybe_apply_patch(
+        repo=repo,
+        test_command=(
+            "python -m pytest "
+            "tests/test_piplist.py::test_outdated_freeze_format_error_matches_pip_message"
+        ),
+        dry_run=True,
+        timeout_seconds=10,
+    )
+
+    assert result.selected is not None
+    assert result.selected.file_path == "piplist/listing.py"
+    assert result.selected.action.kind.value == "change_literal"
+    assert result.selected.action.params == {
+        "from": "List format 'freeze' can not be used with the --outdated option.",
+        "to": "List format 'freeze' cannot be used together with the --outdated option.",
+    }
+    assert "cannot be used together" in result.selected.patched_source
+
+
 def test_generate_membership_operator_with_literal_needle_decoy(tmp_path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()

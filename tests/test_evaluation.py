@@ -99,7 +99,7 @@ def test_load_greenshot_6_tasks() -> None:
     tasks = load_tasks(Path("examples/greenshot_6"))
     by_name = {task.name: task for task in tasks}
 
-    assert len(tasks) == 33
+    assert len(tasks) == 34
     assert tasks[0].name == "core_metadata_version_dict_value"
     assert tasks[0].family == "mapping_value"
     assert tasks[0].source_type == "mutation"
@@ -154,6 +154,18 @@ def test_load_greenshot_6_tasks() -> None:
         "params": {
             "from": "module 'tablefmt.legacy' has no attribute '{name}",
             "to": "module 'tablefmt.legacy' has no attribute '{name}'",
+        },
+    }
+    assert by_name["pip_list_outdated_freeze_error_message"].family == "pip_list_option_error"
+    assert by_name["pip_list_outdated_freeze_error_message"].source_type == "git_history"
+    assert by_name["pip_list_outdated_freeze_error_message"].split == "train"
+    assert by_name["pip_list_outdated_freeze_error_message"].preferred_patch == {
+        "file_path": "piplist/listing.py",
+        "action": "change_literal",
+        "symbol": "validate_list_options",
+        "params": {
+            "from": "List format 'freeze' can not be used with the --outdated option.",
+            "to": "List format 'freeze' cannot be used together with the --outdated option.",
         },
     }
     assert by_name["http_no_store_directive_subscript_key"].preferred_patch == {

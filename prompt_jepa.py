@@ -24,12 +24,13 @@ from prompt_intents import (
 
 PROMPT_JEPA_INDEX_FORMAT = "j3.prompt-jepa-index.v1"
 PROMPT_JEPA_PREDICTOR_FORMAT = "j3.prompt-jepa-predictor.v0"
-PROMPT_CONTEXT_ENCODER_SCHEMA_VERSION = "prompt-context-v1"
-PROMPT_TARGET_ENCODER_SCHEMA_VERSION = "prompt-target-v1"
+PROMPT_CONTEXT_ENCODER_SCHEMA_VERSION = "prompt-context-v2"
+PROMPT_TARGET_ENCODER_SCHEMA_VERSION = "prompt-target-v2"
 FEATURE_HASHING_KIND = "feature_hashing"
 NEAREST_CONTEXT_DELTA_PREDICTOR_KIND = "nearest_context_delta"
 DEFAULT_EMBEDDING_DIM = 256
 MIN_EMBEDDING_DIM = 8
+TARGET_DOMAIN_HINT_WEIGHT = 0.45
 DEFAULT_RETRIEVAL_EVAL_FIELDS = (
     "expected_action",
     "repo_mode",
@@ -310,6 +311,7 @@ class PromptJepaRetrievalEvalResult:
         return {
             "schema_version": "prompt-jepa-retrieval-eval-v1",
             "decision": "evaluation_only_not_wired_to_production",
+            "mode": "context-neighbor",
             "train_split": self.train_split,
             "train_rows": self.train_rows,
             "embedding_dim": self.embedding_dim,
@@ -349,6 +351,52 @@ class PromptJepaPredictedTargetEvalResult:
                 split: self.split_results[split].to_record()
                 for split in sorted(self.split_results)
             },
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class PromptJepaResidualComparison:
+    """Top-1 residual movement for one field when switching retrieval modes."""
+
+    split: str
+    field: str
+    total: int
+    context_top_1_correct: int
+    predicted_target_top_1_correct: int
+    fixed_by_predicted_target: tuple[str, ...]
+    regressed_in_predicted_target: tuple[str, ...]
+    missed_by_both: tuple[str, ...]
+
+    def to_record(self) -> dict[str, object]:
+        return {
+            "split": self.split,
+            "field": self.field,
+            "total": self.total,
+            "context_top_1_correct": self.context_top_1_correct,
+            "predicted_target_top_1_correct": self.predicted_target_top_1_correct,
+            "fixed_by_predicted_target": list(self.fixed_by_predicted_target),
+            "regressed_in_predicted_target": list(self.regressed_in_predicted_target),
+            "missed_by_both": list(self.missed_by_both),
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class PromptJepaModeComparisonResult:
+    """Side-by-side context-neighbor and predicted-target retrieval eval."""
+
+    context_neighbor: PromptJepaRetrievalEvalResult
+    predicted_target: PromptJepaPredictedTargetEvalResult
+    residual_comparisons: tuple[PromptJepaResidualComparison, ...]
+
+    def to_record(self) -> dict[str, object]:
+        return {
+            "schema_version": "prompt-jepa-mode-comparison-v1",
+            "decision": "evaluation_only_not_wired_to_production",
+            "context_neighbor": self.context_neighbor.to_record(),
+            "predicted_target": self.predicted_target.to_record(),
+            "residual_comparisons": [
+                comparison.to_record() for comparison in self.residual_comparisons
+            ],
         }
 
 
@@ -445,6 +493,7 @@ def encode_prompt_target(
     target: object,
     *,
     dim: int = DEFAULT_EMBEDDING_DIM,
+    tags: Sequence[str] = (),
 ) -> tuple[float, ...]:
     """Encode a structured target record into a fixed-size normalized vector."""
 
@@ -453,6 +502,9 @@ def encode_prompt_target(
     if not isinstance(target_record, Mapping):
         raise TypeError("target must be a mapping or expose to_record()")
     features = _target_features(target_record)
+    for tag in tags:
+        features[f"tgt.summary.tag={tag}"] += 4
+        _add_shared_lexical_features(features, tag, weight=4)
     return _normalize(_hash_features(features, dim=dim))
 
 
@@ -487,7 +539,11 @@ def build_prompt_jepa_index(
                 task_type=record.target.task_type,
                 tags=record.tags,
             ),
-            target_embedding=encode_prompt_target(record.target, dim=embedding_dim),
+            target_embedding=encode_prompt_target(
+                record.target,
+                dim=embedding_dim,
+                tags=record.tags,
+            ),
             target=record.target.to_record(),
             tags=record.tags,
         )
@@ -570,6 +626,12 @@ def query_prompt_jepa_predicted_target(
         predictor=predictor,
         target_embedding=predicted_target,
         top_k=top_k,
+        query_tokens=_target_query_tokens(
+            prompt=prompt,
+            source_type=source_type,
+            task_type=task_type,
+            tags=tags,
+        ),
     )
 
 
@@ -698,6 +760,83 @@ def evaluate_prompt_jepa_predicted_target_retrieval_from_path(
     """Load prompt-intent labels and evaluate predicted-target retrieval."""
 
     return evaluate_prompt_jepa_predicted_target_retrieval(
+        load_prompt_intent_records(path),
+        embedding_dim=embedding_dim,
+        train_split=train_split,
+        eval_splits=eval_splits,
+        top_k=top_k,
+        fields=fields,
+        miss_limit=miss_limit,
+        source_path=path,
+    )
+
+
+def compare_prompt_jepa_retrieval_modes(
+    records: Sequence[PromptIntentRecord],
+    *,
+    embedding_dim: int = DEFAULT_EMBEDDING_DIM,
+    train_split: str = "train",
+    eval_splits: Sequence[str] = ("validation", "test"),
+    top_k: int = 3,
+    fields: Sequence[str] = DEFAULT_RETRIEVAL_EVAL_FIELDS,
+    miss_limit: int = 20,
+    source_path: Path | str | None = None,
+) -> PromptJepaModeComparisonResult:
+    """Compare context-neighbor and predicted-target residuals side by side."""
+
+    if miss_limit < 0:
+        raise ValueError("miss_limit must be >= 0")
+    eval_fields = tuple(dict.fromkeys(fields))
+    residual_limit = max(
+        miss_limit,
+        *(sum(1 for record in records if record.split == split) for split in eval_splits),
+    )
+    context_result = evaluate_prompt_jepa_retrieval(
+        records,
+        embedding_dim=embedding_dim,
+        train_split=train_split,
+        eval_splits=eval_splits,
+        top_k=top_k,
+        fields=eval_fields,
+        miss_limit=residual_limit,
+        source_path=source_path,
+    )
+    predicted_result = evaluate_prompt_jepa_predicted_target_retrieval(
+        records,
+        embedding_dim=embedding_dim,
+        train_split=train_split,
+        eval_splits=eval_splits,
+        top_k=top_k,
+        fields=eval_fields,
+        miss_limit=residual_limit,
+        source_path=source_path,
+    )
+    comparisons = _compare_prompt_jepa_residuals(
+        context_result=context_result,
+        predicted_result=predicted_result,
+        fields=eval_fields,
+        miss_limit=miss_limit,
+    )
+    return PromptJepaModeComparisonResult(
+        context_neighbor=context_result,
+        predicted_target=predicted_result,
+        residual_comparisons=comparisons,
+    )
+
+
+def compare_prompt_jepa_retrieval_modes_from_path(
+    path: Path,
+    *,
+    embedding_dim: int = DEFAULT_EMBEDDING_DIM,
+    train_split: str = "train",
+    eval_splits: Sequence[str] = ("validation", "test"),
+    top_k: int = 3,
+    fields: Sequence[str] = DEFAULT_RETRIEVAL_EVAL_FIELDS,
+    miss_limit: int = 20,
+) -> PromptJepaModeComparisonResult:
+    """Load prompt-intent labels and compare retrieval residuals by mode."""
+
+    return compare_prompt_jepa_retrieval_modes(
         load_prompt_intent_records(path),
         embedding_dim=embedding_dim,
         train_split=train_split,
@@ -968,12 +1107,16 @@ def _prompt_context_features(
         features[f"ctx:token_count_bucket={min(len(tokens), 12)}"] += 1
     if source_type:
         features[f"ctx:source_type={source_type}"] += 1
+        _add_shared_lexical_features(features, source_type, weight=1)
     if task_type:
         features[f"ctx:task_type={task_type}"] += 1
+        _add_shared_lexical_features(features, task_type, weight=1)
     for tag in tags:
         features[f"ctx:tag={tag}"] += 1
+        _add_shared_lexical_features(features, tag, weight=2)
 
     features.update(f"ctx:tok={token}" for token in tokens)
+    _add_shared_lexical_features(features, prompt, weight=2)
     features.update(
         f"ctx:bigram={tokens[index]} {tokens[index + 1]}"
         for index in range(len(tokens) - 1)
@@ -993,8 +1136,50 @@ def _prompt_context_features(
 
 def _target_features(target: Mapping[str, object]) -> Counter[str]:
     features: Counter[str] = Counter({"tgt:bias": 1})
+    _add_target_summary_features(features, target)
     _flatten_target_features(features, prefix="tgt", value=target)
     return features
+
+
+def _add_target_summary_features(
+    features: Counter[str],
+    target: Mapping[str, object],
+) -> None:
+    weighted_fields = (
+        ("domain", 6),
+        ("task_type", 4),
+        ("expected_action", 4),
+        ("repo_mode", 4),
+        ("primary_artifact", 3),
+        ("requested_interfaces", 3),
+        ("features", 4),
+        ("artifacts", 3),
+        ("target_files", 2),
+        ("features_to_add", 4),
+        ("unsupported_requirement", 3),
+        ("unsupported_requirement_family", 3),
+        ("unsupported_requirements", 3),
+        ("clarification_fields", 2),
+    )
+    for field_name, weight in weighted_fields:
+        if field_name not in target:
+            continue
+        value = target[field_name]
+        for text in _target_text_values(value):
+            features[f"tgt.summary.{field_name}={text}"] += weight
+            _add_shared_lexical_features(features, text, weight=weight)
+
+
+def _target_text_values(value: object) -> tuple[str, ...]:
+    if isinstance(value, str):
+        return (value,) if value and value != "none" else ()
+    if isinstance(value, list | tuple):
+        values: list[str] = []
+        for item in value:
+            if isinstance(item, str) and item and item != "none":
+                values.append(item)
+        return tuple(values)
+    return ()
 
 
 def _flatten_target_features(
@@ -1091,6 +1276,7 @@ def _query_target_embeddings(
     predictor: PromptJepaPredictor,
     target_embedding: Sequence[float],
     top_k: int,
+    query_tokens: Counter[str] | None = None,
 ) -> tuple[PromptJepaQueryResult, ...]:
     if top_k < 1:
         raise ValueError("top_k must be >= 1")
@@ -1101,7 +1287,11 @@ def _query_target_embeddings(
         )
 
     scored = [
-        (_dot(target_embedding, row.target_embedding), row)
+        (
+            _dot(target_embedding, row.target_embedding)
+            + _target_field_similarity_bonus(row=row, query_tokens=query_tokens),
+            row,
+        )
         for row in _predictor_train_rows(index=index, predictor=predictor)
     ]
     scored.sort(key=lambda item: (-item[0], item[1].row_id))
@@ -1118,6 +1308,40 @@ def _query_target_embeddings(
         )
         for score, row in scored[:top_k]
     )
+
+
+def _target_query_tokens(
+    *,
+    prompt: str,
+    source_type: str | None,
+    task_type: str | None,
+    tags: Sequence[str],
+) -> Counter[str]:
+    tokens: Counter[str] = Counter(_shared_lexical_tokens(prompt))
+    if source_type:
+        tokens.update(_shared_lexical_tokens(source_type))
+    if task_type:
+        tokens.update(_shared_lexical_tokens(task_type))
+    for tag in tags:
+        tokens.update(_shared_lexical_tokens(tag))
+    return tokens
+
+
+def _target_field_similarity_bonus(
+    *,
+    row: PromptJepaIndexRow,
+    query_tokens: Counter[str] | None,
+) -> float:
+    if not query_tokens:
+        return 0.0
+    domain_value = row.target.get("domain")
+    if not isinstance(domain_value, str) or not domain_value:
+        return 0.0
+    domain_tokens = set(_shared_lexical_tokens(domain_value))
+    if not domain_tokens:
+        return 0.0
+    matched = sum(1 for token in domain_tokens if query_tokens.get(token, 0) > 0)
+    return TARGET_DOMAIN_HINT_WEIGHT * (matched / len(domain_tokens))
 
 
 def _evaluate_prompt_jepa_retrieval_split(
@@ -1254,6 +1478,65 @@ def _score_prompt_jepa_eval_records(
     )
 
 
+def _compare_prompt_jepa_residuals(
+    *,
+    context_result: PromptJepaRetrievalEvalResult,
+    predicted_result: PromptJepaPredictedTargetEvalResult,
+    fields: Sequence[str],
+    miss_limit: int,
+) -> tuple[PromptJepaResidualComparison, ...]:
+    comparisons: list[PromptJepaResidualComparison] = []
+    for split in sorted(context_result.split_results):
+        context_split = context_result.split_results[split]
+        predicted_split = predicted_result.split_results.get(split)
+        if predicted_split is None:
+            continue
+        context_misses = _top_1_misses_by_field(context_split)
+        predicted_misses = _top_1_misses_by_field(predicted_split)
+        for field_name in fields:
+            context_field_misses = context_misses.get(field_name, set())
+            predicted_field_misses = predicted_misses.get(field_name, set())
+            comparisons.append(
+                PromptJepaResidualComparison(
+                    split=split,
+                    field=field_name,
+                    total=context_split.field_metrics[field_name].total,
+                    context_top_1_correct=(
+                        context_split.field_metrics[field_name].top_1_correct
+                    ),
+                    predicted_target_top_1_correct=(
+                        predicted_split.field_metrics[field_name].top_1_correct
+                    ),
+                    fixed_by_predicted_target=tuple(
+                        sorted(context_field_misses - predicted_field_misses)[
+                            :miss_limit
+                        ]
+                    ),
+                    regressed_in_predicted_target=tuple(
+                        sorted(predicted_field_misses - context_field_misses)[
+                            :miss_limit
+                        ]
+                    ),
+                    missed_by_both=tuple(
+                        sorted(context_field_misses & predicted_field_misses)[
+                            :miss_limit
+                        ]
+                    ),
+                )
+            )
+    return tuple(comparisons)
+
+
+def _top_1_misses_by_field(
+    split_result: PromptJepaRetrievalSplitResult,
+) -> dict[str, set[str]]:
+    misses: dict[str, set[str]] = {}
+    for miss in split_result.misses:
+        for field_name in miss.missed_fields_top_1:
+            misses.setdefault(field_name, set()).add(miss.query_id)
+    return misses
+
+
 def _scalar_field_values(
     target: Mapping[str, object],
     *,
@@ -1315,6 +1598,38 @@ def _validate_embedding_dim(dim: int) -> None:
 
 def _prompt_tokens(prompt: str) -> list[str]:
     return re.findall(r"\*\*|\^|[a-z0-9_]+", prompt.lower())
+
+
+def _add_shared_lexical_features(
+    features: Counter[str],
+    text: str,
+    *,
+    weight: int,
+) -> None:
+    for token in _shared_lexical_tokens(text):
+        features[f"shared.lex={token}"] += weight
+
+
+def _shared_lexical_tokens(text: str) -> tuple[str, ...]:
+    tokens: set[str] = set()
+    for raw_token in re.findall(r"[a-z0-9]+", text.lower().replace("_", " ")):
+        if not raw_token or raw_token in {"a", "an", "and", "or", "the", "to"}:
+            continue
+        tokens.update(_lexical_variants(raw_token))
+    return tuple(sorted(tokens))
+
+
+def _lexical_variants(token: str) -> set[str]:
+    variants = {token}
+    if len(token) > 3 and token.endswith("ies"):
+        variants.add(token[:-3] + "y")
+    if len(token) > 3 and token.endswith("s"):
+        variants.add(token[:-1])
+    if len(token) > 5 and token.endswith("ing"):
+        variants.add(token[:-3])
+    if token.startswith("validat"):
+        variants.update({"validate", "validation"})
+    return {variant for variant in variants if variant}
 
 
 def _feature_scalar(value: object) -> str:

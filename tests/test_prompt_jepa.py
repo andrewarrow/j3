@@ -10,6 +10,7 @@ from prompt_intents import load_prompt_intent_records, predict_prompt_intent
 from prompt_jepa import (
     PROMPT_JEPA_INDEX_FORMAT,
     build_prompt_jepa_index,
+    compare_prompt_jepa_retrieval_modes,
     encode_prompt_context,
     encode_prompt_target,
     evaluate_prompt_jepa_predicted_target_retrieval,
@@ -69,11 +70,11 @@ def test_prompt_jepa_index_builds_from_local_fixture_records() -> None:
     assert record["embedding_dim"] == 64
     assert record["context_encoder"] == {
         "kind": "feature_hashing",
-        "schema_version": "prompt-context-v1",
+        "schema_version": "prompt-context-v2",
     }
     assert record["target_encoder"] == {
         "kind": "feature_hashing",
-        "schema_version": "prompt-target-v1",
+        "schema_version": "prompt-target-v2",
     }
     assert len(index.rows) == len(records)
     assert {row.split for row in index.rows} == {"train", "validation", "test"}
@@ -240,6 +241,69 @@ def test_prompt_jepa_predicted_target_eval_scores_held_out_splits() -> None:
     assert 0 <= expected_action.top_1_correct <= expected_action.total
     assert expected_action.top_1_correct <= expected_action.top_k_correct
     assert expected_action.top_k_correct <= expected_action.total
+
+
+def test_prompt_jepa_compare_modes_reports_residual_movement() -> None:
+    records = load_prompt_intent_records(GREENSHOT_7_INTENTS)
+
+    result = compare_prompt_jepa_retrieval_modes(
+        records,
+        embedding_dim=128,
+        top_k=3,
+        miss_limit=3,
+    )
+    record = result.to_record()
+
+    assert record["schema_version"] == "prompt-jepa-mode-comparison-v1"
+    assert record["decision"] == "evaluation_only_not_wired_to_production"
+    assert record["context_neighbor"]["mode"] == "context-neighbor"
+    assert record["predicted_target"]["mode"] == "predicted-target"
+    assert result.context_neighbor.train_rows == result.predicted_target.train_rows
+    assert result.residual_comparisons
+    assert {
+        (comparison.split, comparison.field)
+        for comparison in result.residual_comparisons
+    } >= {
+        ("validation", "domain"),
+        ("test", "expected_action"),
+    }
+    assert all(
+        len(comparison.fixed_by_predicted_target) <= 3
+        for comparison in result.residual_comparisons
+    )
+
+
+def test_prompt_jepa_target_summary_features_share_lexical_space() -> None:
+    query = encode_prompt_context("add tests for missing token", dim=128)
+    auth_target = encode_prompt_target(
+        {
+            "repo_mode": "existing_repo",
+            "task_type": "add_tests",
+            "domain": "auth",
+            "expected_action": "emit_existing_repo_change_spec",
+            "features": ["token_auth"],
+            "artifacts": ["tests"],
+            "requested_interfaces": ["python_api"],
+        },
+        dim=128,
+    )
+    cli_target = encode_prompt_target(
+        {
+            "repo_mode": "existing_repo",
+            "task_type": "add_tests",
+            "domain": "cli",
+            "expected_action": "emit_existing_repo_change_spec",
+            "features": ["test_help", "test_invalid_args"],
+            "artifacts": ["tests"],
+            "requested_interfaces": ["cli"],
+        },
+        dim=128,
+    )
+
+    auth_score = sum(left * right for left, right in zip(query, auth_target))
+    cli_score = sum(left * right for left, right in zip(query, cli_target))
+
+    assert auth_score > cli_score
 
 
 def test_prompt_jepa_target_encoder_accepts_structured_spec_records() -> None:

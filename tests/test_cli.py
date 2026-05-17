@@ -424,6 +424,39 @@ def test_eval_prompt_jepa_index_command_can_print_misses(capsys) -> None:
     assert "misses:" in output
 
 
+def test_eval_prompt_jepa_index_command_compares_modes(capsys) -> None:
+    labels = "examples/prompt_intents/greenshot_7_intents.jsonl"
+
+    assert (
+        main(
+            [
+                "eval-prompt-jepa-index",
+                "--labels",
+                labels,
+                "--embedding-dim",
+                "64",
+                "--top-k",
+                "3",
+                "--mode",
+                "compare",
+                "--miss-limit",
+                "2",
+                "--json",
+            ]
+        )
+        == 0
+    )
+
+    output = json.loads(capsys.readouterr().out)
+    assert output["schema_version"] == "prompt-jepa-mode-comparison-v1"
+    assert output["context_neighbor"]["mode"] == "context-neighbor"
+    assert output["predicted_target"]["mode"] == "predicted-target"
+    assert output["residual_comparisons"]
+    assert {
+        item["field"] for item in output["residual_comparisons"]
+    } >= {"expected_action", "repo_mode", "domain"}
+
+
 def test_implement_command_builds_repo_and_request_spec_artifact(capsys, tmp_path) -> None:
     out_dir = tmp_path / "calc"
 

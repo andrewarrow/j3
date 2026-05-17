@@ -469,11 +469,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     prompt_jepa_eval_parser.add_argument(
         "--mode",
-        choices=("context", "predicted-target"),
+        choices=("context", "predicted-target", "compare"),
         default="context",
         help=(
             "evaluate context-neighbor retrieval or context-to-target "
-            "prediction followed by target-space retrieval (default: context)"
+            "prediction followed by target-space retrieval, or compare both "
+            "residual sets (default: context)"
         ),
     )
     prompt_jepa_eval_parser.add_argument(

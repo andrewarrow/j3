@@ -46,6 +46,7 @@ from prompt_intents import (
 )
 from prompt_jepa import (
     build_prompt_jepa_index_from_path,
+    compare_prompt_jepa_retrieval_modes_from_path,
     evaluate_prompt_jepa_predicted_target_retrieval_from_path,
     evaluate_prompt_jepa_retrieval_from_path,
     load_prompt_jepa_index,
@@ -480,6 +481,42 @@ def handle_query_prompt_jepa_index(args: argparse.Namespace) -> int:
 
 
 def handle_eval_prompt_jepa_index(args: argparse.Namespace) -> int:
+    if args.mode == "compare":
+        result = compare_prompt_jepa_retrieval_modes_from_path(
+            args.labels,
+            embedding_dim=args.embedding_dim,
+            top_k=args.top_k,
+            fields=args.target,
+            miss_limit=args.miss_limit,
+        )
+        if args.json:
+            print(json.dumps(result.to_record(), indent=2, sort_keys=True))
+            return 0
+
+        print("j3 eval-prompt-jepa-index complete")
+        print(f"labels: {args.labels.expanduser().resolve()}")
+        print("mode: compare")
+        print(f"train rows: {result.context_neighbor.train_rows}")
+        print(f"embedding dim: {result.context_neighbor.embedding_dim}")
+        print(f"top k: {result.context_neighbor.top_k}")
+        print("residual comparison:")
+        for comparison in result.residual_comparisons:
+            print(
+                "  "
+                f"{comparison.split} {comparison.field}: "
+                "context_top1="
+                f"{comparison.context_top_1_correct}/{comparison.total} "
+                "predicted_target_top1="
+                f"{comparison.predicted_target_top_1_correct}/{comparison.total} "
+                "fixed="
+                f"{','.join(comparison.fixed_by_predicted_target) or 'none'} "
+                "regressed="
+                f"{','.join(comparison.regressed_in_predicted_target) or 'none'} "
+                "missed_by_both="
+                f"{','.join(comparison.missed_by_both) or 'none'}"
+            )
+        return 0
+
     if args.mode == "predicted-target":
         result = evaluate_prompt_jepa_predicted_target_retrieval_from_path(
             args.labels,

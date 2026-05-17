@@ -177,3 +177,57 @@ Use this shape for each worker handoff:
 - Next: compare context-neighbor and predicted-target residuals, then improve
   domain retrieval in target space without wiring retrieval into production.
 - Blockers: none.
+
+### Iteration 5: Prompt-JEPA residual comparison and target-domain retrieval
+
+- Worker: Codex worker iteration 5
+- Goal: compare context-neighbor and predicted-target residuals, inspect weak
+  seed-domain retrieval, and improve target-space domain retrieval without
+  changing production `implement` or `change` routing.
+- Files changed: `prompt_jepa.py`, `cli/parser.py`, `cli/handlers.py`,
+  `tests/test_prompt_jepa.py`, `tests/test_cli.py`,
+  `plans/today.progress.md`
+- Tests run: `pytest tests/test_prompt_jepa.py -q` passed with 11 tests;
+  `pytest tests/test_cli.py -q` passed with 33 tests;
+  `python -m py_compile prompt_jepa.py cli/handlers.py cli/parser.py cli/__init__.py`
+  passed; `git diff --check` passed.
+- Inspection: `../prompts/coding_agent_prompts_seed.jsonl` has sparse exact
+  domain coverage in train. Only 3/15 validation rows and 2/12 test rows have
+  domains seen in train, so exact domain retrieval has a low ceiling before
+  adding more labels. The weak target-space domain misses were mostly action
+  or task neighbors dominating sparse domain hints.
+- Metrics: local fixture
+  `examples/prompt_intents/greenshot_7_intents.jsonl` with top-k 3 and 256
+  dimensions used 53 train rows. Context-neighbor validation: expected_action
+  16/16 top1 and top3, repo_mode 16/16 top1 and top3, domain 16/16 top1 and
+  top3, unsupported_requirement_family 16/16 top1 and top3. Context-neighbor
+  test: expected_action 18/18 top1 and top3, repo_mode 18/18 top1 and top3,
+  domain 18/18 top1 and top3, unsupported_requirement_family 16/18 top1 and
+  18/18 top3. Predicted-target validation: all four fields 16/16 top1 and
+  top3. Predicted-target test: all four fields 18/18 top1 and top3.
+- Metrics: `../prompts/coding_agent_prompts_seed.jsonl` with top-k 3 and 256
+  dimensions used 53 train rows. Context-neighbor validation: expected_action
+  5/15 top1 and 13/15 top3, repo_mode 7/15 top1 and 14/15 top3, domain 0/15
+  top1/top3, unsupported_requirement_family 15/15 top1 and top3.
+  Context-neighbor test: expected_action 9/12 top1 and 11/12 top3, repo_mode
+  9/12 top1 and 12/12 top3, domain 0/12 top1 and 1/12 top3,
+  unsupported_requirement_family 12/12 top1 and top3. Predicted-target
+  validation: expected_action 11/15 top1 and 13/15 top3, repo_mode 9/15 top1
+  and 11/15 top3, domain 2/15 top1/top3,
+  unsupported_requirement_family 15/15 top1 and top3. Predicted-target test:
+  expected_action 11/12 top1/top3, repo_mode 9/12 top1 and 10/12 top3, domain
+  1/12 top1/top3, unsupported_requirement_family 12/12 top1 and top3.
+- Residual comparison: on seed domain top1, predicted-target fixed validation
+  `seed-0015` and `seed-0059`, and test `seed-0051`, with no domain
+  regressions. Expected-action top1 also improved from context-neighbor to
+  predicted-target on seed validation 5/15 to 11/15 and test 9/12 to 11/12.
+- Result: added `eval-prompt-jepa-index --mode compare` for residual movement
+  reporting, bumped context/target encoder schemas to v2, added canonical
+  target summary and shared lexical features, included row tags in target
+  embeddings, and added an evaluation-only schema-aware domain hint for
+  predicted-target target-space scoring. Production routing remains unchanged.
+- Commit: pending
+- Push: pending
+- Next: use the residual report to decide whether to add more train coverage
+  for unseen domains or separate per-field retrieval objectives.
+- Blockers: none.

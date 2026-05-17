@@ -7,13 +7,12 @@ new implementation facts change the 24-hour plan itself. Record any
 
 ## Status
 
-- Current phase: deterministic parser implementation complete; ready for greenfield action planning
-- Completed iterations: 3
+- Current phase: structured greenfield action planning complete; ready for repo materialization
+- Completed iterations: 4
 - Passing focused tests: prompt seed JSONL validation, `test -s REQUEST_SPEC.md`,
   GreenShot-7 fixture JSON validation, `pytest tests/test_request_spec.py -q`,
-  `git diff --check`
-- Latest implementation commit: `60ac8ae4af704fee01e63b9c9066246cd32df89a`
-  (`Add request spec parser`)
+  `pytest tests/test_greenfield_calculator.py -q`, `git diff --check`
+- Latest implementation commit: pending (`Add greenfield action planning`)
 - Current blocker: none
 - Next task: build structured greenfield calculator action planning from `request-spec-v1`
 
@@ -121,4 +120,28 @@ Use this shape for each worker handoff:
 - Push: succeeded to `origin/main`
 - Next: Build structured greenfield calculator action planning from
   `request-spec-v1`; do not generate repos until that slice is assigned.
+- Blockers: none
+
+### Iteration 4: Add greenfield action planning
+
+- Worker: Codex Worker Iteration 4
+- Goal: Implement structured GreenShot-7 calculator repo planning from
+  `request-spec-v1` without materializing output repos.
+- Files changed:
+  - `greenfield.py`
+  - `tests/test_greenfield_calculator.py`
+  - `pyproject.toml`
+  - `plans/today.progress.md`
+- Tests run:
+  - `pytest tests/test_greenfield_calculator.py -q`
+  - `pytest tests/test_request_spec.py -q`
+  - `git diff --check`
+- Result: Added `greenfield-plan-v1` records with ordered add-only actions for
+  calculator source and test files, operation dispatch derived from spec
+  features and aliases, CLI entrypoint planning, behavior test planning, and a
+  blocked clarification plan for non-actionable specs.
+- Commit: pending (`Add greenfield action planning`)
+- Push: pending
+- Next: Materialize generated calculator repos from `greenfield-plan-v1`
+  actions and run subprocess smoke checks.
 - Blockers: none

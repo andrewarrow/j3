@@ -35,7 +35,7 @@ dev = [
 j3 = "cli:main"
 
 [tool.setuptools]
-py-modules = ["actions", "candidate_ranking", "diagnostics_compare", "failure_hints", "features", "fixing", "mining", "patching", "repo", "request_spec", "synth", "training"]
+py-modules = ["actions", "candidate_ranking", "diagnostics_compare", "failure_hints", "features", "fixing", "greenfield", "mining", "patching", "repo", "request_spec", "synth", "training"]
 packages = ["candidate_ranker", "cli", "evaluation", "repair", "repair.patching", "repair.patching.generators"]
 
 [tool.pytest.ini_options]

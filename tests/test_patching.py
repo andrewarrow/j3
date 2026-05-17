@@ -1702,6 +1702,30 @@ def test_patch_solves_pytest_usage_filename_pattern_escape(tmp_path) -> None:
     assert "or *_test.py" in result.selected.patched_source
 
 
+def test_patch_solves_httpx_stream_read_docline_response_text(tmp_path) -> None:
+    repo = tmp_path / "greenshot_6"
+    shutil.copytree("examples/greenshot_6", repo)
+
+    result = plan_and_maybe_apply_patch(
+        repo=repo,
+        test_command=(
+            "python -m pytest "
+            "tests/test_httpclient.py::test_stream_read_docline_names_response_text"
+        ),
+        dry_run=True,
+        timeout_seconds=10,
+    )
+
+    assert result.selected is not None
+    assert result.selected.file_path == "httpclient/client.py"
+    assert result.selected.action.kind.value == "change_literal"
+    assert result.selected.action.params == {
+        "from": "making request.text and response.content available.",
+        "to": "making response.text and response.content available.",
+    }
+    assert "making response.text" in result.selected.patched_source
+
+
 def test_generate_membership_operator_with_literal_needle_decoy(tmp_path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()

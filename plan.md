@@ -1431,9 +1431,8 @@ Recent work:
   adding `pytestdocs`. The persisted dataset now covers 64 tasks and 492
   tested candidates. Ranked eval solved all 64 tasks with `pass@1=47/64` and
   average candidates `7.69`; outcome rows include 95 passing rows and 64
-  preferred-positive rows. Source-type pass@1 is `git_history=29/43` and
-  `mutation=18/21`. The new pytest-derived task solves at raw rank 1 with the
-  preferred `change_literal` candidate.
+  preferred-positive rows. The new pytest-derived task solves at raw rank 1
+  with the preferred `change_literal` candidate.
 - The same GreenShot-6 `split: test` held-out ranker validation stayed clean:
   solved=7/7, pass@1=7/7, positive@1=7/7, validation rows=46, and
   avg_first_passing_index=1.0. Training used 572 rows, 103 passing rows, 494
@@ -1448,7 +1447,7 @@ Last focused verification:
 
 ```bash
 pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q
-pytest tests/test_patching.py::test_patch_solves_pytest_usage_filename_pattern_escape -q
+pytest tests/test_patching.py::test_patch_solves_httpx_stream_read_docline_response_text -q
 python -m json.tool examples/greenshot_6/tasks.json >/dev/null
 python cli.py eval \
   --tasks examples/greenshot_6 \
@@ -1495,9 +1494,9 @@ GreenShot-6 outcome collection result:
 
 ```text
 ranked, runs/apache-python-git/model.json, explore-after-pass=5:
-  solved=64/64 pass@1=47/64 avg_candidates=7.69
-  rows=492 passing_rows=95 preferred_positive_rows=64
-  source_type pass@1: git_history=29/43 mutation=18/21
+  solved=65/65 pass@1=48/65 avg_candidates=7.66
+  rows=498 passing_rows=96 preferred_positive_rows=65
+  source_type pass@1: git_history=30/44 mutation=18/21
 ```
 
 Treat this as a smoke check, not a benchmark claim.
@@ -1701,41 +1700,41 @@ Start neural/JEPA work only when:
 
 ## Handoff Recommendation
 
-The next context window should start from the post-pytestdocs GreenShot-6
-refresh, not the older typechecker, keyword-coverage, packaging parser,
-FastAPI OAuth2, Werkzeug AirPlay, flake8-bugbear B037, Seaborn plot-label,
-graphlayout/NetworkX, taskqueue/Celery, envwrite, v13 literal-key, scipyquad,
-raisemsg, attrvalidators, or pytest-regex-label states. GreenShot-6 now has 64
-tasks.
+The next context window should start from the post-HTTPX-docline GreenShot-6
+refresh, not the older pytestdocs, typechecker, keyword-coverage, packaging
+parser, FastAPI OAuth2, Werkzeug AirPlay, flake8-bugbear B037, Seaborn
+plot-label, graphlayout/NetworkX, taskqueue/Celery, envwrite, v13 literal-key,
+scipyquad, raisemsg, attrvalidators, or pytest-regex-label states. GreenShot-6
+now has 65 tasks.
 
 Latest addition:
 
-- Fixture domain: `pytestdocs`
-- Task: `pytest_usage_filename_pattern_escape`
-- Source: `pytest-dev/pytest` PR 14191 / commit
-  `2f09ddc84ea6a7ccd56f19b0b998c8d2c51a4652`
-- Repair shape: pytest usage text should say `*_test.py`, not `\*_test.py`,
-  for the filename discovery pattern.
+- Fixture domain: `httpclient`
+- Task: `httpx_stream_read_docline_response_text`
+- Source: `encode/httpx` PR 3359 / commit
+  `6f9b50990dad9645a6f9dc0e1eb90af0a6474c3b`
+- Repair shape: HTTPX stream-read docs should refer to `response.text`, not
+  `request.text`, when reading a response body.
 - Action: existing `change_literal`; no action family, ranker metadata, broad
   weight, or pass/preferred-label change was needed.
 
-Latest GreenShot-6 refresh with `--explore-after-pass 5` solved all 64 tasks:
-`pass@1=47/64`, average candidates `7.69`, rows `492`, passing rows `95`, and
-preferred-positive rows `64`. Source-type pass@1 is `git_history=29/43` and
-`mutation=18/21`. The new pytest-derived task passes at raw rank 1 with the
+Latest GreenShot-6 refresh with `--explore-after-pass 5` solved all 65 tasks:
+`pass@1=48/65`, average candidates `7.66`, rows `498`, passing rows `96`, and
+preferred-positive rows `65`. Source-type pass@1 is `git_history=30/44` and
+`mutation=18/21`. The new HTTPX-derived task passes at raw rank 1 with the
 preferred `change_literal` candidate.
 
 The same GreenShot-6 `split: test` held-out validation is clean:
 solved=7/7, pass@1=7/7, positive@1=7/7, validation rows=46, and
-avg_first_passing_index=1.0. Training used 572 rows, 103 passing rows, 494
+avg_first_passing_index=1.0. Training used 578 rows, 104 passing rows, 499
 training pairs, 906 features, and 4 margin violations.
 
 Latest inspection summary:
 
-- Raw GreenShot-6 has 17 pass@1 misses after the pytestdocs refresh. Every
+- Raw GreenShot-6 has 17 pass@1 misses after the HTTPX-docline refresh. Every
   task has a tested preferred-positive row.
 - Applying the saved GreenShot-6 `split: test` ranker to all refreshed
-  GreenShot-6 rows found no trained preferred-positive misses.
+  GreenShot-6 rows found no trained pass@1 or preferred-positive misses.
 - `HARD_NEGATIVES.md` was not updated this turn because no new verified
   residual appeared.
 

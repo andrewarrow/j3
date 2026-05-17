@@ -26,3 +26,7 @@ class AsyncClient:
             )
 
         return "sent"
+
+
+def stream_read_docline() -> str:
+    return "making request.text and response.content available."

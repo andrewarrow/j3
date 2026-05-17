@@ -530,6 +530,28 @@
     }
   },
   {
+    "name": "httpx_stream_read_docline_response_text",
+    "family": "http_client_doc_text",
+    "source_type": "git_history",
+    "split": "train",
+    "repo": ".",
+    "test": "python -m pytest tests/test_httpclient.py::test_stream_read_docline_names_response_text",
+    "source": {
+      "repo": "encode/httpx",
+      "commit": "6f9b50990dad9645a6f9dc0e1eb90af0a6474c3b",
+      "pr": 3359
+    },
+    "preferred": {
+      "file_path": "httpclient/client.py",
+      "action": "change_literal",
+      "symbol": "stream_read_docline",
+      "params": {
+        "from": "making request.text and response.content available.",
+        "to": "making response.text and response.content available."
+      }
+    }
+  },
+  {
     "name": "posting_escaped_path_param_regex",
     "family": "path_param_regex",
     "source_type": "git_history",

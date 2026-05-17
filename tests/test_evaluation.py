@@ -99,7 +99,7 @@ def test_load_greenshot_6_tasks() -> None:
     tasks = load_tasks(Path("examples/greenshot_6"))
     by_name = {task.name: task for task in tasks}
 
-    assert len(tasks) == 64
+    assert len(tasks) == 65
     assert tasks[0].name == "core_metadata_version_dict_value"
     assert tasks[0].family == "mapping_value"
     assert tasks[0].source_type == "mutation"
@@ -604,6 +604,17 @@ def test_load_greenshot_6_tasks() -> None:
         "params": {
             "from": "Attempted to send an sync request with an AsyncClient instance.",
             "to": "Attempted to send a sync request with an AsyncClient instance.",
+        },
+    }
+    assert by_name["httpx_stream_read_docline_response_text"].split == "train"
+    assert by_name["httpx_stream_read_docline_response_text"].source_type == "git_history"
+    assert by_name["httpx_stream_read_docline_response_text"].preferred_patch == {
+        "file_path": "httpclient/client.py",
+        "action": "change_literal",
+        "symbol": "stream_read_docline",
+        "params": {
+            "from": "making request.text and response.content available.",
+            "to": "making response.text and response.content available.",
         },
     }
     assert by_name["posting_escaped_path_param_regex"].split == "train"

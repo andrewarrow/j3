@@ -292,6 +292,16 @@ Recent work:
   passing `.get` `swap_call_arg` remains rank 1. `cookie_scope_include_path_keyword`
   still lacks the preferred `add_keyword_arg(include_path=True)` candidate in
   the tested rows.
+- The v10 feature/weight support for the residual held-out rows was inspected.
+  The `.get` key/default role-swap metadata is present on the held-out HTTP
+  row, but has no non-held-out GreenShot-5/6 coverage and learned zero weight.
+  The name-alignment metadata has sparse but usable coverage: breaking
+  alignment learned a combined `-0.5` contribution, while repairing alignment
+  learned `+1.0`. The HTTP residual is therefore partly missing independent
+  `.get` role-swap hard-negative coverage, and partly weak preferred-operator
+  context: the preferred `change_operator` row is still dragged down by broad
+  AST/operator-delta weights and lacks richer non-leaky predicate metadata.
+  Details are in `HARD_NEGATIVES.md`.
 
 Last focused verification:
 
@@ -415,25 +425,22 @@ Keep this section as the live queue. When work is completed, move it to
 
 Immediate next sequence:
 
-1. Inspect v10 feature support and learned weights for the residual held-out
-   rows, especially `swap_call_mapping_get_key_default_swapped`,
-   `swap_call_breaks_name_alignment`, and
-   `swap_call_repairs_name_alignment`. Determine whether the HTTP miss is due
-   to absent non-held-out coverage for `.get` key/default swaps or because the
-   preferred operator repair still needs richer non-leaky predicate/context
-   metadata. Do not add broad `swap_call_arg` weights or use pass/preferred
-   labels as features.
-2. For `cookie_scope_include_path_keyword`, treat the primary gap as missing
+1. For `cookie_scope_include_path_keyword`, treat the primary gap as missing
    preferred-candidate signal: the tested rows still do not contain the
    preferred `add_keyword_arg(include_path=True)` repair. If working on this
    next, extend the existing `add_keyword_arg` family narrowly enough to
    synthesize boolean default keywords from local callee signatures, rather
    than adding a new action family.
-3. If adding candidate-generation support for the cookie scope gap, add focused
+2. If adding candidate-generation support for the cookie scope gap, add focused
    coverage showing the preferred `add_keyword_arg(include_path=True)` candidate
    is generated and ranked without breaking existing pass-through keyword
    behavior. Then refresh GreenShot-6 outcomes and rerun the same GreenShot-6
    `split: test` held-out validation.
+3. If staying on the HTTP residual instead, add independent non-held-out
+   coverage for a `.get` key/default swap hard negative before changing ranker
+   weights, then inspect richer non-leaky predicate/context metadata for the
+   preferred local `change_operator` repair. Validate preferred-positive rank,
+   not pass@1 alone, because the HTTP task has multiple passing candidates.
 
 ### 1. Make GreenShot-6 Real
 
@@ -454,9 +461,9 @@ transition modeling.
 
 Next tasks:
 
-- Inspect the v10 call-site metadata support/weights before collecting another
-  broad outcome refresh; the metadata is present in refreshed GreenShot-6 rows,
-  but the HTTP preferred-positive rank did not move.
+- Add independent `.get` key/default swap hard-negative coverage only if the
+  next work stays on the HTTP residual; otherwise prefer the immediate cookie
+  candidate-generation gap above.
 
 ### 3. Collect Hard Negatives
 

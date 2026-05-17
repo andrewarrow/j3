@@ -475,3 +475,91 @@ Recommended next inspection:
    existing `add_keyword_arg` family to synthesize boolean default keywords from
    local callee signatures, specifically enough to generate
    `include_path=True`, rather than adding a new action family.
+
+### v10 Feature/Weight Inspection
+
+Inspection date: 2026-05-16.
+
+Inspection source:
+
+```bash
+runs/apache-python-git/greenshot-5-candidate-outcomes.jsonl
+runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl
+runs/apache-python-git/ranker-holdout-greenshot-6-test-slice/candidate-ranker.json
+```
+
+The refreshed rows and trained ranker both use
+`candidate-diagnostics-v10`. The v10 target-context features are present in the
+residual held-out rows, but only the name-alignment features have non-held-out
+training coverage.
+
+Non-held-out GreenShot-5/6 coverage:
+
+| Feature | Rows | Passing rows | Preferred rows | Tasks |
+| --- | ---: | ---: | ---: | --- |
+| `swap_call_mapping_get_key_default_swapped` | 0 | 0 | 0 | none |
+| `swap_call_breaks_name_alignment` | 5 | 0 | 0 | `core_metadata_version_dict_value`, `dynamic_field_error_message`, `minimum_python_version_operator_boundary`, `project_urls_header_dict_key`, `readme_missing_file_exception_key` |
+| `swap_call_repairs_name_alignment` | 1 | 1 | 1 | `http_cache_key_argument_order` |
+
+Held-out coverage:
+
+| Feature | Rows | Passing rows | Preferred rows | Tasks |
+| --- | ---: | ---: | ---: | --- |
+| `swap_call_mapping_get_key_default_swapped` | 1 | 1 | 0 | `http_no_store_response_with_etag` |
+| `swap_call_breaks_name_alignment` | 1 | 0 | 0 | `cookie_scope_include_path_keyword` |
+| `swap_call_repairs_name_alignment` | 1 | 1 | 1 | `cookie_pair_argument_order` |
+
+Learned weights in the GreenShot-6 `split: test` holdout model:
+
+| Feature | Weight |
+| --- | ---: |
+| `swap_call_mapping_get_key_default_swapped` | 0.0 |
+| `action_swap_call_mapping_get_key_default_swapped:swap_call_arg` | 0.0 |
+| `swap_call_breaks_name_alignment` | -0.25 |
+| `action_swap_call_breaks_name_alignment:swap_call_arg` | -0.25 |
+| `swap_call_repairs_name_alignment` | 0.5 |
+| `action_swap_call_repairs_name_alignment:swap_call_arg` | 0.5 |
+
+Residual held-out scoring after v10:
+
+| Task | Candidate | Trained rank | Original rank | Passed | Preferred | Score | v10 contribution |
+| --- | --- | ---: | ---: | --- | --- | ---: | ---: |
+| `http_no_store_response_with_etag` | `.get` `swap_call_arg` key/default swap | 1 | 3 | yes | no | 11.606667 | 0.0 |
+| `http_no_store_response_with_etag` | `change_operator`, `not in` -> `in` | 3 | 1 | yes | yes | 9.788554 | 0.0 |
+| `cookie_scope_include_path_keyword` | `swap_call_arg` breaking name alignment | 1 | 1 | no | no | 10.106667 | -0.5 |
+| `cookie_scope_include_path_keyword` | helper `modify_condition` accidental pass | 2 | 2 | yes | no | 3.050271 | 0.0 |
+| `cookie_pair_argument_order` | `swap_call_arg` repairing name alignment | 1 | 1 | yes | yes | 14.606667 | +1.0 |
+
+Decision:
+
+- The HTTP residual is partly a coverage gap: there is no non-held-out row for
+  `.get` key/default swaps, so the new
+  `swap_call_mapping_get_key_default_swapped` features cannot learn a penalty.
+- Independent non-held-out coverage for this exact role-swap shape would be
+  useful, especially if paired against a preferred local predicate/operator
+  repair. The current held-out HTTP row is a multiple-passing case, so
+  preferred-positive rank remains the right validation signal.
+- The preferred HTTP operator repair still looks under-described. The
+  accidental swap beats it by 1.818113, and the operator row is dragged down by
+  negative learned AST/operator-delta weights while receiving only generic
+  symbol/locality and overlap help. Even with `.get` role-swap coverage, richer
+  non-leaky predicate/context metadata may be needed to identify the local
+  branch condition as the intended repair.
+- `cookie_scope_include_path_keyword` should not be treated as a ranker-only
+  issue. The false swap now receives the expected v10 name-alignment penalty,
+  but the preferred `add_keyword_arg(include_path=True)` candidate is still
+  absent from the tested rows.
+
+Next handoff:
+
+1. If staying on the HTTP residual, add independent non-held-out coverage for a
+   `.get` key/default swap hard negative before changing ranker weights. Keep
+   the feature non-leaky and validate on preferred-positive rank, not pass@1
+   alone.
+2. In parallel or after that, inspect candidate-context metadata for local
+   predicate/operator repairs so the preferred `change_operator` row can be
+   described by behavior-relevant context instead of only broad AST deltas.
+3. If switching to the cookie scope gap, implement the already-planned narrow
+   `add_keyword_arg` extension to synthesize boolean default keywords from
+   local callee signatures, enough to generate
+   `include_path=True`. Do not add a new action family for this.

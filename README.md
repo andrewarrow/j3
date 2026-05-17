@@ -73,6 +73,10 @@ is the JEPA-shaped artifact: context vectors and target vectors are separate,
 dimensions are fixed and validated, rows preserve train/validation/test splits,
 and real `implement --record` / `change --record` outcome rows can be indexed.
 
+For the one-command developer demo, exact artifact inspection commands, and
+current supported/retrieval-only boundaries, see
+[PROMPT_JEPA_DEMO.md](PROMPT_JEPA_DEMO.md).
+
 Try the calculator prompt index:
 
 ```bash

@@ -7,18 +7,21 @@ new implementation facts change the 24-hour plan itself. Record any
 
 ## Status
 
-- Current phase: Prompt-JEPA developer demo and prompt corpus scale-up
-- Completed iterations: 4 for this reset; previous Prompt-JEPA index reset
+- Current phase: Prompt-JEPA developer demo documentation complete
+- Completed iterations: 5 for this reset; previous Prompt-JEPA index reset
   completed 8 iterations
 - Passing focused tests: `pytest tests/test_prompt_intents.py -q`;
   `pytest tests/test_cli.py -q`;
   `pytest tests/test_prompt_jepa.py -q`;
   `python -m py_compile prompt_jepa_demo.py features.py prompt_jepa.py cli/handlers.py cli/parser.py cli/__init__.py`;
+  `python cli.py demo-prompt-jepa --labels ../prompts/coding_agent_prompts_expanded_v0.jsonl --out /tmp/j3-prompt-jepa-demo --top-k 5`;
+  `python -m json.tool /tmp/j3-prompt-jepa-demo/report.json >/dev/null`;
   `git diff --check`
-- Latest implementation commit: `1347a11`
+- Latest implementation commit: `1347a11`; latest documentation commit:
+  current Iteration 5 commit
 - Current blocker: none
-- Next task: document the demo in README or a focused demo doc with exact
-  commands and honest supported/retrieval-only boundaries.
+- Next task: active queue complete; watcher should choose the next plan slice
+  or close this demo/documentation pass.
 
 ## Active Task Queue
 
@@ -31,7 +34,7 @@ new implementation facts change the 24-hour plan itself. Record any
   Prompt-JEPA demo index.
 - [x] Add a thin Python source-embedding sidecar for generated demo repos using
   `features.embed_python_source`.
-- [ ] Document the demo in README or a focused demo doc with exact commands and
+- [x] Document the demo in README or a focused demo doc with exact commands and
   honest supported/retrieval-only boundaries.
 
 ## Worker Iteration Template
@@ -549,4 +552,36 @@ Use this shape for each worker handoff:
 - Push: succeeded to `main`
 - Next: document the demo in README or a focused demo doc with exact commands
   and honest supported/retrieval-only boundaries.
+- Blockers: none.
+
+### Iteration 5: Prompt-JEPA developer demo docs
+
+- Worker: Codex worker iteration 5
+- Goal: document the Prompt-JEPA developer demo with exact commands and honest
+  supported/retrieval-only boundaries.
+- Files changed: `PROMPT_JEPA_DEMO.md`, `README.md`,
+  `plans/today.progress.md`
+- Tests/checks run: `python cli.py demo-prompt-jepa --labels
+  ../prompts/coding_agent_prompts_expanded_v0.jsonl --out
+  /tmp/j3-prompt-jepa-demo --top-k 5` passed; `python -m json.tool
+  /tmp/j3-prompt-jepa-demo/report.json >/dev/null` passed;
+  `python -m json.tool /tmp/j3-prompt-jepa-demo/source-embeddings.json
+  >/dev/null` passed; `python /tmp/j3-prompt-jepa-demo/repos/simple-calc/calculator.py
+  2 + 3` returned `5`; `python /tmp/j3-prompt-jepa-demo/repos/simple-calc/calculator.py
+  2 '**' 3` returned `8`; `python -m pytest
+  /tmp/j3-prompt-jepa-demo/repos/simple-calc/tests -q` passed with 2 tests;
+  `git diff --check` passed.
+- Result: added a focused demo doc with commands for corpus generation,
+  corpus inspection, `demo-prompt-jepa`, report validation, index/proposal
+  inspection, outcome-row inspection, generated calculator repo smoke checks,
+  and `source-embeddings.json` inspection. README now points to the focused
+  doc. The doc states supported calculator create/change paths,
+  retrieval/proposal-only non-calculator behavior, blocked clarification
+  examples, zero hosted LLM/API and hosted repo-context usage, no production
+  routing switch, and deterministic `features.embed_python_source` sidecar
+  boundaries.
+- Commit: current documentation commit; final hash reported by worker.
+- Push: pending until commit is created.
+- Next: active queue complete; watcher should choose the next plan slice or
+  close this demo/documentation pass.
 - Blockers: none.

@@ -613,6 +613,55 @@ def test_generate_string_literal_candidate_from_repo_string_literals(tmp_path) -
     )
 
 
+def test_generate_fstring_fragment_literal_candidate_from_concrete_message(tmp_path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "metadata.py").write_text(
+        "class MetadataValidationError(ValueError):\n"
+        "    pass\n\n"
+        "def validate_dynamic_field(field: str, project: dict[str, object]) -> None:\n"
+        "    if field in project:\n"
+        "        raise MetadataValidationError(\n"
+        "            f'Field \"project.{field}\" declared as dynamic in but is defined',\n"
+        "        )\n",
+        encoding="utf-8",
+    )
+    tests = repo / "tests"
+    tests.mkdir()
+    (tests / "test_metadata.py").write_text(
+        "import pytest\n"
+        "from metadata import MetadataValidationError, validate_dynamic_field\n\n"
+        "def test_dynamic_field_error() -> None:\n"
+        "    with pytest.raises(\n"
+        "        MetadataValidationError,\n"
+        "        match='Field \"project.version\" declared as dynamic in \"project.dynamic\" but is defined',\n"
+        "    ):\n"
+        "        validate_dynamic_field('version', {'version': '1.0.0'})\n",
+        encoding="utf-8",
+    )
+
+    candidates = generate_candidate_patches(repo)
+
+    candidate = next(
+        (
+            candidate
+            for candidate in candidates
+            if candidate.action.kind.value == "change_literal"
+            and candidate.action.params
+            == {
+                "from": " declared as dynamic in but is defined",
+                "to": ' declared as dynamic in "project.dynamic" but is defined',
+            }
+        ),
+        None,
+    )
+    assert candidate is not None
+    assert (
+        'f\'Field "project.{field}" declared as dynamic in "project.dynamic" but is defined\''
+        in candidate.patched_source
+    )
+
+
 def test_generate_membership_operator_with_literal_needle_decoy(tmp_path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()

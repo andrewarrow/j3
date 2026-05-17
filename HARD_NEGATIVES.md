@@ -968,3 +968,49 @@ python cli.py eval \
   --candidate-outcomes runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl \
   --quiet
 ```
+
+### F-String Fragment Candidate Follow-Up
+
+Implementation result: f-string literal-fragment candidate generation now
+emits the preferred reusable `change_literal` repair for
+`dynamic_field_error_message`:
+
+```text
+from:  declared as dynamic in but is defined
+to:    declared as dynamic in "project.dynamic" but is defined
+```
+
+This fixes the outcome-quality gap where tested passing candidates only
+hardcoded the concrete pytest `match=...` message
+`Field "project.version" declared as dynamic in "project.dynamic" but is
+defined`.
+
+Focused verification passed:
+
+```bash
+pytest tests/test_patching.py::test_generate_fstring_fragment_literal_candidate_from_concrete_message tests/test_evaluation.py::test_load_greenshot_6_tasks -q
+pytest tests/test_patching.py -q
+```
+
+GreenShot-6 outcome refresh:
+
+| Slice | Tasks | Solved | Pass@1 | Rows | Passing rows | Preferred-positive rows |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| GreenShot-6 ranked explore | 22 | 22/22 | 17/22 | 163 | 47 | 22 |
+
+Validation result after rerunning the same GreenShot-6 `split: test` holdout:
+
+| Slice | Plans | Solved | Pass@1 | Positive@1 |
+| --- | ---: | ---: | ---: | ---: |
+| GreenShot-6 `split: test` holdout | 7 | 7/7 | 7/7 | 7/7 |
+
+Residual: raw ranking for `dynamic_field_error_message` still puts concrete
+whole-message `change_literal` candidates before the preferred reusable
+f-string fragment candidate. This is now a raw ranking/hard-negative inspection
+target, not a missing preferred-positive row.
+
+Next recommendation: inspect the refreshed GreenShot-6 raw pass@1 misses and
+preferred-positive ranks before adding more features or tasks. Keep the clean
+`split: test` holdout as a guardrail, and do not tune broad action/string/
+boolean weights or add pass/preferred-label features without a fresh
+hard-negative finding.

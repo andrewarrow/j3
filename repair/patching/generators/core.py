@@ -38,6 +38,7 @@ from .data_access import (
 from .imports import _add_import_candidates, _local_import_index
 from .literals import (
     _compare_candidates,
+    _fstring_fragment_candidates,
     _literal_candidates,
     _module_constant_candidates,
 )
@@ -143,6 +144,16 @@ def generate_candidate_patches(repo: Path) -> list[CandidatePatch]:
                 elif isinstance(node, ast.Constant):
                     candidates.extend(
                         _literal_candidates(
+                            source.relative_path,
+                            source.text,
+                            function,
+                            node,
+                            repo_string_literals,
+                        )
+                    )
+                elif isinstance(node, ast.JoinedStr):
+                    candidates.extend(
+                        _fstring_fragment_candidates(
                             source.relative_path,
                             source.text,
                             function,

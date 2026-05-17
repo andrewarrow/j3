@@ -669,7 +669,7 @@ Use this shape for each worker handoff:
   summaries, and zero hosted token/context cost fields. `demo-prompt-jepa` now
   writes `/tmp/j3-prompt-jepa-demo/transitions.jsonl` for its create,
   blocked-clarification, and exponent-change outcomes.
-- Commit: pending; final hash reported by worker.
-- Push: pending.
+- Commit: `8a5b58e`
+- Push: succeeded to `main`.
 - Next: add a tiny evaluation-only transition predictor V0.
 - Blockers: none.

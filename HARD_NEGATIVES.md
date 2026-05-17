@@ -831,3 +831,52 @@ preferred rank below the literal decoy, then add richer branch-effect metadata
 to distinguish flipping the membership predicate from changing the membership
 needle to make the branch unreachable. Continue validating preferred-positive
 rank for `http_no_store_response_with_etag`; pass@1 alone is misleading here.
+
+### Failing Literal-Needle Coverage Follow-Up
+
+Implementation result: added `http_stale_response_without_must_revalidate`
+(`split: train`) as independent non-held-out HTTP membership-predicate
+coverage. The preferred repair is the existing `change_operator` action for a
+local `"must-revalidate" not in cache_control` branch. The tempting
+`change_literal` needle edit `"must-revalidate" -> "must_revalidate"` is
+generated and fails, giving the v11 membership features a clean failing
+literal-needle hard negative.
+
+Focused verification passed:
+
+```bash
+pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q
+pytest tests/test_patching.py::test_generate_membership_operator_with_failing_literal_needle_decoy -q
+```
+
+GreenShot-6 outcome refresh:
+
+| Slice | Tasks | Solved | Pass@1 | Avg candidates | Rows | Preferred-positive rows |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| GreenShot-6 ranked explore | 22 | 22/22 | 17/22 | 7.41 | 163 | 21 |
+
+Validation result after refreshing GreenShot-6 outcomes and rerunning the same
+GreenShot-6 `split: test` holdout:
+
+| Slice | Plans | Solved | Pass@1 | Positive@1 | Avg first passing index |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| GreenShot-6 `split: test` holdout | 7 | 7/7 | 7/7 | 7/7 | 1.0 |
+
+The held-out HTTP residual is fixed in this slice. Trained ranking for
+`http_no_store_response_with_etag` now puts the preferred operator repair first:
+
+| Trained rank | Original rank | Passed | Preferred | Candidate | Score |
+| ---: | ---: | --- | --- | --- | ---: |
+| 1 | 1 | yes | yes | `change_operator`, `"no-store" not in cache_control` -> `"no-store" in cache_control` | 19.576717 |
+| 2 | 5 | yes | no | `change_literal`, `"no-store"` -> `"no_store"` | 11.020788 |
+| 3 | 6 | yes | no | `change_literal`, `"no-store"` -> `"max-age=0, no-store"` | 9.255163 |
+
+The new non-held-out training task has the intended failing-decoy shape:
+
+| Candidate | Original rank | Passed | Preferred |
+| --- | ---: | --- | --- |
+| `change_operator`, `"must-revalidate" not in cache_control` -> `"must-revalidate" in cache_control` | 1 | yes | yes |
+| `change_literal`, `"must-revalidate"` -> `"must_revalidate"` | 4 | no | no |
+
+Do not move to branch-effect metadata for this residual unless a fresh
+inspection shows the preferred HTTP repair falling behind a literal decoy again.

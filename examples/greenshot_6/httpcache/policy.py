@@ -2,6 +2,7 @@ def parse_request_cache_control(header: str) -> dict[str, bool | int | None]:
     directives: dict[str, bool | int | None] = {
         "no_cache": False,
         "no_store": False,
+        "must_revalidate": False,
         "max_age": None,
     }
     for raw_part in header.split(","):
@@ -10,6 +11,8 @@ def parse_request_cache_control(header: str) -> dict[str, bool | int | None]:
             directives["no_cache"] = True
         elif part == "no-store":
             directives["no-store"] = True
+        elif part == "must-revalidate":
+            directives["must_revalidate"] = True
         elif part.startswith("max-age="):
             directives["max_age"] = int(part.split("=", 1)[1])
     return directives
@@ -58,6 +61,13 @@ def should_revalidate_response(headers: dict[str, str]) -> bool:
     if "no-cache" not in cache_control:
         return False
     return "etag" in headers
+
+
+def should_serve_stale_response(headers: dict[str, str]) -> bool:
+    cache_control = headers.get("cache-control", "").lower()
+    if "must-revalidate" not in cache_control:
+        return False
+    return True
 
 
 def cached_response_for_request(

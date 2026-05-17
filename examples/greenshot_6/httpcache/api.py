@@ -6,6 +6,7 @@ from .policy import (
     parse_request_cache_control,
     response_vary_members,
     should_revalidate_response,
+    should_serve_stale_response,
     should_store_response,
 )
 
@@ -18,5 +19,6 @@ __all__ = [
     "parse_request_cache_control",
     "response_vary_members",
     "should_revalidate_response",
+    "should_serve_stale_response",
     "should_store_response",
 ]

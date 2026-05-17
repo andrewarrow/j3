@@ -653,6 +653,47 @@ def test_generate_membership_operator_with_literal_needle_decoy(tmp_path) -> Non
     )
 
 
+def test_generate_membership_operator_with_failing_literal_needle_decoy(tmp_path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "policy.py").write_text(
+        "def parse_request_cache_control(header: str) -> dict[str, bool]:\n"
+        "    return {'must_revalidate': 'must-revalidate' in header}\n\n"
+        "def should_serve_stale_response(headers: dict[str, str]) -> bool:\n"
+        "    cache_control = headers.get('cache-control', '').lower()\n"
+        "    if 'must-revalidate' not in cache_control:\n"
+        "        return False\n"
+        "    return True\n",
+        encoding="utf-8",
+    )
+    tests = repo / "tests"
+    tests.mkdir()
+    (tests / "test_policy.py").write_text(
+        "from policy import should_serve_stale_response\n\n"
+        "def test_stale_allowed_without_must_revalidate() -> None:\n"
+        "    assert should_serve_stale_response({'cache-control': 'public, max-age=60', 'etag': 'abc123'}) is True\n",
+        encoding="utf-8",
+    )
+
+    candidates = generate_candidate_patches(repo)
+
+    assert any(
+        candidate.action.kind.value == "change_operator"
+        and candidate.action.target.symbol == "should_serve_stale_response"
+        and candidate.action.params == {"from": "not in", "to": "in"}
+        and "'must-revalidate' in cache_control" in candidate.patched_source
+        for candidate in candidates
+    )
+    literal_decoy = next(
+        candidate
+        for candidate in candidates
+        if candidate.action.kind.value == "change_literal"
+        and candidate.action.target.symbol == "should_serve_stale_response"
+        and candidate.action.params == {"from": "must-revalidate", "to": "must_revalidate"}
+    )
+    assert "'must_revalidate' not in cache_control" in literal_decoy.patched_source
+
+
 def test_generate_module_constant_candidate(tmp_path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()

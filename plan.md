@@ -410,11 +410,32 @@ Recent work:
   operator-vs-literal shape, but its literal-needle decoy also passes, so it
   provides preference signal rather than a clean failing hard negative. Details
   are in `HARD_NEGATIVES.md`.
+- Added a second independent non-held-out HTTP membership-predicate hard
+  negative with `http_stale_response_without_must_revalidate` (`split: train`).
+  It uses the existing `change_operator` action for a local
+  `"must-revalidate" not in cache_control` branch repair and includes a tempting
+  `change_literal` needle edit `"must-revalidate" -> "must_revalidate"` that
+  fails. No action family, broad action/string/boolean weights, or
+  pass/preferred-label features were added.
+- Focused loader/generator coverage passed for the new task:
+  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
+  `pytest tests/test_patching.py::test_generate_membership_operator_with_failing_literal_needle_decoy -q`.
+- GreenShot-6 outcomes were refreshed after adding the failing-decoy HTTP
+  coverage. The persisted dataset at
+  `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` now covers 22
+  tasks and 163 tested candidates. Ranked eval solved all 22 tasks with
+  `pass@1=17/22` and average candidates `7.41`.
+- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
+  the outcome refresh. Validation improved to solved=7/7, pass@1=7/7,
+  positive@1=7/7, and avg_first_passing_index=1.0. The preferred
+  `change_operator not in -> in` repair for `http_no_store_response_with_etag`
+  is now trained rank 1, above the literal-needle decoy.
 
 Last focused verification:
 
 ```bash
-pytest tests/test_candidate_ranking.py -q
+pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q
+pytest tests/test_patching.py::test_generate_membership_operator_with_failing_literal_needle_decoy -q
 python cli.py eval \
   --tasks examples/greenshot_6 \
   --checkpoint runs/apache-python-git/model.json \
@@ -521,9 +542,9 @@ GreenShot-6 outcome collection result:
 
 ```text
 ranked, runs/apache-python-git/model.json, explore-after-pass=5:
-  solved=21/21 pass@1=16/21 avg_candidates=7.24
-  rows=152 passing_rows=44 preferred_positive_rows=20
-  source_type pass@1: git_history=2/4 mutation=14/17
+  solved=22/22 pass@1=17/22 avg_candidates=7.41
+  rows=163 passing_rows=46 preferred_positive_rows=21
+  source_type pass@1: git_history=2/4 mutation=15/18
 ```
 
 Treat this as a smoke check, not a benchmark claim.
@@ -542,17 +563,18 @@ GreenShot-6 test-slice ranker validation result:
 
 ```text
 train-ranker, holdout-task includes all GreenShot-6 split:test tasks:
-  training rows=232 passing_rows=52 tasks=34 plans=34 pairs=196
-  training_accuracy=1.000 margin_violations=4 features=663
-  validation solved=7/7 pass@1=6/7 positive@1=5/7
-  validation avg_first_passing_index=1.1428571428571428
+  training rows=243 passing_rows=54 tasks=35 plans=35 pairs=206
+  training_accuracy=1.000 margin_violations=3 features=657
+  validation solved=7/7 pass@1=7/7 positive@1=7/7
+  validation avg_first_passing_index=1.0
   fixed: cookie_default_secure_flag_dict_value now ranks the preferred
   change_dict_value candidate first after adding independent same-mapping
   boolean value-vs-key-rename coverage.
   fixed: cookie_scope_include_path_keyword now ranks the preferred
   add_keyword_arg(include_path=True) candidate first
-  residual: http_no_store_response_with_etag still passes at rank 1 but ranks a
-  non-preferred passing repair above the preferred change_operator repair.
+  fixed: http_no_store_response_with_etag now ranks the preferred
+  change_operator candidate first after adding failing literal-needle
+  hard-negative coverage.
 ```
 
 ## Next Right Things
@@ -562,21 +584,15 @@ Keep this section as the live queue. When work is completed, move it to
 
 Immediate next sequence:
 
-1. Stay on the remaining GreenShot-6 `split: test` residual:
-   `http_no_store_response_with_etag`.
-2. Add one independent non-held-out HTTP membership-predicate hard negative
-   with the existing `change_operator` action as the preferred repair and a
-   tempting `change_literal` membership-needle decoy that fails. Keep it
-   `split: train`; do not add an action family.
-3. Run only focused loader/generator tests for that task, then refresh
-   GreenShot-6 outcomes and rerun the same GreenShot-6 `split: test` holdout.
-   Validate preferred-positive rank for `http_no_store_response_with_etag`,
-   not pass@1 alone.
-4. If the preferred HTTP repair still ranks below the literal decoy after that
-   failing-decoy coverage, add richer branch-effect metadata distinguishing a
-   membership-operator flip from a membership-needle change that makes the
-   branch unreachable. Do not change broad action, string, boolean, or
-   pass/preferred-label weights.
+1. Inspect the refreshed GreenShot-6 outcome rows and held-out metrics before
+   adding more features or tasks. The current GreenShot-6 `split: test` holdout
+   has no preferred-positive misses after the failing literal-needle HTTP
+   coverage.
+2. Choose the next change from a fresh hard-negative inspection, not from broad
+   action/string/boolean weights or pass/preferred-label features. If the next
+   inspected miss again involves membership predicates, consider branch-effect
+   metadata only after confirming that independent hard-negative coverage is
+   insufficient.
 
 ### 1. Make GreenShot-6 Real
 
@@ -735,9 +751,9 @@ Start neural/JEPA work only when:
 
 ## Handoff Recommendation
 
-The next context window should not tune broad handcrafted weights first. It
-should add one independent non-held-out HTTP membership-predicate hard negative
-where the literal-needle decoy fails, then refresh outcome rows and rerun the
-same GreenShot-6 `split: test` held-out validation slice. Keep validation on
-preferred-positive rank for `http_no_store_response_with_etag`, because pass@1
-is already misleading in this multiple-passing-candidate task.
+The next context window should start with inspection, not a queued
+implementation. The latest GreenShot-6 `split: test` holdout has no
+preferred-positive misses after adding failing literal-needle HTTP coverage.
+Do not tune broad handcrafted action/string/boolean weights or add
+pass/preferred-label features without a fresh hard-negative inspection showing
+why they are needed.

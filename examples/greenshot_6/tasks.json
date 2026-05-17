@@ -266,6 +266,27 @@
     }
   },
   {
+    "name": "http_stale_response_without_must_revalidate",
+    "family": "http_cache_storage",
+    "source_type": "mutation",
+    "split": "train",
+    "repo": ".",
+    "test": "python -m pytest tests/test_httpcache.py::test_stale_response_allowed_without_must_revalidate",
+    "source": {
+      "repo": "psf/cachecontrol",
+      "fixture": "must-revalidate stale response predicate mutation"
+    },
+    "preferred": {
+      "file_path": "httpcache/policy.py",
+      "action": "change_operator",
+      "symbol": "should_serve_stale_response",
+      "params": {
+        "from": "not in",
+        "to": "in"
+      }
+    }
+  },
+  {
     "name": "cookie_default_secure_flag_dict_value",
     "family": "mapping_value",
     "source_type": "mutation",

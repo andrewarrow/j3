@@ -650,12 +650,43 @@ Recent work:
   `http_no_store_response_with_etag` now ranks the preferred
   `change_operator not in -> in` repair first. No independent HTTP
   membership-predicate coverage is needed from this state.
+- GreenShot-6 now includes a ninth fixture domain, `platformtags`, with one
+  real-package-derived `git_history` task modeled on `pypa/packaging` commit
+  `37b023285c27bc51940f33e50c1ebf692acf92c5` / PR 1160. The task
+  `packaging_pyemscripten_platform_config_var` repairs Emscripten platform tag
+  generation by changing the sysconfig key literal from
+  `PYEMSCRIPTEN_ABI_VERSION` to `PYEMSCRIPTEN_PLATFORM_VERSION`, using the
+  existing `change_literal` action family.
+- Focused loader/generator coverage passed for the new packaging-derived task:
+  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
+  `pytest tests/test_patching.py::test_patch_solves_packaging_pyemscripten_platform_config_var -q`.
+- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
+  adding `platformtags`. The persisted dataset at
+  `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` now covers 28
+  tasks and 206 tested candidates. Ranked eval solved all 28 tasks with
+  `pass@1=21/28` and average candidates `7.36`; the new packaging-derived task
+  solves at raw rank 7 with the preferred `change_literal` candidate.
+- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
+  the platformtags outcome refresh and stayed clean: solved=7/7, pass@1=7/7,
+  positive@1=7/7. Training used 286 rows, 63 passing rows, 244 training pairs,
+  777 features, and 2 margin violations.
+- Refreshed raw/trained miss inspection after adding `platformtags` found no
+  missing preferred-positive rows and no trained preferred-positive misses. Raw
+  GreenShot-6 now has seven pass@1 misses:
+  `apache_license_classifier_dict_value`, `dynamic_field_error_message`,
+  `http_no_store_directive_subscript_key`,
+  `http_range_request_bypasses_cache`,
+  `litgpt_zero_temperature_greedy_condition`,
+  `minimum_python_version_operator_boundary`, and
+  `packaging_pyemscripten_platform_config_var`; every task has a tested
+  preferred-positive row, and the saved test-slice ranker places every
+  preferred-positive candidate at trained rank 1.
 
 Last focused verification:
 
 ```bash
-pytest tests/test_candidate_ranking.py -q
-pytest tests/test_evaluation.py::test_write_candidate_outcomes_jsonl_records_one_row_per_tested_candidate tests/test_evaluation.py::test_write_candidate_outcomes_preserves_scalar_dict_value_assertion_delta -q
+pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q
+pytest tests/test_patching.py::test_patch_solves_packaging_pyemscripten_platform_config_var -q
 python cli.py eval \
   --tasks examples/greenshot_6 \
   --checkpoint runs/apache-python-git/model.json \
@@ -682,10 +713,8 @@ python cli.py train-ranker \
 python cli.py outcome-summary \
   --candidate-outcomes runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl
 python - <<'PY'
-# applied the refreshed
-# runs/apache-python-git/ranker-holdout-greenshot-6-test-slice/candidate-ranker.json
-# to refreshed GreenShot-6 rows; trained residuals are documented in
-# HARD_NEGATIVES.md
+# applied the refreshed test-slice ranker to all refreshed GreenShot-6 rows;
+# no trained preferred-positive residuals were found.
 PY
 git diff --check
 ```
@@ -804,9 +833,9 @@ GreenShot-6 outcome collection result:
 
 ```text
 ranked, runs/apache-python-git/model.json, explore-after-pass=5:
-  solved=27/27 pass@1=21/27 avg_candidates=7.19
-  rows=194 passing_rows=54 preferred_positive_rows=27
-  source_type pass@1: git_history=6/9 mutation=15/18
+  solved=28/28 pass@1=21/28 avg_candidates=7.36
+  rows=206 passing_rows=55 preferred_positive_rows=28
+  source_type pass@1: git_history=6/10 mutation=15/18
 ```
 
 Treat this as a smoke check, not a benchmark claim.
@@ -825,8 +854,8 @@ GreenShot-6 test-slice ranker validation result:
 
 ```text
 train-ranker, holdout-task includes all GreenShot-6 split:test tasks:
-  training rows=274 passing_rows=62 tasks=40 plans=40 pairs=233
-  training_accuracy=1.000 margin_violations=3 features=742
+  training rows=286 passing_rows=63 tasks=41 plans=41 pairs=244
+  training_accuracy=1.000 margin_violations=2 features=777
   validation solved=7/7 pass@1=7/7 positive@1=7/7
   validation avg_first_passing_index=1.0
 ```

@@ -99,7 +99,7 @@ def test_load_greenshot_6_tasks() -> None:
     tasks = load_tasks(Path("examples/greenshot_6"))
     by_name = {task.name: task for task in tasks}
 
-    assert len(tasks) == 27
+    assert len(tasks) == 28
     assert tasks[0].name == "core_metadata_version_dict_value"
     assert tasks[0].family == "mapping_value"
     assert tasks[0].source_type == "mutation"
@@ -267,6 +267,17 @@ def test_load_greenshot_6_tasks() -> None:
             "key": "gnu",
             "from": "KMGTPEZY",
             "to": "KMGTPEZYRQ",
+        },
+    }
+    assert by_name["packaging_pyemscripten_platform_config_var"].split == "train"
+    assert by_name["packaging_pyemscripten_platform_config_var"].source_type == "git_history"
+    assert by_name["packaging_pyemscripten_platform_config_var"].preferred_patch == {
+        "file_path": "platformtags/tags.py",
+        "action": "change_literal",
+        "symbol": "emscripten_platforms",
+        "params": {
+            "from": "PYEMSCRIPTEN_ABI_VERSION",
+            "to": "PYEMSCRIPTEN_PLATFORM_VERSION",
         },
     }
     assert by_name["cookie_default_secure_flag_dict_value"].split == "test"

@@ -400,6 +400,28 @@
     }
   },
   {
+    "name": "packaging_pyemscripten_platform_config_var",
+    "family": "platform_tag_config",
+    "source_type": "git_history",
+    "split": "train",
+    "repo": ".",
+    "test": "python -m pytest tests/test_platformtags.py::test_pyemscripten_platform_version_uses_platform_config_var",
+    "source": {
+      "repo": "pypa/packaging",
+      "commit": "37b023285c27bc51940f33e50c1ebf692acf92c5",
+      "pr": 1160
+    },
+    "preferred": {
+      "file_path": "platformtags/tags.py",
+      "action": "change_literal",
+      "symbol": "emscripten_platforms",
+      "params": {
+        "from": "PYEMSCRIPTEN_ABI_VERSION",
+        "to": "PYEMSCRIPTEN_PLATFORM_VERSION"
+      }
+    }
+  },
+  {
     "name": "cookie_default_secure_flag_dict_value",
     "family": "mapping_value",
     "source_type": "mutation",

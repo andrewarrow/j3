@@ -501,6 +501,58 @@ The residuals from the filesize inspection are resolved in this slice:
 | `cookie_host_prefix_dict_value` | preferred `change_dict_value`, `host: "__Host" -> "__Host-"` | Fixed by scalar assertion-delta feature. |
 | `http_no_store_response_with_etag` | preferred `change_operator`, `not in` -> `in` | No additional non-held-out membership-predicate coverage needed from this state. |
 
+## Packaging Platform Config Refresh
+
+Inspection date: 2026-05-17.
+
+Inspection source:
+
+```bash
+runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl
+runs/apache-python-git/ranker-holdout-greenshot-6-test-slice/candidate-ranker.json
+```
+
+After adding the packaging-derived `platformtags` domain, raw GreenShot-6
+solves all 28 tasks with seven pass@1 misses:
+
+| Task | Family | Source | Split | First passing rank | Preferred rank |
+| --- | --- | --- | --- | ---: | ---: |
+| `apache_license_classifier_dict_value` | `mapping_value` | `mutation` | `test` | 5 | 5 |
+| `dynamic_field_error_message` | `exception_message` | `git_history` | `train` | 8 | 10 |
+| `http_no_store_directive_subscript_key` | `http_cache_directive` | `mutation` | `train` | 19 | 19 |
+| `http_range_request_bypasses_cache` | `http_cache_range` | `git_history` | `train` | 2 | 2 |
+| `litgpt_zero_temperature_greedy_condition` | `sampling_condition` | `git_history` | `train` | 2 | 7 |
+| `minimum_python_version_operator_boundary` | `operator_boundary` | `mutation` | `validation` | 2 | 2 |
+| `packaging_pyemscripten_platform_config_var` | `platform_tag_config` | `git_history` | `train` | 7 | 7 |
+
+The new `packaging_pyemscripten_platform_config_var` task is a clean raw hard
+negative. The old checkpoint tries nearby f-string/literal edits before the
+preferred sysconfig key repair, but the preferred candidate exists and passes:
+
+```text
+PYEMSCRIPTEN_ABI_VERSION -> PYEMSCRIPTEN_PLATFORM_VERSION
+```
+
+The same GreenShot-6 `split: test` holdout remains clean:
+
+| Slice | Plans | Solved | Pass@1 | Positive@1 | Avg first passing index |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| GreenShot-6 `split: test` holdout | 7 | 7/7 | 7/7 | 7/7 | 1.0 |
+
+Applying the saved test-slice ranker to all refreshed GreenShot-6 rows found no
+trained preferred-positive misses. For the new packaging task, the trained
+ranker places the preferred row first, ahead of all literal decoys:
+
+| Trained rank | Original rank | Passed | Preferred | Candidate |
+| ---: | ---: | --- | --- | --- |
+| 1 | 7 | yes | yes | `change_literal`, `PYEMSCRIPTEN_ABI_VERSION` -> `PYEMSCRIPTEN_PLATFORM_VERSION` |
+| 2 | 9 | no | no | `change_literal`, `PYEMSCRIPTEN_ABI_VERSION` -> `emscripten_wasm32` |
+| 3 | 10 | no | no | `change_literal`, `PYEMSCRIPTEN_ABI_VERSION` -> `pyemscripten_2026_0_wasm32` |
+
+Decision: do not add ranker features or broad weights from this state. The new
+task adds useful real-package-derived raw ranking signal, and the current
+trained ranker already promotes the intended repair.
+
 ## Same-Mapping Metadata Follow-Up
 
 Implementation result: same-mapping asserted-key metadata is now recorded for

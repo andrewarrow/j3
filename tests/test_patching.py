@@ -774,6 +774,30 @@ def test_patch_solves_humanize_gnu_ronna_suffix(tmp_path) -> None:
     assert '"gnu": "KMGTPEZYRQ"' in result.selected.patched_source
 
 
+def test_patch_solves_packaging_pyemscripten_platform_config_var(tmp_path) -> None:
+    repo = tmp_path / "greenshot_6"
+    shutil.copytree("examples/greenshot_6", repo)
+
+    result = plan_and_maybe_apply_patch(
+        repo=repo,
+        test_command=(
+            "python -m pytest "
+            "tests/test_platformtags.py::test_pyemscripten_platform_version_uses_platform_config_var"
+        ),
+        dry_run=True,
+        timeout_seconds=10,
+    )
+
+    assert result.selected is not None
+    assert result.selected.file_path == "platformtags/tags.py"
+    assert result.selected.action.kind.value == "change_literal"
+    assert result.selected.action.params == {
+        "from": "PYEMSCRIPTEN_ABI_VERSION",
+        "to": "PYEMSCRIPTEN_PLATFORM_VERSION",
+    }
+    assert "get_config_var('PYEMSCRIPTEN_PLATFORM_VERSION')" in result.selected.patched_source
+
+
 def test_generate_membership_operator_with_literal_needle_decoy(tmp_path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()

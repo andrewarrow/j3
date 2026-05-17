@@ -6,7 +6,7 @@ This file is the live progress log for `plans/today.md`. Keep
 ## Status
 
 - Current phase: evidence matrix and guarded product trial.
-- Completed iterations for this reset: 0.
+- Completed iterations for this reset: 1.
 - Latest relevant commits:
   - `c6dbe26` closed the shadow suite loop.
   - `aedb04a` documented the transition shadow suite workflow.
@@ -17,12 +17,12 @@ This file is the live progress log for `plans/today.md`. Keep
 - Current blocker: the checked-in shadow suite reports
   `ready_for_shadow_mode`, not `ready_for_guarded_opt_in`; guarded production
   ranking remains blocked unless broader matrix evidence passes product gates.
-- Next task: define a checked-in transition shadow matrix manifest.
+- Next task: add a matrix runner over the standard shadow suites.
 
 ## Active Task Queue
 
 - [x] Recreate `plans/today.md` and `plans/today.progress.md`.
-- [ ] Define a checked-in shadow matrix manifest.
+- [x] Define a checked-in shadow matrix manifest.
 - [ ] Add a matrix runner over standard shadow suites.
 - [ ] Add cross-suite residual reporting.
 - [ ] Produce a release-quality matrix evidence bundle.
@@ -115,3 +115,25 @@ Use this shape for each worker handoff:
 - Tests run: `git diff --check` passed.
 - Next: implement Step 2, the checked-in matrix manifest.
 - Blockers: guarded ranking remains blocked until product gates pass.
+
+### Iteration 1: Checked-in transition shadow matrix manifest
+
+- Worker: Codex worker iteration 1
+- Goal: define a small checked-in transition shadow matrix manifest and focused
+  shape tests without implementing the runner.
+- Files changed: `examples/transition_shadow_matrix.json`,
+  `tests/test_transition_shadow_matrix.py`, `plans/today.progress.md`
+- Tests run:
+  - `pytest tests/test_transition_shadow_matrix.py -q` passed.
+  - `git diff --check` passed.
+- Result: added `transition-shadow-matrix-v1` with full local core suites
+  (`greenshot_bugs`, `greenshot_3`, `greenshot_4`) and conservative
+  name-filtered subsets for `greenshot_5` and `greenshot_6`.
+- Commit: this commit (`Add transition shadow matrix manifest`)
+- Push: pending after commit.
+- Next: implement `run-transition-shadow-matrix` to read the manifest, apply
+  optional `task_names` filters for large suites, and aggregate per-suite
+  outputs.
+- Blockers: none. The `task_names` subset field is the smallest coherent shape
+  for bounded GreenShot-5/6 runs because the current suite runner accepts task
+  manifests/directories but not subset slicing yet.

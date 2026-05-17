@@ -1,0 +1,98 @@
+{
+  "schema_version": "transition-shadow-matrix-v1",
+  "description": "Standard local transition shadow evidence matrix for conservative product-gate evaluation.",
+  "zero_hosted_usage": true,
+  "defaults": {
+    "checkpoint": "runs/apache-python-git/model.json",
+    "repo_root": ".",
+    "prompt_corpus": "../prompts/coding_agent_prompts_expanded_v0.jsonl",
+    "max_steps": 1,
+    "top_k": 3,
+    "embedding_dim": 256,
+    "epochs": 30,
+    "learning_rate": 0.1,
+    "margin": 1.0,
+    "residual_limit": 10
+  },
+  "suites": [
+    {
+      "id": "greenshot_bugs",
+      "tasks": "examples/greenshot_bugs",
+      "parameters": {
+        "max_candidates": 12,
+        "explore_after_pass": 1,
+        "timeout_seconds": 30,
+        "split_by": "order",
+        "validation_fraction": 0.25
+      }
+    },
+    {
+      "id": "greenshot_3",
+      "tasks": "examples/greenshot_3",
+      "parameters": {
+        "max_candidates": 12,
+        "explore_after_pass": 1,
+        "timeout_seconds": 30,
+        "split_by": "order",
+        "validation_fraction": 0.25
+      }
+    },
+    {
+      "id": "greenshot_4",
+      "tasks": "examples/greenshot_4",
+      "parameters": {
+        "max_candidates": 12,
+        "explore_after_pass": 1,
+        "timeout_seconds": 30,
+        "split_by": "order",
+        "validation_fraction": 0.25
+      }
+    },
+    {
+      "id": "greenshot_5_subset",
+      "tasks": "examples/greenshot_5",
+      "task_names": [
+        "quote_total_helper_discount",
+        "store_credit_swapped_args_across_modules",
+        "uploaded_extension_module_import",
+        "visible_balance_attribute_decoys",
+        "profile_signature_propagation",
+        "order_customer_name_dict_key_helper",
+        "express_shipping_boundary_preferred_helper",
+        "free_shipping_threshold_module_constant"
+      ],
+      "parameters": {
+        "max_candidates": 10,
+        "explore_after_pass": 1,
+        "timeout_seconds": 45,
+        "split_by": "task_family",
+        "validation_fraction": 0.25
+      }
+    },
+    {
+      "id": "greenshot_6_subset",
+      "tasks": "examples/greenshot_6",
+      "task_names": [
+        "core_metadata_version_dict_value",
+        "project_urls_header_dict_key",
+        "readme_markdown_content_type_dict_value",
+        "minimum_python_version_operator_boundary",
+        "apache_license_classifier_dict_value",
+        "readme_missing_file_exception_key",
+        "dynamic_field_error_message",
+        "http_no_store_directive_subscript_key",
+        "http_304_cacheable_operator_boundary",
+        "http_response_policy_max_age_dict_value",
+        "http_cache_key_argument_order",
+        "http_vary_preserve_case_keyword"
+      ],
+      "parameters": {
+        "max_candidates": 8,
+        "explore_after_pass": 1,
+        "timeout_seconds": 60,
+        "split_by": "task_family",
+        "validation_fraction": 0.25
+      }
+    }
+  ]
+}

@@ -6,7 +6,7 @@ This file is the live progress log for `plans/today.md`. Keep
 ## Status
 
 - Current phase: evidence matrix and guarded product trial.
-- Completed iterations for this reset: 5.
+- Completed iterations for this reset: 6.
 - Latest relevant commits:
   - `c6dbe26` closed the shadow suite loop.
   - `aedb04a` documented the transition shadow suite workflow.
@@ -14,10 +14,11 @@ This file is the live progress log for `plans/today.md`. Keep
   - `23f37ac` added the transition residual report.
   - `0aae784` added the transition shadow suite command.
   - `2664a95` documented shadow-to-gate evidence.
+  - `8217ec6` documented transition shadow matrix workflow.
 - Current blocker: the checked-in shadow suite reports
   `ready_for_shadow_mode`, not `ready_for_guarded_opt_in`; guarded production
   ranking remains blocked unless broader matrix evidence passes product gates.
-- Next task: update docs and README only if needed.
+- Next task: watcher to choose the next bounded slice.
 
 ## Active Task Queue
 
@@ -27,7 +28,7 @@ This file is the live progress log for `plans/today.md`. Keep
 - [x] Add cross-suite residual reporting.
 - [x] Produce a release-quality matrix evidence bundle.
 - [x] Decide guarded trial eligibility from matrix gates.
-- [ ] Update docs and README only if needed.
+- [x] Update docs and README only if needed.
 
 ## Current Facts
 
@@ -253,5 +254,26 @@ Use this shape for each worker handoff:
 - Commit: `4c64be6` (`Add guarded trial matrix decision`)
 - Push: pushed to `origin/main`.
 - Next: update docs and README only if needed.
+- Blockers: guarded opt-in remains blocked for the current one-suite smoke
+  matrix.
+
+### Iteration 6: Transition shadow matrix docs
+
+- Worker: Codex worker iteration 6
+- Goal: inspect README and focused docs for the transition shadow matrix
+  workflow; update docs only if stale.
+- Files changed: `docs/TRANSITION_BENCH.md`, `plans/today.progress.md`
+- Tests run:
+  - `git diff --check` passed.
+- Result: README already points to the focused transition bench doc, so it was
+  left small. `docs/TRANSITION_BENCH.md` now documents the matrix workflow
+  commands: `run-transition-shadow-matrix`,
+  `report-transition-residuals --matrix`,
+  `build-transition-evidence-bundle --matrix`, and
+  `decide-transition-guarded-trial --matrix`, plus the related matrix schemas
+  and conservative guarded-trial boundary.
+- Commit: `8217ec6` (`Document transition shadow matrix workflow`)
+- Push: pending.
+- Next: watcher to choose the next bounded slice.
 - Blockers: guarded opt-in remains blocked for the current one-suite smoke
   matrix.

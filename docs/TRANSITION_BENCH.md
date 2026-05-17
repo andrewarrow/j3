@@ -137,6 +137,20 @@ The command writes every generated artifact under the caller-provided output
 directory. Use `/tmp/...` for disposable evidence or an ignored `runs/...` path
 for longer local runs. Do not commit generated suite artifacts.
 
+For broader product evidence, run the checked-in matrix manifest instead of a
+single suite:
+
+```bash
+python cli.py run-transition-shadow-matrix \
+  --matrix examples/transition_shadow_matrix.json \
+  --out /tmp/j3-transition-shadow-matrix
+```
+
+Use `--only <suite-id>` for one-suite debugging, for example
+`--only greenshot_bugs`. The matrix is still evaluation-only: it runs each
+suite through the shadow-suite workflow, aggregates gate metrics, records zero
+hosted usage, and does not enable transition ranking in production routing.
+
 ### Guarded Opt-In Mode
 
 Guarded mode is explicit and non-default. It is enabled with
@@ -360,6 +374,74 @@ local inspection, not repository source. Keep source, tests, fixtures, and docs
 in git; keep generated JSONL, reports, evidence directories, and suite outputs
 out of commits.
 
+## Shadow Matrix Workflow
+
+`run-transition-shadow-matrix` is the preferred multi-suite product evidence
+workflow. It reads `examples/transition_shadow_matrix.json`, runs one shadow
+suite per configured task family, and writes a single matrix output directory:
+
+```bash
+python cli.py run-transition-shadow-matrix \
+  --matrix examples/transition_shadow_matrix.json \
+  --out /tmp/j3-transition-shadow-matrix \
+  --force
+
+python -m json.tool /tmp/j3-transition-shadow-matrix/matrix-summary.json >/dev/null
+shasum -a 256 -c /tmp/j3-transition-shadow-matrix/evidence/checksums.sha256
+```
+
+Expected top-level files:
+
+- `matrix-manifest.json`: source manifest, selected suite ids, reproduction
+  command, per-suite output paths, and zero hosted usage policy.
+- `matrix-summary.json`: aggregate task, solved, advice, candidate,
+  held-out-group, residual, gate, and hosted usage metrics.
+- `suite/<suite-id>/`: each suite's normal `run-transition-shadow-suite`
+  output directory.
+- `evidence/`: lightweight matrix checksums and evidence manifest for the
+  matrix manifest and summary.
+
+After a matrix run, aggregate cross-suite residuals with `--matrix`:
+
+```bash
+python cli.py report-transition-residuals \
+  --matrix /tmp/j3-transition-shadow-matrix \
+  --json
+```
+
+The matrix residual report groups failures across suites by suite id, task
+family, action kind, source file, gate result, scorer/production disagreement,
+missing feature evidence, and generation-versus-ranking gap.
+
+Package release evidence from the same matrix output with:
+
+```bash
+python cli.py build-transition-evidence-bundle \
+  --matrix /tmp/j3-transition-shadow-matrix \
+  --out /tmp/j3-transition-matrix-evidence \
+  --force
+
+shasum -a 256 -c /tmp/j3-transition-matrix-evidence/checksums.sha256
+```
+
+Matrix evidence bundles include the matrix manifest, matrix summary, per-suite
+product gates, matrix residual report, reproduction commands, zero hosted usage
+assertions, and checksums. Generated JSONL files stay in the matrix output and
+are not packaged by default.
+
+Finally, make the guarded-trial decision explicit:
+
+```bash
+python cli.py decide-transition-guarded-trial \
+  --matrix /tmp/j3-transition-shadow-matrix
+```
+
+The decision is report-only. It remains `remain_shadow_only` unless every suite
+has held-out groups, every suite gate is `ready_for_guarded_opt_in`, every suite
+is guarded eligible, matrix and per-suite residual counts are zero, and the
+matrix asserts zero hosted usage. Passing this command still does not change
+`patch`, `fix`, `eval`, `implement`, or `change` defaults.
+
 ## Residual Report
 
 Use `report-transition-residuals` after a suite run to turn held-out misses and
@@ -379,6 +461,10 @@ scorer/production top-candidate disagreement, missing feature evidence, and
 candidate-generation versus scorer-ranking gap. Its bounded examples name exact
 candidate summaries so follow-up work can target one failure family at a time.
 It also records zero hosted usage.
+
+With `--matrix`, the same command consumes a
+`run-transition-shadow-matrix` output directory and emits
+`transition-residual-matrix-report-v1` across all suites.
 
 ## What Is Checked In
 
@@ -714,6 +800,72 @@ Useful fields:
 - `usage` and `zero_hosted_usage`: local-only execution and zero hosted
   token/context usage.
 
+### `transition-shadow-matrix-run-v1`
+
+Produced by `run-transition-shadow-matrix` as `matrix-manifest.json` and
+`matrix-summary.json`.
+
+Useful fields:
+
+- `matrix`, `matrix_schema_version`, and `description`: source manifest and
+  checked-in matrix context.
+- `suites`: per-suite id, task path, output directory, manifest path, V3 gate,
+  guarded eligibility, residual count, held-out group count, solved count, and
+  zero hosted usage status.
+- `totals`: suite, task, solved, advice, candidate, held-out group, residual,
+  and guarded-eligible suite counts.
+- `evidence`: path to the matrix evidence manifest and checksums.
+- `usage` and `zero_hosted_usage`: aggregate hosted token/context usage, which
+  must remain zero.
+
+### `transition-residual-matrix-report-v1`
+
+Produced by `report-transition-residuals --matrix`.
+
+Useful fields:
+
+- `matrix`: matrix output path, summary path, schema version, totals, evidence,
+  and zero hosted usage status.
+- `summary`: suite count, residual failure count, failure kinds, and gap types.
+- `groups`: residual counts by suite id, task family, action kind, source file,
+  gate result, scorer/production comparison, missing feature evidence, and
+  generation-versus-ranking gap.
+- `examples`: bounded cross-suite examples with suite id, gate result, task,
+  phase, candidate rank, action, validation, and scorer/production selection
+  context.
+- `usage`: hosted usage fields, all expected to be zero.
+
+### `transition-matrix-evidence-bundle-v1`
+
+Produced by `build-transition-evidence-bundle --matrix`.
+
+Bundle files:
+
+- `manifest.json`: bundle metadata, input matrix paths, schema versions,
+  product evidence summary, reproduction commands, and zero hosted usage policy.
+- `checksums.sha256`: SHA-256 checksums for packaged matrix artifacts.
+- `matrix-manifest.json` and `matrix-summary.json`: copied from the matrix
+  output.
+- `matrix-product-gates.json`: per-suite and aggregate guarded eligibility
+  gates.
+- `matrix-residual-report.json`: cross-suite residual report.
+- `reproduction-commands.json` and `REPRODUCE.md`: local verification commands.
+
+### `transition-guarded-trial-decision-v1`
+
+Produced by `decide-transition-guarded-trial --matrix`.
+
+Useful fields:
+
+- `decision`: `guarded_opt_in_trial` or `remain_shadow_only`.
+- `eligible_for_guarded_opt_in_trial`: boolean guarded-trial eligibility.
+- `blockers`: conservative reasons the matrix must remain shadow-only.
+- `summary`: suite count, task count, residual count, held-out coverage, and
+  hosted usage status.
+- `suites`: per-suite gate, guarded eligibility, residual count, held-out
+  coverage, and hosted usage status.
+- `matrix_summary`: path to the matrix summary used for the decision.
+
 ### `transition-bench-demo-report-v1`
 
 Produced by `demo-transition-bench`.
@@ -807,3 +959,19 @@ the exact source corpus, mining commands, candidate-outcome generation commands,
 shadow collection commands, normalizer inputs, V3 scorer inputs, and
 `demo-transition-bench` inputs. The invariant is that rebuild and verification
 remain local and deterministic from already available files.
+
+For the matrix workflow, package the matrix output directly:
+
+```bash
+python cli.py build-transition-evidence-bundle \
+  --matrix /tmp/j3-transition-shadow-matrix \
+  --out /tmp/j3-transition-matrix-evidence \
+  --force
+
+python cli.py report-transition-residuals \
+  --matrix /tmp/j3-transition-shadow-matrix \
+  --json
+
+python cli.py decide-transition-guarded-trial \
+  --matrix /tmp/j3-transition-shadow-matrix
+```

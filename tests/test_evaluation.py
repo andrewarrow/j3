@@ -99,7 +99,7 @@ def test_load_greenshot_6_tasks() -> None:
     tasks = load_tasks(Path("examples/greenshot_6"))
     by_name = {task.name: task for task in tasks}
 
-    assert len(tasks) == 61
+    assert len(tasks) == 62
     assert tasks[0].name == "core_metadata_version_dict_value"
     assert tasks[0].family == "mapping_value"
     assert tasks[0].source_type == "mutation"
@@ -257,6 +257,22 @@ def test_load_greenshot_6_tasks() -> None:
         "params": {
             "from": "client_password",
             "to": "client_secret",
+        },
+    }
+    assert by_name["packaging_parser_docstring_ebnf_typo"].family == (
+        "requirement_parser_docstring"
+    )
+    assert by_name["packaging_parser_docstring_ebnf_typo"].source_type == (
+        "git_history"
+    )
+    assert by_name["packaging_parser_docstring_ebnf_typo"].split == "train"
+    assert by_name["packaging_parser_docstring_ebnf_typo"].preferred_patch == {
+        "file_path": "requireparse/parser.py",
+        "action": "change_literal",
+        "symbol": "parser_grammar_docstring",
+        "params": {
+            "from": "Each parser docstring contains ENBF-inspired grammar.",
+            "to": "Each parser docstring contains EBNF-inspired grammar.",
         },
     }
     assert by_name["prettytable_missing_attribute_quote"].family == "table_legacy_attribute_error"

@@ -1121,6 +1121,28 @@
     }
   },
   {
+    "name": "packaging_parser_docstring_ebnf_typo",
+    "family": "requirement_parser_docstring",
+    "source_type": "git_history",
+    "split": "train",
+    "repo": ".",
+    "test": "python -m pytest tests/test_requireparse.py::test_parser_docstring_names_ebnf_grammar",
+    "source": {
+      "repo": "pypa/packaging",
+      "commit": "757f559404ff6cc1cdef59a2c3628ccdaa505ac4",
+      "pr": 784
+    },
+    "preferred": {
+      "file_path": "requireparse/parser.py",
+      "action": "change_literal",
+      "symbol": "parser_grammar_docstring",
+      "params": {
+        "from": "Each parser docstring contains ENBF-inspired grammar.",
+        "to": "Each parser docstring contains EBNF-inspired grammar."
+      }
+    }
+  },
+  {
     "name": "cookie_default_secure_flag_dict_value",
     "family": "mapping_value",
     "source_type": "mutation",

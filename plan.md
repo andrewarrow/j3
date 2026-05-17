@@ -1352,8 +1352,71 @@ Recent work:
   is trained rank 1 with score `16.625162`, above the false cross-domain
   `change_dict_value count -> example.invalid/account` row at score
   `10.771752`.
+- Refreshed raw/trained miss inspection after the keyword-coverage refresh found
+  no missing preferred-positive rows and no trained preferred-positive misses
+  across 61 tasks. Raw GreenShot-6 had 17 pass@1 misses, all with tested
+  preferred-positive rows; the saved test-slice ranker placed every preferred
+  candidate at trained rank 1.
+- GreenShot-6 now includes a thirty-ninth real-package-derived task,
+  `packaging_parser_docstring_ebnf_typo`, modeled on `pypa/packaging` PR 784 /
+  commit `757f559404ff6cc1cdef59a2c3628ccdaa505ac4`. The task repairs the
+  `_parser` docstring typo from `ENBF-inspired grammar` to
+  `EBNF-inspired grammar`, using the existing `change_literal` action family.
+  No action family, ranker metadata, broad action/string/boolean weights, or
+  pass/preferred-label features were changed.
+- Focused loader/generator coverage passed for the packaging parser task:
+  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
+  `pytest tests/test_patching.py::test_patch_solves_packaging_parser_docstring_ebnf_typo -q`.
+- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
+  adding `requireparse`. The persisted dataset now covers 62 tasks and 479
+  tested candidates. Ranked eval solved all 62 tasks with `pass@1=45/62` and
+  average candidates `7.73`; outcome summary reports 93 passing rows and 62
+  preferred-positive rows. The new packaging parser task solves at raw rank 1
+  with the preferred `change_literal` candidate.
+- The same GreenShot-6 `split: test` held-out ranker validation stayed clean:
+  solved=7/7, pass@1=7/7, positive@1=7/7. Training used 559 rows, 101 passing
+  rows, 483 training pairs, 849 features, and 4 margin violations.
+- Refreshed raw/trained miss inspection after adding `requireparse` found no
+  missing preferred-positive rows and no trained preferred-positive misses
+  across 62 tasks. Raw GreenShot-6 still has 17 pass@1 misses, but every task
+  has a tested preferred-positive row and the saved test-slice ranker places
+  every preferred-positive candidate at trained rank 1.
 
 Last focused verification:
+
+```bash
+pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q
+pytest tests/test_patching.py::test_patch_solves_packaging_parser_docstring_ebnf_typo -q
+python3 -m json.tool examples/greenshot_6/tasks.json >/tmp/greenshot6_tasks_check.json
+python cli.py eval \
+  --tasks examples/greenshot_6 \
+  --checkpoint runs/apache-python-git/model.json \
+  --timeout 10 \
+  --max-candidates 80 \
+  --phase ranked \
+  --explore-after-pass 5 \
+  --diagnostics runs/apache-python-git/greenshot-6-explore-diagnostics.json \
+  --candidate-outcomes runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl \
+  --quiet
+python cli.py outcome-summary \
+  --candidate-outcomes runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl
+python cli.py train-ranker \
+  --candidate-outcomes \
+    runs/apache-python-git/greenshot-5-candidate-outcomes.jsonl \
+    runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl \
+  --holdout-task \
+    apache_license_classifier_dict_value \
+    http_no_store_response_with_etag \
+    cookie_default_secure_flag_dict_value \
+    cookie_host_prefix_dict_value \
+    cookie_zero_max_age_operator_boundary \
+    cookie_pair_argument_order \
+    cookie_scope_include_path_keyword \
+  --out runs/apache-python-git/ranker-holdout-greenshot-6-test-slice
+git diff --check
+```
+
+Previous focused verification:
 
 ```bash
 pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q
@@ -1535,9 +1598,9 @@ GreenShot-6 outcome collection result:
 
 ```text
 ranked, runs/apache-python-git/model.json, explore-after-pass=5:
-  solved=61/61 pass@1=44/61 avg_candidates=7.75
-  rows=473 passing_rows=92 preferred_positive_rows=61
-  source_type pass@1: git_history=26/40 mutation=18/21
+  solved=62/62 pass@1=45/62 avg_candidates=7.73
+  rows=479 passing_rows=93 preferred_positive_rows=62
+  source_type pass@1: git_history=27/41 mutation=18/21
 ```
 
 Treat this as a smoke check, not a benchmark claim.
@@ -1556,7 +1619,7 @@ GreenShot-6 test-slice ranker validation result:
 
 ```text
 train-ranker, holdout-task includes all GreenShot-6 split:test tasks:
-  rows=553 passing_rows=100 tasks=74 plans=74 pairs=478
+  rows=559 passing_rows=101 tasks=75 plans=75 pairs=483
   training_accuracy=1.000 margin_violations=4 features=849
   validation solved=7/7 pass@1=7/7 positive@1=7/7
   validation rows=46 avg_first_passing_index=1.0
@@ -1570,7 +1633,7 @@ Keep this section as the live queue. When work is completed, move it to
 Immediate next sequence:
 
 1. Inspect the refreshed GreenShot-6 raw pass@1 misses and trained
-   preferred-positive ranks after the `humanize_binary_naturalsize_keyword`
+   preferred-positive ranks after the `packaging_parser_docstring_ebnf_typo`
    refresh. The held-out test slice is clean, so do not add ranker features or
    broad weights unless this inspection finds a narrow new gap.
 2. If no narrow candidate-generation, outcome-quality, or ranker-metadata gap

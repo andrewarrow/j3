@@ -1381,13 +1381,43 @@ Recent work:
   across 62 tasks. Raw GreenShot-6 still has 17 pass@1 misses, but every task
   has a tested preferred-positive row and the saved test-slice ranker places
   every preferred-positive candidate at trained rank 1.
+- Refreshed raw/trained miss inspection after the 62-task packaging parser
+  refresh found no narrow candidate-generation, outcome-quality, or
+  ranker-metadata residual. Raw GreenShot-6 had 17 pass@1 misses; every task
+  had a tested preferred-positive row, and the saved GreenShot-6 `split: test`
+  ranker placed every preferred-positive candidate at trained rank 1.
+- GreenShot-6 now includes a fortieth real-package-derived task,
+  `mypy_overload_docs_duplicate_also`, modeled on `python/mypy` PR 21482 /
+  commit `9b4e31c2738d1dd1dcc84e9d6e30b48e99299793`. The task repairs a
+  duplicated `also` phrase in overload compatibility text, using the existing
+  `change_literal` action family. No action family, ranker metadata, broad
+  action/string/boolean weights, or pass/preferred-label features were changed.
+- Focused loader/generator coverage passed for the mypy-derived task:
+  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
+  `pytest tests/test_patching.py::test_patch_solves_mypy_overload_docs_duplicate_also -q`.
+- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
+  adding `typechecker`. The persisted dataset now covers 63 tasks and 485
+  tested candidates. Ranked eval solved all 63 tasks with `pass@1=46/63` and
+  average candidates `7.70`; outcome summary reports 94 passing rows and 63
+  preferred-positive rows. Source-type pass@1 is `git_history=28/42` and
+  `mutation=18/21`. The new mypy-derived task solves at raw rank 1 with the
+  preferred `change_literal` candidate.
+- The same GreenShot-6 `split: test` held-out ranker validation stayed clean:
+  solved=7/7, pass@1=7/7, positive@1=7/7, validation rows=46, and
+  avg_first_passing_index=1.0. Training used 565 rows, 102 passing rows, 488
+  training pairs, 849 features, and 4 margin violations.
+- Refreshed raw/trained miss inspection after adding `typechecker` found no
+  missing preferred-positive rows and no trained preferred-positive misses
+  across 63 tasks. Raw GreenShot-6 still has 17 pass@1 misses, but every task
+  has a tested preferred-positive row and the saved test-slice ranker places
+  every preferred-positive candidate at trained rank 1.
 
 Last focused verification:
 
 ```bash
 pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q
-pytest tests/test_patching.py::test_patch_solves_packaging_parser_docstring_ebnf_typo -q
-python3 -m json.tool examples/greenshot_6/tasks.json >/tmp/greenshot6_tasks_check.json
+pytest tests/test_patching.py::test_patch_solves_mypy_overload_docs_duplicate_also -q
+python -m json.tool examples/greenshot_6/tasks.json >/tmp/greenshot6-tasks.json
 python cli.py eval \
   --tasks examples/greenshot_6 \
   --checkpoint runs/apache-python-git/model.json \
@@ -1413,169 +1443,6 @@ python cli.py train-ranker \
     cookie_pair_argument_order \
     cookie_scope_include_path_keyword \
   --out runs/apache-python-git/ranker-holdout-greenshot-6-test-slice
-git diff --check
-```
-
-Previous focused verification:
-
-```bash
-pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q
-pytest tests/test_patching.py::test_patch_solves_humanize_binary_naturalsize_keyword -q
-python3 -m json.tool examples/greenshot_6/tasks.json >/tmp/greenshot6_tasks_check.json
-python cli.py eval \
-  --tasks examples/greenshot_6 \
-  --checkpoint runs/apache-python-git/model.json \
-  --timeout 10 \
-  --max-candidates 80 \
-  --phase ranked \
-  --explore-after-pass 5 \
-  --diagnostics runs/apache-python-git/greenshot-6-explore-diagnostics.json \
-  --candidate-outcomes runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl \
-  --quiet
-python cli.py outcome-summary \
-  --candidate-outcomes runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl
-python cli.py train-ranker \
-  --candidate-outcomes \
-    runs/apache-python-git/greenshot-5-candidate-outcomes.jsonl \
-    runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl \
-  --holdout-task \
-    apache_license_classifier_dict_value \
-    http_no_store_response_with_etag \
-    cookie_default_secure_flag_dict_value \
-    cookie_host_prefix_dict_value \
-    cookie_zero_max_age_operator_boundary \
-    cookie_pair_argument_order \
-    cookie_scope_include_path_keyword \
-  --out runs/apache-python-git/ranker-holdout-greenshot-6-test-slice
-git diff --check
-```
-
-Previous focused verification:
-
-```bash
-pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q
-pytest tests/test_patching.py::test_patch_solves_fastapi_oauth2_client_secret_docstring -q
-python3 -m json.tool examples/greenshot_6/tasks.json >/tmp/greenshot6_tasks_check.json
-python cli.py eval \
-  --tasks examples/greenshot_6 \
-  --checkpoint runs/apache-python-git/model.json \
-  --timeout 10 \
-  --max-candidates 80 \
-  --phase ranked \
-  --explore-after-pass 5 \
-  --diagnostics runs/apache-python-git/greenshot-6-explore-diagnostics.json \
-  --candidate-outcomes runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl \
-  --quiet
-python cli.py outcome-summary \
-  --candidate-outcomes runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl
-python cli.py train-ranker \
-  --candidate-outcomes \
-    runs/apache-python-git/greenshot-5-candidate-outcomes.jsonl \
-    runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl \
-  --holdout-task \
-    apache_license_classifier_dict_value \
-    http_no_store_response_with_etag \
-    cookie_default_secure_flag_dict_value \
-    cookie_host_prefix_dict_value \
-    cookie_zero_max_age_operator_boundary \
-    cookie_pair_argument_order \
-    cookie_scope_include_path_keyword \
-  --out runs/apache-python-git/ranker-holdout-greenshot-6-test-slice
-git diff --check
-```
-
-Previous focused verification:
-
-```bash
-pytest tests/test_patching.py::test_generate_fstring_fragment_literal_candidate_from_concrete_message tests/test_evaluation.py::test_load_greenshot_6_tasks -q
-pytest tests/test_patching.py -q
-python cli.py eval \
-  --tasks examples/greenshot_6 \
-  --checkpoint runs/apache-python-git/model.json \
-  --timeout 10 \
-  --max-candidates 80 \
-  --phase ranked \
-  --explore-after-pass 5 \
-  --diagnostics runs/apache-python-git/greenshot-6-explore-diagnostics.json \
-  --candidate-outcomes runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl \
-  --quiet
-python cli.py train-ranker \
-  --candidate-outcomes \
-    runs/apache-python-git/greenshot-5-candidate-outcomes.jsonl \
-    runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl \
-  --holdout-task \
-    apache_license_classifier_dict_value \
-    http_no_store_response_with_etag \
-    cookie_default_secure_flag_dict_value \
-    cookie_host_prefix_dict_value \
-    cookie_zero_max_age_operator_boundary \
-    cookie_pair_argument_order \
-    cookie_scope_include_path_keyword \
-  --out runs/apache-python-git/ranker-holdout-greenshot-6-test-slice
-python cli.py outcome-summary \
-  --candidate-outcomes runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl
-git diff --check
-```
-
-Earlier focused verification:
-
-```bash
-pytest tests/test_candidate_ranking.py -q
-pytest tests/test_evaluation.py::test_write_candidate_outcomes_jsonl_records_one_row_per_tested_candidate tests/test_evaluation.py::test_write_candidate_outcomes_preserves_swap_call_role_metadata -q
-python cli.py eval \
-  --tasks examples/greenshot_6 \
-  --checkpoint runs/apache-python-git/model.json \
-  --timeout 10 \
-  --max-candidates 80 \
-  --phase ranked \
-  --explore-after-pass 5 \
-  --diagnostics runs/apache-python-git/greenshot-6-explore-diagnostics.json \
-  --candidate-outcomes runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl \
-  --quiet
-python cli.py train-ranker \
-  --candidate-outcomes \
-    runs/apache-python-git/greenshot-5-candidate-outcomes.jsonl \
-    runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl \
-  --holdout-task \
-    apache_license_classifier_dict_value \
-    http_no_store_response_with_etag \
-    cookie_default_secure_flag_dict_value \
-    cookie_host_prefix_dict_value \
-    cookie_zero_max_age_operator_boundary \
-    cookie_pair_argument_order \
-    cookie_scope_include_path_keyword \
-  --out runs/apache-python-git/ranker-holdout-greenshot-6-test-slice
-git diff --check
-```
-
-Previous GreenShot-6/ranker verification:
-
-```bash
-pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q
-python cli.py eval \
-  --tasks examples/greenshot_6 \
-  --timeout 10 \
-  --max-candidates 80 \
-  --phase ranked \
-  --quiet
-python cli.py eval \
-  --tasks examples/greenshot_6 \
-  --checkpoint runs/apache-python-git/model.json \
-  --timeout 10 \
-  --max-candidates 80 \
-  --phase ranked \
-  --explore-after-pass 5 \
-  --diagnostics runs/apache-python-git/greenshot-6-explore-diagnostics.json \
-  --candidate-outcomes runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl \
-  --quiet
-python cli.py outcome-summary \
-  --candidate-outcomes runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl
-python cli.py train-ranker \
-  --candidate-outcomes \
-    runs/apache-python-git/greenshot-5-candidate-outcomes.jsonl \
-    runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl \
-  --holdout-task-family http_cache_directive \
-  --out runs/apache-python-git/ranker-holdout-http-cache-directive
 git diff --check
 ```
 
@@ -1598,9 +1465,9 @@ GreenShot-6 outcome collection result:
 
 ```text
 ranked, runs/apache-python-git/model.json, explore-after-pass=5:
-  solved=62/62 pass@1=45/62 avg_candidates=7.73
-  rows=479 passing_rows=93 preferred_positive_rows=62
-  source_type pass@1: git_history=27/41 mutation=18/21
+  solved=63/63 pass@1=46/63 avg_candidates=7.70
+  rows=485 passing_rows=94 preferred_positive_rows=63
+  source_type pass@1: git_history=28/42 mutation=18/21
 ```
 
 Treat this as a smoke check, not a benchmark claim.
@@ -1619,7 +1486,7 @@ GreenShot-6 test-slice ranker validation result:
 
 ```text
 train-ranker, holdout-task includes all GreenShot-6 split:test tasks:
-  rows=559 passing_rows=101 tasks=75 plans=75 pairs=483
+  rows=565 passing_rows=102 tasks=76 plans=76 pairs=488
   training_accuracy=1.000 margin_violations=4 features=849
   validation solved=7/7 pass@1=7/7 positive@1=7/7
   validation rows=46 avg_first_passing_index=1.0
@@ -1633,7 +1500,7 @@ Keep this section as the live queue. When work is completed, move it to
 Immediate next sequence:
 
 1. Inspect the refreshed GreenShot-6 raw pass@1 misses and trained
-   preferred-positive ranks after the `packaging_parser_docstring_ebnf_typo`
+   preferred-positive ranks after the `mypy_overload_docs_duplicate_also`
    refresh. The held-out test slice is clean, so do not add ranker features or
    broad weights unless this inspection finds a narrow new gap.
 2. If no narrow candidate-generation, outcome-quality, or ranker-metadata gap
@@ -1804,44 +1671,43 @@ Start neural/JEPA work only when:
 
 ## Handoff Recommendation
 
-The next context window should start from the post-keyword-coverage GreenShot-6
-refresh, not the older FastAPI OAuth2, Werkzeug AirPlay, flake8-bugbear B037, Seaborn
-plot-label, graphlayout/NetworkX, taskqueue/Celery, envwrite, v13 literal-key,
-scipyquad, raisemsg, attrvalidators, or pytest-regex-label states. GreenShot-6
-now has 61 tasks.
+The next context window should start from the post-typechecker GreenShot-6
+refresh, not the older keyword-coverage, packaging parser, FastAPI OAuth2,
+Werkzeug AirPlay, flake8-bugbear B037, Seaborn plot-label,
+graphlayout/NetworkX, taskqueue/Celery, envwrite, v13 literal-key, scipyquad,
+raisemsg, attrvalidators, or pytest-regex-label states. GreenShot-6 now has 63
+tasks.
 
 Latest addition:
 
-- Fixture domain: `filesize`
-- Task: `humanize_binary_naturalsize_keyword`
-- Source: `python-humanize/humanize`-derived mutation fixture
-- Repair shape: a `binary_naturalsize` wrapper should call
-  `naturalsize(value, binary=True)` instead of relying on the helper's
-  `binary=False` default.
-- Action: existing `add_keyword_arg`; no action family, ranker metadata, broad
+- Fixture domain: `typechecker`
+- Task: `mypy_overload_docs_duplicate_also`
+- Source: `python/mypy` PR 21482 / commit
+  `9b4e31c2738d1dd1dcc84e9d6e30b48e99299793`
+- Repair shape: overload compatibility text should say `must also be
+  compatible`, not `must also also be compatible`.
+- Action: existing `change_literal`; no action family, ranker metadata, broad
   weight, or pass/preferred-label change was needed.
 
-Latest GreenShot-6 refresh with `--explore-after-pass 5` solved all 61 tasks:
-`pass@1=44/61`, average candidates `7.75`, rows `473`, passing rows `92`, and
-preferred-positive rows `61`. Source-type pass@1 is `git_history=26/40` and
-`mutation=18/21`. The new keyword-propagation task passes at raw rank 1 with
-the preferred `add_keyword_arg binary=True` candidate.
+Latest GreenShot-6 refresh with `--explore-after-pass 5` solved all 63 tasks:
+`pass@1=46/63`, average candidates `7.70`, rows `485`, passing rows `94`, and
+preferred-positive rows `63`. Source-type pass@1 is `git_history=28/42` and
+`mutation=18/21`. The new mypy-derived task passes at raw rank 1 with the
+preferred `change_literal` candidate.
 
-The same GreenShot-6 `split: test` held-out validation is clean again:
+The same GreenShot-6 `split: test` held-out validation is clean:
 solved=7/7, pass@1=7/7, positive@1=7/7, validation rows=46, and
-avg_first_passing_index=1.0. Training used 553 rows, 100 passing rows, 478
+avg_first_passing_index=1.0. Training used 565 rows, 102 passing rows, 488
 training pairs, 849 features, and 4 margin violations.
 
-Resolved residual:
+Latest inspection summary:
 
-- `cookie_scope_include_path_keyword`: a false cross-domain
-  `change_dict_value count: "count" -> "example.invalid/account"` candidate in
-  `plotlabels/categorical.py` ranks above the preferred
-  `add_keyword_arg(include_path=True)` candidate in `webcookies/policy.py`
-  before the new train-split keyword coverage. After refresh/retraining, the
-  preferred keyword row ranks first at score `16.625162`, above the false
-  cross-domain dictionary-value row at `10.771752`. Details are in
-  `HARD_NEGATIVES.md`.
+- Raw GreenShot-6 has 17 pass@1 misses after the typechecker refresh. Every
+  task has a tested preferred-positive row.
+- Applying the saved GreenShot-6 `split: test` ranker to all refreshed
+  GreenShot-6 rows found no trained preferred-positive misses.
+- `HARD_NEGATIVES.md` was not updated this turn because no new verified
+  residual appeared.
 
 Immediate next sequence:
 

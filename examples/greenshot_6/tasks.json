@@ -1143,6 +1143,28 @@
     }
   },
   {
+    "name": "mypy_overload_docs_duplicate_also",
+    "family": "typechecker_doc_text",
+    "source_type": "git_history",
+    "split": "train",
+    "repo": ".",
+    "test": "python -m pytest tests/test_typechecker.py::test_overload_docs_do_not_repeat_also",
+    "source": {
+      "repo": "python/mypy",
+      "commit": "9b4e31c2738d1dd1dcc84e9d6e30b48e99299793",
+      "pr": 21482
+    },
+    "preferred": {
+      "file_path": "typechecker/overloads.py",
+      "action": "change_literal",
+      "symbol": "overload_implementation_compatibility_note",
+      "params": {
+        "from": "The variants must also also be compatible with the implementation",
+        "to": "The variants must also be compatible with the implementation"
+      }
+    }
+  },
+  {
     "name": "cookie_default_secure_flag_dict_value",
     "family": "mapping_value",
     "source_type": "mutation",

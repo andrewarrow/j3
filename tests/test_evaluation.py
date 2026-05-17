@@ -99,7 +99,7 @@ def test_load_greenshot_6_tasks() -> None:
     tasks = load_tasks(Path("examples/greenshot_6"))
     by_name = {task.name: task for task in tasks}
 
-    assert len(tasks) == 62
+    assert len(tasks) == 63
     assert tasks[0].name == "core_metadata_version_dict_value"
     assert tasks[0].family == "mapping_value"
     assert tasks[0].source_type == "mutation"
@@ -273,6 +273,24 @@ def test_load_greenshot_6_tasks() -> None:
         "params": {
             "from": "Each parser docstring contains ENBF-inspired grammar.",
             "to": "Each parser docstring contains EBNF-inspired grammar.",
+        },
+    }
+    assert by_name["mypy_overload_docs_duplicate_also"].family == (
+        "typechecker_doc_text"
+    )
+    assert by_name["mypy_overload_docs_duplicate_also"].source_type == (
+        "git_history"
+    )
+    assert by_name["mypy_overload_docs_duplicate_also"].split == "train"
+    assert by_name["mypy_overload_docs_duplicate_also"].preferred_patch == {
+        "file_path": "typechecker/overloads.py",
+        "action": "change_literal",
+        "symbol": "overload_implementation_compatibility_note",
+        "params": {
+            "from": (
+                "The variants must also also be compatible with the implementation"
+            ),
+            "to": "The variants must also be compatible with the implementation",
         },
     }
     assert by_name["prettytable_missing_attribute_quote"].family == "table_legacy_attribute_error"

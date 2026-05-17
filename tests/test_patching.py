@@ -1654,6 +1654,30 @@ def test_patch_solves_packaging_parser_docstring_ebnf_typo(tmp_path) -> None:
     assert "EBNF-inspired grammar" in result.selected.patched_source
 
 
+def test_patch_solves_mypy_overload_docs_duplicate_also(tmp_path) -> None:
+    repo = tmp_path / "greenshot_6"
+    shutil.copytree("examples/greenshot_6", repo)
+
+    result = plan_and_maybe_apply_patch(
+        repo=repo,
+        test_command=(
+            "python -m pytest "
+            "tests/test_typechecker.py::test_overload_docs_do_not_repeat_also"
+        ),
+        dry_run=True,
+        timeout_seconds=10,
+    )
+
+    assert result.selected is not None
+    assert result.selected.file_path == "typechecker/overloads.py"
+    assert result.selected.action.kind.value == "change_literal"
+    assert result.selected.action.params == {
+        "from": "The variants must also also be compatible with the implementation",
+        "to": "The variants must also be compatible with the implementation",
+    }
+    assert "must also be compatible" in result.selected.patched_source
+
+
 def test_generate_membership_operator_with_literal_needle_decoy(tmp_path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()

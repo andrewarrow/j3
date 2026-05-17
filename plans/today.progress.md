@@ -8,7 +8,7 @@ new implementation facts change the 24-hour plan itself. Record any
 ## Status
 
 - Current phase: Transition bench and action selection V1
-- Completed iterations: 2 for this reset; Prompt+Repo JEPA transition V0
+- Completed iterations: 3 for this reset; Prompt+Repo JEPA transition V0
   completed 6 iterations; Prompt-JEPA developer demo reset
   completed 5 iterations; previous Prompt-JEPA index reset completed 8
   iterations
@@ -35,18 +35,20 @@ new implementation facts change the 24-hour plan itself. Record any
   `python cli.py inspect-transition-assets --json`;
   `pytest tests/test_transition_bench.py -q`;
   `python -m py_compile j3/transition_bench.py`;
+  `pytest tests/test_transition_action_choice.py -q`;
+  `python -m py_compile j3/transition_action_choice.py`;
   `git diff --check`
-- Latest implementation/demo commit: `d95ebc7` (`Define transition bench schema`)
+- Latest implementation/demo commit: pending for worker iteration 3
 - Latest documentation commit: `ef99279` (`Rewrite README for Prompt Repo JEPA`)
 - Current blocker: none
-- Next task: build `transition-action-choice-v1` groups from candidate outcomes.
+- Next task: add an evaluation-only future scorer with pass@1/top-k/MRR metrics.
 
 ## Active Task Queue
 
 - [x] Add a transition asset inventory over prompt/demo/mined/candidate
   artifacts.
 - [x] Define `transition-bench-v1` rows with checked-in fixtures.
-- [ ] Build `transition-action-choice-v1` groups from candidate outcomes.
+- [x] Build `transition-action-choice-v1` groups from candidate outcomes.
 - [ ] Add an evaluation-only future scorer with pass@1/top-k/MRR metrics.
 - [ ] Add a one-command transition bench demo/report.
 - [ ] Document reproduction, ignored data boundaries, and future release
@@ -146,6 +148,29 @@ Use this shape for each worker handoff:
 - Commit: `d95ebc7` (`Define transition bench schema`)
 - Push: succeeded to `main`.
 - Next: build `transition-action-choice-v1` groups from candidate outcomes.
+- Blockers: none.
+
+### Iteration 3: Transition action-choice groups
+
+- Worker: Codex worker iteration 3
+- Goal: build `transition-action-choice-v1` groups from candidate outcome rows.
+- Files changed: `j3/transition_action_choice.py`,
+  `tests/test_transition_action_choice.py`, `plans/today.progress.md`
+- Tests run: `pytest tests/test_transition_action_choice.py -q` passed with 5
+  tests; `python -m py_compile j3/transition_action_choice.py` passed;
+  `git diff --check` passed.
+- Result: added deterministic grouping from validated candidate outcome JSONL
+  rows into action-choice groups by task, phase, and explicit repair plan when
+  present. Existing candidate outcome rows do not carry explicit repair plans,
+  so the fallback identity is documented in code and built from stable
+  plan-level fields plus the source path when available. Groups preserve all
+  validated candidates in rank order, keep failed validated candidates as hard
+  negatives, include action and target-context records, carry source/before and
+  candidate-after source or embeddings when present, and mark unavailable
+  after-state embeddings explicitly as null.
+- Commit: pending for this worker commit.
+- Push: pending for this worker commit.
+- Next: add an evaluation-only future scorer with pass@1/top-k/MRR metrics.
 - Blockers: none.
 
 - Rewrote `README.md` into a much smaller developer-focused JEPA pitch using

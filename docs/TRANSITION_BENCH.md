@@ -2,11 +2,124 @@
 
 This document covers the reproducible Transition Bench demo, the boundary
 between checked-in fixtures and ignored local data, the checked-in artifact
-schemas, and the expected shape of a future release package.
+schemas, the current product modes, and the expected shape of a future release
+package.
 
-The current path is evaluation-only. It does not call hosted LLM APIs, does not
-send repository text to hosted models, and is not wired into production
-`implement`, `change`, `patch`, or `fix` routing.
+The benchmark and scorer artifacts are local-only. They do not call hosted LLM
+APIs and do not send repository text to hosted models. Production defaults
+remain conservative: `implement`, `change`, `patch`, and `fix` keep their
+deterministic routing. Only `patch` and `eval` currently expose explicit
+transition-scorer shadow advice or guarded ranking flags.
+
+## Product Modes
+
+Transition scoring currently has four product modes. The modes are deliberately
+separate so benchmark evidence can improve without silently changing repair
+behavior.
+
+### Demo Mode
+
+Demo mode is the default `demo-transition-bench` path over the tiny checked-in
+fixtures:
+
+```bash
+python cli.py demo-transition-bench \
+  --embedding-dim 8 \
+  --top-k 1 \
+  --out /tmp/j3-transition-bench-report.json
+```
+
+It proves that a clean checkout can normalize transition rows, build repair
+action-choice groups, score candidates, emit product-readiness gates, and report
+zero hosted usage. It is intentionally small; it is not evidence that a scorer
+should affect real repair routing.
+
+### Benchmark Mode
+
+Benchmark mode runs the same report over explicit local artifacts, usually with
+`--no-fixtures`, local `runs/**/candidate-outcomes.jsonl`, and optionally mined
+`data/transitions/**/*.jsonl`:
+
+```bash
+python cli.py demo-transition-bench \
+  --no-fixtures \
+  --embedding-dim 256 \
+  --top-k 3 \
+  --candidate-outcomes runs/apache-python-git/*candidate-outcomes.jsonl \
+  --out /tmp/j3-transition-bench-candidates-report.json
+```
+
+The report includes skipped-row accounting, normalized row counts, action-choice
+metrics, V1 and V2 scorer metrics, baselines, calibration metadata, held-out V2
+validation metrics, and `product_readiness`. Mined git rows with empty
+`before_source` or `after_source` are skipped with structured records instead
+of crashing the report. Each skipped row records the source file, row index,
+reason, source kind, repo, file path, and commit when available.
+
+`product_readiness` compares the scorer against `existing-rank-order` on solved
+action-choice groups. It reports pass@1 delta, top-k delta, MRR delta, average
+candidates validated before first pass, residual counts, and one gate result:
+
+- `not_ready_underperforms_existing_rank_order`
+- `ready_for_shadow_mode`
+- `ready_for_guarded_opt_in`
+
+The V2 scorer is calibrated from local candidate outcomes with deterministic
+local features and a held-out split. It is still evidence, not a production
+default. A full-bench improvement is not enough; guarded routing requires a
+passing product gate, including held-out validation when that report is present.
+
+### Shadow Mode
+
+Shadow mode scores the real repair candidate set that `patch` or `eval` already
+generated, but it does not reorder candidates and does not change the selected
+patch. Use it to collect advice rows during normal planning:
+
+```bash
+python cli.py patch \
+  --repo examples/greenshot_bug \
+  --test tests/test_calculator.py \
+  --transition-scorer-shadow \
+  --transition-advice-out /tmp/j3-transition-advice.jsonl
+```
+
+The same flags are available through `eval` for evaluation runs. The advice
+JSONL records the repo-state summary, candidate count, existing selected
+candidate, scorer top candidate, agreement with existing rank order, validation
+comparison when known, and zero hosted usage fields. Shadow mode is the right
+place to inspect regressions because production routing remains unchanged.
+
+### Guarded Opt-In Mode
+
+Guarded mode is explicit and non-default. It is enabled with
+`--transition-scorer-rank`, and it requires either a scorer report whose
+`product_readiness` objects all allow `ready_for_guarded_opt_in`, or the
+intentional experimental escape hatch `--allow-experimental-ranking`:
+
+```bash
+python cli.py patch \
+  --repo examples/greenshot_bug \
+  --test tests/test_calculator.py \
+  --transition-scorer-rank \
+  --transition-scorer-report /tmp/j3-transition-bench-candidates-report.json
+```
+
+If the report contains a failed gate such as
+`not_ready_underperforms_existing_rank_order`, planning is refused before
+candidate generation. When ranking is allowed, the CLI prints the gate, report
+path, and mode so the run is visibly opt-in. The default `patch` and `fix`
+paths still do not use transition-scorer ranking.
+
+### Why Defaults Stay Conservative
+
+The current product boundary is intentional. The checked-in fixture demo can
+pass because it is tiny. Local candidate benches can show different behavior
+from fixture results, and held-out validation can still underperform the
+existing rank order. A coding agent should not replace a deterministic repair
+heuristic with a scorer until the scorer is robust on messy local artifacts,
+beats the existing baseline on honest held-out evidence, and leaves a clear
+audit trail. Until then, benchmark, shadow, and guarded modes provide evidence
+without changing default production behavior.
 
 ## What Is Checked In
 
@@ -218,12 +331,17 @@ Produced by the evaluation-only scorer.
 
 Useful fields:
 
-- `scorer.name`: `transition-action-future-scorer-v1`.
-- `scorer.feature_version`: `transition-action-local-features-v1`.
+- `scorer.name`: default scorer, currently
+  `transition-action-future-scorer-v1`.
+- `scorer.feature_version`: default local feature version.
 - `top_k`, `group_count`, `solved_group_count`, and `candidate_count`.
 - `metrics`: scorer metrics plus baselines:
   `existing-rank-order`, `stable-lexical-order`, and
-  `deterministic-random-order`.
+  `deterministic-random-order`. When V2 calibration is available, metrics also
+  include `transition-action-future-scorer-v2`.
+- `calibration`: V2 calibration metadata, including split shape, training
+  parameters, training group/pair counts, model weights, validation metrics,
+  and validation `product_readiness`.
 - `residual_examples`: solved groups where the scorer did not put a passing
   candidate first.
 - `runtime`: local runtime and zero hosted token/context fields.
@@ -231,6 +349,10 @@ Useful fields:
 Metrics include pass@1, top-k pass rate, mean reciprocal rank, average first
 passing rank, average candidates validated before/to first pass, and average
 candidates saved versus existing rank order.
+
+The V2 scorer is evaluation-only. It fits pairwise weights from local candidate
+outcome groups and supports held-out validation splits by `task_family` or
+`source_file`.
 
 ### `transition-bench-demo-report-v1`
 
@@ -243,10 +365,17 @@ Useful fields:
 - `parameters`: `top_k`, `embedding_dim`, and `residual_limit`.
 - `asset_inventory`: compact inventory totals for context.
 - `sources`: exact source files and row counts included in the report.
-- `transition_bench`: normalized row count and source-kind counts.
+- `transition_bench`: input, normalized, and skipped row counts by source kind,
+  plus structured `skipped_rows` and per-input normalization records.
 - `action_choices`: group, candidate, and solved group counts.
 - `action_scoring`: nested `transition-action-scoring-eval-v1` report.
+- `product_readiness`: top-level product gate comparing the default scorer to
+  `existing-rank-order` on solved action-choice groups.
 - `runtime`: local runtime and zero hosted token/context fields.
+
+The report `decision` remains evaluation-only even when the same scorer is used
+elsewhere in shadow or guarded opt-in mode. Routing changes are controlled by
+the `patch` and `eval` CLI flags, not by generating this report.
 
 ## Future Release Packaging
 

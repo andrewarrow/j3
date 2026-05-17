@@ -34,7 +34,7 @@ This file is the live progress log for `plans/today.md`. Keep
 - [x] Calibrate a V2 action scorer from candidate outcomes.
 - [x] Add shadow transition-scorer advice to real patch/eval planning.
 - [x] Add guarded, non-default opt-in ranking with gate enforcement.
-- [ ] Update product docs for demo, benchmark, shadow, and guarded modes.
+- [x] Update product docs for demo, benchmark, shadow, and guarded modes.
 
 ## Current Facts
 
@@ -253,3 +253,25 @@ Use this shape for each worker handoff:
 - Next: update product docs for demo, benchmark, shadow, and guarded modes.
 - Blockers: guarded opt-in remains blocked for normal local V2 artifacts until
   the held-out product gate beats existing rank order.
+
+### Iteration 6: Update transition bench product docs
+
+- Worker: Codex Worker Iteration 6
+- Goal: document demo, benchmark, shadow, and guarded opt-in modes for the
+  transition bench product path while keeping README unchanged.
+- Files changed: `docs/TRANSITION_BENCH.md`, `plans/today.progress.md`.
+- Tests run:
+  - `git diff --check` passed.
+- Result: `docs/TRANSITION_BENCH.md` now explains the four product modes,
+  conservative default routing, skipped-row accounting, product-readiness
+  gates, V2 calibration and held-out validation, shadow advice flags, guarded
+  `--transition-scorer-rank` enforcement, and zero hosted usage.
+- Commit: this task commit; final hash reported in the worker handoff because
+  this progress entry is part of that commit.
+- Push: pending at the time this entry was written; final push result reported
+  in the worker handoff.
+- Next: no queued task remains in `plans/today.progress.md`; watcher should
+  choose the next slice from the current plan or refresh the plan.
+- Blockers: none for this documentation slice; guarded opt-in remains blocked
+  for normal local V2 artifacts until the held-out product gate beats existing
+  rank order.

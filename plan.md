@@ -1213,12 +1213,32 @@ Recent work:
   the taskqueue outcome refresh and stayed clean: solved=7/7, pass@1=7/7,
   positive@1=7/7, avg_first_passing_index=1.0. Training used 484 rows, 90
   passing rows, 418 training pairs, 862 features, and 4 margin violations.
+- GreenShot-6 now includes a thirty-second real-package-derived fixture domain,
+  `templating`, with one `git_history` task modeled on `pallets/jinja` commit
+  `48baa10f1e018691c23ab9441be0e1b06faf6731`. The task
+  `jinja_async_loop_filter_error_message` repairs a Jinja-style async loop
+  filter error message by changing `currently if the` to `unavailable if the`,
+  using the existing `change_literal` action family.
+- Focused loader/generator coverage passed for the Jinja-derived task:
+  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
+  `pytest tests/test_patching.py::test_patch_solves_jinja_async_loop_filter_error_message -q`.
+- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
+  adding `templating`. The persisted dataset now covers 53 tasks and 418
+  tested candidates. Ranked eval solved all 53 tasks with `pass@1=37/53` and
+  average candidates `7.89`; the new Jinja-derived task is a raw rank-14 pass
+  with the preferred `change_literal` candidate.
+- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
+  the Jinja outcome refresh and stayed clean: solved=7/7, pass@1=7/7,
+  positive@1=7/7, avg_first_passing_index=1.0. Training used 498 rows, 91
+  passing rows, 431 training pairs, 862 features, and 4 margin violations.
+  Applying the saved test-slice ranker to all refreshed GreenShot-6 rows found
+  no trained preferred-positive misses across 53 tasks.
 
 Last focused verification:
 
 ```bash
 pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q
-pytest tests/test_patching.py::test_patch_solves_celery_unknown_task_header_typo -q
+pytest tests/test_patching.py::test_patch_solves_jinja_async_loop_filter_error_message -q
 python cli.py eval \
   --tasks examples/greenshot_6 \
   --checkpoint runs/apache-python-git/model.json \
@@ -1361,9 +1381,9 @@ GreenShot-6 outcome collection result:
 
 ```text
 ranked, runs/apache-python-git/model.json, explore-after-pass=5:
-  solved=52/52 pass@1=37/52 avg_candidates=7.77
-  rows=404 passing_rows=82 preferred_positive_rows=52
-  source_type pass@1: git_history=20/32 mutation=17/20
+  solved=53/53 pass@1=37/53 avg_candidates=7.89
+  rows=418 passing_rows=83 preferred_positive_rows=53
+  source_type pass@1: git_history=20/33 mutation=17/20
 ```
 
 Treat this as a smoke check, not a benchmark claim.
@@ -1382,7 +1402,7 @@ GreenShot-6 test-slice ranker validation result:
 
 ```text
 train-ranker, holdout-task includes all GreenShot-6 split:test tasks:
-  training rows=478 passing_rows=89 tasks=64 plans=64 pairs=413
+  training rows=498 passing_rows=91 tasks=66 plans=66 pairs=431
   training_accuracy=0.998 margin_violations=4 features=862
   validation solved=7/7 pass@1=7/7 positive@1=7/7
   validation rows=46 avg_first_passing_index=1.0

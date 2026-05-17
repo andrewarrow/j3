@@ -925,6 +925,27 @@
     }
   },
   {
+    "name": "jinja_async_loop_filter_error_message",
+    "family": "template_loop_error_message",
+    "source_type": "git_history",
+    "split": "train",
+    "repo": ".",
+    "test": "python -m pytest tests/test_templating.py::test_async_loop_filter_error_message_says_unavailable",
+    "source": {
+      "repo": "pallets/jinja",
+      "commit": "48baa10f1e018691c23ab9441be0e1b06faf6731"
+    },
+    "preferred": {
+      "file_path": "templating/compiler.py",
+      "action": "change_literal",
+      "symbol": "validate_loop_filter",
+      "params": {
+        "from": "loop filters in async mode are currently if the ",
+        "to": "loop filters in async mode are unavailable if the "
+      }
+    }
+  },
+  {
     "name": "cookie_default_secure_flag_dict_value",
     "family": "mapping_value",
     "source_type": "mutation",

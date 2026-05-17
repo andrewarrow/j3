@@ -1412,6 +1412,32 @@ def test_patch_solves_celery_unknown_task_header_typo(tmp_path) -> None:
     assert "The full contents of the message headers:" in result.selected.patched_source
 
 
+def test_patch_solves_jinja_async_loop_filter_error_message(tmp_path) -> None:
+    repo = tmp_path / "greenshot_6"
+    shutil.copytree("examples/greenshot_6", repo)
+
+    result = plan_and_maybe_apply_patch(
+        repo=repo,
+        test_command=(
+            "python -m pytest "
+            "tests/test_templating.py::test_async_loop_filter_error_message_says_unavailable"
+        ),
+        dry_run=True,
+        timeout_seconds=10,
+    )
+
+    assert result.selected is not None
+    assert result.selected.file_path == "templating/compiler.py"
+    assert result.selected.action.kind.value == "change_literal"
+    assert result.selected.action.params == {
+        "from": "loop filters in async mode are currently if the ",
+        "to": "loop filters in async mode are unavailable if the ",
+    }
+    assert "loop filters in async mode are unavailable if" in (
+        result.selected.patched_source
+    )
+
+
 def test_generate_membership_operator_with_literal_needle_decoy(tmp_path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()

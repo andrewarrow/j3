@@ -99,7 +99,7 @@ def test_load_greenshot_6_tasks() -> None:
     tasks = load_tasks(Path("examples/greenshot_6"))
     by_name = {task.name: task for task in tasks}
 
-    assert len(tasks) == 52
+    assert len(tasks) == 53
     assert tasks[0].name == "core_metadata_version_dict_value"
     assert tasks[0].family == "mapping_value"
     assert tasks[0].source_type == "mutation"
@@ -563,6 +563,19 @@ def test_load_greenshot_6_tasks() -> None:
         "params": {
             "from": "Thw full contents of the message headers:",
             "to": "The full contents of the message headers:",
+        },
+    }
+    assert by_name["jinja_async_loop_filter_error_message"].split == "train"
+    assert by_name["jinja_async_loop_filter_error_message"].source_type == (
+        "git_history"
+    )
+    assert by_name["jinja_async_loop_filter_error_message"].preferred_patch == {
+        "file_path": "templating/compiler.py",
+        "action": "change_literal",
+        "symbol": "validate_loop_filter",
+        "params": {
+            "from": "loop filters in async mode are currently if the ",
+            "to": "loop filters in async mode are unavailable if the ",
         },
     }
     assert by_name["cookie_default_secure_flag_dict_value"].split == "test"

@@ -6,8 +6,10 @@ This file is the live progress log for `plans/today.md`. Keep
 ## Status
 
 - Current phase: shadow suite and residual-driven readiness.
-- Completed iterations for this reset: 0.
+- Completed iterations for this reset: 1.
 - Latest relevant commits:
+  - `f9ed963` recorded shadow suite completion.
+  - `0aae784` added the transition shadow suite command.
   - `2664a95` documented shadow-to-gate evidence.
   - `a53b377` added transition evidence bundles.
   - `2f13892` added the held-out shadow V3 scorer.
@@ -17,14 +19,12 @@ This file is the live progress log for `plans/today.md`. Keep
   - `f962018` closed the previous transition scoring queue.
 - Current blocker: held-out V2/V3 product gates are still the product boundary.
   Guarded ranking must remain non-default and blocked unless evidence passes.
-- Next task: add a repeatable shadow eval suite command or equivalent tested
-  workflow that produces advice, shadow outcomes, V3 report, and evidence
-  bundle in one run.
+- Next task: add a V3/shadow residual report.
 
 ## Active Task Queue
 
 - [x] Recreate `plans/today.md` and `plans/today.progress.md`.
-- [ ] Add a repeatable shadow eval suite command.
+- [x] Add a repeatable shadow eval suite command.
 - [ ] Add a V3/shadow residual report.
 - [ ] Improve one scorer feature or action-choice metadata path from residuals.
 - [ ] Run a narrow guarded trial only if held-out gates pass.

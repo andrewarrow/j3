@@ -24,6 +24,7 @@ def request_repo_attempt_row(
     validation: dict[str, object],
     out_dir: Path,
     files_written: list[str],
+    source: str = "j3 implement",
 ) -> dict[str, object]:
     """Return a JSON-compatible prompt/spec/action/outcome attempt row."""
 
@@ -44,7 +45,7 @@ def request_repo_attempt_row(
         "record_kind": ROW_KIND,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "metadata": {
-            "source": "j3 implement",
+            "source": source,
             "request_schema_version": spec.schema_version,
             "plan_schema_version": plan.schema_version,
             "build_schema_version": build_result.schema_version,
@@ -78,6 +79,7 @@ def append_request_repo_attempt(
     validation: dict[str, object],
     out_dir: Path,
     files_written: list[str],
+    source: str = "j3 implement",
 ) -> Path:
     """Append one prompt/spec/action/outcome row to a JSONL file."""
 
@@ -91,6 +93,7 @@ def append_request_repo_attempt(
         validation=validation,
         out_dir=out_dir,
         files_written=files_written,
+        source=source,
     )
     with resolved.open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(row, sort_keys=True) + "\n")

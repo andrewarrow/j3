@@ -10,6 +10,7 @@ from cli.handlers import (
     handle_compare_diagnostics,
     handle_eval,
     handle_fix,
+    handle_greenshot_7,
     handle_implement,
     handle_mine,
     handle_outcome_summary,
@@ -79,6 +80,33 @@ def build_parser() -> argparse.ArgumentParser:
         help="append one prompt/spec/action/outcome JSONL row to this path",
     )
     implement_parser.set_defaults(handler=handle_implement)
+
+    greenshot_7_parser = subparsers.add_parser(
+        "greenshot-7",
+        help="run the bounded GreenShot-7 calculator fixtures",
+        description=(
+            "Run parser, planner, builder, generated pytest validation, and "
+            "optional outcome recording for the calculator request-to-repo fixtures."
+        ),
+    )
+    greenshot_7_parser.add_argument(
+        "--tasks",
+        type=Path,
+        default=Path("examples/greenshot_7/tasks.json"),
+        help="GreenShot-7 calculator fixture manifest",
+    )
+    greenshot_7_parser.add_argument(
+        "--out",
+        type=Path,
+        required=True,
+        help="output root for generated fixture repos",
+    )
+    greenshot_7_parser.add_argument(
+        "--record",
+        type=Path,
+        help="append request-repo-attempt-v1 JSONL rows to this path",
+    )
+    greenshot_7_parser.set_defaults(handler=handle_greenshot_7)
 
     patch_parser = subparsers.add_parser(
         "patch",

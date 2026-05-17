@@ -29,6 +29,7 @@ from greenfield import (
     build_calculator_repo,
     plan_calculator_repo,
 )
+from greenshot_7 import run_greenshot_7_tasks, summary_has_failures
 from mining import mine_git_transitions
 from patching import plan_and_maybe_apply_patch
 from request_outcomes import append_request_repo_attempt
@@ -121,6 +122,33 @@ def handle_implement(args: argparse.Namespace) -> int:
     if validation["status"] == "failed":
         return int(validation["exit_code"]) or 1
     return 0
+
+
+def handle_greenshot_7(args: argparse.Namespace) -> int:
+    summary = run_greenshot_7_tasks(
+        tasks_path=args.tasks,
+        out_dir=args.out,
+        records_path=args.record,
+    )
+
+    print("j3 greenshot-7 complete")
+    print(f"tasks: {summary['total']}")
+    print(f"built: {summary['built']}")
+    print(f"blocked: {summary['blocked']}")
+    print(f"validation passed: {summary['validation_passed']}")
+    print(f"validation failed: {summary['validation_failed']}")
+    print(f"records written: {summary['records_written']}")
+    print(f"out: {args.out.expanduser().resolve()}")
+    if args.record:
+        print(f"record: {args.record.expanduser().resolve()}")
+
+    failures = summary["failures"]
+    if failures:
+        print("failures:")
+        for failure in failures:
+            print(f"  {failure['task']}: {failure['message']}")
+
+    return 1 if summary_has_failures(summary) else 0
 
 
 def handle_patch(args: argparse.Namespace) -> int:

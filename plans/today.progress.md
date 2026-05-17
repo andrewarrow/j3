@@ -7,9 +7,9 @@ new implementation facts change the 24-hour plan itself. Record any
 
 ## Status
 
-- Current phase: prompt/spec/action/outcome row recording complete; ready for a
-  bounded GreenShot-7 runner
-- Completed iterations: 7
+- Current phase: bounded GreenShot-7 runner complete; ready for runner review or
+  the next request-to-repo slice
+- Completed iterations: 8
 - Passing focused tests: prompt seed JSONL validation, `test -s REQUEST_SPEC.md`,
   GreenShot-7 fixture JSON validation, `pytest tests/test_request_spec.py -q`,
   `pytest tests/test_greenfield_calculator.py -q`, `pytest tests/test_cli.py -q`,
@@ -17,8 +17,8 @@ new implementation facts change the 24-hour plan itself. Record any
 - Latest implementation commit: `f8d50c70690724265d81f98e7cab47b79059e40b`
   (`Record request-to-repo outcomes`)
 - Current blocker: none
-- Next task: add the bounded GreenShot-7 task runner, without broadening beyond
-  calculator request-to-repo
+- Next task: review the bounded runner output/records and choose the next
+  GreenShot-7 request-to-repo slice
 
 ## Worker Iteration Template
 
@@ -236,4 +236,40 @@ Use this shape for each worker handoff:
   (`Record request-to-repo outcomes`)
 - Push: succeeded to `origin/main`
 - Next: Add the bounded GreenShot-7 task runner.
+- Blockers: none
+
+### Iteration 8: Add GreenShot-7 runner
+
+- Worker: Codex Worker Iteration 8
+- Goal: Add the bounded GreenShot-7 task runner for calculator
+  request-to-repo fixtures.
+- Files changed:
+  - `greenshot_7.py`
+  - `cli/parser.py`
+  - `cli/handlers.py`
+  - `cli/__init__.py`
+  - `request_outcomes.py`
+  - `tests/test_greenshot_7.py`
+  - `tests/test_cli.py`
+  - `pyproject.toml`
+  - `plans/today.progress.md`
+- Tests run:
+  - `pytest tests/test_greenshot_7.py -q`
+  - `pytest tests/test_cli.py -q`
+  - `pytest tests/test_greenfield_calculator.py -q`
+  - `pytest tests/test_request_spec.py -q`
+  - `git diff --check`
+  - `python cli.py greenshot-7 --tasks examples/greenshot_7/tasks.json --out /tmp/.../out --record /tmp/.../records.jsonl`
+  - JSONL smoke inspection confirmed 10 `request-repo-attempt-v1` rows: 8
+    built and 2 blocked.
+- Result: Added `run_greenshot_7_tasks(...)` for the bounded calculator
+  fixture manifest. The runner parses each prompt, plans/builds deterministic
+  per-task repos for the eight positive fixtures, runs generated pytest
+  validation, verifies the two clarification fixtures remain blocked without
+  writing calculator files, appends outcome rows when requested, and returns a
+  JSON-compatible summary. Added narrow `j3 greenshot-7` CLI wiring.
+- Commit: pending in this worker commit; final hash reported to watcher.
+- Push: pending.
+- Next: Review the bounded runner output/records and choose the next
+  GreenShot-7 request-to-repo slice.
 - Blockers: none

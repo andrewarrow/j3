@@ -11,6 +11,7 @@ from cli.handlers import (
     handle_build_transition_evidence_bundle,
     handle_change,
     handle_compare_diagnostics,
+    handle_decide_transition_guarded_trial,
     handle_demo_prompt_jepa,
     handle_demo_transition_bench,
     handle_eval_prompt_jepa_index,
@@ -1302,6 +1303,36 @@ def build_parser() -> argparse.ArgumentParser:
     )
     transition_shadow_matrix_parser.set_defaults(
         handler=handle_run_transition_shadow_matrix
+    )
+
+    guarded_trial_parser = subparsers.add_parser(
+        "decide-transition-guarded-trial",
+        help="decide guarded trial eligibility from a shadow matrix",
+        description=(
+            "Read a transition shadow matrix output and conservatively decide "
+            "whether matrix gates justify a narrow guarded opt-in trial. The "
+            "decision is report-only and does not enable transition scoring in "
+            "patch, fix, eval, implement, or change."
+        ),
+    )
+    guarded_trial_parser.add_argument(
+        "--matrix",
+        type=Path,
+        required=True,
+        help="transition shadow matrix output directory",
+    )
+    guarded_trial_parser.add_argument(
+        "--out",
+        type=Path,
+        help="optional output JSON decision report path",
+    )
+    guarded_trial_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print the guarded trial decision as JSON",
+    )
+    guarded_trial_parser.set_defaults(
+        handler=handle_decide_transition_guarded_trial
     )
 
     transition_residuals_parser = subparsers.add_parser(

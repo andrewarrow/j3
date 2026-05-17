@@ -6,7 +6,7 @@ This file is the live progress log for `plans/today.md`. Keep
 ## Status
 
 - Current phase: evidence matrix and guarded product trial.
-- Completed iterations for this reset: 4.
+- Completed iterations for this reset: 5.
 - Latest relevant commits:
   - `c6dbe26` closed the shadow suite loop.
   - `aedb04a` documented the transition shadow suite workflow.
@@ -17,7 +17,7 @@ This file is the live progress log for `plans/today.md`. Keep
 - Current blocker: the checked-in shadow suite reports
   `ready_for_shadow_mode`, not `ready_for_guarded_opt_in`; guarded production
   ranking remains blocked unless broader matrix evidence passes product gates.
-- Next task: decide guarded trial eligibility from matrix gates.
+- Next task: update docs and README only if needed.
 
 ## Active Task Queue
 
@@ -26,7 +26,7 @@ This file is the live progress log for `plans/today.md`. Keep
 - [x] Add a matrix runner over standard shadow suites.
 - [x] Add cross-suite residual reporting.
 - [x] Produce a release-quality matrix evidence bundle.
-- [ ] Decide guarded trial eligibility from matrix gates.
+- [x] Decide guarded trial eligibility from matrix gates.
 - [ ] Update docs and README only if needed.
 
 ## Current Facts
@@ -226,3 +226,32 @@ Use this shape for each worker handoff:
 - Blockers: none. The one-suite smoke matrix remains
   `ready_for_shadow_mode`, so guarded opt-in eligibility is exposed as data but
   not decided in this slice.
+
+### Iteration 5: Guarded trial matrix decision
+
+- Worker: Codex worker iteration 5
+- Goal: add a conservative command/report that decides whether transition
+  shadow matrix evidence justifies a narrow guarded opt-in trial.
+- Files changed: `j3/transition_guarded_trial.py`, `cli/parser.py`,
+  `cli/handlers.py`, `cli/__init__.py`,
+  `tests/test_transition_guarded_trial.py`, `plans/today.progress.md`
+- Tests run:
+  - `pytest tests/test_transition_guarded_trial.py -q` passed.
+  - `pytest tests/test_transition_shadow_matrix.py -q` passed.
+  - `pytest tests/test_cli.py -q` passed.
+  - `python cli.py run-transition-shadow-matrix --matrix examples/transition_shadow_matrix.json --out /tmp/j3-transition-shadow-matrix --only greenshot_bugs --force` passed.
+  - `python cli.py decide-transition-guarded-trial --matrix /tmp/j3-transition-shadow-matrix` passed.
+  - `python cli.py decide-transition-guarded-trial --matrix /tmp/j3-transition-shadow-matrix --json --out /tmp/j3-transition-shadow-matrix/guarded-trial-decision.json` passed.
+  - `git diff --check` passed.
+- Result: added `decide-transition-guarded-trial --matrix <matrix-out>` with
+  optional `--out` and `--json`. The decision is report-only and remains
+  blocked unless the matrix has zero hosted usage, held-out groups for every
+  suite, all suite V3 gates are `ready_for_guarded_opt_in`, every suite is
+  guarded eligible, and matrix/per-suite residual counts are zero. The fresh
+  one-suite `greenshot_bugs` smoke reported `decision: remain_shadow_only`
+  because its gate is only `ready_for_shadow_mode`.
+- Commit: pending.
+- Push: pending.
+- Next: update docs and README only if needed.
+- Blockers: guarded opt-in remains blocked for the current one-suite smoke
+  matrix.

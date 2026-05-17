@@ -81,6 +81,10 @@ from j3.transition_evidence_bundle import (
     build_transition_evidence_bundle,
     format_transition_evidence_bundle_summary,
 )
+from j3.transition_guarded_trial import (
+    decide_transition_guarded_trial,
+    format_transition_guarded_trial_decision,
+)
 from j3.transition_ranking import (
     TransitionRankingGateError,
     transition_ranking_gate_decision,
@@ -1251,6 +1255,32 @@ def handle_run_transition_shadow_matrix(args: argparse.Namespace) -> int:
         print(json.dumps(summary, indent=2, sort_keys=True))
     else:
         print(format_transition_shadow_matrix_summary(summary))
+    return 0
+
+
+def handle_decide_transition_guarded_trial(args: argparse.Namespace) -> int:
+    try:
+        decision = decide_transition_guarded_trial(matrix_dir=args.matrix)
+    except (
+        FileNotFoundError,
+        IsADirectoryError,
+        NotADirectoryError,
+        ValueError,
+    ) as error:
+        raise SystemExit(str(error)) from error
+
+    if args.out is not None:
+        out = args.out.expanduser().resolve()
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(
+            json.dumps(decision, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+
+    if args.json:
+        print(json.dumps(decision, indent=2, sort_keys=True))
+    else:
+        print(format_transition_guarded_trial_decision(decision))
     return 0
 
 

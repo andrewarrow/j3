@@ -6,8 +6,9 @@ This file is the live progress log for `plans/today.md`. Keep
 ## Status
 
 - Current phase: productize transition scoring without fooling ourselves.
-- Completed iterations for this reset: 3.
+- Completed iterations for this reset: 4.
 - Latest relevant commits:
+  - `6cdd621` added shadow transition-scorer advice for patch/eval planning.
   - `6cd413e` calibrates a V2 transition action scorer from candidate
     outcomes.
   - `86ce6c2` added transition bench product-readiness gates.
@@ -21,7 +22,7 @@ This file is the live progress log for `plans/today.md`. Keep
 - Current blocker: V2 beats V1 on the full local candidate bench, but the
   held-out validation gate still underperforms existing rank order and is not
   ready for guarded opt-in.
-- Next task: add shadow transition-scorer advice to real patch/eval planning.
+- Next task: add guarded, non-default opt-in ranking with gate enforcement.
 
 ## Active Task Queue
 

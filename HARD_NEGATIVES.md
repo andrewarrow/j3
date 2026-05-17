@@ -155,3 +155,36 @@ held-out test-slice ranker misses after retraining. The remaining misses are
 not concentrated only in the new cookie domain: existing HTTP/cache hard
 negatives and git-history-derived literal/message repairs still provide the
 stronger evidence for observation and target-context work.
+
+## Test-Slice Miss Inspection Decision
+
+Inspection date: 2026-05-16.
+
+The immediate next narrow change should be observation/target-context metadata
+for same-mapping value/key decoys. The clearest failure is
+`cookie_default_secure_flag_dict_value`: the raw ranked order already puts the
+preferred `change_dict_value` candidate first, but the trained ranker promotes a
+false `change_dict_key` candidate above it. Both candidates edit the same
+`default_cookie_attributes` mapping and both touch the asserted key string
+`secure`; the current features do not distinguish preserving the asserted lookup
+key and changing its value from renaming/removing that key.
+
+Concrete observed ordering after applying the held-out test-slice ranker:
+
+| Task | Trained rank 1 | Preferred / first valid repair | Decision |
+| --- | --- | --- | --- |
+| `cookie_default_secure_flag_dict_value` | false `change_dict_key`, `secure` -> `__Secure-` | rank 2, preferred `change_dict_value`, `secure: True` -> `False` | Add same-mapping key/value intent metadata first. |
+| `cookie_scope_include_path_keyword` | false `swap_call_arg` in `cookie_scope_key` | rank 2 passing `modify_condition` in `normalize_scope`; preferred `add_keyword_arg(include_path=True)` is not present in the tested rows | Keep as call-target/locality follow-up; this is partly missing preferred-candidate signal. |
+| `http_no_store_response_with_etag` | non-preferred passing `swap_call_arg` | rank 3, preferred `change_operator`, `not in` -> `in` | Defer accidental-pass distinction until after the cleaner same-mapping fix. |
+
+The candidate rows already include `asserted_mapping_keys`, and the ranker
+currently emits features such as `action_hint_asserted_mapping_key_matches_key`
+for the preferred value edit and `action_hint_asserted_mapping_key_matches_from`
+for the false key edit. The next implementation should make that distinction
+explicit enough for learning, for example by recording whether a candidate
+preserves, removes, or creates the asserted lookup key within the same mapping.
+This is narrower and less ambiguous than call-target locality because
+`cookie_scope_include_path_keyword` does not include the preferred keyword
+candidate in the current outcome rows, and it is less label-sensitive than
+trying to distinguish all accidental passing repairs in
+`http_no_store_response_with_etag`.

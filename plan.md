@@ -214,6 +214,12 @@ Recent work:
   `validation=1/3`. The new `webcookies` tasks account for 1 raw GreenShot-6
   miss, while existing HTTP/cache hard negatives and git-history literal/message
   repairs remain important ranking signal. Details are in `HARD_NEGATIVES.md`.
+- The held-out GreenShot-6 test-slice ranker misses were inspected. The next
+  narrow change should target same-mapping value/key decoys: the clearest miss
+  is `cookie_default_secure_flag_dict_value`, where the trained ranker promotes
+  a false `change_dict_key` candidate over the preferred `change_dict_value`
+  edit even though the assertion names the `secure` lookup key. Details are in
+  `HARD_NEGATIVES.md`.
 
 Last focused verification:
 
@@ -317,14 +323,17 @@ Keep this section as the live queue. When work is completed, move it to
 
 Immediate next sequence:
 
-1. Inspect the held-out test-slice ranker misses in `HARD_NEGATIVES.md`:
-   `cookie_default_secure_flag_dict_value`,
-   `cookie_scope_include_path_keyword`, and the non-preferred passing
-   `http_no_store_response_with_etag` rank-1 candidate.
-2. Decide whether the next narrow change should be observation/target-context
-   metadata for same-mapping value/key decoys, call-target locality, or
-   distinguishing accidental passing candidates. Do not add more tasks or action
-   families before that decision.
+1. Implement the same-mapping value/key decoy metadata decided in
+   `HARD_NEGATIVES.md`: when a failure assertion names a mapping lookup key,
+   record whether a candidate preserves that asserted key and changes its value
+   or renames/removes the asserted key in the same mapping.
+2. Wire the new metadata into candidate ranker features for both live
+   candidates and persisted outcome rows, with focused tests around
+   `change_dict_value` versus `change_dict_key` on the same asserted key.
+3. Re-run the GreenShot-6 `split: test` holdout ranker validation after the
+   metadata change. Do not add more tasks or action families before checking
+   whether `cookie_default_secure_flag_dict_value` moves back to preferred
+   rank 1.
 
 ### 1. Make GreenShot-6 Real
 
@@ -345,8 +354,9 @@ transition modeling.
 
 Next tasks:
 
-- No immediate metadata task. Equivalent/overlap relation features are wired;
-  the remaining hard negative needs better observation or target-context signal.
+- Add the same-mapping asserted-key preservation/removal metadata described in
+  the immediate next sequence. Equivalent/overlap relation features are already
+  wired; the current narrow gap is key/value intent within one mapping.
 
 ### 3. Collect Hard Negatives
 

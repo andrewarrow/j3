@@ -73,6 +73,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="write the repo without running its generated pytest validation",
     )
+    implement_parser.add_argument(
+        "--record",
+        type=Path,
+        help="append one prompt/spec/action/outcome JSONL row to this path",
+    )
     implement_parser.set_defaults(handler=handle_implement)
 
     patch_parser = subparsers.add_parser(

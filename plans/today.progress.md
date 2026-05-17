@@ -7,18 +7,17 @@ new implementation facts change the 24-hour plan itself. Record any
 
 ## Status
 
-- Current phase: prompt-to-repo CLI wiring complete; ready for GreenShot-7
-  runner work or training row recording
-- Completed iterations: 6
+- Current phase: prompt/spec/action/outcome row recording complete; ready for a
+  bounded GreenShot-7 runner
+- Completed iterations: 7
 - Passing focused tests: prompt seed JSONL validation, `test -s REQUEST_SPEC.md`,
   GreenShot-7 fixture JSON validation, `pytest tests/test_request_spec.py -q`,
   `pytest tests/test_greenfield_calculator.py -q`, `pytest tests/test_cli.py -q`,
   direct `python cli.py implement ...` smoke, `git diff --check`
-- Latest implementation commit: `8bc36d67953df204a45ece8e590046fec4f4c78d`
-  (`Add implement CLI command`)
+- Latest implementation commit: pending final Worker Iteration 7 commit
 - Current blocker: none
-- Next task: add prompt/spec/action/outcome row recording or the bounded
-  GreenShot-7 task runner, without broadening beyond calculator request-to-repo
+- Next task: add the bounded GreenShot-7 task runner, without broadening beyond
+  calculator request-to-repo
 
 ## Worker Iteration Template
 
@@ -203,4 +202,36 @@ Use this shape for each worker handoff:
 - Push: succeeded to `origin/main`
 - Next: Add prompt/spec/action/outcome row recording or the bounded GreenShot-7
   task runner.
+- Blockers: none
+
+### Iteration 7: Record request-to-repo outcomes
+
+- Worker: Codex Worker Iteration 7
+- Goal: Add prompt/spec/action/outcome JSONL row recording for calculator
+  request-to-repo attempts and wire it into `j3 implement --record`.
+- Files changed:
+  - `request_outcomes.py`
+  - `cli/parser.py`
+  - `cli/handlers.py`
+  - `tests/test_cli.py`
+  - `pyproject.toml`
+  - `plans/today.progress.md`
+- Tests run:
+  - `pytest tests/test_cli.py -q`
+  - `pytest tests/test_greenfield_calculator.py -q`
+  - `pytest tests/test_request_spec.py -q`
+  - `git diff --check`
+  - `python cli.py implement --prompt "make me a simple cli calc" --out /tmp/j3-calc-demo --record /tmp/j3-records.jsonl`
+  - JSONL inspection confirmed one row with schema
+    `request-repo-attempt-v1`, passed validation, exit code `0`, and expected
+    files.
+- Result: Added `request-repo-attempt-v1` JSONL rows with raw prompt,
+  normalized request spec, inferred defaults, clarification decision,
+  greenfield plan/actions, build result and files written, validation status,
+  pass/fail, failure observation, output repo path, and schema metadata. The
+  `implement` CLI now appends one row when `--record PATH` is supplied for
+  validated builds, `--no-validate` builds, and blocked clarification prompts.
+- Commit: pending final worker commit
+- Push: pending final worker push
+- Next: Add the bounded GreenShot-7 task runner.
 - Blockers: none

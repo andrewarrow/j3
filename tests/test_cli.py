@@ -8,6 +8,14 @@ import pytest
 from cli import main
 
 
+def _jsonl_rows(path):
+    return [
+        json.loads(line)
+        for line in path.read_text(encoding="utf-8").splitlines()
+        if line
+    ]
+
+
 def test_help_menu_prints_project_summary(capsys) -> None:
     with pytest.raises(SystemExit) as exc_info:
         main(["--help"])
@@ -92,6 +100,115 @@ def test_implement_command_validates_generated_repo_by_default(capsys, tmp_path)
     assert (out_dir / "request-spec.json").exists()
 
 
+def test_implement_command_appends_success_record(capsys, tmp_path) -> None:
+    out_dir = tmp_path / "calc"
+    record_path = tmp_path / "records.jsonl"
+    record_path.write_text('{"existing": true}\n', encoding="utf-8")
+
+    assert (
+        main(
+            [
+                "implement",
+                "--prompt",
+                "make cli app to add two numbers",
+                "--out",
+                str(out_dir),
+                "--record",
+                str(record_path),
+            ]
+        )
+        == 0
+    )
+
+    capsys.readouterr()
+    rows = _jsonl_rows(record_path)
+    assert rows[0] == {"existing": True}
+    row = rows[1]
+    assert row["schema_version"] == "request-repo-attempt-v1"
+    assert row["record_kind"] == "greenshot_7_request_to_repo_attempt"
+    assert row["raw_prompt"] == "make cli app to add two numbers"
+    assert row["output_repo_path"] == str(out_dir.resolve())
+    assert row["metadata"]["source"] == "j3 implement"
+    assert row["normalized_request_spec"]["schema_version"] == "request-spec-v1"
+    assert row["normalized_request_spec"]["features"] == ["add"]
+    assert row["inferred_defaults"] == []
+    assert row["clarification_decision"] == {
+        "status": "not_needed",
+        "clarifications_needed": [],
+    }
+    assert row["greenfield_plan"]["schema_version"] == "greenfield-plan-v1"
+    assert row["greenfield_plan"]["status"] == "ready"
+    assert [action["kind"] for action in row["greenfield_actions"]] == [
+        "create_file",
+        "add_import",
+        "add_function_def",
+        "add_operator_dispatch",
+        "add_cli_entrypoint",
+        "create_test_file",
+        "add_cli_behavior_tests",
+    ]
+    assert row["build_result"]["status"] == "built"
+    assert row["build_result"]["files_written"] == [
+        "calculator.py",
+        "tests/test_calculator_cli.py",
+    ]
+    assert row["build_result"]["cli_files_written"] == [
+        "calculator.py",
+        "tests/test_calculator_cli.py",
+        "request-spec.json",
+    ]
+    assert row["validation"]["status"] == "passed"
+    assert row["validation"]["exit_code"] == 0
+    assert row["passed"] is True
+    assert row["failure_observation"] is None
+
+
+def test_implement_command_records_skipped_validation(capsys, tmp_path) -> None:
+    out_dir = tmp_path / "calc"
+    record_path = tmp_path / "records.jsonl"
+
+    assert (
+        main(
+            [
+                "implement",
+                "--prompt",
+                "make me a simple cli calc",
+                "--out",
+                str(out_dir),
+                "--no-validate",
+                "--record",
+                str(record_path),
+            ]
+        )
+        == 0
+    )
+
+    capsys.readouterr()
+    row = _jsonl_rows(record_path)[0]
+    assert row["normalized_request_spec"]["features"] == [
+        "add",
+        "subtract",
+        "multiply",
+        "divide",
+    ]
+    assert row["inferred_defaults"] == [
+        {
+            "confidence": 0.84,
+            "field": "features",
+            "reason": "simple_calculator_default_operations",
+            "value": ["add", "subtract", "multiply", "divide"],
+        }
+    ]
+    assert row["build_result"]["status"] == "built"
+    assert row["validation"] == {
+        "status": "skipped",
+        "command": "python -m pytest tests/test_calculator_cli.py -q",
+        "exit_code": None,
+    }
+    assert row["passed"] is True
+    assert row["failure_observation"] is None
+
+
 def test_implement_command_blocks_clarification_without_calculator_files(
     capsys,
     tmp_path,
@@ -116,6 +233,59 @@ def test_implement_command_blocks_clarification_without_calculator_files(
     assert "status: blocked" in output
     assert "domain: unknown" in output
     assert "Should this be a basic CLI calculator" in output
+    assert not (out_dir / "calculator.py").exists()
+    assert not (out_dir / "tests/test_calculator_cli.py").exists()
+
+
+def test_implement_command_records_blocked_clarification(capsys, tmp_path) -> None:
+    out_dir = tmp_path / "blocked"
+    record_path = tmp_path / "records.jsonl"
+
+    assert (
+        main(
+            [
+                "implement",
+                "--prompt",
+                "make a math thing",
+                "--out",
+                str(out_dir),
+                "--record",
+                str(record_path),
+            ]
+        )
+        == 1
+    )
+
+    capsys.readouterr()
+    row = _jsonl_rows(record_path)[0]
+    assert row["raw_prompt"] == "make a math thing"
+    assert row["normalized_request_spec"]["domain"] == "unknown"
+    assert row["normalized_request_spec"]["features"] == []
+    assert row["clarification_decision"]["status"] == "blocked"
+    assert row["clarification_decision"]["clarifications_needed"] == [
+        {
+            "field": "domain",
+            "question": (
+                "Should this be a basic CLI calculator, and which operations "
+                "should it support?"
+            ),
+        }
+    ]
+    assert row["greenfield_plan"]["status"] == "blocked"
+    assert [action["kind"] for action in row["greenfield_actions"]] == [
+        "ask_clarification"
+    ]
+    assert row["build_result"]["status"] == "blocked"
+    assert row["build_result"]["files_written"] == []
+    assert row["build_result"]["cli_files_written"] == []
+    assert row["validation"] == {
+        "status": "not_run",
+        "command": None,
+        "exit_code": None,
+        "reason": "blocked_clarification",
+    }
+    assert row["passed"] is False
+    assert row["failure_observation"]["kind"] == "blocking_clarification"
     assert not (out_dir / "calculator.py").exists()
     assert not (out_dir / "tests/test_calculator_cli.py").exists()
 

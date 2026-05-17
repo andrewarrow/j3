@@ -23,9 +23,15 @@ from cli.progress import (
 from diagnostics_compare import compare_diagnostics, format_diagnostics_comparison
 from evaluation import evaluate_tasks, write_candidate_outcomes, write_eval_diagnostics
 from fixing import run_fix_workflow
-from greenfield import build_calculator_repo
+from greenfield import (
+    BuildResult,
+    GreenfieldPlan,
+    build_calculator_repo,
+    plan_calculator_repo,
+)
 from mining import mine_git_transitions
 from patching import plan_and_maybe_apply_patch
+from request_outcomes import append_request_repo_attempt
 from request_spec import RequestSpec, parse_request_to_spec
 from training import train_from_paths
 
@@ -46,8 +52,21 @@ def handle_actions(args: argparse.Namespace) -> int:
 def handle_implement(args: argparse.Namespace) -> int:
     spec = parse_request_to_spec(args.prompt)
     out_dir = args.out.expanduser().resolve()
+    plan = plan_calculator_repo(spec)
 
     if spec.clarifications_needed:
+        result = build_calculator_repo(plan, out_dir)
+        validation = _blocked_implement_validation()
+        _record_implement_attempt(
+            args.record,
+            raw_prompt=args.prompt,
+            spec=spec,
+            plan=plan,
+            build_result=result,
+            validation=validation,
+            out_dir=out_dir,
+            files_written=[],
+        )
         print("j3 implement blocked")
         print(f"task type: {spec.task_type}")
         print("status: blocked")
@@ -64,7 +83,7 @@ def handle_implement(args: argparse.Namespace) -> int:
             f"refusing to overwrite existing file: {out_dir / REQUEST_SPEC_ARTIFACT}"
         )
 
-    result = build_calculator_repo(spec, out_dir)
+    result = build_calculator_repo(plan, out_dir)
     spec_artifact = _write_request_spec_artifact(spec, out_dir)
 
     files_written = [*result.files_written, spec_artifact.name]
@@ -76,6 +95,16 @@ def handle_implement(args: argparse.Namespace) -> int:
             "command": "python -m pytest tests/test_calculator_cli.py -q",
             "exit_code": None,
         }
+    )
+    _record_implement_attempt(
+        args.record,
+        raw_prompt=args.prompt,
+        spec=spec,
+        plan=plan,
+        build_result=result,
+        validation=validation,
+        out_dir=out_dir,
+        files_written=files_written,
     )
 
     print("j3 implement complete")
@@ -484,6 +513,40 @@ def _run_generated_repo_validation(out_dir: Path) -> dict[str, object]:
         "stdout": completed.stdout,
         "stderr": completed.stderr,
     }
+
+
+def _blocked_implement_validation() -> dict[str, object]:
+    return {
+        "status": "not_run",
+        "command": None,
+        "exit_code": None,
+        "reason": "blocked_clarification",
+    }
+
+
+def _record_implement_attempt(
+    record_path: Path | None,
+    *,
+    raw_prompt: str,
+    spec: RequestSpec,
+    plan: GreenfieldPlan,
+    build_result: BuildResult,
+    validation: dict[str, object],
+    out_dir: Path,
+    files_written: list[str],
+) -> None:
+    if record_path is None:
+        return
+    append_request_repo_attempt(
+        record_path,
+        raw_prompt=raw_prompt,
+        spec=spec,
+        plan=plan,
+        build_result=build_result,
+        validation=validation,
+        out_dir=out_dir,
+        files_written=files_written,
+    )
 
 
 def _format_validation_result(validation: dict[str, object]) -> str:

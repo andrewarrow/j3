@@ -418,7 +418,9 @@ def handle_train_prompt_intents(args: argparse.Namespace) -> int:
                             "requires_clarification="
                             f"{context.get('requires_clarification')} "
                             "unsupported_requirement="
-                            f"{context.get('unsupported_requirement')}"
+                            f"{context.get('unsupported_requirement')} "
+                            "unsupported_requirement_family="
+                            f"{context.get('unsupported_requirement_family')}"
                         )
                     print(f"      prompt: {residual.prompt}")
                     if residual.tags:

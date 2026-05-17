@@ -153,7 +153,8 @@ def test_train_prompt_intents_command_can_print_residuals(capsys, tmp_path) -> N
     assert "validation-clarify: expected=ask_clarification predicted=" in output
     assert (
         "context: action=ask_clarification repo_mode=unknown "
-        "primary_artifact=none requires_clarification=yes"
+        "primary_artifact=none requires_clarification=yes "
+        "unsupported_requirement=none unsupported_requirement_family=none"
     ) in output
     assert "prompt: validation only vague math thing" in output
     assert "tags: ambiguous, clarification" in output
@@ -217,6 +218,7 @@ def test_train_prompt_intents_command_accepts_derived_targets(capsys, tmp_path) 
                 "requires_clarification",
                 "primary_artifact",
                 "unsupported_requirement",
+                "unsupported_requirement_family",
                 "--json",
             ]
         )
@@ -228,10 +230,12 @@ def test_train_prompt_intents_command_accepts_derived_targets(capsys, tmp_path) 
         "requires_clarification",
         "primary_artifact",
         "unsupported_requirement",
+        "unsupported_requirement_family",
     ]
     assert output[0]["model"]["labels"] == ["no", "yes"]
     assert output[1]["model"]["labels"] == ["cli", "none", "pyproject"]
     assert output[2]["model"]["labels"] == ["none", "ui_interface"]
+    assert output[3]["model"]["labels"] == ["interface", "none"]
 
 
 def test_implement_command_builds_repo_and_request_spec_artifact(capsys, tmp_path) -> None:

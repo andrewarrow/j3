@@ -7,8 +7,8 @@ new implementation facts change the 24-hour plan itself. Record any
 
 ## Status
 
-- Current phase: unsupported-requirement labels and eval target added locally
-- Completed iterations: 8
+- Current phase: unsupported-requirement family eval target added locally
+- Completed iterations: 9
 - Passing focused tests:
   - `pytest tests/test_prompt_intents.py -q`
   - `pytest tests/test_prompt_intents.py tests/test_request_spec.py -q`
@@ -21,13 +21,14 @@ new implementation facts change the 24-hour plan itself. Record any
   - `python cli.py train-prompt-intents --labels ../prompts/coding_agent_prompts_seed.jsonl --target expected_action repo_mode`
   - `python cli.py train-prompt-intents --labels ../prompts/coding_agent_prompts_seed.jsonl --target expected_action repo_mode requires_clarification primary_artifact --show-residuals --residual-limit 12`
   - `python cli.py train-prompt-intents --labels examples/prompt_intents/greenshot_7_intents.jsonl --target unsupported_requirement --show-residuals --residual-limit 12`
+  - `python cli.py train-prompt-intents --labels examples/prompt_intents/greenshot_7_intents.jsonl --target unsupported_requirement unsupported_requirement_family --show-residuals --residual-limit 20`
   - `python -m py_compile prompt_intents.py cli/handlers.py cli/parser.py cli/__init__.py`
-- Latest implementation commit: `f603fb2`
+- Latest implementation commit: pending iteration 9 commit
 - Current blocker: none
-- Next task: keep learned production routing blocked; inspect unsupported-
-  requirement residuals and add more held-out label coverage or better encoder
-  features before any model can replace fixture-backed request-spec or
-  change-spec routing
+- Next task: keep learned production routing blocked; use the family-level
+  unsupported requirement target as a conservative evaluation target while
+  collecting more fine-grained unsupported label coverage before any model can
+  replace fixture-backed request-spec or change-spec routing
 
 ## Worker Iteration Template
 
@@ -494,4 +495,56 @@ Use this shape for each worker handoff:
 - Next: inspect the remaining UI-vs-graphical and ambiguous-math residuals, or
   improve prompt representation features, before any learned production routing
   decision.
+- Blockers: none
+
+### Iteration 9: Unsupported-Requirement Family Target
+
+- Worker: Codex
+- Goal: inspect the remaining unsupported_requirement residuals and improve
+  labels or representation features before any learned production routing
+  decision.
+- Files changed:
+  - `prompt_intents.py`
+  - `cli/parser.py`
+  - `cli/handlers.py`
+  - `tests/test_prompt_intents.py`
+  - `tests/test_cli.py`
+  - `plans/today.progress.md`
+- Tests run:
+  - `pytest tests/test_prompt_intents.py -q` -> passed, 9 tests
+  - `pytest tests/test_cli.py -q` -> passed, 27 tests
+  - `pytest tests/test_prompt_intents.py tests/test_request_spec.py tests/test_existing_repo_change.py tests/test_cli.py -q`
+    -> passed, 46 tests
+  - `python -m py_compile prompt_intents.py cli/handlers.py cli/parser.py cli/__init__.py`
+    -> passed
+  - `git diff --check` -> passed
+  - `python cli.py train-prompt-intents --labels examples/prompt_intents/greenshot_7_intents.jsonl --target unsupported_requirement unsupported_requirement_family --show-residuals --residual-limit 20`
+    -> passed
+- Result:
+  - Inspected the two remaining fine-grained `unsupported_requirement`
+    residuals. `gs7-intent-0033` is a taxonomy-granularity miss:
+    `ui_interface` vs `graphical_interface` are both unsupported interface
+    requests. `gs7-intent-0009` is an ambiguous-domain miss: "make a math
+    thing" is correctly a domain/feature clarification rather than an
+    interface request.
+  - Added a derived scalar `unsupported_requirement_family` target with
+    conservative families: `interface`, `domain`, `feature_scope`, `scope`,
+    and `none`. This preserves fine-grained labels while giving the learned
+    baseline an evaluation target closer to production routing decisions.
+  - Local fine-grained `unsupported_requirement` metrics remain train 17/17 =
+    1.000, validation 7/8 = 0.875, test 9/10 = 0.900, with the same two
+    residuals: `gs7-intent-0033` and `gs7-intent-0009`.
+  - Local family-level `unsupported_requirement_family` metrics are train
+    17/17 = 1.000, validation 8/8 = 1.000, test 10/10 = 1.000. Majority
+    baselines were train 9/17 = 0.529, validation 5/8 = 0.625, and test
+    6/10 = 0.600.
+  - Production routing remains fixture-backed and conservative. The family
+    target is a useful learned eval target, but the fixture is small and the
+    fine-grained target still has residuals, so learned production routing is
+    still blocked.
+- Commit: pending
+- Push: pending
+- Next: collect more fine-grained unsupported requirement labels, especially
+  UI-vs-graphical and vague non-calculator math prompts, while continuing to
+  report the family-level target for conservative routing readiness.
 - Blockers: none

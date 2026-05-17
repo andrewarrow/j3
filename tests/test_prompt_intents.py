@@ -46,6 +46,12 @@ def test_loads_greenshot_7_prompt_intent_fixtures() -> None:
         "visual_interface_scope": 1,
         "web_interface": 3,
     }
+    assert profile["unsupported_requirement_family_counts"] == {
+        "domain": 2,
+        "feature_scope": 3,
+        "interface": 20,
+        "none": 10,
+    }
     assert profile["missing_artifact_label_count"] == 35
 
     unsupported = next(
@@ -57,6 +63,7 @@ def test_loads_greenshot_7_prompt_intent_fixtures() -> None:
     assert unsupported.target.requires_clarification == "yes"
     assert unsupported.target.primary_artifact == "none"
     assert unsupported.target.unsupported_requirement == "graphical_interface"
+    assert unsupported.target.unsupported_requirement_family == "interface"
     assert unsupported.target.requested_interfaces == ("graphic",)
     assert unsupported.target.unsupported_requirements == (
         "complex_scope",
@@ -163,6 +170,23 @@ def test_local_fixture_trains_unsupported_requirement_target() -> None:
     assert result.decision == "evaluation_only_not_wired_to_production"
 
 
+def test_local_fixture_trains_unsupported_requirement_family_target() -> None:
+    records = load_prompt_intent_records(GREENSHOT_7_INTENTS)
+
+    result = train_prompt_intent_token_baseline(
+        records,
+        target_field="unsupported_requirement_family",
+    )
+
+    assert result.model.labels == ("domain", "feature_scope", "interface", "none")
+    assert result.metrics["train"].accuracy == 1.0
+    assert result.metrics["validation"].accuracy == 1.0
+    assert result.metrics["test"].accuracy == 1.0
+    assert result.metrics["validation"].residuals == ()
+    assert result.metrics["test"].residuals == ()
+    assert result.decision == "evaluation_only_not_wired_to_production"
+
+
 def test_fixture_backed_prompt_intent_prediction_is_exact_boundary() -> None:
     prediction = predict_prompt_intent("make me a complex graphic calc app")
 
@@ -197,6 +221,7 @@ def test_loads_external_seed_prompt_corpus_profile() -> None:
     assert profile["artifact_counts"]["pyproject"] > 0  # type: ignore[index]
     assert profile["requires_clarification_counts"] == {"no": 72, "yes": 8}
     assert profile["unsupported_requirement_counts"] == {"none": len(records)}
+    assert profile["unsupported_requirement_family_counts"] == {"none": len(records)}
     assert profile["primary_artifact_counts"]["pyproject"] == 4  # type: ignore[index]
     assert profile["primary_artifact_counts"]["package"] == 1  # type: ignore[index]
     assert profile["primary_artifact_counts"]["ci_config"] == 1  # type: ignore[index]
@@ -295,6 +320,7 @@ def test_trains_token_baseline_only_from_train_split(tmp_path: Path) -> None:
             "requires_clarification": "yes",
             "primary_artifact": "none",
             "unsupported_requirement": "none",
+            "unsupported_requirement_family": "none",
             "artifacts": [],
             "unsupported_requirements": [],
             "clarification_fields": [],

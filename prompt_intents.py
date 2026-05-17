@@ -28,6 +28,7 @@ TARGET_FIELDS = [
     "requires_clarification",
     "primary_artifact",
     "unsupported_requirement",
+    "unsupported_requirement_family",
     "requested_interfaces",
     "features",
     "artifacts",
@@ -42,8 +43,19 @@ SCALAR_TARGET_FIELDS = (
     "requires_clarification",
     "primary_artifact",
     "unsupported_requirement",
+    "unsupported_requirement_family",
 )
 DEFAULT_LEARNED_BASELINE_EPOCHS = 10
+UNSUPPORTED_REQUIREMENT_FAMILIES = {
+    "complex_scope": "scope",
+    "desktop_interface": "interface",
+    "domain_unspecified": "domain",
+    "graphical_interface": "interface",
+    "scientific_operations_unspecified": "feature_scope",
+    "ui_interface": "interface",
+    "visual_interface_scope": "interface",
+    "web_interface": "interface",
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -57,6 +69,7 @@ class PromptIntentTarget:
     requires_clarification: str = "no"
     primary_artifact: str = "none"
     unsupported_requirement: str = "none"
+    unsupported_requirement_family: str = "none"
     requested_interfaces: tuple[str, ...] = ()
     features: tuple[str, ...] = ()
     artifacts: tuple[str, ...] = ()
@@ -73,6 +86,7 @@ class PromptIntentTarget:
             "requires_clarification": self.requires_clarification,
             "primary_artifact": self.primary_artifact,
             "unsupported_requirement": self.unsupported_requirement,
+            "unsupported_requirement_family": self.unsupported_requirement_family,
             "requested_interfaces": list(self.requested_interfaces),
             "features": list(self.features),
             "artifacts": list(self.artifacts),
@@ -332,6 +346,9 @@ def profile_prompt_intents(records: Sequence[PromptIntentRecord]) -> dict[str, o
         ),
         "unsupported_requirement_counts": _counter_record(
             record.target.unsupported_requirement for record in records
+        ),
+        "unsupported_requirement_family_counts": _counter_record(
+            record.target.unsupported_requirement_family for record in records
         ),
         "interface_counts": _counter_record(
             interface
@@ -653,6 +670,9 @@ def _record_from_row(row: dict[str, object], *, index: int) -> PromptIntentRecor
         unsupported_requirement=_primary_unsupported_requirement(
             unsupported_requirements
         ),
+        unsupported_requirement_family=_unsupported_requirement_family(
+            unsupported_requirements
+        ),
         requested_interfaces=requested_interfaces,
         features=features,
         artifacts=artifacts,
@@ -715,6 +735,11 @@ def _primary_unsupported_requirement(unsupported_requirements: tuple[str, ...]) 
     return unsupported_requirements[0]
 
 
+def _unsupported_requirement_family(unsupported_requirements: tuple[str, ...]) -> str:
+    requirement = _primary_unsupported_requirement(unsupported_requirements)
+    return UNSUPPORTED_REQUIREMENT_FAMILIES.get(requirement, requirement)
+
+
 def _target_from_prediction(
     prediction: PromptIntentTarget | dict[str, object],
     *,
@@ -738,6 +763,12 @@ def _target_from_prediction(
         ),
         unsupported_requirement=str(
             prediction.get("unsupported_requirement", expected.unsupported_requirement)
+        ),
+        unsupported_requirement_family=str(
+            prediction.get(
+                "unsupported_requirement_family",
+                expected.unsupported_requirement_family,
+            )
         ),
         requested_interfaces=_tuple_prediction(
             prediction.get("requested_interfaces", expected.requested_interfaces)
@@ -801,6 +832,7 @@ def _target_context(target: PromptIntentTarget) -> dict[str, object]:
         "requires_clarification": target.requires_clarification,
         "primary_artifact": target.primary_artifact,
         "unsupported_requirement": target.unsupported_requirement,
+        "unsupported_requirement_family": target.unsupported_requirement_family,
         "artifacts": list(target.artifacts),
         "unsupported_requirements": list(target.unsupported_requirements),
         "clarification_fields": list(target.clarification_fields),

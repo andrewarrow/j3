@@ -13,7 +13,7 @@ new implementation facts change the 24-hour plan itself. Record any
 - Passing focused tests: prompt seed JSONL validation, `test -s REQUEST_SPEC.md`,
   GreenShot-7 fixture JSON validation, `pytest tests/test_request_spec.py -q`,
   `pytest tests/test_greenfield_calculator.py -q`, `git diff --check`
-- Latest implementation commit: pending for Worker Iteration 5
+- Latest implementation commit: `6e018c8e07e77d338cc521a1d6b6c4db579aaa36`
   (`Build calculator repos from plans`)
 - Current blocker: none
 - Next task: add CLI entry point wiring for prompt-to-repo implementation, without
@@ -167,8 +167,9 @@ Use this shape for each worker handoff:
   subprocess pytest coverage from structured action payloads; covered
   four-operation, add-only, hidden-like subprocess, and blocked clarification
   cases.
-- Commit: pending until Worker Iteration 5 commit is created
-- Push: pending
+- Commit: `6e018c8e07e77d338cc521a1d6b6c4db579aaa36`
+  (`Build calculator repos from plans`)
+- Push: succeeded to `origin/main`
 - Next: Add CLI entry point wiring for prompt-to-repo implementation without
   broadening the calculator slice.
 - Blockers: none

@@ -880,3 +880,91 @@ The new non-held-out training task has the intended failing-decoy shape:
 
 Do not move to branch-effect metadata for this residual unless a fresh
 inspection shows the preferred HTTP repair falling behind a literal decoy again.
+
+### Post-Holdout Fresh Inspection
+
+Inspection date: 2026-05-16.
+
+Inspection source:
+
+```bash
+runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl
+runs/apache-python-git/ranker-holdout-greenshot-6-test-slice/candidate-ranker-metrics.json
+runs/apache-python-git/ranker-holdout-greenshot-6-test-slice/candidate-ranker.json
+```
+
+The refreshed GreenShot-6 `split: test` held-out validation is clean after the
+failing literal-needle HTTP coverage:
+
+| Slice | Plans | Solved | Pass@1 | Positive@1 | Avg first passing index |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| GreenShot-6 `split: test` holdout | 7 | 7/7 | 7/7 | 7/7 | 1.0 |
+
+The raw GreenShot-6 outcome rows still solve all 22 tasks with `pass@1=17/22`
+and 21 preferred-positive rows. The remaining raw pass@1 misses are useful
+inspection targets, but scoring the rows with the saved test-slice ranker leaves
+only one trained preferred-positive gap: `dynamic_field_error_message`.
+
+#### `dynamic_field_error_message`
+
+This is now the clearest next hard negative because it is a git-history-derived
+task and exposes an outcome-quality/candidate-signal gap rather than a broad
+ranker-weight problem.
+
+Raw ranked order:
+
+| Original rank | Passed | Preferred | Candidate |
+| ---: | --- | --- | --- |
+| 1 | no | no | `change_operator`, `field in project` -> `field not in project` |
+| 2-7 | no | no | `change_literal` decoys around `project.` and the message prefix |
+| 8 | yes | no | `change_literal`, `Field "project.` -> full concrete expected message |
+| 9 | yes | no | `change_literal`, `" declared as dynamic in but is defined` -> full concrete expected message |
+
+Trained order with the saved `split: test` ranker:
+
+| Trained rank | Original rank | Passed | Preferred | Candidate | Score |
+| ---: | ---: | --- | --- | --- | ---: |
+| 1 | 9 | yes | no | `change_literal`, `" declared as dynamic in but is defined` -> full concrete expected message | 22.064 |
+| 2 | 8 | yes | no | `change_literal`, `Field "project.` -> full concrete expected message | 20.022 |
+
+The task manifest has a preferred patch:
+
+```text
+change_literal:
+  from:  declared as dynamic in but is defined
+  to:    declared as dynamic in "project.dynamic" but is defined
+```
+
+No tested row matches it. The passing candidates hardcode the observed concrete
+message `Field "project.version" declared as dynamic in "project.dynamic" but is
+defined`, which satisfies this single test but is weaker than the intended
+general f-string fragment repair:
+
+```text
+f'Field "project.{field}" declared as dynamic in "project.dynamic" but is defined'
+```
+
+Decision: make the next implementation about candidate/outcome quality for
+f-string literal-fragment repairs. The narrow goal is to generate and label the
+preferred `change_literal` candidate that inserts the missing
+`"project.dynamic"` fragment into the existing f-string suffix, instead of only
+generating concrete whole-message replacements from the pytest `match=...`
+string. Do not tune broad `change_literal`, string-parameter, boolean-parameter,
+or pass/preferred-label weights for this.
+
+Useful focused checks after that change:
+
+```bash
+pytest tests/test_patching.py -q
+pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q
+python cli.py eval \
+  --tasks examples/greenshot_6 \
+  --checkpoint runs/apache-python-git/model.json \
+  --timeout 10 \
+  --max-candidates 80 \
+  --phase ranked \
+  --explore-after-pass 5 \
+  --diagnostics runs/apache-python-git/greenshot-6-explore-diagnostics.json \
+  --candidate-outcomes runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl \
+  --quiet
+```

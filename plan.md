@@ -430,6 +430,15 @@ Recent work:
   positive@1=7/7, and avg_first_passing_index=1.0. The preferred
   `change_operator not in -> in` repair for `http_no_store_response_with_etag`
   is now trained rank 1, above the literal-needle decoy.
+- The refreshed GreenShot-6 outcome rows and saved `split: test` held-out
+  metrics were inspected before adding more features. The held-out slice is
+  clean (`solved=7/7`, `pass@1=7/7`, `positive@1=7/7`). Raw GreenShot-6 still
+  solves all 22 tasks with `pass@1=17/22`, but the only trained
+  preferred-positive gap found with the saved test-slice ranker is
+  `dynamic_field_error_message`: the task manifest has a preferred f-string
+  fragment `change_literal`, but no tested row matches it. The passing rows
+  hardcode the full concrete error message instead of repairing the reusable
+  f-string suffix. Details are in `HARD_NEGATIVES.md`.
 
 Last focused verification:
 
@@ -459,6 +468,8 @@ python cli.py train-ranker \
     cookie_pair_argument_order \
     cookie_scope_include_path_keyword \
   --out runs/apache-python-git/ranker-holdout-greenshot-6-test-slice
+python cli.py outcome-summary \
+  --candidate-outcomes runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl
 ```
 
 Previous focused verification:
@@ -584,15 +595,19 @@ Keep this section as the live queue. When work is completed, move it to
 
 Immediate next sequence:
 
-1. Inspect the refreshed GreenShot-6 outcome rows and held-out metrics before
-   adding more features or tasks. The current GreenShot-6 `split: test` holdout
-   has no preferred-positive misses after the failing literal-needle HTTP
-   coverage.
-2. Choose the next change from a fresh hard-negative inspection, not from broad
-   action/string/boolean weights or pass/preferred-label features. If the next
-   inspected miss again involves membership predicates, consider branch-effect
-   metadata only after confirming that independent hard-negative coverage is
-   insufficient.
+1. Fix the `dynamic_field_error_message` candidate/outcome-quality gap. The
+   preferred manifest patch is a `change_literal` f-string fragment repair
+   (` declared as dynamic in but is defined` ->
+   ` declared as dynamic in "project.dynamic" but is defined`), but the current
+   tested rows only include concrete whole-message replacements such as
+   `Field "project.version" declared as dynamic in "project.dynamic" but is
+   defined`. Generate and label the preferred reusable f-string fragment
+   candidate before adding more ranker features or tasks.
+2. Keep this narrow: do not tune broad `change_literal`, action, string, or
+   boolean weights, and do not add pass/preferred-label features. After the
+   candidate-generation fix, refresh GreenShot-6 outcomes and rerun the same
+   GreenShot-6 `split: test` holdout to confirm the clean held-out metrics stay
+   clean while `dynamic_field_error_message` gains a preferred-positive row.
 
 ### 1. Make GreenShot-6 Real
 
@@ -613,8 +628,13 @@ transition modeling.
 
 Next tasks:
 
-- Add independent `.get` key/default swap hard-negative coverage only if the
-  next work stays on the HTTP residual.
+- Ensure git-history-derived tasks with preferred patches actually produce a
+  matching preferred-positive candidate row. Start with
+  `dynamic_field_error_message`, where the current passing candidates overfit
+  the concrete pytest `match=...` string instead of repairing the reusable
+  f-string literal fragment.
+- Add independent `.get` key/default swap hard-negative coverage only if a
+  fresh inspection reopens the HTTP residual.
 
 ### 3. Collect Hard Negatives
 
@@ -751,9 +771,8 @@ Start neural/JEPA work only when:
 
 ## Handoff Recommendation
 
-The next context window should start with inspection, not a queued
-implementation. The latest GreenShot-6 `split: test` holdout has no
-preferred-positive misses after adding failing literal-needle HTTP coverage.
-Do not tune broad handcrafted action/string/boolean weights or add
-pass/preferred-label features without a fresh hard-negative inspection showing
-why they are needed.
+The next context window should implement the narrow f-string literal-fragment
+candidate/outcome-quality fix for `dynamic_field_error_message`. The latest
+GreenShot-6 `split: test` holdout has no preferred-positive misses after adding
+failing literal-needle HTTP coverage, so do not tune broad handcrafted
+action/string/boolean weights or add pass/preferred-label features.

@@ -40,7 +40,7 @@ new implementation facts change the 24-hour plan itself. Record any
   `python -m py_compile j3/transition_action_choice.py`;
   `python -m py_compile j3/transition_action_scoring.py`;
   `git diff --check`
-- Latest implementation/demo commit: `3eb9c38` (`Add transition action choice groups`)
+- Latest implementation/demo commit: `534545d` (`Add transition action scorer`)
 - Latest documentation commit: `ef99279` (`Rewrite README for Prompt Repo JEPA`)
 - Current blocker: none
 - Next task: add a one-command transition bench demo/report.
@@ -194,8 +194,8 @@ Use this shape for each worker handoff:
   pass rate, MRR, average first-passing rank, candidates validated before/to
   first pass, candidates saved vs existing rank order, residual wrong-top
   choices, local runtime, and zero hosted token/context fields.
-- Commit: pending before commit (`Add transition action scorer`)
-- Push: pending before push.
+- Commit: `534545d` (`Add transition action scorer`)
+- Push: succeeded to `main`.
 - Next: add a one-command transition bench demo/report.
 - Blockers: none.
 

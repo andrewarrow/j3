@@ -125,3 +125,28 @@ Use this shape for each worker handoff:
 - Tests run: `git diff --check` passed.
 - Next: implement Step 2, the repeatable shadow eval suite.
 - Blockers: none beyond held-out gate readiness policy.
+
+### Iteration 1: Repeatable shadow eval suite command
+
+- Worker: Worker 1
+- Goal: add `run-transition-shadow-suite` for active Step 2.
+- Files changed: `j3/transition_shadow_suite.py`, `cli/parser.py`,
+  `cli/handlers.py`, `cli/__init__.py`, `tests/test_transition_shadow_suite.py`,
+  `tests/test_cli.py`, `plans/today.progress.md`
+- Tests run:
+  - `pytest tests/test_transition_shadow_suite.py -q` passed.
+  - `pytest tests/test_cli.py -q` passed.
+  - `python -m py_compile j3/transition_shadow_suite.py cli/handlers.py cli/parser.py cli/__init__.py` passed.
+  - `python cli.py run-transition-shadow-suite --tasks examples/greenshot_bugs --out /tmp/j3-transition-shadow-suite` passed.
+  - `python -m json.tool /tmp/j3-transition-shadow-suite/shadow-scorer-v3-report.json >/dev/null` passed.
+  - `python -m json.tool /tmp/j3-transition-shadow-suite/evidence/manifest.json >/dev/null` passed.
+  - `git diff --check` passed.
+- Result: command writes candidate outcomes, transition advice, diagnostics,
+  advice summary, normalized shadow outcomes, V3 held-out report, transition
+  bench report, evidence bundle, and a suite manifest under the caller-provided
+  output directory. The default checked-in task path `examples/greenshot_bugs`
+  exists and is used.
+- Commit: pending.
+- Push: pending.
+- Next: add a V3/shadow residual report.
+- Blockers: none.

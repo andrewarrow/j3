@@ -89,6 +89,10 @@ from j3.transition_scorer_advice import (
     format_transition_scorer_advice_summary,
     summarize_transition_scorer_advice,
 )
+from j3.transition_shadow_suite import (
+    format_transition_shadow_suite_summary,
+    run_transition_shadow_suite,
+)
 from j3.transition_shadow_outcomes import (
     format_transition_shadow_outcome_summary,
     load_transition_shadow_outcomes,
@@ -1150,6 +1154,40 @@ def handle_build_transition_evidence_bundle(args: argparse.Namespace) -> int:
         print(json.dumps(summary, indent=2, sort_keys=True))
     else:
         print(format_transition_evidence_bundle_summary(summary))
+    return 0
+
+
+def handle_run_transition_shadow_suite(args: argparse.Namespace) -> int:
+    checkpoint = None if args.no_checkpoint else args.checkpoint
+    try:
+        summary = run_transition_shadow_suite(
+            tasks=args.tasks,
+            out_dir=args.out,
+            repo_root=args.repo_root,
+            prompt_corpus=args.prompt_corpus,
+            checkpoint=checkpoint,
+            ranker=args.ranker,
+            timeout_seconds=args.timeout,
+            max_candidates=args.max_candidates,
+            max_steps=args.max_steps,
+            explore_after_pass=args.explore_after_pass,
+            top_k=args.top_k,
+            embedding_dim=args.embedding_dim,
+            split_by=args.split_by,
+            validation_fraction=args.validation_fraction,
+            epochs=args.epochs,
+            learning_rate=args.learning_rate,
+            margin=args.margin,
+            residual_limit=args.residual_limit,
+            force=args.force,
+        )
+    except (FileExistsError, NotADirectoryError, ValueError) as error:
+        raise SystemExit(str(error)) from error
+
+    if args.json:
+        print(json.dumps(summary, indent=2, sort_keys=True))
+    else:
+        print(format_transition_shadow_suite_summary(summary))
     return 0
 
 

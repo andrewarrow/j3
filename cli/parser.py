@@ -28,6 +28,7 @@ from cli.handlers import (
     handle_patch,
     handle_propose_from_prompt_jepa,
     handle_query_prompt_jepa_index,
+    handle_run_transition_shadow_suite,
     handle_summarize_transition_advice,
     handle_train,
     handle_train_prompt_intents,
@@ -1110,6 +1111,143 @@ def build_parser() -> argparse.ArgumentParser:
     )
     transition_evidence_bundle_parser.set_defaults(
         handler=handle_build_transition_evidence_bundle
+    )
+
+    transition_shadow_suite_parser = subparsers.add_parser(
+        "run-transition-shadow-suite",
+        help="run the local transition shadow evidence workflow",
+        description=(
+            "Run a repeatable local shadow suite that writes candidate outcomes, "
+            "transition advice, diagnostics, normalized shadow outcomes, a held-out "
+            "V3 report, and an evidence bundle. The suite is evaluation-only and "
+            "does not enable transition scoring in production routing."
+        ),
+    )
+    transition_shadow_suite_parser.add_argument(
+        "--tasks",
+        type=Path,
+        nargs="+",
+        default=[Path("examples/greenshot_bugs")],
+        help="one or more task manifests or task directories (default: examples/greenshot_bugs)",
+    )
+    transition_shadow_suite_parser.add_argument(
+        "--out",
+        type=Path,
+        required=True,
+        help="ignored output directory for all shadow suite artifacts",
+    )
+    transition_shadow_suite_parser.add_argument(
+        "--repo-root",
+        type=Path,
+        default=Path("."),
+        help="repository root to inventory and use for reproduction commands",
+    )
+    transition_shadow_suite_parser.add_argument(
+        "--prompt-corpus",
+        type=Path,
+        default=Path("../prompts/coding_agent_prompts_expanded_v0.jsonl"),
+        help="prompt corpus JSONL path to include in asset inventory context",
+    )
+    transition_shadow_suite_parser.add_argument(
+        "--checkpoint",
+        type=Path,
+        default=Path("runs/apache-python-git/model.json"),
+        help="optional local patch ranking model (default: runs/apache-python-git/model.json)",
+    )
+    transition_shadow_suite_parser.add_argument(
+        "--no-checkpoint",
+        action="store_true",
+        help="run the suite without a patch ranking model",
+    )
+    transition_shadow_suite_parser.add_argument(
+        "--ranker",
+        type=Path,
+        help="optional local candidate ranker",
+    )
+    transition_shadow_suite_parser.add_argument(
+        "--timeout",
+        type=int,
+        default=30,
+        help="seconds to allow each test run (default: 30)",
+    )
+    transition_shadow_suite_parser.add_argument(
+        "--max-candidates",
+        type=int,
+        default=12,
+        help="maximum candidates to test per task (default: 12)",
+    )
+    transition_shadow_suite_parser.add_argument(
+        "--max-steps",
+        type=int,
+        default=1,
+        help="maximum sequential repair steps per task unless a task overrides it (default: 1)",
+    )
+    transition_shadow_suite_parser.add_argument(
+        "--explore-after-pass",
+        type=int,
+        default=1,
+        help="test this many additional candidates after first pass for shadow evidence (default: 1)",
+    )
+    transition_shadow_suite_parser.add_argument(
+        "--top-k",
+        type=int,
+        default=3,
+        help="top-k window for transition scorer metrics (default: 3)",
+    )
+    transition_shadow_suite_parser.add_argument(
+        "--embedding-dim",
+        type=int,
+        default=256,
+        help="local source embedding dimension for action-choice groups (default: 256)",
+    )
+    transition_shadow_suite_parser.add_argument(
+        "--split-by",
+        choices=("task_family", "source_file", "repo", "order"),
+        default="order",
+        help="held-out split key for V3 validation (default: order)",
+    )
+    transition_shadow_suite_parser.add_argument(
+        "--validation-fraction",
+        type=float,
+        default=0.25,
+        help="fraction of split buckets to reserve for validation (default: 0.25)",
+    )
+    transition_shadow_suite_parser.add_argument(
+        "--epochs",
+        type=int,
+        default=30,
+        help="V3 pairwise perceptron epochs (default: 30)",
+    )
+    transition_shadow_suite_parser.add_argument(
+        "--learning-rate",
+        type=float,
+        default=0.1,
+        help="V3 pairwise perceptron learning rate (default: 0.1)",
+    )
+    transition_shadow_suite_parser.add_argument(
+        "--margin",
+        type=float,
+        default=1.0,
+        help="V3 pairwise ranking margin (default: 1.0)",
+    )
+    transition_shadow_suite_parser.add_argument(
+        "--residual-limit",
+        type=int,
+        default=10,
+        help="maximum residual examples to include in reports (default: 10)",
+    )
+    transition_shadow_suite_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="overwrite an existing suite directory that contains only suite files",
+    )
+    transition_shadow_suite_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print the shadow suite manifest as JSON",
+    )
+    transition_shadow_suite_parser.set_defaults(
+        handler=handle_run_transition_shadow_suite
     )
 
     compare_parser = subparsers.add_parser(

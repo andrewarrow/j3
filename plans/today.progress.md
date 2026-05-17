@@ -6,8 +6,10 @@ This file is the live progress log for `plans/today.md`. Keep
 ## Status
 
 - Current phase: productize transition scoring without fooling ourselves.
-- Completed iterations for this reset: 4.
+- Completed iterations for this reset: 5.
 - Latest relevant commits:
+  - This iteration added guarded, non-default transition-scorer ranking with
+    product gate enforcement for patch/eval planning.
   - `6cdd621` added shadow transition-scorer advice for patch/eval planning.
   - `6cd413e` calibrates a V2 transition action scorer from candidate
     outcomes.
@@ -22,7 +24,8 @@ This file is the live progress log for `plans/today.md`. Keep
 - Current blocker: V2 beats V1 on the full local candidate bench, but the
   held-out validation gate still underperforms existing rank order and is not
   ready for guarded opt-in.
-- Next task: add guarded, non-default opt-in ranking with gate enforcement.
+- Next task: update product docs for demo, benchmark, shadow, and guarded
+  modes.
 
 ## Active Task Queue
 
@@ -30,7 +33,7 @@ This file is the live progress log for `plans/today.md`. Keep
 - [x] Add product-readiness gates to transition bench reports.
 - [x] Calibrate a V2 action scorer from candidate outcomes.
 - [x] Add shadow transition-scorer advice to real patch/eval planning.
-- [ ] Add guarded, non-default opt-in ranking with gate enforcement.
+- [x] Add guarded, non-default opt-in ranking with gate enforcement.
 - [ ] Update product docs for demo, benchmark, shadow, and guarded modes.
 
 ## Current Facts
@@ -224,3 +227,29 @@ Use this shape for each worker handoff:
 - Next: add guarded, non-default opt-in ranking with gate enforcement.
 - Blockers: guarded opt-in remains blocked until a held-out scorer beats
   existing rank order.
+
+### Iteration 5: Add guarded opt-in ranking with gate enforcement
+
+- Worker: Codex Worker Iteration 5
+- Goal: add non-default transition-scorer ranking for `patch` and `eval`,
+  require a scorer report or explicit experimental override, refuse failed
+  product gates, preserve patch/fix defaults, and print the gate decision.
+- Files changed: `j3/transition_ranking.py`,
+  `j3/transition_scorer_advice.py`, `repair/patching/planner.py`,
+  `repair/patching/types.py`, `cli/parser.py`, `cli/handlers.py`,
+  `evaluation/runner.py`, `tests/test_patching.py`, `tests/test_fixing.py`,
+  `tests/test_cli.py`, `plans/today.progress.md`.
+- Tests run:
+  - `pytest tests/test_patching.py -q` passed, 96 tests.
+  - `pytest tests/test_fixing.py -q` passed, 3 tests.
+  - `pytest tests/test_cli.py -q` passed, 46 tests.
+  - `git diff --check` passed.
+- Result: `patch` and `eval` now accept `--transition-scorer-rank` with either
+  `--transition-scorer-report` or `--allow-experimental-ranking`; failed
+  product gates refuse ranking before planning; successful opt-in prints the
+  gate, report, and mode; default `patch` and `fix` behavior stays unchanged.
+- Commit: this commit (`Add guarded transition ranking`)
+- Push: pending.
+- Next: update product docs for demo, benchmark, shadow, and guarded modes.
+- Blockers: guarded opt-in remains blocked for normal local V2 artifacts until
+  the held-out product gate beats existing rank order.

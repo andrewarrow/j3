@@ -145,6 +145,48 @@ def build_transition_scorer_advice(
     }
 
 
+def transition_scorer_ranked_candidates(
+    candidates: Sequence[CandidatePatch],
+    *,
+    candidate_hints: Sequence[Sequence[PytestFailureHint]] = (),
+    context: Mapping[str, object] | None = None,
+) -> tuple[CandidatePatch, ...]:
+    """Rank real repair candidates with the transition action scorer."""
+
+    candidate_records = [
+        _candidate_record(
+            candidate,
+            rank_index=index,
+            hints=_hints_for_rank(candidate_hints, index),
+            validated=False,
+            passed=False,
+        )
+        for index, candidate in enumerate(candidates, start=1)
+    ]
+    group = {
+        "candidate_count": len(candidate_records),
+        "grouping": {
+            "language": "python",
+            "phase": "real-patch-planning",
+            **(dict(context) if context is not None else {}),
+        },
+    }
+    ranked_records = sorted(
+        (
+            {
+                "index": index,
+                "score": score_transition_action_candidate(record, group=group),
+            }
+            for index, record in enumerate(candidate_records)
+        ),
+        key=lambda item: (
+            -float(_mapping(item["score"])["score"]),
+            int(candidate_records[int(item["index"])]["rank_index"]),
+        ),
+    )
+    return tuple(candidates[int(record["index"])] for record in ranked_records)
+
+
 def append_transition_scorer_advice_jsonl(path: Path, row: Mapping[str, object]) -> Path:
     """Append one transition scorer advice row to a JSONL file."""
 

@@ -76,6 +76,8 @@ def evaluate_tasks(
     phase: EvalPhase = "both",
     explore_after_pass: int = 0,
     transition_scorer_shadow: bool = False,
+    transition_scorer_rank: bool = False,
+    transition_ranking_gate: dict[str, object] | None = None,
     progress: Callable[[str], None] | None = None,
 ) -> EvalSummary:
     if phase not in {"baseline", "ranked", "both"}:
@@ -101,6 +103,8 @@ def evaluate_tasks(
                 max_steps=task.max_steps if task.max_steps != 1 else max_steps,
                 explore_after_pass=explore_after_pass,
                 transition_scorer_shadow=transition_scorer_shadow,
+                transition_scorer_rank=transition_scorer_rank,
+                transition_ranking_gate=transition_ranking_gate,
                 progress=progress,
             )
             _emit_progress(
@@ -125,6 +129,8 @@ def evaluate_tasks(
                 max_steps=task.max_steps if task.max_steps != 1 else max_steps,
                 explore_after_pass=explore_after_pass,
                 transition_scorer_shadow=transition_scorer_shadow,
+                transition_scorer_rank=transition_scorer_rank,
+                transition_ranking_gate=transition_ranking_gate,
                 progress=progress,
             )
             _emit_progress(
@@ -157,6 +163,8 @@ def _run_task(
     max_steps: int,
     explore_after_pass: int,
     transition_scorer_shadow: bool,
+    transition_scorer_rank: bool,
+    transition_ranking_gate: dict[str, object] | None,
     progress: Callable[[str], None] | None,
 ) -> PatchPlanResult:
     with tempfile.TemporaryDirectory(prefix="j3-eval-") as tmp:
@@ -175,6 +183,8 @@ def _run_task(
             use_failure_hints=use_failure_hints,
             explore_after_pass=explore_after_pass,
             transition_scorer_shadow=transition_scorer_shadow,
+            transition_scorer_rank=transition_scorer_rank,
+            transition_ranking_gate=transition_ranking_gate,
             transition_advice_context={
                 "task": task.name,
                 "task_family": task.family,

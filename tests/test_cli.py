@@ -28,6 +28,26 @@ def _jsonl_rows(path):
     ]
 
 
+def _write_transition_gate_report(path, *, gate_result, eligible):
+    path.write_text(
+        json.dumps(
+            {
+                "schema_version": "transition-bench-demo-report-v1",
+                "product_readiness": {
+                    "schema_version": "transition-product-readiness-v1",
+                    "gate_result": gate_result,
+                    "eligible_for_guarded_opt_in": eligible,
+                    "scorer": "transition-action-future-scorer-v1",
+                    "baseline": "existing-rank-order",
+                    "residual_count": 0 if eligible else 1,
+                },
+            },
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+
+
 def _write_prompt_jepa_outcome_rows(path):
     rows = [
         {
@@ -2385,6 +2405,97 @@ def test_patch_command_writes_transition_scorer_shadow_advice(capsys, tmp_path) 
     assert row["scorer_top_candidate"] is not None
     assert row["runtime"]["hosted_llm_api_calls"] == 0
     assert row["usage"]["hosted_repo_context_bytes"] == 0
+
+
+def test_patch_command_refuses_transition_ranking_on_failed_gate(tmp_path) -> None:
+    repo = tmp_path / "greenshot_bug"
+    report = tmp_path / "transition-report.json"
+    shutil.copytree("examples/greenshot_bug", repo)
+    _write_transition_gate_report(
+        report,
+        gate_result="not_ready_underperforms_existing_rank_order",
+        eligible=False,
+    )
+
+    with pytest.raises(SystemExit) as error:
+        main(
+            [
+                "patch",
+                "--repo",
+                str(repo),
+                "--test",
+                "tests/test_calculator.py",
+                "--dry-run",
+                "--transition-scorer-rank",
+                "--transition-scorer-report",
+                str(report),
+            ]
+        )
+
+    assert "product gate not_ready_underperforms_existing_rank_order" in str(error.value)
+    assert "return price * (percent / 100)" in (repo / "calculator.py").read_text(
+        encoding="utf-8"
+    )
+
+
+def test_patch_command_allows_transition_ranking_with_ready_report(capsys, tmp_path) -> None:
+    repo = tmp_path / "greenshot_bug"
+    report = tmp_path / "transition-report.json"
+    shutil.copytree("examples/greenshot_bug", repo)
+    _write_transition_gate_report(
+        report,
+        gate_result="ready_for_guarded_opt_in",
+        eligible=True,
+    )
+
+    assert (
+        main(
+            [
+                "patch",
+                "--repo",
+                str(repo),
+                "--test",
+                "tests/test_calculator.py",
+                "--dry-run",
+                "--transition-scorer-rank",
+                "--transition-scorer-report",
+                str(report),
+            ]
+        )
+        == 0
+    )
+
+    output = capsys.readouterr().out
+    assert "transition scorer rank: enabled" in output
+    assert "transition scorer gate: ready_for_guarded_opt_in" in output
+    assert f"transition scorer report: {report.resolve()}" in output
+    assert "transition scorer mode: guarded_opt_in" in output
+    assert "status: found passing patch" in output
+
+
+def test_eval_command_allows_explicit_experimental_transition_ranking(capsys) -> None:
+    assert (
+        main(
+            [
+                "eval",
+                "--tasks",
+                "examples/greenshot_3",
+                "--checkpoint",
+                "runs/greenshot-1/model.json",
+                "--timeout",
+                "10",
+                "--transition-scorer-rank",
+                "--allow-experimental-ranking",
+                "--quiet",
+            ]
+        )
+        == 0
+    )
+
+    output = capsys.readouterr().out
+    assert "transition scorer rank: enabled" in output
+    assert "transition scorer gate: experimental_allowed_without_product_gate" in output
+    assert "transition scorer mode: experimental" in output
 
 
 def test_eval_default_progress_suppresses_candidate_lines(capsys) -> None:

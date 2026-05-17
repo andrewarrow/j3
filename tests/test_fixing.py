@@ -33,6 +33,7 @@ def test_fix_workflow_dry_run_plans_without_applying(tmp_path) -> None:
     assert result.failing_targets == ["tests/test_calculator.py::test_apply_discount_returns_discounted_price"]
     assert result.solved == 1
     assert result.applied == 0
+    assert result.attempts[0].plan.transition_ranking is None
     assert "return price * (percent / 100)" in (repo / "calculator.py").read_text(encoding="utf-8")
 
 

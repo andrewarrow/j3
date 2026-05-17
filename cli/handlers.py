@@ -71,6 +71,10 @@ from j3.transition_bench_demo import (
     format_transition_bench_demo_report,
     run_transition_bench_demo,
 )
+from j3.transition_ranking import (
+    TransitionRankingGateError,
+    transition_ranking_gate_decision,
+)
 from j3.transition_scorer_advice import append_transition_scorer_advice_jsonl
 
 
@@ -246,6 +250,7 @@ def handle_patch(args: argparse.Namespace) -> int:
         raise SystemExit("--transition-scorer-shadow is required with --transition-advice-out")
     if args.transition_scorer_shadow and args.transition_advice_out is None:
         raise SystemExit("--transition-advice-out is required with --transition-scorer-shadow")
+    transition_ranking_gate = _transition_ranking_gate_from_args(args)
 
     result = plan_and_maybe_apply_patch(
         repo=repo,
@@ -257,6 +262,8 @@ def handle_patch(args: argparse.Namespace) -> int:
         model_path=args.model,
         ranker_path=args.ranker,
         transition_scorer_shadow=args.transition_scorer_shadow,
+        transition_scorer_rank=args.transition_scorer_rank,
+        transition_ranking_gate=transition_ranking_gate,
     )
     advice_path = None
     if args.transition_scorer_shadow and result.transition_advice is not None:
@@ -274,6 +281,12 @@ def handle_patch(args: argparse.Namespace) -> int:
         print(f"model: {result.model_path}")
     if result.ranker_path:
         print(f"ranker: {result.ranker_path}")
+    if transition_ranking_gate is not None:
+        print("transition scorer rank: enabled")
+        print(f"transition scorer gate: {transition_ranking_gate['gate_result']}")
+        if transition_ranking_gate.get("scorer_report"):
+            print(f"transition scorer report: {transition_ranking_gate['scorer_report']}")
+        print(f"transition scorer mode: {transition_ranking_gate['mode']}")
     if advice_path:
         print(f"transition advice: {advice_path}")
 
@@ -1013,6 +1026,7 @@ def handle_eval(args: argparse.Namespace) -> int:
         raise SystemExit("--transition-scorer-shadow is required with --transition-advice-out")
     if args.transition_scorer_shadow and args.transition_advice_out is None:
         raise SystemExit("--transition-advice-out is required with --transition-scorer-shadow")
+    transition_ranking_gate = _transition_ranking_gate_from_args(args)
     progress = None if args.quiet else (verbose_progress if args.verbose else summary_progress)
     if progress is not None:
         progress("j3 eval starting")
@@ -1026,6 +1040,8 @@ def handle_eval(args: argparse.Namespace) -> int:
         progress(f"phase: {args.phase}")
         if args.transition_scorer_shadow:
             progress("transition scorer shadow: enabled")
+        if transition_ranking_gate is not None:
+            progress(f"transition scorer rank: enabled gate={transition_ranking_gate['gate_result']}")
     summary = evaluate_tasks(
         tasks_path=args.tasks,
         model_path=args.checkpoint,
@@ -1036,6 +1052,8 @@ def handle_eval(args: argparse.Namespace) -> int:
         phase=args.phase,
         explore_after_pass=args.explore_after_pass,
         transition_scorer_shadow=args.transition_scorer_shadow,
+        transition_scorer_rank=args.transition_scorer_rank,
+        transition_ranking_gate=transition_ranking_gate,
         progress=progress,
     )
     diagnostics_path = write_eval_diagnostics(summary, args.diagnostics) if args.diagnostics else None
@@ -1055,6 +1073,12 @@ def handle_eval(args: argparse.Namespace) -> int:
     print(f"checkpoint: {args.checkpoint.expanduser().resolve()}")
     if args.ranker:
         print(f"ranker: {args.ranker.expanduser().resolve()}")
+    if transition_ranking_gate is not None:
+        print("transition scorer rank: enabled")
+        print(f"transition scorer gate: {transition_ranking_gate['gate_result']}")
+        if transition_ranking_gate.get("scorer_report"):
+            print(f"transition scorer report: {transition_ranking_gate['scorer_report']}")
+        print(f"transition scorer mode: {transition_ranking_gate['mode']}")
     print(
         phase_summary_line(
             "baseline",
@@ -1105,6 +1129,24 @@ def handle_eval(args: argparse.Namespace) -> int:
     if advice_path:
         print(f"transition advice: {advice_path}")
     return 0 if eval_phase_solved(summary=summary, phase=args.phase) else 1
+
+
+def _transition_ranking_gate_from_args(args: argparse.Namespace) -> dict[str, object] | None:
+    if not getattr(args, "transition_scorer_rank", False):
+        if getattr(args, "transition_scorer_report", None) is not None:
+            raise SystemExit("--transition-scorer-rank is required with --transition-scorer-report")
+        if getattr(args, "allow_experimental_ranking", False):
+            raise SystemExit("--transition-scorer-rank is required with --allow-experimental-ranking")
+        return None
+    try:
+        return transition_ranking_gate_decision(
+            scorer_report_path=getattr(args, "transition_scorer_report", None),
+            allow_experimental_ranking=bool(
+                getattr(args, "allow_experimental_ranking", False)
+            ),
+        )
+    except TransitionRankingGateError as error:
+        raise SystemExit(str(error)) from error
 
 
 def _write_eval_transition_advice(summary: object, path: Path) -> Path:

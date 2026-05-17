@@ -210,6 +210,21 @@ def build_parser() -> argparse.ArgumentParser:
         help="run the transition action scorer in shadow mode without changing routing",
     )
     patch_parser.add_argument(
+        "--transition-scorer-rank",
+        action="store_true",
+        help="guarded opt-in transition scorer ranking; never enabled by default",
+    )
+    patch_parser.add_argument(
+        "--transition-scorer-report",
+        type=Path,
+        help="transition bench report whose product gate must allow guarded opt-in ranking",
+    )
+    patch_parser.add_argument(
+        "--allow-experimental-ranking",
+        action="store_true",
+        help="explicitly allow transition scorer ranking without a product gate report",
+    )
+    patch_parser.add_argument(
         "--transition-advice-out",
         type=Path,
         help="JSONL path for shadow transition scorer advice rows",
@@ -982,6 +997,21 @@ def build_parser() -> argparse.ArgumentParser:
         "--transition-scorer-shadow",
         action="store_true",
         help="run the transition action scorer in shadow mode without changing routing",
+    )
+    eval_parser.add_argument(
+        "--transition-scorer-rank",
+        action="store_true",
+        help="guarded opt-in transition scorer ranking; never enabled by default",
+    )
+    eval_parser.add_argument(
+        "--transition-scorer-report",
+        type=Path,
+        help="transition bench report whose product gate must allow guarded opt-in ranking",
+    )
+    eval_parser.add_argument(
+        "--allow-experimental-ranking",
+        action="store_true",
+        help="explicitly allow transition scorer ranking without a product gate report",
     )
     eval_parser.add_argument(
         "--transition-advice-out",

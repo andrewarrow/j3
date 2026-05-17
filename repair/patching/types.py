@@ -55,3 +55,4 @@ class PatchPlanResult:
     passing_candidates: tuple[CandidatePatch, ...] = ()
     selected_candidates: tuple[CandidatePatch, ...] = ()
     transition_advice: Mapping[str, object] | None = None
+    transition_ranking: Mapping[str, object] | None = None

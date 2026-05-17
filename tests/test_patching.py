@@ -4,6 +4,7 @@ import json
 import shutil
 
 from j3.patching import PatchRankingModel, generate_candidate_patches, plan_and_maybe_apply_patch, rank_candidate_patches
+from j3.transition_ranking import transition_ranking_gate_decision
 from j3.training import train_from_path
 
 
@@ -59,6 +60,64 @@ def test_transition_scorer_shadow_does_not_change_patch_routing(tmp_path) -> Non
     assert advice["scorer_top_candidate"] is not None
     assert advice["runtime"]["hosted_llm_api_calls"] == 0
     assert advice["runtime"]["hosted_repo_context_bytes"] == 0
+
+
+def test_transition_scorer_ranking_is_off_by_default(tmp_path) -> None:
+    repo = tmp_path / "greenshot_bug"
+    shutil.copytree("examples/greenshot_bug", repo)
+
+    result = plan_and_maybe_apply_patch(
+        repo=repo,
+        test_command="python -m pytest tests/test_calculator.py",
+        dry_run=True,
+        timeout_seconds=10,
+    )
+
+    assert result.selected is not None
+    assert result.transition_ranking is None
+
+
+def test_transition_scorer_ranking_requires_gate_decision(tmp_path) -> None:
+    repo = tmp_path / "greenshot_bug"
+    shutil.copytree("examples/greenshot_bug", repo)
+
+    try:
+        plan_and_maybe_apply_patch(
+            repo=repo,
+            test_command="python -m pytest tests/test_calculator.py",
+            dry_run=True,
+            timeout_seconds=10,
+            transition_scorer_rank=True,
+        )
+    except ValueError as error:
+        assert "transition_scorer_rank requires transition_ranking_gate" in str(error)
+    else:
+        raise AssertionError("expected transition ranking without a gate to fail")
+
+
+def test_transition_scorer_experimental_ranking_records_gate(tmp_path) -> None:
+    repo = tmp_path / "greenshot_bug"
+    shutil.copytree("examples/greenshot_bug", repo)
+    gate = transition_ranking_gate_decision(
+        scorer_report_path=None,
+        allow_experimental_ranking=True,
+    )
+
+    result = plan_and_maybe_apply_patch(
+        repo=repo,
+        test_command="python -m pytest tests/test_calculator.py",
+        dry_run=True,
+        timeout_seconds=10,
+        transition_scorer_rank=True,
+        transition_ranking_gate=gate,
+    )
+
+    assert result.selected is not None
+    assert result.transition_ranking is not None
+    assert result.transition_ranking["gate"]["gate_result"] == (
+        "experimental_allowed_without_product_gate"
+    )
+    assert result.transition_ranking["candidate_count"] == result.candidates_generated
 
 
 def test_patch_applies_discount_fix(tmp_path) -> None:

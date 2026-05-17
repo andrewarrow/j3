@@ -8,12 +8,13 @@ import subprocess
 import tempfile
 import time
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Sequence
 
 from j3.candidate_ranking import CandidateRankerModel
 from j3.failure_hints import PytestFailureHint, parse_pytest_failure_hints
 from j3.repo import DEFAULT_EXCLUDE_DIRS
 from j3.transition_scorer_advice import build_transition_scorer_advice
+from j3.transition_ranking import rank_candidate_patches_with_transition_scorer
 
 from .context import attach_target_context
 from .generation import generate_candidate_patches
@@ -42,6 +43,8 @@ def plan_and_maybe_apply_patch(
     use_failure_hints: bool = True,
     explore_after_pass: int = 0,
     transition_scorer_shadow: bool = False,
+    transition_scorer_rank: bool = False,
+    transition_ranking_gate: dict[str, object] | None = None,
     transition_advice_context: dict[str, object] | None = None,
     progress: Callable[[str], None] | None = None,
 ) -> PatchPlanResult:
@@ -51,6 +54,8 @@ def plan_and_maybe_apply_patch(
         raise ValueError("explore_after_pass must be >= 0")
     if max_steps < 1:
         raise ValueError("max_steps must be >= 1")
+    if transition_scorer_rank and transition_ranking_gate is None:
+        raise ValueError("transition_scorer_rank requires transition_ranking_gate")
 
     root = repo.expanduser().resolve()
     if not root.exists():
@@ -66,6 +71,13 @@ def plan_and_maybe_apply_patch(
         f"baseline: exit={baseline.returncode} elapsed={time.perf_counter() - started:.2f}s",
     )
     baseline_output = _combined_output(baseline)
+    transition_ranking: dict[str, object] | None = None
+    if transition_scorer_rank:
+        transition_ranking = {
+            "enabled": True,
+            "gate": dict(transition_ranking_gate or {}),
+            "candidate_count": 0,
+        }
     if baseline.returncode == 0:
         return PatchPlanResult(
             repo=root,
@@ -78,6 +90,7 @@ def plan_and_maybe_apply_patch(
             test_output=baseline_output,
             model_path=None,
             ranker_path=None,
+            transition_ranking=transition_ranking,
         )
 
     model = _load_model_if_available(model_path)
@@ -136,6 +149,28 @@ def plan_and_maybe_apply_patch(
             if transition_scorer_shadow:
                 shadow_candidates.extend(candidates)
                 shadow_candidate_hints.extend(tuple(step_hints) for _candidate in candidates)
+            if transition_scorer_rank:
+                _emit_progress(
+                    progress,
+                    "transition scorer rank: "
+                    f"gate={_gate_result(transition_ranking_gate)}",
+                )
+                before_ranks = _candidate_rank_keys(candidates)
+                candidates = list(
+                    rank_candidate_patches_with_transition_scorer(
+                        candidates,
+                        candidate_hints=[tuple(step_hints) for _candidate in candidates],
+                        context=transition_advice_context,
+                    )
+                )
+                after_ranks = _candidate_rank_keys(candidates)
+                if transition_ranking is not None:
+                    transition_ranking["candidate_count"] = (
+                        int(transition_ranking.get("candidate_count", 0)) + len(candidates)
+                    )
+                    transition_ranking["changed_order"] = bool(
+                        transition_ranking.get("changed_order")
+                    ) or before_ranks != after_ranks
 
             improved_candidate: CandidatePatch | None = None
             improved_output = current_output
@@ -252,6 +287,7 @@ def plan_and_maybe_apply_patch(
             passing_candidates=tuple(passing_candidates),
             selected_candidates=tuple(selected_candidates),
             transition_advice=transition_advice,
+            transition_ranking=transition_ranking,
         )
 
     _emit_progress(progress, f"status: no passing candidate within tested={candidates_tested}")
@@ -288,6 +324,7 @@ def plan_and_maybe_apply_patch(
         passing_candidates=(),
         selected_candidates=tuple(selected_candidates),
         transition_advice=transition_advice,
+        transition_ranking=transition_ranking,
     )
 
 
@@ -341,6 +378,22 @@ def _combined_output(result: subprocess.CompletedProcess[str]) -> str:
 def _emit_progress(progress: Callable[[str], None] | None, message: str) -> None:
     if progress is not None:
         progress(message)
+
+
+def _gate_result(gate: dict[str, object] | None) -> str:
+    if gate is None:
+        return "none"
+    return str(gate.get("gate_result", "unknown"))
+
+
+def _candidate_rank_keys(candidates: Sequence[CandidatePatch]) -> list[tuple[str, str]]:
+    return [
+        (
+            candidate.file_path,
+            candidate.diff(),
+        )
+        for candidate in candidates
+    ]
 
 
 def _load_model_if_available(model_path: Path | None) -> PatchRankingModel | None:

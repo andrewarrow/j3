@@ -10,6 +10,7 @@ from prompt_intents import load_prompt_intent_records, predict_prompt_intent
 from prompt_jepa import (
     PROMPT_JEPA_INDEX_FORMAT,
     build_prompt_jepa_index,
+    build_prompt_jepa_outcome_index_from_path,
     compare_prompt_jepa_retrieval_modes,
     encode_prompt_context,
     encode_prompt_target,
@@ -17,6 +18,7 @@ from prompt_jepa import (
     evaluate_prompt_jepa_retrieval,
     load_prompt_jepa_predictor,
     load_prompt_jepa_index,
+    load_prompt_jepa_outcome_records,
     query_prompt_jepa_predicted_target,
     save_prompt_jepa_predictor,
     save_prompt_jepa_index,
@@ -321,3 +323,143 @@ def test_prompt_jepa_target_encoder_accepts_structured_spec_records() -> None:
     assert len(request_vector) == 32
     assert len(change_vector) == 32
     assert request_vector != change_vector
+
+
+def test_prompt_jepa_outcome_index_normalizes_real_attempt_rows(
+    tmp_path: Path,
+) -> None:
+    records_path = tmp_path / "attempts.jsonl"
+    _write_outcome_rows(records_path)
+
+    records = load_prompt_jepa_outcome_records(records_path)
+    index = build_prompt_jepa_outcome_index_from_path(records_path, embedding_dim=32)
+
+    assert [record.row_id for record in records] == [
+        "request-repo-attempt-0002",
+        "existing-repo-change-attempt-0003",
+    ]
+    assert len(index.rows) == 2
+    assert index.metadata.sources == (str(records_path),)
+    request_row = index.rows[0]
+    assert request_row.prompt == "make me a simple cli calc"
+    assert request_row.source_type == "greenshot_7_request_to_repo_attempt"
+    assert request_row.tags == (
+        "outcome",
+        "greenshot_7_request_to_repo_attempt",
+        "passed",
+        "new_repo",
+        "create_app",
+        "calculator",
+        "add",
+        "subtract",
+    )
+    assert request_row.target["expected_action"] == "emit_request_spec"
+    assert request_row.target["validation_status"] == "passed"
+    assert request_row.target["files_written"] == [
+        "calculator.py",
+        "tests/test_calculator_cli.py",
+        "request-spec.json",
+    ]
+    assert request_row.target["action_kinds"] == ["create_file", "validate"]
+    assert "request_spec" in request_row.target
+    assert "outcome" in request_row.target
+
+    change_row = index.rows[1]
+    assert change_row.source_type == "greenshot_7_existing_repo_change_attempt"
+    assert change_row.target["expected_action"] == "emit_existing_repo_change_spec"
+    assert change_row.target["features_to_add"] == ["power"]
+    assert change_row.target["files_changed"] == [
+        "calculator.py",
+        "tests/test_calculator_cli.py",
+    ]
+    assert len(change_row.context_embedding) == 32
+    assert len(change_row.target_embedding) == 32
+    assert index.query("add exponent support", top_k=1)[0].row_id == (
+        "existing-repo-change-attempt-0003"
+    )
+
+
+def _write_outcome_rows(path: Path) -> None:
+    rows = [
+        {"existing": True},
+        {
+            "schema_version": "request-repo-attempt-v1",
+            "record_kind": "greenshot_7_request_to_repo_attempt",
+            "raw_prompt": "make me a simple cli calc",
+            "normalized_request_spec": {
+                "schema_version": "request-spec-v1",
+                "task_name": "simple-cli-calc",
+                "task_type": "create_app",
+                "language": "python",
+                "repo_mode": "new_repo",
+                "domain": "calculator",
+                "prompt": "make me a simple cli calc",
+                "artifacts": ["calculator.py", "tests/test_calculator_cli.py"],
+                "interfaces": [{"kind": "cli", "style": "argparse"}],
+                "features": ["add", "subtract"],
+                "operation_aliases": {"add": ["add", "+"], "subtract": ["-"]},
+                "inferred_defaults": [],
+                "clarifications_needed": [],
+                "validation": {
+                    "commands": ["python -m pytest tests/test_calculator_cli.py -q"],
+                    "hidden_cases": True,
+                },
+            },
+            "greenfield_actions": [
+                {"kind": "create_file", "target": "calculator.py", "payload": {}},
+                {"kind": "validate", "target": None, "payload": {}},
+            ],
+            "build_result": {
+                "schema_version": "greenfield-build-v1",
+                "status": "built",
+                "files_written": ["calculator.py", "tests/test_calculator_cli.py"],
+                "cli_files_written": [
+                    "calculator.py",
+                    "tests/test_calculator_cli.py",
+                    "request-spec.json",
+                ],
+            },
+            "validation": {"status": "passed", "command": "python -m pytest", "exit_code": 0},
+            "passed": True,
+            "failure_observation": None,
+            "output_repo_path": "/tmp/calc",
+        },
+        {
+            "schema_version": "existing-repo-change-attempt-v1",
+            "record_kind": "greenshot_7_existing_repo_change_attempt",
+            "raw_prompt": "add exponent support",
+            "existing_repo_change_spec": {
+                "schema_version": "existing-repo-change-spec-v1",
+                "task_type": "modify_app",
+                "repo_mode": "existing_repo",
+                "domain": "calculator",
+                "prompt": "add exponent support",
+                "target_files": ["calculator.py", "tests/test_calculator_cli.py"],
+                "features_to_add": ["power"],
+                "operation_aliases": {"power": ["power", "pow", "^", "**"]},
+                "validation": {
+                    "commands": ["python -m pytest tests/test_calculator_cli.py -q"],
+                    "hidden_cases": True,
+                },
+            },
+            "existing_repo_actions": [
+                {"kind": "inspect_repo", "target": None, "payload": {}},
+                {"kind": "add_operator_dispatch", "target": "calculator.py", "payload": {}},
+            ],
+            "change_result": {
+                "schema_version": "existing-repo-change-result-v1",
+                "status": "validated",
+                "repo_path": "/tmp/calc",
+                "files_changed": ["calculator.py", "tests/test_calculator_cli.py"],
+                "validation": {"status": "passed", "command": "python -m pytest", "exit_code": 0},
+            },
+            "validation": {"status": "passed", "command": "python -m pytest", "exit_code": 0},
+            "passed": True,
+            "failure_observation": None,
+            "repo_path": "/tmp/calc",
+        },
+    ]
+    path.write_text(
+        "\n".join(json.dumps(row, sort_keys=True) for row in rows) + "\n",
+        encoding="utf-8",
+    )

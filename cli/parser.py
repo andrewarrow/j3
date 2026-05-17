@@ -386,16 +386,21 @@ def build_parser() -> argparse.ArgumentParser:
         "build-prompt-jepa-index",
         help="build a persisted Prompt-JEPA retrieval index",
         description=(
-            "Build a persisted Prompt-JEPA index from prompt-intent labels. "
-            "This command writes a retrieval artifact only and does not wire "
-            "retrieval into production request-spec or change-spec routing."
+            "Build a persisted Prompt-JEPA index from prompt-intent labels, "
+            "recorded prompt/spec/action/outcome rows, or both. This command "
+            "writes a retrieval artifact only and does not wire retrieval into "
+            "production request-spec or change-spec routing."
         ),
     )
     prompt_jepa_build_parser.add_argument(
         "--labels",
         type=Path,
-        required=True,
         help="prompt-intent JSONL labels to index",
+    )
+    prompt_jepa_build_parser.add_argument(
+        "--records",
+        type=Path,
+        help="prompt/spec/action/outcome JSONL rows from implement/change --record",
     )
     prompt_jepa_build_parser.add_argument(
         "--out",

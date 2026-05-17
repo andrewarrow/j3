@@ -18,6 +18,75 @@ def _jsonl_rows(path):
     ]
 
 
+def _write_prompt_jepa_outcome_rows(path):
+    rows = [
+        {
+            "schema_version": "request-repo-attempt-v1",
+            "record_kind": "greenshot_7_request_to_repo_attempt",
+            "raw_prompt": "make me a simple cli calc",
+            "normalized_request_spec": {
+                "schema_version": "request-spec-v1",
+                "task_type": "create_app",
+                "language": "python",
+                "repo_mode": "new_repo",
+                "domain": "calculator",
+                "prompt": "make me a simple cli calc",
+                "artifacts": ["calculator.py", "tests/test_calculator_cli.py"],
+                "interfaces": [{"kind": "cli", "style": "argparse"}],
+                "features": ["add", "subtract"],
+                "operation_aliases": {"add": ["add", "+"], "subtract": ["-"]},
+                "clarifications_needed": [],
+                "validation": {"commands": ["python -m pytest"], "hidden_cases": True},
+            },
+            "greenfield_actions": [
+                {"kind": "create_file", "target": "calculator.py", "payload": {}},
+                {"kind": "add_cli_entrypoint", "target": "calculator.py", "payload": {}},
+            ],
+            "build_result": {
+                "schema_version": "greenfield-build-v1",
+                "status": "built",
+                "files_written": ["calculator.py", "tests/test_calculator_cli.py"],
+            },
+            "validation": {"status": "passed", "command": "python -m pytest", "exit_code": 0},
+            "passed": True,
+            "failure_observation": None,
+        },
+        {
+            "schema_version": "existing-repo-change-attempt-v1",
+            "record_kind": "greenshot_7_existing_repo_change_attempt",
+            "raw_prompt": "add exponent support",
+            "existing_repo_change_spec": {
+                "schema_version": "existing-repo-change-spec-v1",
+                "task_type": "modify_app",
+                "repo_mode": "existing_repo",
+                "domain": "calculator",
+                "prompt": "add exponent support",
+                "target_files": ["calculator.py", "tests/test_calculator_cli.py"],
+                "features_to_add": ["power"],
+                "operation_aliases": {"power": ["power", "pow", "^", "**"]},
+                "validation": {"commands": ["python -m pytest"], "hidden_cases": True},
+            },
+            "existing_repo_actions": [
+                {"kind": "inspect_repo", "target": None, "payload": {}},
+                {"kind": "add_operator_dispatch", "target": "calculator.py", "payload": {}},
+            ],
+            "change_result": {
+                "schema_version": "existing-repo-change-result-v1",
+                "status": "validated",
+                "repo_path": "/tmp/calc",
+                "files_changed": ["calculator.py", "tests/test_calculator_cli.py"],
+            },
+            "validation": {"status": "passed", "command": "python -m pytest", "exit_code": 0},
+            "passed": True,
+            "failure_observation": None,
+        },
+    ]
+    path.write_text(
+        "\n".join(json.dumps(row, sort_keys=True) for row in rows) + "\n",
+        encoding="utf-8",
+    )
+
+
 def test_help_menu_prints_project_summary(capsys) -> None:
     with pytest.raises(SystemExit) as exc_info:
         main(["--help"])
@@ -270,6 +339,47 @@ def test_build_prompt_jepa_index_command_writes_index(capsys, tmp_path) -> None:
     assert index_data["embedding_dim"] == 64
     assert len(index_data["rows"]) > 0
     assert index_data["rows"][0]["id"] == "gs7-intent-0001"
+
+
+def test_build_prompt_jepa_index_command_accepts_outcome_records(
+    capsys,
+    tmp_path,
+) -> None:
+    records_path = tmp_path / "records.jsonl"
+    out_path = tmp_path / "prompt-jepa-outcome-index.json"
+    _write_prompt_jepa_outcome_rows(records_path)
+
+    assert (
+        main(
+            [
+                "build-prompt-jepa-index",
+                "--records",
+                str(records_path),
+                "--out",
+                str(out_path),
+                "--embedding-dim",
+                "64",
+            ]
+        )
+        == 0
+    )
+
+    output = capsys.readouterr().out
+    index_data = json.loads(out_path.read_text(encoding="utf-8"))
+    assert "j3 build-prompt-jepa-index complete" in output
+    assert f"records: {records_path.resolve()}" in output
+    assert "rows: 2" in output
+    assert "embedding dim: 64" in output
+    assert index_data["format"] == "j3.prompt-jepa-index.v1"
+    assert index_data["embedding_dim"] == 64
+    assert [row["id"] for row in index_data["rows"]] == [
+        "request-repo-attempt-0001",
+        "existing-repo-change-attempt-0002",
+    ]
+    assert index_data["rows"][0]["target"]["expected_action"] == "emit_request_spec"
+    assert index_data["rows"][1]["target"]["expected_action"] == (
+        "emit_existing_repo_change_spec"
+    )
 
 
 def test_query_prompt_jepa_index_command_prints_top_rows(capsys, tmp_path) -> None:

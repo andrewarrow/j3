@@ -45,7 +45,7 @@ from prompt_intents import (
     train_prompt_intent_token_baseline,
 )
 from prompt_jepa import (
-    build_prompt_jepa_index_from_path,
+    build_prompt_jepa_index_from_sources,
     compare_prompt_jepa_retrieval_modes_from_path,
     evaluate_prompt_jepa_predicted_target_retrieval_from_path,
     evaluate_prompt_jepa_retrieval_from_path,
@@ -440,15 +440,22 @@ def handle_train_prompt_intents(args: argparse.Namespace) -> int:
 
 
 def handle_build_prompt_jepa_index(args: argparse.Namespace) -> int:
-    index = build_prompt_jepa_index_from_path(
-        args.labels,
+    if args.labels is None and args.records is None:
+        raise SystemExit("provide --labels, --records, or both")
+
+    index = build_prompt_jepa_index_from_sources(
+        labels_path=args.labels,
+        records_path=args.records,
         embedding_dim=args.embedding_dim,
     )
     out_path = args.out.expanduser().resolve()
     save_prompt_jepa_index(index, out_path)
 
     print("j3 build-prompt-jepa-index complete")
-    print(f"labels: {args.labels.expanduser().resolve()}")
+    if args.labels is not None:
+        print(f"labels: {args.labels.expanduser().resolve()}")
+    if args.records is not None:
+        print(f"records: {args.records.expanduser().resolve()}")
     print(f"rows: {len(index.rows)}")
     print(f"embedding dim: {index.metadata.embedding_dim}")
     print(f"out: {out_path}")

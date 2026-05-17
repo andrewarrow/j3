@@ -37,6 +37,8 @@ DEFAULT_RETRIEVAL_EVAL_FIELDS = (
     "domain",
     "unsupported_requirement_family",
 )
+REQUEST_REPO_ATTEMPT_KIND = "greenshot_7_request_to_repo_attempt"
+EXISTING_REPO_CHANGE_ATTEMPT_KIND = "greenshot_7_existing_repo_change_attempt"
 
 
 @dataclass(frozen=True, slots=True)
@@ -99,6 +101,18 @@ class PromptJepaIndexRow:
             "target": _json_copy(self.target),
             "tags": list(self.tags),
         }
+
+
+@dataclass(frozen=True, slots=True)
+class PromptJepaOutcomeRecord:
+    """Normalized prompt/spec/action/outcome row ready for Prompt-JEPA indexing."""
+
+    row_id: str
+    split: str
+    source_type: str
+    prompt: str
+    target: dict[str, object]
+    tags: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -525,29 +539,10 @@ def build_prompt_jepa_index(
         embedding_dim=embedding_dim,
         sources=(source,) if source else (),
     )
-    rows = tuple(
-        PromptJepaIndexRow(
-            row_id=record.row_id,
-            split=record.split,
-            source_type=record.source_type,
-            source_path=source,
-            prompt=record.prompt,
-            context_embedding=encode_prompt_context(
-                record.prompt,
-                dim=embedding_dim,
-                source_type=record.source_type,
-                task_type=record.target.task_type,
-                tags=record.tags,
-            ),
-            target_embedding=encode_prompt_target(
-                record.target,
-                dim=embedding_dim,
-                tags=record.tags,
-            ),
-            target=record.target.to_record(),
-            tags=record.tags,
-        )
-        for record in records
+    rows = _prompt_intent_index_rows(
+        records,
+        embedding_dim=embedding_dim,
+        source_path=source,
     )
     return PromptJepaIndex(metadata=metadata, rows=rows)
 
@@ -564,6 +559,116 @@ def build_prompt_jepa_index_from_path(
         embedding_dim=embedding_dim,
         source_path=path,
     )
+
+
+def load_prompt_jepa_outcome_records(path: Path) -> tuple[PromptJepaOutcomeRecord, ...]:
+    """Load supported prompt/spec/action/outcome JSONL rows for indexing."""
+
+    resolved = path.expanduser().resolve()
+    records: list[PromptJepaOutcomeRecord] = []
+    with resolved.open(encoding="utf-8") as handle:
+        for line_index, line in enumerate(handle, start=1):
+            stripped = line.strip()
+            if not stripped:
+                continue
+            row = json.loads(stripped)
+            if not isinstance(row, dict):
+                raise ValueError(
+                    f"Prompt-JEPA outcome row {line_index} must be a JSON object"
+                )
+            record = _outcome_record_from_row(row, index=line_index)
+            if record is not None:
+                records.append(record)
+    return tuple(records)
+
+
+def build_prompt_jepa_outcome_index(
+    records: Sequence[PromptJepaOutcomeRecord],
+    *,
+    embedding_dim: int = DEFAULT_EMBEDDING_DIM,
+    source_path: Path | str | None = None,
+) -> PromptJepaIndex:
+    """Build a Prompt-JEPA index from real prompt/spec/action/outcome rows."""
+
+    _validate_embedding_dim(embedding_dim)
+    if not records:
+        raise ValueError("at least one prompt outcome record is required")
+
+    source = str(source_path) if source_path is not None else None
+    metadata = default_prompt_jepa_metadata(
+        embedding_dim=embedding_dim,
+        sources=(source,) if source else (),
+    )
+    rows = _prompt_outcome_index_rows(
+        records,
+        embedding_dim=embedding_dim,
+        source_path=source,
+    )
+    return PromptJepaIndex(metadata=metadata, rows=rows)
+
+
+def build_prompt_jepa_outcome_index_from_path(
+    path: Path,
+    *,
+    embedding_dim: int = DEFAULT_EMBEDDING_DIM,
+) -> PromptJepaIndex:
+    """Load prompt/spec/action/outcome JSONL rows and build an index."""
+
+    return build_prompt_jepa_outcome_index(
+        load_prompt_jepa_outcome_records(path),
+        embedding_dim=embedding_dim,
+        source_path=path,
+    )
+
+
+def build_prompt_jepa_index_from_sources(
+    *,
+    labels_path: Path | None = None,
+    records_path: Path | None = None,
+    embedding_dim: int = DEFAULT_EMBEDDING_DIM,
+) -> PromptJepaIndex:
+    """Build one Prompt-JEPA index from labels, outcome rows, or both."""
+
+    _validate_embedding_dim(embedding_dim)
+    rows: list[PromptJepaIndexRow] = []
+    sources: list[str] = []
+
+    if labels_path is not None:
+        labels_source = str(labels_path)
+        labels = load_prompt_intent_records(labels_path)
+        rows.extend(
+            _prompt_intent_index_rows(
+                labels,
+                embedding_dim=embedding_dim,
+                source_path=labels_source,
+            )
+        )
+        sources.append(labels_source)
+
+    if records_path is not None:
+        records_source = str(records_path)
+        outcome_records = load_prompt_jepa_outcome_records(records_path)
+        rows.extend(
+            _prompt_outcome_index_rows(
+                outcome_records,
+                embedding_dim=embedding_dim,
+                source_path=records_source,
+            )
+        )
+        sources.append(records_source)
+
+    if not rows:
+        raise ValueError("provide at least one supported prompt label or outcome row")
+
+    index = PromptJepaIndex(
+        metadata=default_prompt_jepa_metadata(
+            embedding_dim=embedding_dim,
+            sources=tuple(sources),
+        ),
+        rows=tuple(rows),
+    )
+    validate_prompt_jepa_index(index)
+    return index
 
 
 def train_prompt_jepa_predictor(
@@ -1092,6 +1197,327 @@ def _row_from_record(
     )
 
 
+def _prompt_intent_index_rows(
+    records: Sequence[PromptIntentRecord],
+    *,
+    embedding_dim: int,
+    source_path: str | None,
+) -> tuple[PromptJepaIndexRow, ...]:
+    return tuple(
+        PromptJepaIndexRow(
+            row_id=record.row_id,
+            split=record.split,
+            source_type=record.source_type,
+            source_path=source_path,
+            prompt=record.prompt,
+            context_embedding=encode_prompt_context(
+                record.prompt,
+                dim=embedding_dim,
+                source_type=record.source_type,
+                task_type=record.target.task_type,
+                tags=record.tags,
+            ),
+            target_embedding=encode_prompt_target(
+                record.target,
+                dim=embedding_dim,
+                tags=record.tags,
+            ),
+            target=record.target.to_record(),
+            tags=record.tags,
+        )
+        for record in records
+    )
+
+
+def _prompt_outcome_index_rows(
+    records: Sequence[PromptJepaOutcomeRecord],
+    *,
+    embedding_dim: int,
+    source_path: str | None,
+) -> tuple[PromptJepaIndexRow, ...]:
+    return tuple(
+        PromptJepaIndexRow(
+            row_id=record.row_id,
+            split=record.split,
+            source_type=record.source_type,
+            source_path=source_path,
+            prompt=record.prompt,
+            context_embedding=encode_prompt_context(
+                record.prompt,
+                dim=embedding_dim,
+                source_type=record.source_type,
+                task_type=_optional_str(record.target.get("task_type")),
+                tags=record.tags,
+            ),
+            target_embedding=encode_prompt_target(
+                record.target,
+                dim=embedding_dim,
+                tags=record.tags,
+            ),
+            target=_json_copy(record.target),
+            tags=record.tags,
+        )
+        for record in records
+    )
+
+
+def _outcome_record_from_row(
+    row: Mapping[str, object],
+    *,
+    index: int,
+) -> PromptJepaOutcomeRecord | None:
+    record_kind = row.get("record_kind")
+    if record_kind == REQUEST_REPO_ATTEMPT_KIND:
+        return _request_repo_outcome_record(row, index=index)
+    if record_kind == EXISTING_REPO_CHANGE_ATTEMPT_KIND:
+        return _existing_repo_change_outcome_record(row, index=index)
+    return None
+
+
+def _request_repo_outcome_record(
+    row: Mapping[str, object],
+    *,
+    index: int,
+) -> PromptJepaOutcomeRecord:
+    spec = _mapping_field(row, "normalized_request_spec", index=index)
+    actions = _list_field(row, "greenfield_actions", index=index)
+    build_result = _mapping_field(row, "build_result", index=index)
+    validation = _mapping_field(row, "validation", index=index)
+    failure = row.get("failure_observation")
+
+    prompt = _outcome_prompt(row, index=index)
+    passed = bool(row.get("passed", False))
+    action_kinds = _action_kinds(actions)
+    files_written = _string_list(
+        build_result.get("cli_files_written", build_result.get("files_written", []))
+    )
+    clarification_fields = _clarification_fields(spec.get("clarifications_needed", []))
+    target = {
+        "schema_version": "prompt-jepa-outcome-target-v1",
+        "record_schema_version": _optional_str(row.get("schema_version")),
+        "record_kind": REQUEST_REPO_ATTEMPT_KIND,
+        "repo_mode": _optional_str(spec.get("repo_mode")),
+        "task_type": _optional_str(spec.get("task_type")),
+        "domain": _optional_str(spec.get("domain")),
+        "expected_action": "emit_request_spec",
+        "requires_clarification": "yes" if clarification_fields else "no",
+        "features": _string_list(spec.get("features", [])),
+        "requested_interfaces": _interface_kinds(spec.get("interfaces", [])),
+        "artifacts": _string_list(spec.get("artifacts", [])),
+        "target_files": _string_list(spec.get("artifacts", [])),
+        "clarification_fields": clarification_fields,
+        "action_kinds": action_kinds,
+        "files_written": files_written,
+        "validation_status": _optional_str(validation.get("status")),
+        "outcome_status": _optional_str(build_result.get("status")),
+        "passed": passed,
+        "failure_kind": _failure_kind(failure),
+        "request_spec": _json_copy(spec),
+        "actions": _json_copy(actions),
+        "outcome": {
+            "build_result": _json_copy(build_result),
+            "validation": _json_copy(validation),
+            "failure_observation": _json_copy(failure),
+            "output_repo_path": _optional_str(row.get("output_repo_path")),
+        },
+    }
+    return PromptJepaOutcomeRecord(
+        row_id=_outcome_row_id(row, prefix="request-repo-attempt", index=index),
+        split=_outcome_split(row),
+        source_type=REQUEST_REPO_ATTEMPT_KIND,
+        prompt=prompt,
+        target=_drop_none_values(target),
+        tags=_outcome_tags(
+            record_kind=REQUEST_REPO_ATTEMPT_KIND,
+            target=target,
+            passed=passed,
+        ),
+    )
+
+
+def _existing_repo_change_outcome_record(
+    row: Mapping[str, object],
+    *,
+    index: int,
+) -> PromptJepaOutcomeRecord:
+    spec = _mapping_field(row, "existing_repo_change_spec", index=index)
+    actions = _list_field(row, "existing_repo_actions", index=index)
+    change_result = _mapping_field(row, "change_result", index=index)
+    validation = _mapping_field(row, "validation", index=index)
+    failure = row.get("failure_observation")
+
+    prompt = _outcome_prompt(row, index=index)
+    passed = bool(row.get("passed", False))
+    target = {
+        "schema_version": "prompt-jepa-outcome-target-v1",
+        "record_schema_version": _optional_str(row.get("schema_version")),
+        "record_kind": EXISTING_REPO_CHANGE_ATTEMPT_KIND,
+        "repo_mode": _optional_str(spec.get("repo_mode")),
+        "task_type": _optional_str(spec.get("task_type")),
+        "domain": _optional_str(spec.get("domain")),
+        "expected_action": "emit_existing_repo_change_spec",
+        "requires_clarification": "no",
+        "features": _string_list(spec.get("features_to_add", [])),
+        "features_to_add": _string_list(spec.get("features_to_add", [])),
+        "requested_interfaces": ["cli"],
+        "target_files": _string_list(spec.get("target_files", [])),
+        "action_kinds": _action_kinds(actions),
+        "files_changed": _string_list(change_result.get("files_changed", [])),
+        "validation_status": _optional_str(validation.get("status")),
+        "outcome_status": _optional_str(change_result.get("status")),
+        "passed": passed,
+        "failure_kind": _failure_kind(failure),
+        "change_spec": _json_copy(spec),
+        "actions": _json_copy(actions),
+        "outcome": {
+            "change_result": _json_copy(change_result),
+            "validation": _json_copy(validation),
+            "failure_observation": _json_copy(failure),
+            "repo_path": _optional_str(row.get("repo_path")),
+        },
+    }
+    return PromptJepaOutcomeRecord(
+        row_id=_outcome_row_id(row, prefix="existing-repo-change-attempt", index=index),
+        split=_outcome_split(row),
+        source_type=EXISTING_REPO_CHANGE_ATTEMPT_KIND,
+        prompt=prompt,
+        target=_drop_none_values(target),
+        tags=_outcome_tags(
+            record_kind=EXISTING_REPO_CHANGE_ATTEMPT_KIND,
+            target=target,
+            passed=passed,
+        ),
+    )
+
+
+def _outcome_prompt(row: Mapping[str, object], *, index: int) -> str:
+    prompt = row.get("raw_prompt", row.get("prompt"))
+    if not isinstance(prompt, str) or not prompt:
+        raise ValueError(f"Prompt-JEPA outcome row {index} has no prompt")
+    return prompt
+
+
+def _outcome_row_id(
+    row: Mapping[str, object],
+    *,
+    prefix: str,
+    index: int,
+) -> str:
+    for field_name in ("id", "row_id"):
+        value = row.get(field_name)
+        if isinstance(value, str) and value:
+            return value
+    return f"{prefix}-{index:04d}"
+
+
+def _outcome_split(row: Mapping[str, object]) -> str:
+    split = row.get("split")
+    return split if isinstance(split, str) and split else "train"
+
+
+def _mapping_field(
+    row: Mapping[str, object],
+    field: str,
+    *,
+    index: int,
+) -> Mapping[str, object]:
+    value = row.get(field)
+    if not isinstance(value, Mapping):
+        raise ValueError(f"Prompt-JEPA outcome row {index} field {field!r} must be an object")
+    return value
+
+
+def _list_field(
+    row: Mapping[str, object],
+    field: str,
+    *,
+    index: int,
+) -> list[object]:
+    value = row.get(field)
+    if not isinstance(value, list):
+        raise ValueError(f"Prompt-JEPA outcome row {index} field {field!r} must be a list")
+    return value
+
+
+def _optional_str(value: object) -> str | None:
+    return value if isinstance(value, str) and value else None
+
+
+def _string_list(value: object) -> list[str]:
+    if not isinstance(value, list | tuple):
+        return []
+    return [item for item in value if isinstance(item, str)]
+
+
+def _interface_kinds(value: object) -> list[str]:
+    if not isinstance(value, list | tuple):
+        return []
+    kinds: list[str] = []
+    for item in value:
+        if isinstance(item, str):
+            kinds.append(item)
+        elif isinstance(item, Mapping):
+            kind = item.get("kind")
+            if isinstance(kind, str) and kind:
+                kinds.append(kind)
+    return kinds
+
+
+def _clarification_fields(value: object) -> list[str]:
+    if not isinstance(value, list | tuple):
+        return []
+    fields: list[str] = []
+    for item in value:
+        if not isinstance(item, Mapping):
+            continue
+        field = item.get("field")
+        if isinstance(field, str) and field:
+            fields.append(field)
+    return fields
+
+
+def _action_kinds(actions: Sequence[object]) -> list[str]:
+    kinds: list[str] = []
+    for action in actions:
+        if not isinstance(action, Mapping):
+            continue
+        kind = action.get("kind")
+        if isinstance(kind, str) and kind:
+            kinds.append(kind)
+    return kinds
+
+
+def _failure_kind(value: object) -> str:
+    if isinstance(value, Mapping):
+        kind = value.get("kind")
+        if isinstance(kind, str) and kind:
+            return kind
+    return "none"
+
+
+def _outcome_tags(
+    *,
+    record_kind: str,
+    target: Mapping[str, object],
+    passed: bool,
+) -> tuple[str, ...]:
+    tags = [
+        "outcome",
+        record_kind,
+        "passed" if passed else "failed",
+    ]
+    for field_name in ("repo_mode", "task_type", "domain", "validation_status"):
+        value = target.get(field_name)
+        if isinstance(value, str) and value:
+            tags.append(value)
+    tags.extend(_string_list(target.get("features", [])))
+    return tuple(dict.fromkeys(tags))
+
+
+def _drop_none_values(record: Mapping[str, object]) -> dict[str, object]:
+    return {key: value for key, value in record.items() if value is not None}
+
+
 def _prompt_context_features(
     prompt: str,
     *,
@@ -1160,6 +1586,13 @@ def _add_target_summary_features(
         ("unsupported_requirement_family", 3),
         ("unsupported_requirements", 3),
         ("clarification_fields", 2),
+        ("record_kind", 3),
+        ("validation_status", 3),
+        ("outcome_status", 3),
+        ("action_kinds", 3),
+        ("files_written", 2),
+        ("files_changed", 2),
+        ("failure_kind", 3),
     )
     for field_name, weight in weighted_fields:
         if field_name not in target:
@@ -1246,6 +1679,14 @@ def _target_metadata(target: Mapping[str, object]) -> dict[str, object]:
         "clarification_fields",
         "target_files",
         "features_to_add",
+        "record_kind",
+        "validation_status",
+        "outcome_status",
+        "passed",
+        "failure_kind",
+        "action_kinds",
+        "files_written",
+        "files_changed",
     )
     return {
         field_name: _json_copy(target[field_name])

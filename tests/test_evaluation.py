@@ -97,7 +97,7 @@ def test_load_greenshot_6_tasks() -> None:
     tasks = load_tasks(Path("examples/greenshot_6"))
     by_name = {task.name: task for task in tasks}
 
-    assert len(tasks) == 24
+    assert len(tasks) == 25
     assert tasks[0].name == "core_metadata_version_dict_value"
     assert tasks[0].family == "mapping_value"
     assert tasks[0].source_type == "mutation"
@@ -230,6 +230,18 @@ def test_load_greenshot_6_tasks() -> None:
             "operation": "change_bool_operator",
             "from": "or",
             "to": "and",
+        },
+    }
+    assert by_name["dateutil_lowercase_z_utc_suffix"].split == "train"
+    assert by_name["dateutil_lowercase_z_utc_suffix"].source_type == "git_history"
+    assert by_name["dateutil_lowercase_z_utc_suffix"].preferred_patch == {
+        "file_path": "dateparse/isoparse.py",
+        "action": "change_module_constant",
+        "symbol": "UTC_ZONE_NAMES",
+        "params": {
+            "name": "UTC_ZONE_NAMES",
+            "from": "UTC GMT Z",
+            "to": "UTC GMT Z z",
         },
     }
     assert by_name["cookie_default_secure_flag_dict_value"].split == "test"

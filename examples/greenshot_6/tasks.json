@@ -332,6 +332,30 @@
     }
   },
   {
+    "name": "dateutil_lowercase_z_utc_suffix",
+    "family": "datetime_timezone_marker",
+    "source_type": "git_history",
+    "split": "train",
+    "repo": ".",
+    "test": "python -m pytest tests/test_dateparse.py::test_lowercase_z_is_accepted_as_utc_suffix",
+    "source": {
+      "repo": "dateutil/dateutil",
+      "commit": "91ba90e61941ddbcd16dbe8ef8441d0b8e51a084",
+      "pr": 822,
+      "issue": 820
+    },
+    "preferred": {
+      "file_path": "dateparse/isoparse.py",
+      "action": "change_module_constant",
+      "symbol": "UTC_ZONE_NAMES",
+      "params": {
+        "name": "UTC_ZONE_NAMES",
+        "from": "UTC GMT Z",
+        "to": "UTC GMT Z z"
+      }
+    }
+  },
+  {
     "name": "cookie_default_secure_flag_dict_value",
     "family": "mapping_value",
     "source_type": "mutation",

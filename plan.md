@@ -525,12 +525,42 @@ Recent work:
   boolean-connective repair. The saved test-slice ranker places every
   GreenShot-6 preferred-positive candidate at trained rank 1, including the new
   sampling task.
+- GreenShot-6 now includes a sixth fixture domain, `dateparse`, with one
+  real-package-derived `git_history` task modeled on `dateutil/dateutil` PR 822
+  / commit `91ba90e61941ddbcd16dbe8ef8441d0b8e51a084`. The task
+  `dateutil_lowercase_z_utc_suffix` repairs lowercase `z` UTC timezone suffix
+  handling by changing the `UTC_ZONE_NAMES` module constant from
+  `"UTC GMT Z"` to `"UTC GMT Z z"`, using the existing
+  `change_module_constant` action family.
+- Focused loader/generator coverage passed for the new dateparse task:
+  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
+  `pytest tests/test_patching.py::test_patch_solves_dateutil_lowercase_z_utc_suffix -q`.
+- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
+  adding `dateparse`. The persisted dataset at
+  `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` now covers 25
+  tasks and 182 tested candidates. Ranked eval solved all 25 tasks with
+  `pass@1=19/25` and average candidates `7.28`; the new dateutil-derived task
+  solves at raw rank 1 with the preferred `change_module_constant` candidate.
+- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
+  the dateparse outcome refresh and stayed clean: solved=7/7, pass@1=7/7,
+  positive@1=7/7. Training used 262 rows, 60 passing rows, 223 training pairs,
+  674 features, and 3 margin violations.
+- Refreshed raw/trained miss inspection after adding `dateparse` found no new
+  missing preferred-positive candidates and no trained preferred-positive
+  misses. Raw GreenShot-6 now has six pass@1 misses:
+  `apache_license_classifier_dict_value`, `dynamic_field_error_message`,
+  `http_no_store_directive_subscript_key`,
+  `http_range_request_bypasses_cache`,
+  `litgpt_zero_temperature_greedy_condition`, and
+  `minimum_python_version_operator_boundary`; every task has a tested
+  preferred-positive row, and the saved test-slice ranker places every
+  preferred-positive candidate at trained rank 1.
 
 Last focused verification:
 
 ```bash
 pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q
-pytest tests/test_patching.py::test_patch_solves_click_invalid_directory_filename_repr -q
+pytest tests/test_patching.py::test_patch_solves_dateutil_lowercase_z_utc_suffix -q
 python cli.py eval \
   --tasks examples/greenshot_6 \
   --checkpoint runs/apache-python-git/model.json \
@@ -682,9 +712,9 @@ GreenShot-6 outcome collection result:
 
 ```text
 ranked, runs/apache-python-git/model.json, explore-after-pass=5:
-  solved=24/24 pass@1=18/24 avg_candidates=7.33
-  rows=176 passing_rows=51 preferred_positive_rows=24
-  source_type pass@1: git_history=3/6 mutation=15/18
+  solved=25/25 pass@1=19/25 avg_candidates=7.28
+  rows=182 passing_rows=52 preferred_positive_rows=25
+  source_type pass@1: git_history=4/7 mutation=15/18
 ```
 
 Treat this as a smoke check, not a benchmark claim.
@@ -703,7 +733,7 @@ GreenShot-6 test-slice ranker validation result:
 
 ```text
 train-ranker, holdout-task includes all GreenShot-6 split:test tasks:
-  training rows=256 passing_rows=59 tasks=37 plans=37 pairs=218
+  training rows=262 passing_rows=60 tasks=38 plans=38 pairs=223
   training_accuracy=1.000 margin_violations=3 features=674
   validation solved=7/7 pass@1=7/7 positive@1=7/7
   validation avg_first_passing_index=1.0

@@ -705,12 +705,36 @@ Recent work:
   no trained preferred-positive misses. For the new yfinance-derived task, the
   trained ranker places the preferred reusable `change_literal` repair first,
   above the concrete whole-message passing candidate.
+- GreenShot-6 now includes an eleventh fixture domain, `httpresponse`, with one
+  real-package-derived `git_history` task modeled on `urllib3/urllib3` commit
+  `6d022020b41ffbd184f644f0fa645b85c159b50b`. The task
+  `urllib3_getheader_warning_typo` repairs a deprecated `getheader` warning by
+  changing `HTTResponse.headers.get(name, default)` to
+  `HTTPResponse.headers.get(name, default)`, using the existing
+  `change_literal` action family.
+- Focused loader/generator coverage passed for the new urllib3-derived task:
+  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
+  `pytest tests/test_patching.py::test_patch_solves_urllib3_getheader_warning_typo -q`.
+- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
+  adding `httpresponse`. The persisted dataset at
+  `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` now covers 30
+  tasks and 221 tested candidates. Ranked eval solved all 30 tasks with
+  `pass@1=22/30` and average candidates `7.37`; the new urllib3-derived task
+  solves at raw rank 3 with the preferred `change_literal` candidate.
+- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
+  the httpresponse outcome refresh and stayed clean: solved=7/7, pass@1=7/7,
+  positive@1=7/7. Training used 301 rows, 66 passing rows, 257 training pairs,
+  707 features, and 3 margin violations.
+- Applying the saved test-slice ranker to all refreshed GreenShot-6 rows found
+  no trained preferred-positive misses. For the new urllib3-derived task, the
+  trained ranker places the preferred `change_literal` repair first, above the
+  false `swap_call_arg` and literal decoys.
 
 Last focused verification:
 
 ```bash
 pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q
-pytest tests/test_patching.py::test_patch_solves_yfinance_market_data_error_typo -q
+pytest tests/test_patching.py::test_patch_solves_urllib3_getheader_warning_typo -q
 python cli.py eval \
   --tasks examples/greenshot_6 \
   --checkpoint runs/apache-python-git/model.json \
@@ -857,9 +881,9 @@ GreenShot-6 outcome collection result:
 
 ```text
 ranked, runs/apache-python-git/model.json, explore-after-pass=5:
-  solved=29/29 pass@1=22/29 avg_candidates=7.31
-  rows=212 passing_rows=57 preferred_positive_rows=29
-  source_type pass@1: git_history=7/11 mutation=15/18
+  solved=30/30 pass@1=22/30 avg_candidates=7.37
+  rows=221 passing_rows=58 preferred_positive_rows=30
+  source_type pass@1: git_history=7/12 mutation=15/18
 ```
 
 Treat this as a smoke check, not a benchmark claim.
@@ -878,8 +902,8 @@ GreenShot-6 test-slice ranker validation result:
 
 ```text
 train-ranker, holdout-task includes all GreenShot-6 split:test tasks:
-  training rows=292 passing_rows=65 tasks=42 plans=42 pairs=249
-  training_accuracy=1.000 margin_violations=3 features=705
+  training rows=301 passing_rows=66 tasks=43 plans=43 pairs=257
+  training_accuracy=1.000 margin_violations=3 features=707
   validation solved=7/7 pass@1=7/7 positive@1=7/7
   validation avg_first_passing_index=1.0
 ```

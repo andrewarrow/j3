@@ -443,6 +443,27 @@
     }
   },
   {
+    "name": "urllib3_getheader_warning_typo",
+    "family": "http_response_deprecation_warning",
+    "source_type": "git_history",
+    "split": "train",
+    "repo": ".",
+    "test": "python -m pytest tests/test_httpresponse.py::test_getheader_deprecation_warning_names_httpresponse",
+    "source": {
+      "repo": "urllib3/urllib3",
+      "commit": "6d022020b41ffbd184f644f0fa645b85c159b50b"
+    },
+    "preferred": {
+      "file_path": "httpresponse/response.py",
+      "action": "change_literal",
+      "symbol": "getheader",
+      "params": {
+        "from": "HTTResponse.headers.get(name, default)",
+        "to": "HTTPResponse.headers.get(name, default)"
+      }
+    }
+  },
+  {
     "name": "cookie_default_secure_flag_dict_value",
     "family": "mapping_value",
     "source_type": "mutation",

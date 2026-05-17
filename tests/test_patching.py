@@ -820,6 +820,30 @@ def test_patch_solves_yfinance_market_data_error_typo(tmp_path) -> None:
     assert "received faulty data" in result.selected.patched_source
 
 
+def test_patch_solves_urllib3_getheader_warning_typo(tmp_path) -> None:
+    repo = tmp_path / "greenshot_6"
+    shutil.copytree("examples/greenshot_6", repo)
+
+    result = plan_and_maybe_apply_patch(
+        repo=repo,
+        test_command=(
+            "python -m pytest "
+            "tests/test_httpresponse.py::test_getheader_deprecation_warning_names_httpresponse"
+        ),
+        dry_run=True,
+        timeout_seconds=10,
+    )
+
+    assert result.selected is not None
+    assert result.selected.file_path == "httpresponse/response.py"
+    assert result.selected.action.kind.value == "change_literal"
+    assert result.selected.action.params == {
+        "from": "HTTResponse.headers.get(name, default)",
+        "to": "HTTPResponse.headers.get(name, default)",
+    }
+    assert "HTTPResponse.headers.get(name, default)" in result.selected.patched_source
+
+
 def test_generate_membership_operator_with_literal_needle_decoy(tmp_path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()

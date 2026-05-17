@@ -99,7 +99,7 @@ def test_load_greenshot_6_tasks() -> None:
     tasks = load_tasks(Path("examples/greenshot_6"))
     by_name = {task.name: task for task in tasks}
 
-    assert len(tasks) == 29
+    assert len(tasks) == 30
     assert tasks[0].name == "core_metadata_version_dict_value"
     assert tasks[0].family == "mapping_value"
     assert tasks[0].source_type == "mutation"
@@ -289,6 +289,17 @@ def test_load_greenshot_6_tasks() -> None:
         "params": {
             "from": ": Failed to retrieve market data and recieved faulty data.",
             "to": ": Failed to retrieve market data and received faulty data.",
+        },
+    }
+    assert by_name["urllib3_getheader_warning_typo"].split == "train"
+    assert by_name["urllib3_getheader_warning_typo"].source_type == "git_history"
+    assert by_name["urllib3_getheader_warning_typo"].preferred_patch == {
+        "file_path": "httpresponse/response.py",
+        "action": "change_literal",
+        "symbol": "getheader",
+        "params": {
+            "from": "HTTResponse.headers.get(name, default)",
+            "to": "HTTPResponse.headers.get(name, default)",
         },
     }
     assert by_name["cookie_default_secure_flag_dict_value"].split == "test"

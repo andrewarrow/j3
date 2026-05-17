@@ -1,7 +1,9 @@
 # Today Progress
 
-This file is the live progress log for `plans/today.md`. Keep `plan.md` and
-`plans/today.md` stable unless the user explicitly asks to change them.
+This file is the live progress log for `plans/today.md`. Keep `plan.md` stable.
+Keep `plans/today.md` stable for routine progress, but update it narrowly when
+new implementation facts change the 24-hour plan itself. Record any
+`plans/today.md` change here with the reason.
 
 ## Status
 
@@ -48,6 +50,9 @@ Use this shape for each worker handoff:
   create and run focused tests such as `tests/test_request_spec.py`,
   `tests/test_greenfield_calculator.py`, and `tests/test_greenshot_7.py` as the
   implementation is built.
+- Clarified the documentation policy: ordinary progress goes here, while
+  `plans/today.md` may be updated narrowly if new discoveries change the actual
+  24-hour execution plan.
 - Current next step: start Step 1 from `plans/today.md` by adding
   `REQUEST_SPEC.md` for `request-spec-v1`, including calculator `etc.`
   inference and at least one clarification example.

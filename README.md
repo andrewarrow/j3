@@ -10,7 +10,8 @@ toward the desired target state.
 
 This project is motivated by
 [the Yann LeCun JEPA/world-model talk](https://www.youtube.com/watch?v=ngBraLDqzdI)
-summarized in `yann.md`: capable agents need predictive models, planning in
+
+Capable agents need predictive models, planning in
 abstract representation space, and objective-driven constraints. Language
 remains useful as an interface, but the core editing loop should not depend on
 autoregressive source generation.

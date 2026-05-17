@@ -7,17 +7,31 @@ new implementation facts change the 24-hour plan itself. Record any
 
 ## Status
 
-- Current phase: reset to Prompt-JEPA encoder and index implementation
-- Completed iterations: 8 for this reset
+- Current phase: Prompt-JEPA developer demo and prompt corpus scale-up
+- Completed iterations: 0 for this reset; previous Prompt-JEPA index reset
+  completed 8 iterations
 - Passing focused tests: `pytest tests/test_cli.py -q`;
   `pytest tests/test_prompt_jepa.py -q`;
   `python -m py_compile prompt_jepa.py cli/handlers.py cli/parser.py cli/__init__.py`;
   `git diff --check`
 - Latest implementation commit: `d8bfd1b`
 - Current blocker: none
-- Next task: review proposal dry-run output against additional real outcome
-  rows and decide whether a future planner should consume proposals directly or
-  through a separate planner-evidence adapter.
+- Next task: add a reproducible expanded prompt corpus under `../prompts`, then
+  add a corpus quality/profile gate before building the one-command demo.
+
+## Active Task Queue
+
+- [ ] Add reproducible expanded prompt corpus under `../prompts` with clear
+  provenance, stable splits, and roughly 250 to 300 total rows.
+- [ ] Add a prompt corpus quality/profile command or equivalent tested path.
+- [ ] Add a one-command Prompt-JEPA demo/report path with timings, artifact
+  sizes, representative queries, dry-run proposals, and hosted API tokens `0`.
+- [ ] Generate real calculator outcome rows and build a mixed labels+records
+  Prompt-JEPA demo index.
+- [ ] Add a thin Python source-embedding sidecar for generated demo repos using
+  `features.embed_python_source`.
+- [ ] Document the demo in README or a focused demo doc with exact commands and
+  honest supported/retrieval-only boundaries.
 
 ## Worker Iteration Template
 
@@ -356,4 +370,28 @@ Use this shape for each worker handoff:
   proposal behavior, and the current production-routing boundary.
 - Next: keep README concise; move deeper Prompt-JEPA metrics or design notes to
   focused docs if they grow beyond the small current-progress summary.
+- Blockers: none.
+
+### Reset: Prompt-JEPA developer demo and corpus scale-up
+
+- Goal: reread `plan.md`, `plans/today.md`, `plans/today.progress.md`,
+  `TRAINING.md`, and `../prompts` context, then reset the active 24-hour plan
+  to the next work most likely to make the repo compelling to outside
+  developers.
+- Files changed: `plans/today.md`, `plans/today.progress.md`
+- Decision: prioritize a fast local Prompt-JEPA demo and expanded prompt corpus
+  before a deeper Apache-source JEPA training run. The source-training path is
+  important, but the repo first needs a runnable prompt-to-repo/index/proposal
+  demo showing local execution, inspectable structured records, timings,
+  validation, and zero hosted LLM token use.
+- Current facts: `../prompts/coding_agent_prompts_seed.jsonl` has 80 rows;
+  the Prompt-JEPA index/proposal path exists; GreenShot-7 can already produce
+  real calculator request/change outcome rows; `features.py` already provides a
+  deterministic Python source encoder that can be added as a demo sidecar.
+- Result: `plans/today.md` now targets an expanded 250-300 row prompt corpus,
+  prompt corpus quality gate, one-command demo/report, mixed labels+records
+  index, thin source-embedding bridge, and developer-facing docs.
+- Tests run: `git diff --check` passed.
+- Next: implement the first unchecked task: add the reproducible expanded
+  prompt corpus under `../prompts` with clear provenance and stable splits.
 - Blockers: none.

@@ -12,9 +12,11 @@ new implementation facts change the 24-hour plan itself. Record any
 - Passing focused tests: prompt seed JSONL validation, `test -s REQUEST_SPEC.md`,
   GreenShot-7 fixture JSON validation, `pytest tests/test_request_spec.py -q`,
   `pytest tests/test_greenfield_calculator.py -q`, `git diff --check`
-- Latest implementation commit: pending (`Add greenfield action planning`)
+- Latest implementation commit: `8b1d6891e7611ff06962f43d1b1016f9d1d6958f`
+  (`Add greenfield action planning`)
 - Current blocker: none
-- Next task: build structured greenfield calculator action planning from `request-spec-v1`
+- Next task: materialize generated calculator repos from `greenfield-plan-v1`
+  actions and run subprocess smoke checks
 
 ## Worker Iteration Template
 
@@ -140,8 +142,8 @@ Use this shape for each worker handoff:
   calculator source and test files, operation dispatch derived from spec
   features and aliases, CLI entrypoint planning, behavior test planning, and a
   blocked clarification plan for non-actionable specs.
-- Commit: pending (`Add greenfield action planning`)
-- Push: pending
+- Commit: `8b1d6891e7611ff06962f43d1b1016f9d1d6958f` (`Add greenfield action planning`)
+- Push: succeeded to `origin/main`
 - Next: Materialize generated calculator repos from `greenfield-plan-v1`
   actions and run subprocess smoke checks.
 - Blockers: none

@@ -8,6 +8,7 @@ This file is the live progress log for `plans/today.md`. Keep
 - Current phase: productize transition scoring without fooling ourselves.
 - Completed iterations for this reset: 2.
 - Latest relevant commits:
+  - `86ce6c2` added transition bench product-readiness gates.
   - `26cca1d` removed the old today plan files.
   - `4cca638` documented transition bench reproduction.
   - `760c1fe` added the transition bench demo.
@@ -158,8 +159,8 @@ Use this shape for each worker handoff:
   candidates validated before first pass, residual counts, and a gate result.
   The 88-group candidate bench remains blocked from guarded opt-in because V1
   underperforms existing rank order.
-- Commit: pending in this worker commit; final hash reported in worker response.
-- Push: pending.
+- Commit: `86ce6c2` (`Add transition bench readiness gates`)
+- Push: succeeded to `main` (`b37a0a7..86ce6c2`)
 - Next: calibrate a V2 action scorer from candidate outcomes.
 - Blockers: none for this slice; the product gate correctly records the V1
   scorer as not ready for guarded opt-in.

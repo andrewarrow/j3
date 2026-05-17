@@ -220,8 +220,8 @@ Use this shape for each worker handoff:
   zero-hosted usage assertions, reproduction commands, and SHA-256 checksums
   with absolute artifact paths so verification works from any directory. No
   top-level JSONL files are packaged by default.
-- Commit: pending.
-- Push: pending.
+- Commit: `631636f` (`Add matrix transition evidence bundle`)
+- Push: pushed to `origin/main`.
 - Next: decide guarded trial eligibility from matrix gates.
 - Blockers: none. The one-suite smoke matrix remains
   `ready_for_shadow_mode`, so guarded opt-in eligibility is exposed as data but

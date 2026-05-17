@@ -21,8 +21,8 @@ new implementation facts change the 24-hour plan itself. Record any
 
 ## Active Task Queue
 
-- [ ] Add reproducible expanded prompt corpus under `../prompts` with clear
-  provenance, stable splits, and roughly 250 to 300 total rows.
+- [x] Add reproducible expanded prompt corpus under `../prompts` with clear
+  provenance, stable splits, and roughly 300 to 350 total rows.
 - [ ] Add a prompt corpus quality/profile command or equivalent tested path.
 - [ ] Add a one-command Prompt-JEPA demo/report path with timings, artifact
   sizes, representative queries, dry-run proposals, and hosted API tokens `0`.
@@ -388,10 +388,76 @@ Use this shape for each worker handoff:
   the Prompt-JEPA index/proposal path exists; GreenShot-7 can already produce
   real calculator request/change outcome rows; `features.py` already provides a
   deterministic Python source encoder that can be added as a demo sidecar.
-- Result: `plans/today.md` now targets an expanded 250-300 row prompt corpus,
+- Result: `plans/today.md` now targets an expanded 300-350 row prompt corpus,
   prompt corpus quality gate, one-command demo/report, mixed labels+records
   index, thin source-embedding bridge, and developer-facing docs.
 - Tests run: `git diff --check` passed.
 - Next: implement the first unchecked task: add the reproducible expanded
   prompt corpus under `../prompts` with clear provenance and stable splits.
+- Blockers: none.
+
+### Iteration 1: Expanded prompt corpus generation
+
+- Worker: Codex local iteration
+- Goal: generate a larger prompt corpus in `../prompts` and keep enough notes
+  for another developer to reproduce the artifact.
+- Files changed: `tools/prompts/generate_expanded_prompt_corpus.py`,
+  `tools/prompts/README.md`,
+  `../prompts/coding_agent_prompts_expanded_v0.jsonl`,
+  `../prompts/GENERATION.md`, `../prompts/README.md`,
+  `plans/today.md`, `plans/today.progress.md`
+- Plan update: raised the target corpus size from roughly 250-300 rows to
+  roughly 300-350 rows because the deterministic template pass produced 320
+  useful rows while still staying small enough for fast local demo use.
+- Tests run: `python tools/prompts/generate_expanded_prompt_corpus.py` passed and
+  produced 320 rows; `python -m py_compile
+  tools/prompts/generate_expanded_prompt_corpus.py` passed; `python cli.py
+  train-prompt-intents --labels
+  ../prompts/coding_agent_prompts_expanded_v0.jsonl --target expected_action
+  repo_mode task_type domain requires_clarification` passed; `python cli.py
+  build-prompt-jepa-index --labels
+  ../prompts/coding_agent_prompts_expanded_v0.jsonl --out
+  /tmp/j3-expanded-prompt-jepa-index.json` passed; `python cli.py
+  eval-prompt-jepa-index --labels
+  ../prompts/coding_agent_prompts_expanded_v0.jsonl --mode compare` passed;
+  representative `query-prompt-jepa-index` and `propose-from-prompt-jepa`
+  commands passed; `git diff --check` passed.
+- Corpus result: 320 total rows: 80 `human_seed`, 240
+  `synthetic_template_v0`; splits are train 206, validation 42, test 72.
+  Expected action counts are `emit_existing_repo_change_spec` 164,
+  `emit_request_spec` 122, and `ask_clarification` 34.
+- Baseline result: token baseline on held-out splits reached validation/test
+  `expected_action` 36/42 and 64/72, `repo_mode` 36/42 and 68/72,
+  `task_type` 29/42 and 53/72, `domain` 15/42 and 17/72, and
+  `requires_clarification` 40/42 and 68/72. Domain remains intentionally hard
+  because the expanded corpus has many sparse domains.
+- Prompt-JEPA smoke: expanded index built with 320 rows. Querying `make me a
+  simple cli calc` returned `synth-0001` first with score `0.849906` and
+  `emit_request_spec`; querying `make me a complex calc for spaceships`
+  returned `synth-0228` first with score `0.880979` and
+  `ask_clarification`; querying `add auth` returned the auth clarification seed
+  first.
+- Result: `tools/prompts/generate_expanded_prompt_corpus.py` is the checked-in
+  source of truth for generating the expanded corpus, and `../prompts` now has
+  generation notes plus a 320-row demo corpus with explicit synthetic
+  provenance. The generator skips duplicate prompts from the human seed rather
+  than weakening duplicate validation.
+- Next: add the prompt corpus quality/profile command or equivalent tested
+  path.
+- Blockers: none.
+
+### Plan adjustment: stop expanding before measurement
+
+- Decision: do not keep adding prompt rows in Step 1 right now. The 320-row
+  corpus is enough for the next demo slice; the next leverage point is Step 2,
+  a prompt corpus quality/profile gate, followed by the one-command demo report.
+- Reason: more synthetic prompts without duplicate checks, family leakage
+  checks, and representative demo metrics would make the corpus larger but not
+  more convincing to outside developers.
+- Files changed: `tools/prompts/generate_expanded_prompt_corpus.py`,
+  `tools/prompts/README.md`, `../prompts/GENERATION.md`,
+  `../prompts/README.md`, `plans/today.md`, `plans/today.progress.md`
+- Tests run: `python tools/prompts/generate_expanded_prompt_corpus.py` passed
+  and reproduced the 320-row corpus.
+- Next: implement the prompt corpus quality/profile command.
 - Blockers: none.

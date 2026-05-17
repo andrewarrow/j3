@@ -100,11 +100,17 @@ hole today.
 
 ### Step 1: Expand The Prompt Corpus Deliberately
 
+Status: complete for this slice at 320 total rows. Do not keep expanding the
+synthetic corpus until Step 2 adds a quality/profile gate and Step 3 shows the
+demo report; more rows without better measurement will make the signal harder
+to understand.
+
 Deliverable:
 
-- add a reproducible way to create a larger prompt corpus under `../prompts`
-  without overwriting the hand-authored seed
-- target roughly 250 to 300 total rows for this slice
+- add a reproducible, checked-in generator at
+  `tools/prompts/generate_expanded_prompt_corpus.py` that writes a larger prompt
+  corpus under `../prompts` without overwriting the hand-authored seed
+- target roughly 300 to 350 total rows for this slice
 - keep rows compatible with `load_prompt_intent_records`
 - include stable `id`, `split`, `source_type`, `task_type`, `repo_mode`,
   `domain`, `prompt`, `expected`, and `tags`

@@ -19,6 +19,7 @@ class RepairTask:
     test_command: str
     family: str = "unclassified"
     source_type: str = "handcrafted"
+    split: str = "train"
     preferred_patch: dict[str, object] | None = None
     max_steps: int = 1
 

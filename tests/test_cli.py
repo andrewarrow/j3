@@ -175,6 +175,7 @@ def test_outcome_summary_command_reports_dataset_shape(capsys, tmp_path) -> None
             "task": "boundary",
             "task_family": "operator_boundary",
             "source_type": "mutation",
+            "split": "validation",
             "phase": "ranked",
             "file_path": "bugs.py",
             "action": "change_operator",
@@ -190,6 +191,7 @@ def test_outcome_summary_command_reports_dataset_shape(capsys, tmp_path) -> None
             "task": "boundary",
             "task_family": "operator_boundary",
             "source_type": "mutation",
+            "split": "validation",
             "phase": "ranked",
             "file_path": "bugs.py",
             "action": "change_operator",
@@ -206,6 +208,7 @@ def test_outcome_summary_command_reports_dataset_shape(capsys, tmp_path) -> None
             "task": "metadata",
             "task_family": "package_metadata",
             "source_type": "git_history",
+            "split": "test",
             "phase": "ranked",
             "file_path": "pkgmeta/metadata.py",
             "action": "change_dict_value",
@@ -221,6 +224,7 @@ def test_outcome_summary_command_reports_dataset_shape(capsys, tmp_path) -> None
             "task": "baseline_only",
             "task_family": "ignored",
             "source_type": "handcrafted",
+            "split": "train",
             "phase": "baseline",
             "action": "change_literal",
             "passed": True,
@@ -248,6 +252,8 @@ def test_outcome_summary_command_reports_dataset_shape(capsys, tmp_path) -> None
     assert "operator_boundary: plans=1 rows=2 solved=1/1 pass@1=0/1" in output
     assert "package_metadata: plans=1 rows=1 solved=1/1 pass@1=1/1" in output
     assert "git_history: plans=1 rows=1 solved=1/1 pass@1=1/1" in output
+    assert "validation: plans=1 rows=2 solved=1/1 pass@1=0/1" in output
+    assert "test: plans=1 rows=1 solved=1/1 pass@1=1/1" in output
     assert "mutation: plans=1 rows=2 solved=1/1 pass@1=0/1" in output
     assert "change_dict_value: rows=1 passing=1" in output
     assert "change_operator: rows=2 passing=1" in output

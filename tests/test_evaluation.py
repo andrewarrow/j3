@@ -42,6 +42,7 @@ def test_load_greenshot_5_tasks() -> None:
     assert len(tasks) == 20
     assert tasks[0].name == "quote_total_helper_discount"
     assert tasks[0].family == "expression_helper"
+    assert tasks[0].split in {"train", "validation", "test"}
     assert by_name["delivery_summary_multi_step_import_then_literal"].family == "multi_step_revealed_failure"
     assert by_name["delivery_summary_multi_step_import_then_literal"].max_steps == 2
     assert tasks[8].preferred_patch == {
@@ -191,6 +192,7 @@ def test_write_eval_diagnostics(tmp_path) -> None:
     assert "failure_modes" in payload["summary"]["ranked"]
     assert payload["tasks"][0]["family"] == "unclassified"
     assert payload["tasks"][0]["source_type"] == "handcrafted"
+    assert payload["tasks"][0]["split"] in {"train", "validation", "test"}
     assert "summary" in payload["tasks"][0]["ranked"]
     assert "ranker_path" in payload["tasks"][0]["ranked"]["summary"]
     assert "ranker_scores_present" in payload["tasks"][0]["ranked"]["summary"]
@@ -357,6 +359,7 @@ def test_write_candidate_outcomes_jsonl_records_one_row_per_tested_candidate(tmp
     assert {row["task"] for row in rows} == {"multi_pass_literal"}
     assert {row["task_family"] for row in rows} == {"unclassified"}
     assert {row["source_type"] for row in rows} == {"handcrafted"}
+    assert {row["split"] for row in rows} == {"validation"}
     assert {row["language"] for row in rows} == {"python"}
     assert {row["phase"] for row in rows} == {"ranked"}
     assert [row["rank_index"] for row in rows] == [1, 2, 3]
@@ -439,6 +442,7 @@ def _write_multi_pass_task(tmp_path) -> Path:
                     "name": "multi_pass_literal",
                     "repo": ".",
                     "test": "python -m pytest tests/test_bug.py -q",
+                    "split": "validation",
                 }
             ]
         ),

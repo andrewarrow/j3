@@ -53,11 +53,11 @@ Implemented repair loop capabilities:
 - `train-ranker` supports held-out task names and task families from the same
   input sources.
 - Candidate outcome rows carry compact failure hints, target context, preferred
-  patch labels, task families, source types, language, scores, pass labels,
-  diff-size fields, and edit-locality fields.
+  patch labels, task families, source types, stable splits, language, scores,
+  pass labels, diff-size fields, and edit-locality fields.
 - Eval diagnostics aggregate pass@1 by action, task family, and source type.
 - `j3 outcome-summary` summarizes candidate outcome JSONL datasets by rows,
-  tasks, families, source types, actions, preferred positives, average
+  tasks, families, source types, splits, actions, preferred positives, average
   candidates, and pass@1 slices.
 - The patching code is split under `repair/patching/`; root `patching.py` is a
   compatibility shim.
@@ -118,15 +118,27 @@ Recent work:
   spans/deltas, replacement lines, and target locality; ranker features consume
   this metadata from both live candidates and persisted rows.
 - `j3 outcome-summary` covers candidate outcome JSONL files by rows, tasks,
-  families, source types, actions, preferred positives, average candidates, and
-  pass@1 slices.
+  families, source types, splits, actions, preferred positives, average
+  candidates, and pass@1 slices.
+- GreenShot-5 candidate outcomes were collected with `--explore-after-pass 5`
+  at `runs/apache-python-git/greenshot-5-candidate-outcomes.jsonl`.
+- Task manifests now support explicit `split` metadata; missing splits are
+  assigned deterministically from task identity and are written to diagnostics
+  and candidate outcome rows.
 
 Last focused verification:
 
 ```bash
-pytest tests/test_evaluation.py tests/test_candidate_ranking.py -q
-pytest tests/test_cli.py -q
+pytest tests/test_evaluation.py tests/test_cli.py -q
 git diff --check
+```
+
+GreenShot-5 outcome collection result:
+
+```text
+ranked, runs/apache-python-git/model.json, explore-after-pass=5:
+  solved=20/20 pass@1=14/20 avg_candidates=6.30
+  rows=126 passing_rows=24 preferred_positive_rows=8
 ```
 
 GreenShot-6 mutation smoke result:
@@ -145,12 +157,11 @@ Keep this section as the live queue. When work is completed, move it to
 
 Immediate next sequence:
 
-1. Run GreenShot-5 with `--explore-after-pass` and save candidate outcomes.
-2. Use `outcome-summary` to inspect high-scoring failed candidates from that
-   run.
-3. Add stable split metadata to outcome rows or a sidecar split file.
-4. Add more git-history-derived or mutation-generated GreenShot-6 held-out
+1. Add more git-history-derived or mutation-generated GreenShot-6 held-out
    tasks from real repos.
+2. Run GreenShot-6 with `--explore-after-pass` and save candidate outcomes.
+3. Use `outcome-summary` to inspect hard negatives by family, source type, and
+   split.
 
 ### 1. Make GreenShot-6 Real
 
@@ -171,7 +182,6 @@ transition modeling.
 
 Next tasks:
 
-- Add stable split metadata to outcome rows or a sidecar split file.
 - Add before/after AST delta features.
 - Record whether candidates are equivalent or overlapping.
 
@@ -181,7 +191,8 @@ Goal: train on candidates the current system actually finds tempting.
 
 Next tasks:
 
-- Run GreenShot-5 and GreenShot-6 with `--explore-after-pass`.
+- Run GreenShot-6 with `--explore-after-pass` after adding more real-derived
+  held-out tasks.
 - Save diagnostics and candidate outcomes.
 - Summarize high-scoring failed candidates.
 - Use those rows for ranker training and validation.
@@ -191,18 +202,18 @@ Use a command like:
 
 ```bash
 python cli.py eval \
-  --tasks examples/greenshot_5 \
+  --tasks examples/greenshot_6 \
   --checkpoint runs/apache-python-git/model.json \
   --timeout 10 \
   --max-candidates 80 \
   --phase ranked \
   --explore-after-pass 5 \
-  --diagnostics runs/apache-python-git/greenshot-5-explore-diagnostics.json \
-  --candidate-outcomes runs/apache-python-git/greenshot-5-candidate-outcomes.jsonl \
+  --diagnostics runs/apache-python-git/greenshot-6-explore-diagnostics.json \
+  --candidate-outcomes runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl \
   --quiet
 ```
 
-Add a similar run for GreenShot-6 once it has real held-out tasks.
+Run this after adding more real-derived GreenShot-6 tasks.
 
 ### 4. Strengthen Observations Before Model Complexity
 

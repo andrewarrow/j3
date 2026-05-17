@@ -21,6 +21,7 @@ class OutcomeDatasetSummary:
     avg_candidates_per_task: float | None
     task_families: dict[str, dict[str, object]]
     source_types: dict[str, dict[str, object]]
+    splits: dict[str, dict[str, object]]
     actions: dict[str, dict[str, object]]
 
     def as_dict(self) -> dict[str, object]:
@@ -35,6 +36,7 @@ class OutcomeDatasetSummary:
             "avg_candidates_per_task": self.avg_candidates_per_task,
             "task_families": self.task_families,
             "source_types": self.source_types,
+            "splits": self.splits,
             "actions": self.actions,
         }
 
@@ -56,6 +58,7 @@ class _OutcomePlan:
     phase: str
     family: str
     source_type: str
+    split: str
     rows: list[dict[str, object]]
 
 
@@ -72,6 +75,7 @@ def summarize_candidate_outcomes(
     task_names = {plan.task for plan in plans if plan.task}
     family_stats: defaultdict[str, _PlanAccumulator] = defaultdict(_PlanAccumulator)
     source_type_stats: defaultdict[str, _PlanAccumulator] = defaultdict(_PlanAccumulator)
+    split_stats: defaultdict[str, _PlanAccumulator] = defaultdict(_PlanAccumulator)
     action_counts: Counter[str] = Counter()
     action_passing: Counter[str] = Counter()
 
@@ -84,6 +88,7 @@ def summarize_candidate_outcomes(
     for plan in plans:
         _accumulate_plan(family_stats[plan.family], plan.rows)
         _accumulate_plan(source_type_stats[plan.source_type], plan.rows)
+        _accumulate_plan(split_stats[plan.split], plan.rows)
 
     return OutcomeDatasetSummary(
         paths=resolved_paths,
@@ -100,6 +105,7 @@ def summarize_candidate_outcomes(
         avg_candidates_per_task=_average([len(plan.rows) for plan in plans]),
         task_families=_accumulator_records(family_stats),
         source_types=_accumulator_records(source_type_stats),
+        splits=_accumulator_records(split_stats),
         actions={
             action: {
                 "rows": action_counts[action],
@@ -131,6 +137,7 @@ def format_outcome_dataset_summary(summary: OutcomeDatasetSummary) -> str:
     )
     lines.extend(_format_record_section("task families", summary.task_families))
     lines.extend(_format_record_section("source types", summary.source_types))
+    lines.extend(_format_record_section("splits", summary.splits))
     lines.append("actions:")
     if summary.actions:
         for action, record in summary.actions.items():
@@ -166,6 +173,7 @@ def _read_outcome_plans(paths: list[Path], *, phase: str | None) -> list[_Outcom
                 phase=row_phase,
                 family=_first_label(ordered_rows, "task_family", "unclassified"),
                 source_type=_first_label(ordered_rows, "source_type", "unknown"),
+                split=_first_label(ordered_rows, "split", "unspecified"),
                 rows=ordered_rows,
             )
         )

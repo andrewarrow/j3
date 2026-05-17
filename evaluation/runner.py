@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import shutil
 import tempfile
@@ -30,6 +31,7 @@ def load_tasks(path: Path) -> list[RepairTask]:
                 test_command=str(item["test"]),
                 family=str(item.get("family", "unclassified")),
                 source_type=str(item.get("source_type", "handcrafted")),
+                split=_task_split(item),
                 preferred_patch=(
                     dict(item["preferred"])
                     if isinstance(item.get("preferred"), dict)
@@ -39,6 +41,28 @@ def load_tasks(path: Path) -> list[RepairTask]:
             )
         )
     return tasks
+
+
+def _task_split(item: dict[str, object]) -> str:
+    explicit = item.get("split")
+    if isinstance(explicit, str) and explicit.strip():
+        return explicit.strip().lower().replace("_", "-")
+    identity = ":".join(
+        (
+            str(item.get("source_type", "handcrafted")),
+            str(item.get("family", "unclassified")),
+            str(item.get("name", "")),
+        )
+    )
+    bucket = int.from_bytes(
+        hashlib.sha256(identity.encode("utf-8")).digest()[:8],
+        byteorder="big",
+    ) % 100
+    if bucket < 80:
+        return "train"
+    if bucket < 90:
+        return "validation"
+    return "test"
 
 
 def evaluate_tasks(

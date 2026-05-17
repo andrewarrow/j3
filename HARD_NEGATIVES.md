@@ -563,3 +563,107 @@ Next handoff:
    `add_keyword_arg` extension to synthesize boolean default keywords from
    local callee signatures, enough to generate
    `include_path=True`. Do not add a new action family for this.
+
+### Refreshed Test-Slice Residual Inspection
+
+Inspection date: 2026-05-16.
+
+Inspection source:
+
+```bash
+runs/apache-python-git/greenshot-5-candidate-outcomes.jsonl
+runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl
+runs/apache-python-git/ranker-holdout-greenshot-6-test-slice/candidate-ranker.json
+```
+
+After the boolean default keyword candidate-generation refresh,
+`cookie_scope_include_path_keyword` is no longer a held-out residual: the
+preferred `add_keyword_arg(include_path=True)` candidate is present and trained
+rank 1. The remaining GreenShot-6 `split: test` issues are the cookie
+same-mapping secure decoy and the HTTP preferred-positive miss.
+
+#### `cookie_default_secure_flag_dict_value`
+
+The preferred candidate still exists at original rank 1 and passes, but the
+trained held-out ranker again promotes the false same-mapping key rename above
+it.
+
+| Trained rank | Original rank | Passed | Preferred | Candidate | Score |
+| ---: | ---: | --- | --- | --- | ---: |
+| 1 | 4 | no | no | `change_dict_key`, `secure` -> `__Secure-` | 12.363160 |
+| 2 | 1 | yes | yes | `change_dict_value`, `secure: True` -> `False` | 11.841018 |
+
+The false key rename wins by `0.522142`. The exact assertion-delta feature is
+present on the preferred value edit, but the refreshed training mix gives it
+only a small learned contribution:
+
+- Preferred value edit support:
+  `same_mapping_asserted_key_value_changed`,
+  `same_mapping_asserted_key_value_matches_assertion_delta`,
+  and their `change_dict_value` action-specific forms contribute `+1.0`
+  combined.
+- False key-rename support:
+  `same_mapping_asserted_key_renamed_or_removed` is present, but its learned
+  weight remains `0.0`; the action-specific form is also `0.0`.
+- Broad parameter weights dominate the pair: the false string-key edit gets
+  `param_type:from:str` and `param_type:to:str` for `+2.5`, while the preferred
+  boolean-value edit gets `param_type:from:bool` and `param_type:to:bool` for
+  `-1.5`.
+- The preferred value edit is helped by overlap metadata, the asserted-key
+  match, and slightly higher failure hint score, but those do not offset the
+  `4.0` string-vs-bool parameter gap.
+
+Non-held-out coverage for the exact same-mapping signal is still sparse:
+
+| Feature | Weight | Non-held-out rows | Passing rows | Preferred rows | Tasks |
+| --- | ---: | ---: | ---: | ---: | --- |
+| `same_mapping_asserted_key_value_matches_assertion_delta` | 0.25 | 2 | 1 | 1 | `http_no_store_directive_subscript_key`, `http_response_policy_max_age_dict_value` |
+| `same_mapping_asserted_key_value_changed` | 0.25 | 5 | 1 | 1 | `http_no_store_directive_subscript_key`, `http_response_policy_max_age_dict_value` |
+| `same_mapping_asserted_key_renamed_or_removed` | 0.0 | 1 | 0 | 0 | `http_no_store_directive_subscript_key` |
+
+Smallest next signal: add independent non-held-out coverage for the exact
+same-mapping boolean value-vs-key-rename shape before changing broad boolean,
+string, or action weights. The useful distinction is not another action family:
+it is that a candidate preserves the asserted lookup key and changes its value
+from assertion actual to expected, while a key rename removes that asserted
+lookup key and leaves the original value behavior intact.
+
+#### `http_no_store_response_with_etag`
+
+The current HTTP residual is no longer the `.get` swap as rank 1. All tested
+candidates pass, but the trained ranker now promotes string-literal edits above
+the preferred operator repair.
+
+| Trained rank | Original rank | Passed | Preferred | Candidate | Score |
+| ---: | ---: | --- | --- | --- | ---: |
+| 1 | 5 | yes | no | `change_literal`, `"no-store"` -> `"no_store"` | 13.111906 |
+| 2 | 6 | yes | no | `change_literal`, `"no-store"` -> `"max-age=0, no-store"` | 11.596281 |
+| 3 | 3 | yes | no | `.get` `swap_call_arg`, args `0 <-> 1` | 11.125833 |
+| 4 | 4 | yes | no | `modify_condition`, negate the no-store condition | 5.525140 |
+| 5 | 1 | yes | yes | `change_operator`, `"no-store" not in cache_control` -> `"no-store" in cache_control` | 4.587461 |
+| 6 | 2 | yes | no | `change_operator`, `"etag" in headers` -> `"etag" not in headers` | -0.397357 |
+
+The top literal decoy beats the preferred operator by `8.524445`. The gap is
+mostly learned feature shape, not missing candidate signal:
+
+- The literal edit gets positive one-node AST-delta count features:
+  `ast_delta_added_count:1` and `ast_delta_removed_count:1` contribute `+2.0`
+  combined.
+- The preferred operator gets the broader two-node delta buckets
+  `ast_delta_added_count:2_3` and `ast_delta_removed_count:2_3` for `-1.25`
+  combined, plus operator/action-specific overlap and exact-symbol penalties.
+- The literal edit also gets stronger action-specific token-overlap support,
+  while the preferred operator gets only generic token-overlap and failure hint
+  support.
+- Both candidates edit the hinted `should_store_response` function. Current
+  target context does not describe whether the edit changes the predicate
+  operator of the boolean branch or changes the string membership needle and
+  thereby disables the branch accidentally.
+
+Smallest next ranker signal: inspect and add non-leaky predicate-context
+metadata for membership predicates before changing weights. For this residual,
+the useful distinction is between a `change_operator` that flips the membership
+predicate governing the boolean assertion and a `change_literal` that changes
+the membership literal inside the same predicate. Keep validation on
+preferred-positive rank, because pass@1 alone is misleading when every tested
+candidate passes.

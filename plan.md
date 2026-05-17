@@ -325,6 +325,18 @@ Recent work:
   candidate is again above the preferred `change_dict_value`, and
   `http_no_store_response_with_etag`, where a non-preferred passing
   `change_literal` ranks above the preferred `change_operator`.
+- The refreshed GreenShot-6 `split: test` residuals were inspected before any
+  weight or task changes. `cookie_scope_include_path_keyword` is fixed in this
+  slice. For `cookie_default_secure_flag_dict_value`, the exact same-mapping
+  assertion-delta feature is present but still too sparse: the false
+  `change_dict_key secure -> __Secure-` candidate scores 12.363160, above the
+  preferred `change_dict_value secure: True -> False` candidate at 11.841018,
+  because broad string-parameter rewards and boolean-parameter penalties
+  outweigh the same-mapping signal. For `http_no_store_response_with_etag`, the
+  current rank-1 residual is a non-preferred passing `change_literal`
+  `"no-store" -> "no_store"` at 13.111906, while the preferred
+  `change_operator not in -> in` repair is rank 5 at 4.587461. Details are in
+  `HARD_NEGATIVES.md`.
 
 Last focused verification:
 
@@ -477,22 +489,19 @@ Keep this section as the live queue. When work is completed, move it to
 
 Immediate next sequence:
 
-1. Inspect the refreshed GreenShot-6 `split: test` residuals before changing
-   weights or adding tasks. `cookie_scope_include_path_keyword` now has and
-   ranks the preferred `add_keyword_arg(include_path=True)` candidate first, so
-   the current residuals are the same-mapping cookie secure decoy and the HTTP
-   preferred-positive miss.
-2. For `cookie_default_secure_flag_dict_value`, compare the refreshed trained
-   score/features for the false `change_dict_key secure -> __Secure-` candidate
-   against the preferred `change_dict_value secure: True -> False` candidate.
-   The previous exact assertion-delta feature had fixed this once; determine
-   why the refreshed outcome/ranker mix moved it back before adding any broad
-   action or boolean weights.
-3. For `http_no_store_response_with_etag`, keep validating preferred-positive
-   rank, not pass@1 alone. Add independent non-held-out coverage for a `.get`
-   key/default swap hard negative only if staying on that residual, then inspect
-   richer non-leaky predicate/context metadata for the preferred local
-   `change_operator` repair.
+1. Pick the next narrow signal from the refreshed residual inspection; do not
+   change broad action, string, boolean, or pass/preferred-label weights.
+2. If prioritizing `cookie_default_secure_flag_dict_value`, add independent
+   non-held-out coverage for the exact same-mapping boolean value-vs-key-rename
+   hard-negative shape before tuning weights. The signal should distinguish
+   preserving the asserted lookup key and changing its value from assertion
+   actual to expected versus renaming/removing that asserted key.
+3. If prioritizing `http_no_store_response_with_etag`, inspect and add
+   non-leaky membership-predicate context metadata before tuning weights. The
+   signal should distinguish a preferred `change_operator` on the boolean
+   membership predicate from a passing `change_literal` that changes the
+   membership needle and accidentally disables the branch. Validate on
+   preferred-positive rank, not pass@1 alone.
 
 ### 1. Make GreenShot-6 Real
 
@@ -652,7 +661,8 @@ Start neural/JEPA work only when:
 ## Handoff Recommendation
 
 The next context window should not add another handcrafted GreenShot task first.
-It should implement the narrow call-site argument-role metadata from the
-GreenShot-6 `split: test` residual inspection, then refresh the outcome rows and
-rerun the same held-out validation slice before adding tasks, action families,
-or broad ranker weights.
+It should choose between the two documented residual signals: independent
+same-mapping boolean value-vs-key-rename coverage for the cookie secure decoy,
+or narrow membership-predicate context metadata for the HTTP preferred-operator
+miss. Keep scope to one signal, refresh outcome rows only after implementation,
+and rerun the same GreenShot-6 `split: test` held-out validation slice.

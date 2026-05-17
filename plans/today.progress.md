@@ -7,13 +7,14 @@ new implementation facts change the 24-hour plan itself. Record any
 
 ## Status
 
-- Current phase: deterministic parser implementation for GreenShot-7 calculator slice
-- Completed iterations: 2
+- Current phase: deterministic parser implementation complete; ready for greenfield action planning
+- Completed iterations: 3
 - Passing focused tests: prompt seed JSONL validation, `test -s REQUEST_SPEC.md`,
-  GreenShot-7 fixture JSON validation
+  GreenShot-7 fixture JSON validation, `pytest tests/test_request_spec.py -q`,
+  `git diff --check`
 - Latest commit: `9a9f93b094e9c35b2bbeb6965556681480accc4f` (`Add GreenShot-7 prompt fixtures`)
 - Current blocker: none
-- Next task: implement deterministic prompt-to-`request-spec-v1` baseline parser
+- Next task: build structured greenfield calculator action planning from `request-spec-v1`
 
 ## Worker Iteration Template
 
@@ -96,4 +97,27 @@ Use this shape for each worker handoff:
 - Push: succeeded to `origin/main`
 - Next: Implement the deterministic prompt-to-`request-spec-v1` baseline parser
   against `examples/greenshot_7/tasks.json`.
+- Blockers: none
+
+### Iteration 3: Add request spec parser
+
+- Worker: Codex Worker Iteration 3
+- Goal: Implement the deterministic prompt-to-`request-spec-v1` baseline parser
+  for the GreenShot-7 calculator fixture manifest.
+- Files changed:
+  - `request_spec.py`
+  - `tests/test_request_spec.py`
+  - `pyproject.toml`
+  - `plans/today.progress.md`
+- Tests run:
+  - `pytest tests/test_request_spec.py -q`
+  - `git diff --check`
+- Result: Added `RequestSpec` and `parse_request_to_spec`, covering the eight
+  positive calculator prompts and two clarification prompts in
+  `examples/greenshot_7/tasks.json`, including operation aliases, inferred
+  defaults, blocking clarifications, and validation fields.
+- Commit: `Add request spec parser` (hash reported in worker handoff)
+- Push: pending
+- Next: Build structured greenfield calculator action planning from
+  `request-spec-v1`; do not generate repos until that slice is assigned.
 - Blockers: none

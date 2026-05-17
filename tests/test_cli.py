@@ -104,6 +104,7 @@ def test_help_menu_prints_project_summary(capsys) -> None:
     assert "train-prompt-intents" in output
     assert "build-prompt-jepa-index" in output
     assert "query-prompt-jepa-index" in output
+    assert "propose-from-prompt-jepa" in output
     assert "eval-prompt-jepa-index" in output
     assert "train-ranker" in output
     assert "outcome-summary" in output
@@ -515,6 +516,89 @@ def test_prompt_jepa_index_command_queries_real_recorded_outcomes(
         assert f"id={expected_id}" in first_result
         assert f"expected_action={expected_action}" in first_result
         assert "domain=calculator" in first_result
+
+    proposal_cases = [
+        (
+            "build a simple command line calculator",
+            "request-repo-attempt-0001",
+            "greenshot_7_request_to_repo_attempt",
+            "built",
+            "emit_request_spec",
+            "new_repo",
+        ),
+        (
+            "add power operator to the calculator",
+            "existing-repo-change-attempt-0003",
+            "greenshot_7_existing_repo_change_attempt",
+            "validated",
+            "emit_existing_repo_change_spec",
+            "existing_repo",
+        ),
+        (
+            "build a graphical calculator app",
+            "request-repo-attempt-0002",
+            "greenshot_7_request_to_repo_attempt",
+            "blocked",
+            "emit_request_spec",
+            "new_repo",
+        ),
+    ]
+    for (
+        prompt,
+        expected_id,
+        expected_kind,
+        expected_status,
+        expected_action,
+        expected_repo_mode,
+    ) in proposal_cases:
+        assert (
+            main(
+                [
+                    "propose-from-prompt-jepa",
+                    "--index",
+                    str(index_path),
+                    "--prompt",
+                    prompt,
+                    "--top-k",
+                    "3",
+                    "--json",
+                ]
+            )
+            == 0
+        )
+        proposal = json.loads(capsys.readouterr().out)
+        assert proposal["schema_version"] == "prompt-jepa-planner-proposal-v1"
+        assert proposal["mode"] == "dry_run"
+        assert proposal["applies_changes"] is False
+        assert proposal["suggested_outcome_kind"] == expected_kind
+        assert proposal["suggested_outcome_status"] == expected_status
+        assert proposal["confidence"]["clear_nearest"] is True
+        assert proposal["top_neighbors"][0]["id"] == expected_id
+        assert proposal["suggested_target_summary"]["expected_action"] == expected_action
+        assert proposal["suggested_target_summary"]["repo_mode"] == expected_repo_mode
+        assert proposal["evidence"]["uses_real_outcome_metadata"] is True
+
+    assert (
+        main(
+            [
+                "propose-from-prompt-jepa",
+                "--index",
+                str(index_path),
+                "--prompt",
+                "build a graphical calculator app",
+                "--top-k",
+                "3",
+            ]
+        )
+        == 0
+    )
+    proposal_output = capsys.readouterr().out
+    assert "j3 propose-from-prompt-jepa complete" in proposal_output
+    assert "mode: dry_run" in proposal_output
+    assert "applies changes: false" in proposal_output
+    assert "record kind: greenshot_7_request_to_repo_attempt" in proposal_output
+    assert "status: blocked" in proposal_output
+    assert "id=request-repo-attempt-0002" in proposal_output
 
 
 def test_query_prompt_jepa_index_command_prints_top_rows(capsys, tmp_path) -> None:

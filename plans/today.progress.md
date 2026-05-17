@@ -8,16 +8,17 @@ new implementation facts change the 24-hour plan itself. Record any
 ## Status
 
 - Current phase: reset to Prompt-JEPA encoder and index implementation
-- Completed iterations: 7 for this reset
+- Completed iterations: 8 for this reset
 - Passing focused tests: `pytest tests/test_cli.py -q`;
   `pytest tests/test_prompt_jepa.py -q`;
   `python -m py_compile prompt_jepa.py cli/handlers.py cli/parser.py cli/__init__.py`;
   `git diff --check`
-- Latest implementation commit: `f5a8035`
+- Latest implementation commit: current iteration 8 commit; hash reported in
+  worker final after commit/push
 - Current blocker: none
-- Next task: design an evaluation-only retrieval-assisted planner proposal
-  dry run from real outcome-index neighbors, without changing production
-  `implement` or `change` routing.
+- Next task: review proposal dry-run output against additional real outcome
+  rows and decide whether a future planner should consume proposals directly or
+  through a separate planner-evidence adapter.
 
 ## Worker Iteration Template
 
@@ -298,4 +299,34 @@ Use this shape for each worker handoff:
 - Next: design an evaluation-only retrieval-assisted planner proposal dry run
   from real outcome-index neighbors, without changing production `implement` or
   `change` routing.
+- Blockers: none.
+
+### Iteration 8: Retrieval-assisted planner proposal dry run
+
+- Worker: Codex worker iteration 8
+- Goal: design and implement an evaluation-only retrieval-assisted planner
+  proposal dry run from real outcome-index neighbors, without changing
+  production `implement` or `change` routing.
+- Files changed: `prompt_jepa.py`, `cli/parser.py`, `cli/handlers.py`,
+  `tests/test_prompt_jepa.py`, `tests/test_cli.py`,
+  `plans/today.progress.md`
+- Tests run: `pytest tests/test_prompt_jepa.py -q` passed with 13 tests;
+  `pytest tests/test_cli.py -q` passed with 35 tests;
+  `python -m py_compile prompt_jepa.py cli/handlers.py cli/parser.py cli/__init__.py`
+  passed; `git diff --check` passed.
+- Result: added `propose_from_prompt_jepa`, an evaluation-only
+  `prompt-jepa-planner-proposal-v1` record with `mode: dry_run`,
+  `applies_changes: false`, top-neighbor evidence, suggested outcome
+  kind/status, target summary, and confidence fields. Added
+  `propose-from-prompt-jepa --index ... --prompt ... --top-k ...` with
+  human-readable and JSON output. Focused tests cover create/success,
+  existing-repo power change, and blocked graphical evidence from real
+  outcome-index neighbors. Production `implement` and `change` routing remains
+  unchanged.
+- Commit: current iteration 8 commit; hash reported in worker final after
+  commit/push
+- Push: pending
+- Next: review proposal dry-run output against additional real outcome rows and
+  decide whether a future planner should consume proposals directly or through
+  a separate planner-evidence adapter.
 - Blockers: none.

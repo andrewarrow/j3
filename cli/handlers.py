@@ -50,6 +50,7 @@ from prompt_jepa import (
     evaluate_prompt_jepa_predicted_target_retrieval_from_path,
     evaluate_prompt_jepa_retrieval_from_path,
     load_prompt_jepa_index,
+    propose_from_prompt_jepa,
     save_prompt_jepa_index,
 )
 from request_outcomes import append_request_repo_attempt
@@ -487,6 +488,53 @@ def handle_query_prompt_jepa_index(args: argparse.Namespace) -> int:
     return 0
 
 
+def handle_propose_from_prompt_jepa(args: argparse.Namespace) -> int:
+    index_path = args.index.expanduser().resolve()
+    index = load_prompt_jepa_index(index_path)
+    proposal = propose_from_prompt_jepa(index, args.prompt, top_k=args.top_k)
+
+    if args.json:
+        print(json.dumps(proposal.to_record(), indent=2, sort_keys=True))
+        return 0
+
+    record = proposal.to_record()
+    confidence = record["confidence"]
+    summary = record["suggested_target_summary"]
+    print("j3 propose-from-prompt-jepa complete")
+    print("mode: dry_run")
+    print("applies changes: false")
+    print(f"index: {index_path}")
+    print(f"prompt: {args.prompt}")
+    print(f"top k: {args.top_k}")
+    print("suggested outcome:")
+    print(f"  clear nearest: {_format_bool(confidence.get('clear_nearest'))}")
+    print(f"  confidence: {confidence.get('level', 'none')}")
+    print(f"  row id: {record['evidence']['nearest_neighbor_id'] or 'none'}")
+    print(f"  score: {_format_optional_score(confidence.get('top_score'))}")
+    print(f"  record kind: {record['suggested_outcome_kind'] or 'unknown'}")
+    print(f"  status: {record['suggested_outcome_status'] or 'unknown'}")
+    print(
+        "  target summary: "
+        f"{_format_proposal_target_summary(summary)}"
+    )
+    print("evidence:")
+    for neighbor in proposal.top_neighbors:
+        neighbor_summary = neighbor.target_summary
+        print(
+            "  "
+            f"{neighbor.rank}. score={neighbor.score:.6f} "
+            f"id={neighbor.row_id} "
+            f"status={neighbor_summary.get('outcome_status', 'unknown')} "
+            f"validation={neighbor_summary.get('validation_status', 'unknown')} "
+            f"passed={_format_bool(neighbor_summary.get('passed'))} "
+            f"expected_action={neighbor_summary.get('expected_action', 'unknown')} "
+            f"repo_mode={neighbor_summary.get('repo_mode', 'unknown')} "
+            f"domain={neighbor_summary.get('domain', 'unknown')} "
+            f"prompt={json.dumps(neighbor.prompt)}"
+        )
+    return 0
+
+
 def handle_eval_prompt_jepa_index(args: argparse.Namespace) -> int:
     if args.mode == "compare":
         result = compare_prompt_jepa_retrieval_modes_from_path(
@@ -873,6 +921,34 @@ def _format_validation_result(validation: dict[str, object]) -> str:
 
 def _format_optional_score(score: float | None) -> str:
     return "none" if score is None else f"{score:.6f}"
+
+
+def _format_bool(value: object) -> str:
+    if value is True:
+        return "true"
+    if value is False:
+        return "false"
+    return "unknown"
+
+
+def _format_proposal_target_summary(summary: object) -> str:
+    if not isinstance(summary, dict) or not summary:
+        return "none"
+    scalar_items = []
+    for field in (
+        "record_kind",
+        "expected_action",
+        "repo_mode",
+        "domain",
+        "outcome_status",
+        "validation_status",
+        "passed",
+        "requires_clarification",
+        "failure_kind",
+    ):
+        if field in summary:
+            scalar_items.append(f"{field}={summary[field]}")
+    return " ".join(scalar_items) if scalar_items else "available"
 
 
 def _format_scalar_fields(values: dict[str, str]) -> str:

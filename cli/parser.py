@@ -18,6 +18,7 @@ from cli.handlers import (
     handle_mine,
     handle_outcome_summary,
     handle_patch,
+    handle_propose_from_prompt_jepa,
     handle_query_prompt_jepa_index,
     handle_train,
     handle_train_prompt_intents,
@@ -443,6 +444,39 @@ def build_parser() -> argparse.ArgumentParser:
         help="number of nearest rows to print (default: 5)",
     )
     prompt_jepa_query_parser.set_defaults(handler=handle_query_prompt_jepa_index)
+
+    prompt_jepa_propose_parser = subparsers.add_parser(
+        "propose-from-prompt-jepa",
+        help="dry-run a retrieval-assisted planner proposal",
+        description=(
+            "Load a persisted Prompt-JEPA index and summarize nearest-neighbor "
+            "outcome evidence as an evaluation-only planner proposal. This "
+            "command does not call implement/change or write generated repos."
+        ),
+    )
+    prompt_jepa_propose_parser.add_argument(
+        "--index",
+        type=Path,
+        required=True,
+        help="Prompt-JEPA index JSON path",
+    )
+    prompt_jepa_propose_parser.add_argument(
+        "--prompt",
+        required=True,
+        help="prompt text to propose from",
+    )
+    prompt_jepa_propose_parser.add_argument(
+        "--top-k",
+        type=int,
+        default=3,
+        help="number of nearest rows to use as evidence (default: 3)",
+    )
+    prompt_jepa_propose_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print the dry-run proposal record as JSON",
+    )
+    prompt_jepa_propose_parser.set_defaults(handler=handle_propose_from_prompt_jepa)
 
     prompt_jepa_eval_parser = subparsers.add_parser(
         "eval-prompt-jepa-index",

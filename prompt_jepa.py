@@ -37,6 +37,8 @@ DEFAULT_RETRIEVAL_EVAL_FIELDS = (
     "domain",
     "unsupported_requirement_family",
 )
+PROMPT_JEPA_PROPOSAL_SCHEMA_VERSION = "prompt-jepa-planner-proposal-v1"
+PROMPT_JEPA_PROPOSAL_SCORE_THRESHOLD = 0.08
 REQUEST_REPO_ATTEMPT_KIND = "greenshot_7_request_to_repo_attempt"
 EXISTING_REPO_CHANGE_ATTEMPT_KIND = "greenshot_7_existing_repo_change_attempt"
 
@@ -138,6 +140,72 @@ class PromptJepaQueryResult:
             "source_path": self.source_path,
             "target_metadata": _json_copy(self.target_metadata),
             "tags": list(self.tags),
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class PromptJepaProposalNeighbor:
+    """One retrieved neighbor used as dry-run planner evidence."""
+
+    rank: int
+    row_id: str
+    score: float
+    prompt: str
+    split: str
+    source_type: str
+    target_summary: dict[str, object]
+    source_path: str | None = None
+    tags: tuple[str, ...] = ()
+
+    def to_record(self) -> dict[str, object]:
+        return {
+            "rank": self.rank,
+            "id": self.row_id,
+            "score": self.score,
+            "prompt": self.prompt,
+            "split": self.split,
+            "source_type": self.source_type,
+            "source_path": self.source_path,
+            "target_summary": _json_copy(self.target_summary),
+            "tags": list(self.tags),
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class PromptJepaPlannerProposal:
+    """Evaluation-only retrieval-assisted planner proposal."""
+
+    prompt: str
+    top_k: int
+    top_neighbors: tuple[PromptJepaProposalNeighbor, ...]
+    suggested_outcome_kind: str | None
+    suggested_outcome_status: str | None
+    suggested_target_summary: dict[str, object]
+    confidence: dict[str, object]
+
+    def to_record(self) -> dict[str, object]:
+        return {
+            "schema_version": PROMPT_JEPA_PROPOSAL_SCHEMA_VERSION,
+            "mode": "dry_run",
+            "applies_changes": False,
+            "decision": "evaluation_only_not_wired_to_production",
+            "prompt": self.prompt,
+            "top_k": self.top_k,
+            "suggested_outcome_kind": self.suggested_outcome_kind,
+            "suggested_outcome_status": self.suggested_outcome_status,
+            "suggested_target_summary": _json_copy(self.suggested_target_summary),
+            "confidence": _json_copy(self.confidence),
+            "top_neighbors": [neighbor.to_record() for neighbor in self.top_neighbors],
+            "evidence": {
+                "neighbor_count": len(self.top_neighbors),
+                "nearest_neighbor_id": (
+                    self.top_neighbors[0].row_id if self.top_neighbors else None
+                ),
+                "uses_real_outcome_metadata": any(
+                    "record_kind" in neighbor.target_summary
+                    for neighbor in self.top_neighbors
+                ),
+            },
         }
 
 
@@ -737,6 +805,77 @@ def query_prompt_jepa_predicted_target(
             task_type=task_type,
             tags=tags,
         ),
+    )
+
+
+def propose_from_prompt_jepa(
+    index: PromptJepaIndex,
+    prompt: str,
+    *,
+    top_k: int = 3,
+    clear_score_threshold: float = PROMPT_JEPA_PROPOSAL_SCORE_THRESHOLD,
+) -> PromptJepaPlannerProposal:
+    """Return a dry-run planner proposal from nearest Prompt-JEPA neighbors.
+
+    This is intentionally evaluation-only: it reads a persisted index and
+    summarizes retrieved outcome evidence without invoking production
+    `implement`/`change` routing or writing generated repos.
+    """
+
+    if top_k < 1:
+        raise ValueError("top_k must be >= 1")
+    if clear_score_threshold < 0.0:
+        raise ValueError("clear_score_threshold must be >= 0")
+
+    results = index.query(prompt, top_k=top_k)
+    top_neighbors = tuple(
+        PromptJepaProposalNeighbor(
+            rank=rank,
+            row_id=result.row_id,
+            score=result.score,
+            prompt=result.prompt,
+            split=result.split,
+            source_type=result.source_type,
+            source_path=result.source_path,
+            target_summary=_proposal_target_summary(result.target_metadata),
+            tags=result.tags,
+        )
+        for rank, result in enumerate(results, start=1)
+    )
+    nearest = top_neighbors[0] if top_neighbors else None
+    runner_up_score = top_neighbors[1].score if len(top_neighbors) > 1 else None
+    margin = (
+        nearest.score - runner_up_score
+        if nearest is not None and runner_up_score is not None
+        else None
+    )
+    clear_nearest = nearest is not None and nearest.score >= clear_score_threshold
+    confidence = {
+        "level": _proposal_confidence_level(
+            nearest.score if nearest is not None else None,
+            clear_score_threshold=clear_score_threshold,
+        ),
+        "clear_nearest": clear_nearest,
+        "top_score": nearest.score if nearest is not None else None,
+        "runner_up_score": runner_up_score,
+        "margin": margin,
+        "clear_score_threshold": clear_score_threshold,
+    }
+    suggested_summary = dict(nearest.target_summary) if clear_nearest and nearest else {}
+
+    return PromptJepaPlannerProposal(
+        prompt=prompt,
+        top_k=top_k,
+        top_neighbors=top_neighbors,
+        suggested_outcome_kind=(
+            _optional_str(suggested_summary.get("record_kind")) or None
+        ),
+        suggested_outcome_status=(
+            _optional_str(suggested_summary.get("outcome_status"))
+            or _optional_str(suggested_summary.get("validation_status"))
+        ),
+        suggested_target_summary=suggested_summary,
+        confidence=confidence,
     )
 
 
@@ -1693,6 +1832,51 @@ def _target_metadata(target: Mapping[str, object]) -> dict[str, object]:
         for field_name in metadata_fields
         if field_name in target
     }
+
+
+def _proposal_target_summary(metadata: Mapping[str, object]) -> dict[str, object]:
+    summary_fields = (
+        "record_kind",
+        "expected_action",
+        "repo_mode",
+        "task_type",
+        "domain",
+        "outcome_status",
+        "validation_status",
+        "passed",
+        "requires_clarification",
+        "failure_kind",
+        "features",
+        "features_to_add",
+        "requested_interfaces",
+        "target_files",
+        "files_written",
+        "files_changed",
+        "action_kinds",
+        "clarification_fields",
+        "unsupported_requirement",
+        "unsupported_requirement_family",
+        "unsupported_requirements",
+    )
+    return {
+        field_name: _json_copy(metadata[field_name])
+        for field_name in summary_fields
+        if field_name in metadata
+    }
+
+
+def _proposal_confidence_level(
+    top_score: float | None,
+    *,
+    clear_score_threshold: float,
+) -> str:
+    if top_score is None or top_score < clear_score_threshold:
+        return "none"
+    if top_score >= 0.25:
+        return "high"
+    if top_score >= 0.10:
+        return "medium"
+    return "low"
 
 
 def _predictor_train_rows(

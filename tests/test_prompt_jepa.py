@@ -19,6 +19,7 @@ from prompt_jepa import (
     load_prompt_jepa_predictor,
     load_prompt_jepa_index,
     load_prompt_jepa_outcome_records,
+    propose_from_prompt_jepa,
     query_prompt_jepa_predicted_target,
     save_prompt_jepa_predictor,
     save_prompt_jepa_index,
@@ -379,6 +380,60 @@ def test_prompt_jepa_outcome_index_normalizes_real_attempt_rows(
     )
 
 
+def test_prompt_jepa_proposal_dry_run_uses_real_outcome_neighbors(
+    tmp_path: Path,
+) -> None:
+    records_path = tmp_path / "attempts.jsonl"
+    _write_planner_proposal_outcome_rows(records_path)
+    index = build_prompt_jepa_outcome_index_from_path(records_path, embedding_dim=128)
+
+    simple = propose_from_prompt_jepa(
+        index,
+        "build a simple command line calculator",
+        top_k=3,
+    ).to_record()
+    assert simple["schema_version"] == "prompt-jepa-planner-proposal-v1"
+    assert simple["mode"] == "dry_run"
+    assert simple["applies_changes"] is False
+    assert simple["decision"] == "evaluation_only_not_wired_to_production"
+    assert simple["suggested_outcome_kind"] == "greenshot_7_request_to_repo_attempt"
+    assert simple["suggested_outcome_status"] == "built"
+    assert simple["confidence"]["clear_nearest"] is True  # type: ignore[index]
+    assert simple["suggested_target_summary"]["expected_action"] == "emit_request_spec"  # type: ignore[index]
+    assert simple["suggested_target_summary"]["repo_mode"] == "new_repo"  # type: ignore[index]
+    assert simple["suggested_target_summary"]["validation_status"] == "passed"  # type: ignore[index]
+    assert simple["top_neighbors"][0]["id"] == "request-repo-attempt-0001"  # type: ignore[index]
+    assert simple["evidence"]["uses_real_outcome_metadata"] is True  # type: ignore[index]
+
+    power = propose_from_prompt_jepa(
+        index,
+        "add power operator to the calculator",
+        top_k=3,
+    ).to_record()
+    assert power["suggested_outcome_kind"] == (
+        "greenshot_7_existing_repo_change_attempt"
+    )
+    assert power["suggested_outcome_status"] == "validated"
+    assert power["suggested_target_summary"]["expected_action"] == (  # type: ignore[index]
+        "emit_existing_repo_change_spec"
+    )
+    assert power["suggested_target_summary"]["repo_mode"] == "existing_repo"  # type: ignore[index]
+    assert power["top_neighbors"][0]["id"] == "existing-repo-change-attempt-0003"  # type: ignore[index]
+
+    graphical = propose_from_prompt_jepa(
+        index,
+        "build a graphical calculator app",
+        top_k=3,
+    ).to_record()
+    assert graphical["suggested_outcome_kind"] == "greenshot_7_request_to_repo_attempt"
+    assert graphical["suggested_outcome_status"] == "blocked"
+    assert graphical["suggested_target_summary"]["requires_clarification"] == "yes"  # type: ignore[index]
+    assert graphical["suggested_target_summary"]["failure_kind"] == (  # type: ignore[index]
+        "blocking_clarification"
+    )
+    assert graphical["top_neighbors"][0]["id"] == "request-repo-attempt-0002"  # type: ignore[index]
+
+
 def _write_outcome_rows(path: Path) -> None:
     rows = [
         {"existing": True},
@@ -445,6 +500,151 @@ def _write_outcome_rows(path: Path) -> None:
             "existing_repo_actions": [
                 {"kind": "inspect_repo", "target": None, "payload": {}},
                 {"kind": "add_operator_dispatch", "target": "calculator.py", "payload": {}},
+            ],
+            "change_result": {
+                "schema_version": "existing-repo-change-result-v1",
+                "status": "validated",
+                "repo_path": "/tmp/calc",
+                "files_changed": ["calculator.py", "tests/test_calculator_cli.py"],
+                "validation": {"status": "passed", "command": "python -m pytest", "exit_code": 0},
+            },
+            "validation": {"status": "passed", "command": "python -m pytest", "exit_code": 0},
+            "passed": True,
+            "failure_observation": None,
+            "repo_path": "/tmp/calc",
+        },
+    ]
+    path.write_text(
+        "\n".join(json.dumps(row, sort_keys=True) for row in rows) + "\n",
+        encoding="utf-8",
+    )
+
+
+def _write_planner_proposal_outcome_rows(path: Path) -> None:
+    rows = [
+        {
+            "schema_version": "request-repo-attempt-v1",
+            "record_kind": "greenshot_7_request_to_repo_attempt",
+            "raw_prompt": "make me a simple cli calc",
+            "normalized_request_spec": {
+                "schema_version": "request-spec-v1",
+                "task_name": "simple-cli-calc",
+                "task_type": "create_app",
+                "language": "python",
+                "repo_mode": "new_repo",
+                "domain": "calculator",
+                "prompt": "make me a simple cli calc",
+                "artifacts": ["calculator.py", "tests/test_calculator_cli.py"],
+                "interfaces": [{"kind": "cli", "style": "argparse"}],
+                "features": ["add", "subtract", "multiply", "divide"],
+                "operation_aliases": {"add": ["add", "+"], "subtract": ["-"]},
+                "inferred_defaults": [],
+                "clarifications_needed": [],
+                "validation": {
+                    "commands": ["python -m pytest tests/test_calculator_cli.py -q"],
+                    "hidden_cases": True,
+                },
+            },
+            "greenfield_actions": [
+                {"kind": "create_file", "target": "calculator.py", "payload": {}},
+                {"kind": "add_cli_entrypoint", "target": "calculator.py", "payload": {}},
+                {"kind": "validate", "target": None, "payload": {}},
+            ],
+            "build_result": {
+                "schema_version": "greenfield-build-v1",
+                "status": "built",
+                "files_written": ["calculator.py", "tests/test_calculator_cli.py"],
+                "cli_files_written": [
+                    "calculator.py",
+                    "tests/test_calculator_cli.py",
+                    "request-spec.json",
+                ],
+            },
+            "validation": {"status": "passed", "command": "python -m pytest", "exit_code": 0},
+            "passed": True,
+            "failure_observation": None,
+            "output_repo_path": "/tmp/calc",
+        },
+        {
+            "schema_version": "request-repo-attempt-v1",
+            "record_kind": "greenshot_7_request_to_repo_attempt",
+            "raw_prompt": "make me a complex graphic calc app",
+            "normalized_request_spec": {
+                "schema_version": "request-spec-v1",
+                "task_name": "graphical-calculator",
+                "task_type": "create_app",
+                "language": "python",
+                "repo_mode": "new_repo",
+                "domain": "calculator",
+                "prompt": "make me a complex graphic calc app",
+                "artifacts": [],
+                "interfaces": [],
+                "features": [],
+                "operation_aliases": {},
+                "inferred_defaults": [],
+                "clarifications_needed": [
+                    {
+                        "field": "interface",
+                        "question": "Only CLI calculator apps are supported.",
+                    }
+                ],
+                "validation": {"commands": [], "hidden_cases": False},
+            },
+            "greenfield_actions": [
+                {"kind": "ask_clarification", "target": None, "payload": {}},
+            ],
+            "build_result": {
+                "schema_version": "greenfield-build-v1",
+                "status": "blocked",
+                "files_written": [],
+                "blockers": [
+                    {
+                        "field": "interface",
+                        "question": "Only CLI calculator apps are supported.",
+                    }
+                ],
+                "cli_files_written": [],
+            },
+            "validation": {
+                "status": "not_run",
+                "command": None,
+                "exit_code": None,
+                "reason": "blocked_clarification",
+            },
+            "passed": False,
+            "failure_observation": {
+                "kind": "blocking_clarification",
+                "clarifications_needed": [
+                    {
+                        "field": "interface",
+                        "question": "Only CLI calculator apps are supported.",
+                    }
+                ],
+            },
+            "output_repo_path": "/tmp/blocked-graphic",
+        },
+        {
+            "schema_version": "existing-repo-change-attempt-v1",
+            "record_kind": "greenshot_7_existing_repo_change_attempt",
+            "raw_prompt": "add exponent support",
+            "existing_repo_change_spec": {
+                "schema_version": "existing-repo-change-spec-v1",
+                "task_type": "modify_app",
+                "repo_mode": "existing_repo",
+                "domain": "calculator",
+                "prompt": "add exponent support",
+                "target_files": ["calculator.py", "tests/test_calculator_cli.py"],
+                "features_to_add": ["power"],
+                "operation_aliases": {"power": ["power", "pow", "^", "**"]},
+                "validation": {
+                    "commands": ["python -m pytest tests/test_calculator_cli.py -q"],
+                    "hidden_cases": True,
+                },
+            },
+            "existing_repo_actions": [
+                {"kind": "inspect_repo", "target": None, "payload": {}},
+                {"kind": "add_operator_dispatch", "target": "calculator.py", "payload": {}},
+                {"kind": "validate", "target": None, "payload": {}},
             ],
             "change_result": {
                 "schema_version": "existing-repo-change-result-v1",

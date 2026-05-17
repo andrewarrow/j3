@@ -13,6 +13,8 @@ class CandidateLike(Protocol):
     file_path: str
     action: PatchAction
     reason: str
+    original_source: str
+    patched_source: str
     model_score: float | None
     failure_hint_score: float
 

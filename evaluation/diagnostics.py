@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterable
 
+from ast_delta import python_ast_delta_metadata
 from evaluation.models import EvalSummary, RepairTask
 from evaluation.plan_utils import (
     _average,
@@ -258,6 +259,7 @@ def _candidate_edit_metadata(candidate: CandidatePatch) -> dict[str, object]:
             target.start_line <= edit.start_line and edit.end_line <= target.end_line
         ),
         "edit_is_single_line": edit.start_line == edit.end_line and replacement_lines <= 1,
+        **python_ast_delta_metadata(candidate.original_source, candidate.patched_source),
     }
 
 

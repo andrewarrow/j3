@@ -122,6 +122,10 @@ Recent work:
 - Candidate outcome rows now include `language`, diff line counts, edit line
   spans/deltas, replacement lines, and target locality; ranker features consume
   this metadata from both live candidates and persisted rows.
+- Candidate outcome rows now include compact before/after Python AST delta
+  metadata: parse status, added/removed AST feature maps, and aggregate delta
+  counts. Ranker features consume the same AST deltas from both live candidates
+  and persisted rows.
 - `j3 outcome-summary` covers candidate outcome JSONL files by rows, tasks,
   families, source types, splits, actions, preferred positives, average
   candidates, and pass@1 slices.
@@ -221,11 +225,10 @@ Keep this section as the live queue. When work is completed, move it to
 
 Immediate next sequence:
 
-1. Add before/after AST delta features to candidate outcome rows.
-2. Record whether candidates are equivalent or overlapping.
-3. Use the GreenShot-6 hard-negative notes in `HARD_NEGATIVES.md` when
+1. Record whether candidates are equivalent or overlapping.
+2. Use the GreenShot-6 hard-negative notes in `HARD_NEGATIVES.md` when
    validating ranker feature changes.
-4. Add more real git-history tasks only after the current hard-negative/ranker
+3. Add more real git-history tasks only after the current hard-negative/ranker
    signal has been used.
 
 ### 1. Make GreenShot-6 Real
@@ -248,7 +251,6 @@ transition modeling.
 
 Next tasks:
 
-- Add before/after AST delta features.
 - Record whether candidates are equivalent or overlapping.
 
 ### 3. Collect Hard Negatives

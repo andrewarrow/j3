@@ -557,6 +557,15 @@ def test_candidate_features_include_edit_size_and_locality() -> None:
     assert features["edit_is_single_line"] == 1.0
 
 
+def test_candidate_features_include_ast_delta() -> None:
+    features = candidate_features(_candidate(to=">=", failure_hint_score=50.0))
+
+    assert features["ast_parse_ok"] == 1.0
+    assert features["ast_delta_added:cmpop:GtE"] == 1.0
+    assert features["ast_delta_removed:cmpop:Gt"] == 1.0
+    assert features["ast_delta_net_count:same"] == 1.0
+
+
 def test_candidate_record_features_include_edit_size_and_locality() -> None:
     record = {
         **_candidate_record(to=">=", passed=True),
@@ -579,6 +588,25 @@ def test_candidate_record_features_include_edit_size_and_locality() -> None:
     assert features["edit_target_line_distance:0"] == 1.0
     assert features["edit_within_target_span"] == 1.0
     assert features["edit_is_single_line"] == 1.0
+
+
+def test_candidate_record_features_include_ast_delta() -> None:
+    record = {
+        **_candidate_record(to=">=", passed=True),
+        "ast_parse_ok": True,
+        "ast_delta_added_features": {"cmpop:GtE": 1},
+        "ast_delta_removed_features": {"cmpop:Gt": 1},
+        "ast_delta_added_count": 1,
+        "ast_delta_removed_count": 1,
+        "ast_delta_net_count": 0,
+    }
+
+    features = _candidate_record_features(record, [])
+
+    assert features["ast_parse_ok"] == 1.0
+    assert features["ast_delta_added:cmpop:GtE"] == 1.0
+    assert features["ast_delta_removed:cmpop:Gt"] == 1.0
+    assert features["ast_delta_net_count:same"] == 1.0
 
 
 def test_candidate_features_include_target_context_call_graph() -> None:

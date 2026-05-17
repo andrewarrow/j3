@@ -417,10 +417,19 @@ def test_write_candidate_outcomes_jsonl_records_one_row_per_tested_candidate(tmp
         "edit_target_line_distance",
         "edit_within_target_span",
         "edit_is_single_line",
+        "ast_parse_ok",
+        "ast_delta_added_features",
+        "ast_delta_removed_features",
+        "ast_delta_added_count",
+        "ast_delta_removed_count",
+        "ast_delta_net_count",
         "preferred",
     }.issubset(rows[0])
     assert all(row["diff_changed_lines"] >= 1 for row in rows)
     assert all(row["edit_line_span"] >= 1 for row in rows)
+    assert all(row["ast_parse_ok"] is True for row in rows)
+    assert all(isinstance(row["ast_delta_added_features"], dict) for row in rows)
+    assert any(row["ast_delta_added_features"] for row in rows)
 
 
 def _candidate_patch(*, ranker_score: float | None) -> CandidatePatch:

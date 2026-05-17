@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from ast_delta import ast_delta_feature_map, python_ast_delta_metadata
+
 from .feature_hints import (
     _add_hint_token_overlap_features,
     _candidate_tokens,
@@ -47,6 +49,11 @@ def candidate_features(
     edit_metadata = _live_candidate_edit_metadata(candidate)
     if edit_metadata is not None:
         _add_edit_metadata_features(features, action, **edit_metadata)
+    features.update(
+        ast_delta_feature_map(
+            python_ast_delta_metadata(candidate.original_source, candidate.patched_source)
+        )
+    )
 
     for hint in hints:
         _merge_hint_features(features, candidate, action, hint)
@@ -105,6 +112,7 @@ def _candidate_record_features(candidate: dict[str, object], hints: object) -> d
     edit_metadata = _record_edit_metadata(candidate)
     if edit_metadata is not None:
         _add_edit_metadata_features(features, action, **edit_metadata)
+    features.update(ast_delta_feature_map(candidate))
 
     if isinstance(hints, list):
         for hint in hints:

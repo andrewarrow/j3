@@ -99,7 +99,7 @@ def test_load_greenshot_6_tasks() -> None:
     tasks = load_tasks(Path("examples/greenshot_6"))
     by_name = {task.name: task for task in tasks}
 
-    assert len(tasks) == 36
+    assert len(tasks) == 37
     assert tasks[0].name == "core_metadata_version_dict_value"
     assert tasks[0].family == "mapping_value"
     assert tasks[0].source_type == "mutation"
@@ -350,6 +350,17 @@ def test_load_greenshot_6_tasks() -> None:
         "params": {
             "from": "Attempted to send an sync request with an AsyncClient instance.",
             "to": "Attempted to send a sync request with an AsyncClient instance.",
+        },
+    }
+    assert by_name["posting_escaped_path_param_regex"].split == "train"
+    assert by_name["posting_escaped_path_param_regex"].source_type == "git_history"
+    assert by_name["posting_escaped_path_param_regex"].preferred_patch == {
+        "file_path": "pathparams/routes.py",
+        "action": "change_literal",
+        "symbol": "path_param_pattern",
+        "params": {
+            "from": ":([A-Za-z_][A-Za-z0-9_]*)",
+            "to": "(?<!:):([A-Za-z_][A-Za-z0-9_]*)",
         },
     }
     assert by_name["rich_common_cell_width_ascii_range"].split == "train"

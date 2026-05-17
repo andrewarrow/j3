@@ -864,12 +864,37 @@ Recent work:
   810 features, and 3 margin violations.
 - Applying the saved test-slice ranker to all refreshed GreenShot-6 rows found
   no trained preferred-positive misses across 36 tasks.
+- GreenShot-6 now includes an eighteenth fixture domain, `pathparams`, with one
+  real-package-derived `git_history` task modeled on `darrenburns/posting`
+  commit `175e8e6435b5e4032a2c95920bd50bb2b7067117`. The task
+  `posting_escaped_path_param_regex` repairs escaped path-parameter matching by
+  changing the regex from `:([A-Za-z_][A-Za-z0-9_]*)` to
+  `(?<!:):([A-Za-z_][A-Za-z0-9_]*)`, using the existing `change_literal`
+  action family.
+- Focused loader/generator coverage passed for the new Posting-derived task:
+  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
+  `pytest tests/test_patching.py::test_patch_solves_posting_escaped_path_param_regex -q`.
+- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
+  adding `pathparams`. The persisted dataset at
+  `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` now covers 37
+  tasks and 278 tested candidates. Ranked eval solved all 37 tasks with
+  `pass@1=25/37` and average candidates `7.51`; the new Posting-derived task
+  solves at raw rank 1 with the preferred `change_literal` candidate.
+- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
+  the pathparams outcome refresh and stayed clean: solved=7/7, pass@1=7/7,
+  positive@1=7/7, avg_first_passing_index=1.0. Training used 358 rows, 73
+  passing rows, 307 training pairs, 794 features, and 4 margin violations.
+- Refreshed raw/trained miss inspection after adding `pathparams` found no
+  missing preferred-positive rows and no trained preferred-positive misses.
+  Raw GreenShot-6 now has 12 pass@1 misses, but every task has a tested
+  preferred-positive row and the saved test-slice ranker places every
+  preferred-positive candidate at trained rank 1.
 
 Last focused verification:
 
 ```bash
 pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q
-pytest tests/test_patching.py::test_patch_solves_httpx_async_client_sync_request_article -q
+pytest tests/test_patching.py::test_patch_solves_posting_escaped_path_param_regex -q
 python cli.py eval \
   --tasks examples/greenshot_6 \
   --checkpoint runs/apache-python-git/model.json \
@@ -897,7 +922,7 @@ python cli.py outcome-summary \
   --candidate-outcomes runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl
 python - <<'PY'
 # Applied the refreshed test-slice ranker to all refreshed GreenShot-6 rows;
-# no trained preferred-positive residuals were found across 36 tasks.
+# no trained preferred-positive residuals were found across 37 tasks.
 PY
 git diff --check
 ```
@@ -1225,7 +1250,7 @@ The next context window should continue dataset growth by adding another
 real-package-derived GreenShot-6 task or small fixture domain. Do not tune broad
 handcrafted weights or add pass/preferred-label features from this state. The
 current GreenShot-6 `split: test` held-out validation is clean after the
-httpclient outcome refresh.
+pathparams outcome refresh.
 
 Immediate next sequence:
 

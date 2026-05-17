@@ -868,6 +868,30 @@ def test_patch_solves_httpx_async_client_sync_request_article(tmp_path) -> None:
     assert "Attempted to send a sync request" in result.selected.patched_source
 
 
+def test_patch_solves_posting_escaped_path_param_regex(tmp_path) -> None:
+    repo = tmp_path / "greenshot_6"
+    shutil.copytree("examples/greenshot_6", repo)
+
+    result = plan_and_maybe_apply_patch(
+        repo=repo,
+        test_command=(
+            "python -m pytest "
+            "tests/test_pathparams.py::test_escaped_colon_path_params_are_ignored"
+        ),
+        dry_run=True,
+        timeout_seconds=10,
+    )
+
+    assert result.selected is not None
+    assert result.selected.file_path == "pathparams/routes.py"
+    assert result.selected.action.kind.value == "change_literal"
+    assert result.selected.action.params == {
+        "from": ":([A-Za-z_][A-Za-z0-9_]*)",
+        "to": "(?<!:):([A-Za-z_][A-Za-z0-9_]*)",
+    }
+    assert "(?<!:):([A-Za-z_][A-Za-z0-9_]*)" in result.selected.patched_source
+
+
 def test_patch_solves_prettytable_missing_attribute_quote(tmp_path) -> None:
     repo = tmp_path / "greenshot_6"
     shutil.copytree("examples/greenshot_6", repo)

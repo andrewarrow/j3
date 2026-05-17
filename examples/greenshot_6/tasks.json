@@ -486,6 +486,27 @@
     }
   },
   {
+    "name": "posting_escaped_path_param_regex",
+    "family": "path_param_regex",
+    "source_type": "git_history",
+    "split": "train",
+    "repo": ".",
+    "test": "python -m pytest tests/test_pathparams.py::test_escaped_colon_path_params_are_ignored",
+    "source": {
+      "repo": "darrenburns/posting",
+      "commit": "175e8e6435b5e4032a2c95920bd50bb2b7067117"
+    },
+    "preferred": {
+      "file_path": "pathparams/routes.py",
+      "action": "change_literal",
+      "symbol": "path_param_pattern",
+      "params": {
+        "from": ":([A-Za-z_][A-Za-z0-9_]*)",
+        "to": "(?<!:):([A-Za-z_][A-Za-z0-9_]*)"
+      }
+    }
+  },
+  {
     "name": "prettytable_missing_attribute_quote",
     "family": "table_legacy_attribute_error",
     "source_type": "git_history",

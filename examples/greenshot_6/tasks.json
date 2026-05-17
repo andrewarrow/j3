@@ -903,6 +903,28 @@
     }
   },
   {
+    "name": "celery_unknown_task_header_typo",
+    "family": "task_error_message",
+    "source_type": "git_history",
+    "split": "train",
+    "repo": ".",
+    "test": "python -m pytest tests/test_taskqueue.py::test_unknown_task_header_detail_spells_the",
+    "source": {
+      "repo": "celery/celery",
+      "commit": "bdbf6d6ae1aca9addd81800b5dd2e8c3477afb18",
+      "pr": 7675
+    },
+    "preferred": {
+      "file_path": "taskqueue/consumer.py",
+      "action": "change_literal",
+      "symbol": "unknown_task_header_detail",
+      "params": {
+        "from": "Thw full contents of the message headers:",
+        "to": "The full contents of the message headers:"
+      }
+    }
+  },
+  {
     "name": "cookie_default_secure_flag_dict_value",
     "family": "mapping_value",
     "source_type": "mutation",

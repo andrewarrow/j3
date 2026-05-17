@@ -1388,6 +1388,30 @@ def test_patch_solves_itsdangerous_constant_time_compare_doc_typo(tmp_path) -> N
     )
 
 
+def test_patch_solves_celery_unknown_task_header_typo(tmp_path) -> None:
+    repo = tmp_path / "greenshot_6"
+    shutil.copytree("examples/greenshot_6", repo)
+
+    result = plan_and_maybe_apply_patch(
+        repo=repo,
+        test_command=(
+            "python -m pytest "
+            "tests/test_taskqueue.py::test_unknown_task_header_detail_spells_the"
+        ),
+        dry_run=True,
+        timeout_seconds=10,
+    )
+
+    assert result.selected is not None
+    assert result.selected.file_path == "taskqueue/consumer.py"
+    assert result.selected.action.kind.value == "change_literal"
+    assert result.selected.action.params == {
+        "from": "Thw full contents of the message headers:",
+        "to": "The full contents of the message headers:",
+    }
+    assert "The full contents of the message headers:" in result.selected.patched_source
+
+
 def test_generate_membership_operator_with_literal_needle_decoy(tmp_path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()

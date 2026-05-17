@@ -99,7 +99,7 @@ def test_load_greenshot_6_tasks() -> None:
     tasks = load_tasks(Path("examples/greenshot_6"))
     by_name = {task.name: task for task in tasks}
 
-    assert len(tasks) == 51
+    assert len(tasks) == 52
     assert tasks[0].name == "core_metadata_version_dict_value"
     assert tasks[0].family == "mapping_value"
     assert tasks[0].source_type == "mutation"
@@ -552,6 +552,17 @@ def test_load_greenshot_6_tasks() -> None:
         "params": {
             "from": "Do not use for comparision with known length targets.",
             "to": "Do not use for comparison with known length targets.",
+        },
+    }
+    assert by_name["celery_unknown_task_header_typo"].split == "train"
+    assert by_name["celery_unknown_task_header_typo"].source_type == "git_history"
+    assert by_name["celery_unknown_task_header_typo"].preferred_patch == {
+        "file_path": "taskqueue/consumer.py",
+        "action": "change_literal",
+        "symbol": "unknown_task_header_detail",
+        "params": {
+            "from": "Thw full contents of the message headers:",
+            "to": "The full contents of the message headers:",
         },
     }
     assert by_name["cookie_default_secure_flag_dict_value"].split == "test"

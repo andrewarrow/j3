@@ -1194,12 +1194,31 @@ Recent work:
   pass@1=7/7, positive@1=7/7, avg_first_passing_index=1.0. Training used 478
   rows, 89 passing rows, 413 training pairs, 862 features, and 4 margin
   violations.
+- GreenShot-6 now includes a thirty-first real-package-derived fixture domain,
+  `taskqueue`, with one `git_history` task modeled on `celery/celery` PR 7675 /
+  merge commit `bdbf6d6ae1aca9addd81800b5dd2e8c3477afb18`. The task
+  `celery_unknown_task_header_typo` repairs an unknown-task diagnostic by
+  changing `Thw full contents of the message headers:` to
+  `The full contents of the message headers:`, using the existing
+  `change_literal` action family.
+- Focused loader/generator coverage passed for the Celery-derived task:
+  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
+  `pytest tests/test_patching.py::test_patch_solves_celery_unknown_task_header_typo -q`.
+- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
+  adding `taskqueue`. The persisted dataset now covers 52 tasks and 404 tested
+  candidates. Ranked eval solved all 52 tasks with `pass@1=37/52` and average
+  candidates `7.77`; the new Celery-derived task solves at raw rank 1 with the
+  preferred `change_literal` candidate.
+- The same GreenShot-6 `split: test` held-out ranker validation was rerun after
+  the taskqueue outcome refresh and stayed clean: solved=7/7, pass@1=7/7,
+  positive@1=7/7, avg_first_passing_index=1.0. Training used 484 rows, 90
+  passing rows, 418 training pairs, 862 features, and 4 margin violations.
 
 Last focused verification:
 
 ```bash
 pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q
-pytest tests/test_patching.py::test_patch_solves_itsdangerous_constant_time_compare_doc_typo -q
+pytest tests/test_patching.py::test_patch_solves_celery_unknown_task_header_typo -q
 python cli.py eval \
   --tasks examples/greenshot_6 \
   --checkpoint runs/apache-python-git/model.json \
@@ -1342,9 +1361,9 @@ GreenShot-6 outcome collection result:
 
 ```text
 ranked, runs/apache-python-git/model.json, explore-after-pass=5:
-  solved=51/51 pass@1=36/51 avg_candidates=7.80
-  rows=398 passing_rows=81 preferred_positive_rows=51
-  source_type pass@1: git_history=19/31 mutation=17/20
+  solved=52/52 pass@1=37/52 avg_candidates=7.77
+  rows=404 passing_rows=82 preferred_positive_rows=52
+  source_type pass@1: git_history=20/32 mutation=17/20
 ```
 
 Treat this as a smoke check, not a benchmark claim.
@@ -1545,9 +1564,9 @@ Start neural/JEPA work only when:
 
 ## Handoff Recommendation
 
-The next context window should start from the post-securecompare dataset
+The next context window should start from the post-taskqueue/Celery dataset
 growth, not the older envwrite, v13 literal-key, scipyquad, or raisemsg states.
-GreenShot-6 now has 51 tasks. The same `split: test` held-out validation is
+GreenShot-6 now has 52 tasks. The same `split: test` held-out validation is
 clean again:
 solved=7/7, pass@1=7/7, positive@1=7/7, and avg_first_passing_index=1.0. Do not
 tune broad handcrafted weights or add pass/preferred-label features from this

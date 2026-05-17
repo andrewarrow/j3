@@ -1750,6 +1750,31 @@ def test_patch_solves_smolagents_manager_timing_details_wording(tmp_path) -> Non
     assert "timing details" in result.selected.patched_source
 
 
+def test_patch_solves_flask_create_logger_description_app_possessive(tmp_path) -> None:
+    repo = tmp_path / "greenshot_6"
+    shutil.copytree("examples/greenshot_6", repo)
+
+    result = plan_and_maybe_apply_patch(
+        repo=repo,
+        test_command=(
+            "python -m pytest "
+            "tests/test_flasklogging.py::"
+            "test_create_logger_description_uses_singular_possessive_app"
+        ),
+        dry_run=True,
+        timeout_seconds=10,
+    )
+
+    assert result.selected is not None
+    assert result.selected.file_path == "flasklogging/logging.py"
+    assert result.selected.action.kind.value == "change_literal"
+    assert result.selected.action.params == {
+        "from": "Get the the Flask apps's logger and configure it if needed.",
+        "to": "Get the Flask app's logger and configure it if needed.",
+    }
+    assert "Flask app's logger" in result.selected.patched_source
+
+
 def test_generate_membership_operator_with_literal_needle_decoy(tmp_path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()

@@ -725,6 +725,28 @@
     }
   },
   {
+    "name": "flask_create_logger_description_app_possessive",
+    "family": "logging_description_text",
+    "source_type": "git_history",
+    "split": "train",
+    "repo": ".",
+    "test": "python -m pytest tests/test_flasklogging.py::test_create_logger_description_uses_singular_possessive_app",
+    "source": {
+      "repo": "pallets/flask",
+      "commit": "353d891561659a754ee92bb5e6576e82be58934a",
+      "pr": 3328
+    },
+    "preferred": {
+      "file_path": "flasklogging/logging.py",
+      "action": "change_literal",
+      "symbol": "create_logger_description",
+      "params": {
+        "from": "Get the the Flask apps's logger and configure it if needed.",
+        "to": "Get the Flask app's logger and configure it if needed."
+      }
+    }
+  },
+  {
     "name": "django_makemessages_locale_directory_exists",
     "family": "i18n_error_message",
     "source_type": "git_history",

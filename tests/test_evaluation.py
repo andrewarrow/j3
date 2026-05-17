@@ -99,7 +99,7 @@ def test_load_greenshot_6_tasks() -> None:
     tasks = load_tasks(Path("examples/greenshot_6"))
     by_name = {task.name: task for task in tasks}
 
-    assert len(tasks) == 66
+    assert len(tasks) == 67
     assert tasks[0].name == "core_metadata_version_dict_value"
     assert tasks[0].family == "mapping_value"
     assert tasks[0].source_type == "mutation"
@@ -362,6 +362,22 @@ def test_load_greenshot_6_tasks() -> None:
         "params": {
             "from": "Here are the timing informations for the manager agent:",
             "to": "Here are the timing details for the manager agent:",
+        },
+    }
+    assert by_name["flask_create_logger_description_app_possessive"].family == (
+        "logging_description_text"
+    )
+    assert by_name["flask_create_logger_description_app_possessive"].source_type == (
+        "git_history"
+    )
+    assert by_name["flask_create_logger_description_app_possessive"].split == "train"
+    assert by_name["flask_create_logger_description_app_possessive"].preferred_patch == {
+        "file_path": "flasklogging/logging.py",
+        "action": "change_literal",
+        "symbol": "create_logger_description",
+        "params": {
+            "from": "Get the the Flask apps's logger and configure it if needed.",
+            "to": "Get the Flask app's logger and configure it if needed.",
         },
     }
     assert by_name["starlette_websocket_runtime_error_allowed_messages"].family == (

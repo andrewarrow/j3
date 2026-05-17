@@ -1700,48 +1700,49 @@ Start neural/JEPA work only when:
 
 ## Handoff Recommendation
 
-The next context window should start from the post-smolagents-timing GreenShot-6
+The next context window should start from the post-Flask-logging GreenShot-6
 refresh, not the older pytestdocs, typechecker, keyword-coverage, packaging
 parser, FastAPI OAuth2, Werkzeug AirPlay, flake8-bugbear B037, Seaborn
 plot-label, graphlayout/NetworkX, taskqueue/Celery, envwrite, v13 literal-key,
-scipyquad, raisemsg, attrvalidators, pytest-regex-label, or HTTPX-docline
-states. GreenShot-6 now has 66 tasks.
+scipyquad, raisemsg, attrvalidators, pytest-regex-label, HTTPX-docline, or
+smolagents-timing states. GreenShot-6 now has 67 tasks.
 
 Latest addition:
 
-- Fixture domain: `agentlogs`
-- Task: `smolagents_manager_timing_details_wording`
-- Source: `huggingface/smolagents` commit
-  `255325182c94760a6e9bb03838e25593e967d701`
-- Repair shape: manager timing output should say `timing details`, not
-  `timing informations`.
+- Fixture domain: `flasklogging`
+- Task: `flask_create_logger_description_app_possessive`
+- Source: `pallets/flask` commit
+  `353d891561659a754ee92bb5e6576e82be58934a` / PR 3328
+- Repair shape: create-logger description text should say
+  `Get the Flask app's logger...`, not
+  `Get the the Flask apps's logger...`.
 - Action: existing `change_literal`; no action family, ranker metadata, broad
   weight, or pass/preferred-label change was needed.
 
 Latest standard GreenShot-6 refresh with `--max-candidates 80 --phase ranked`
-and `--explore-after-pass 5` solved all 66 tasks: `pass@1=49/66`, average
-candidates `7.64`, rows `504`, passing rows `97`, and preferred-positive rows
-`66`. Source-type pass@1 is `git_history=31/45` and `mutation=18/21`. The new
-smolagents-derived task passes at raw rank 1 with the preferred
-`change_literal` candidate.
+and `--explore-after-pass 5` solved all 67 tasks: `pass@1=50/67`, average
+candidates `7.61`, rows `510`, passing rows `98`, and preferred-positive rows
+`67`. Source-type pass@1 is `git_history=32/46` and `mutation=18/21`. The new
+Flask-derived task passes at raw rank 1 with the preferred `change_literal`
+candidate.
 
 The same GreenShot-6 `split: test` held-out validation is clean:
 solved=7/7, pass@1=7/7, positive@1=7/7, validation rows=46, and
-avg_first_passing_index=1.0. Training used 584 rows, 105 passing rows, 504
+avg_first_passing_index=1.0. Training used 590 rows, 106 passing rows, 509
 training pairs, 906 features, and 4 margin violations.
 
 Latest inspection summary:
 
-- Before dataset growth, refreshed raw GreenShot-6 had 17 pass@1 misses after
-  the HTTPX-docline refresh. Every task had a tested preferred-positive row,
-  and the saved `split: test` ranker placed every preferred-positive candidate
-  first across all 65 tasks.
-- After adding `smolagents_manager_timing_details_wording`, raw GreenShot-6 has
-  17 pass@1 misses under the standard refresh command. Every task still has a
-  tested preferred-positive row.
+- Before dataset growth, the post-smolagents-timing refresh had 17 raw pass@1
+  misses, every task had a tested preferred-positive row, and the saved
+  `split: test` ranker placed every preferred-positive candidate first across
+  all 66 tasks.
+- After adding `flask_create_logger_description_app_possessive`, raw GreenShot-6
+  still has 17 pass@1 misses under the standard refresh command. Every task
+  still has a tested preferred-positive row.
 - Applying the refreshed GreenShot-6 `split: test` ranker to all refreshed
   GreenShot-6 rows found no trained pass@1 or preferred-positive misses across
-  all 66 tasks.
+  all 67 tasks.
 - `HARD_NEGATIVES.md` was not updated this turn because no new verified
   residual appeared.
 

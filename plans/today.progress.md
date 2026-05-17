@@ -24,7 +24,7 @@ new implementation facts change the 24-hour plan itself. Record any
   - `python cli.py train-prompt-intents --labels examples/prompt_intents/greenshot_7_intents.jsonl --target unsupported_requirement unsupported_requirement_family --show-residuals --residual-limit 20`
   - `python -m py_compile prompt_intents.py cli/handlers.py cli/parser.py cli/__init__.py`
   - `pytest tests/test_prompt_intents.py tests/test_request_spec.py tests/test_existing_repo_change.py tests/test_cli.py -q`
-- Latest implementation commit: `f3b60d43d87ce45a1bcbdf60c4b16d0325f0ef9b`
+- Latest implementation commit: `376834403a2c7c7fe85638a52cc305256c388d7b`
 - Current blocker: learned production routing remains blocked; the
   family-level target is perfect locally, but fine-grained
   `unsupported_requirement` still has held-out residuals inside unsupported
@@ -599,8 +599,8 @@ Use this shape for each worker handoff:
     family-level target is still the better conservative routing signal, but
     fine-grained learned routing is blocked by residual interface subtype
     errors and the small local fixture size.
-- Commit: pending
-- Push: pending
+- Commit: `376834403a2c7c7fe85638a52cc305256c388d7b`
+- Push: succeeded to `main`
 - Next: either collect more desktop/graphical/visual interface labels or
   improve prompt representation features before considering fine-grained
   learned routing for production.

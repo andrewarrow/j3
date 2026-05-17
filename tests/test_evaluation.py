@@ -99,7 +99,7 @@ def test_load_greenshot_6_tasks() -> None:
     tasks = load_tasks(Path("examples/greenshot_6"))
     by_name = {task.name: task for task in tasks}
 
-    assert len(tasks) == 59
+    assert len(tasks) == 60
     assert tasks[0].name == "core_metadata_version_dict_value"
     assert tasks[0].family == "mapping_value"
     assert tasks[0].source_type == "mutation"
@@ -241,6 +241,22 @@ def test_load_greenshot_6_tasks() -> None:
         "params": {
             "from": "System Preferences -> Sharing",
             "to": "System Preferences -> General -> AirDrop & Handoff",
+        },
+    }
+    assert by_name["fastapi_oauth2_client_secret_docstring"].family == (
+        "security_form_docstring"
+    )
+    assert by_name["fastapi_oauth2_client_secret_docstring"].source_type == (
+        "git_history"
+    )
+    assert by_name["fastapi_oauth2_client_secret_docstring"].split == "train"
+    assert by_name["fastapi_oauth2_client_secret_docstring"].preferred_patch == {
+        "file_path": "securityforms/oauth.py",
+        "action": "change_literal",
+        "symbol": "client_secret_docstring",
+        "params": {
+            "from": "client_password",
+            "to": "client_secret",
         },
     }
     assert by_name["prettytable_missing_attribute_quote"].family == "table_legacy_attribute_error"

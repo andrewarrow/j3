@@ -1600,3 +1600,47 @@ held-out result comes from the added independent coverage shifting the learned
 ordering for this decoy family without manual broad-weight tuning. Keep the
 feature for future support, but do not add more literal/dictionary-value
 metadata unless a fresh residual shows it is needed.
+
+### FastAPI OAuth2 Refresh
+
+Inspection date: 2026-05-17.
+
+Inspection source:
+
+```bash
+runs/apache-python-git/greenshot-5-candidate-outcomes.jsonl
+runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl
+runs/apache-python-git/ranker-holdout-greenshot-6-test-slice/candidate-ranker.json
+```
+
+After adding the FastAPI-derived `securityforms` domain, raw GreenShot-6 solves
+all 60 tasks with `pass@1=43/60`. The new
+`fastapi_oauth2_client_secret_docstring` task is clean: it passes at raw rank 1
+with the preferred `change_literal client_password -> client_secret` candidate.
+
+The same GreenShot-6 `split: test` held-out validation reopened one residual:
+
+| Slice | Plans | Solved | Pass@1 | Positive@1 | Avg first passing index |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| GreenShot-6 `split: test` holdout | 7 | 7/7 | 6/7 | 6/7 | 1.1428571428571428 |
+
+Residual:
+
+| Task | Trained rank 1 | Preferred / first valid repair | Shape |
+| --- | --- | --- | --- |
+| `cookie_scope_include_path_keyword` | false `change_dict_value`, `count: "count" -> "example.invalid/account"` in `plotlabels/categorical.py` | rank 2 preferred `add_keyword_arg(include_path=True)` in `webcookies/policy.py` | cross-domain dictionary-value decoy beats local keyword repair |
+
+This is not a missing-action problem. The preferred
+`add_keyword_arg(include_path=True)` row exists, passes, and is marked
+preferred-positive. The false row is pulled up by generic dictionary-value,
+string-parameter, token-overlap, helper-role, and overlap-distance features:
+its score is `10.671558`, above the preferred keyword candidate at `7.860286`.
+
+The preferred keyword row still has strong local evidence:
+`target_is_hinted_symbol`, `hint_symbol_match`, `hint_call_graph_distance:0`,
+and the highest failure-hint score (`55.0` versus `47.0`). It is dragged down
+by currently learned penalties on `add_keyword_arg`, `Call` nodes, added
+boolean literals, and AST net-count increases. Do not tune broad
+action/string/boolean weights from this single refresh. The next narrow work
+should inspect whether additional non-held-out keyword-propagation coverage or
+non-leaky cross-domain locality/context metadata is cleaner.

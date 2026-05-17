@@ -1583,6 +1583,30 @@ def test_patch_solves_werkzeug_airplay_setting_hint(tmp_path) -> None:
     assert "General -> AirDrop & Handoff" in result.selected.patched_source
 
 
+def test_patch_solves_fastapi_oauth2_client_secret_docstring(tmp_path) -> None:
+    repo = tmp_path / "greenshot_6"
+    shutil.copytree("examples/greenshot_6", repo)
+
+    result = plan_and_maybe_apply_patch(
+        repo=repo,
+        test_command=(
+            "python -m pytest "
+            "tests/test_securityforms.py::test_oauth2_client_secret_docstring_uses_secret_name"
+        ),
+        dry_run=True,
+        timeout_seconds=10,
+    )
+
+    assert result.selected is not None
+    assert result.selected.file_path == "securityforms/oauth.py"
+    assert result.selected.action.kind.value == "change_literal"
+    assert result.selected.action.params == {
+        "from": "client_password",
+        "to": "client_secret",
+    }
+    assert "return 'client_secret'" in result.selected.patched_source
+
+
 def test_generate_membership_operator_with_literal_needle_decoy(tmp_path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()

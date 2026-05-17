@@ -1307,12 +1307,35 @@ Recent work:
   solved=7/7, pass@1=7/7, positive@1=7/7, avg_first_passing_index=1.0.
   Training used 532 rows, 97 passing rows, 460 training pairs, 852 features,
   and 2 margin violations.
+- GreenShot-6 now includes a thirty-eighth real-package-derived task,
+  `fastapi_oauth2_client_secret_docstring`, modeled on `fastapi/fastapi`
+  commit `fa3588c38c7473aca7536b12d686102de4b0f407`. The task repairs an
+  OAuth2 password form client-secret description token from `client_password`
+  to `client_secret`, using the existing `change_literal` action family. No
+  action family or ranker metadata change was needed.
+- Focused loader/generator coverage passed for the FastAPI-derived task:
+  `pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q` and
+  `pytest tests/test_patching.py::test_patch_solves_fastapi_oauth2_client_secret_docstring -q`.
+- GreenShot-6 outcomes were refreshed with `--explore-after-pass 5` after
+  adding `securityforms`. The persisted dataset now covers 60 tasks and 465
+  tested candidates. Ranked eval solved all 60 tasks with `pass@1=43/60` and
+  average candidates `7.75`; the new FastAPI-derived task solves at raw rank 1
+  with the preferred `change_literal` candidate. Outcome summary reports 91
+  passing rows and 60 preferred-positive rows.
+- The same GreenShot-6 `split: test` held-out ranker validation reopened one
+  residual: solved=7/7, pass@1=6/7, positive@1=6/7,
+  avg_first_passing_index=1.1428571428571428. Training used 545 rows, 99
+  passing rows, 471 training pairs, 856 features, and 3 margin violations.
+  The residual is `cookie_scope_include_path_keyword`, where a false
+  cross-domain `change_dict_value` candidate ranks above the preferred
+  `add_keyword_arg(include_path=True)` row. Details are in
+  `HARD_NEGATIVES.md`.
 
 Last focused verification:
 
 ```bash
 pytest tests/test_evaluation.py::test_load_greenshot_6_tasks -q
-pytest tests/test_patching.py::test_patch_solves_bugbear_b037_message_extra_and -q
+pytest tests/test_patching.py::test_patch_solves_fastapi_oauth2_client_secret_docstring -q
 python3 -m json.tool examples/greenshot_6/tasks.json >/tmp/greenshot6_tasks_check.json
 python cli.py eval \
   --tasks examples/greenshot_6 \
@@ -1456,9 +1479,9 @@ GreenShot-6 outcome collection result:
 
 ```text
 ranked, runs/apache-python-git/model.json, explore-after-pass=5:
-  solved=59/59 pass@1=42/59 avg_candidates=7.76
-  rows=458 passing_rows=90 preferred_positive_rows=59
-  source_type pass@1: git_history=25/39 mutation=17/20
+  solved=60/60 pass@1=43/60 avg_candidates=7.75
+  rows=465 passing_rows=91 preferred_positive_rows=60
+  source_type pass@1: git_history=26/40 mutation=17/20
 ```
 
 Treat this as a smoke check, not a benchmark claim.
@@ -1477,10 +1500,10 @@ GreenShot-6 test-slice ranker validation result:
 
 ```text
 train-ranker, holdout-task includes all GreenShot-6 split:test tasks:
-  rows=538 passing_rows=98 tasks=72 plans=72 pairs=465
-  training_accuracy=1.000 margin_violations=3 features=818
-  validation solved=7/7 pass@1=7/7 positive@1=7/7
-  validation rows=46 avg_first_passing_index=1.0
+  rows=545 passing_rows=99 tasks=73 plans=73 pairs=471
+  training_accuracy=1.000 margin_violations=3 features=856
+  validation solved=7/7 pass@1=6/7 positive@1=6/7
+  validation rows=46 avg_first_passing_index=1.1428571428571428
 ```
 
 ## Next Right Things
@@ -1490,13 +1513,14 @@ Keep this section as the live queue. When work is completed, move it to
 
 Immediate next sequence:
 
-1. Continue dataset growth with another real-package-derived GreenShot-6 task
-   using an existing action family where possible.
-2. Refresh GreenShot-6 outcomes with `--explore-after-pass 5` after adding the
-   task, then rerun the same GreenShot-6 `split: test` held-out validation.
-3. Inspect any reopened trained residual before changing ranker features or
-   adding more coverage. Do not tune broad action/string/boolean weights or add
+1. Inspect the reopened `cookie_scope_include_path_keyword` held-out residual
+   from the post-FastAPI refresh before adding more tasks or ranker features.
+2. Decide whether the cleanest fix is independent non-held-out
+   keyword-propagation coverage or narrow non-leaky metadata for cross-domain
+   locality/context. Do not tune broad action/string/boolean weights or add
    pass/preferred-label features.
+3. After any fix, refresh GreenShot-6 outcomes with `--explore-after-pass 5`
+   and rerun the same GreenShot-6 `split: test` held-out validation.
 
 ### 1. Make GreenShot-6 Real
 
@@ -1659,41 +1683,50 @@ Start neural/JEPA work only when:
 
 ## Handoff Recommendation
 
-The next context window should start from the post-Werkzeug AirPlay dataset
-growth, not the older flake8-bugbear B037, Seaborn plot-label,
-graphlayout/NetworkX, taskqueue/Celery, envwrite, v13 literal-key, scipyquad,
-raisemsg, attrvalidators, or pytest-regex-label states. GreenShot-6 now has 59
-tasks.
+The next context window should start from the post-FastAPI OAuth2 dataset
+growth, not the older Werkzeug AirPlay, flake8-bugbear B037, Seaborn
+plot-label, graphlayout/NetworkX, taskqueue/Celery, envwrite, v13 literal-key,
+scipyquad, raisemsg, attrvalidators, or pytest-regex-label states. GreenShot-6
+now has 60 tasks.
 
 Latest addition:
 
-- Fixture domain: `devserver`
-- Task: `werkzeug_airplay_setting_hint`
-- Source: `pallets/werkzeug` commit
-  `81b879a523e1c05485729a8cdfae812f69500a20`
-- Repair shape: the macOS AirPlay port-collision hint should point to
-  `System Preferences -> General -> AirDrop & Handoff` instead of
-  `System Preferences -> Sharing`.
+- Fixture domain: `securityforms`
+- Task: `fastapi_oauth2_client_secret_docstring`
+- Source: `fastapi/fastapi` commit
+  `fa3588c38c7473aca7536b12d686102de4b0f407`
+- Repair shape: an OAuth2 password form client-secret description should refer
+  to `client_secret` instead of `client_password`.
 - Action: existing `change_literal`; no action family or ranker metadata
   change was needed.
 
-Latest GreenShot-6 refresh with `--explore-after-pass 5` solved all 59 tasks:
-`pass@1=42/59`, average candidates `7.76`, rows `458`, passing rows `90`, and
-preferred-positive rows `59`. Source-type pass@1 is `git_history=25/39` and
-`mutation=17/20`. The new Werkzeug-derived task passes at raw rank 1 with the
-preferred `change_literal` candidate.
+Latest GreenShot-6 refresh with `--explore-after-pass 5` solved all 60 tasks:
+`pass@1=43/60`, average candidates `7.75`, rows `465`, passing rows `91`, and
+preferred-positive rows `60`. Source-type pass@1 is `git_history=26/40` and
+`mutation=17/20`. The new FastAPI-derived task passes at raw rank 1 with the
+preferred `change_literal client_password -> client_secret` candidate.
 
-The same GreenShot-6 `split: test` held-out validation is clean:
-solved=7/7, pass@1=7/7, positive@1=7/7, validation rows=46, and
-avg_first_passing_index=1.0. Training used 538 non-held-out rows, 98 passing
-rows, 465 training pairs, 818 features, and 3 margin violations. Do not tune
-broad handcrafted weights or add pass/preferred-label features from this state.
+The same GreenShot-6 `split: test` held-out validation reopened one residual:
+solved=7/7, pass@1=6/7, positive@1=6/7, validation rows=46, and
+avg_first_passing_index=1.1428571428571428. Training used 545 rows, 99 passing
+rows, 471 training pairs, 856 features, and 3 margin violations.
+
+Residual to inspect next:
+
+- `cookie_scope_include_path_keyword`: a false cross-domain
+  `change_dict_value count: "count" -> "example.invalid/account"` candidate in
+  `plotlabels/categorical.py` ranks above the preferred
+  `add_keyword_arg(include_path=True)` candidate in `webcookies/policy.py`.
+  The preferred row exists, passes, and is marked preferred-positive, so this
+  is ranking signal rather than a missing-action problem. Details are in
+  `HARD_NEGATIVES.md`.
 
 Immediate next sequence:
 
-1. Resume dataset growth with another real-package-derived GreenShot-6 task
-   using an existing action family where possible.
-2. Refresh GreenShot-6 outcomes with `--explore-after-pass 5`, then rerun the
-   same `split: test` held-out validation.
-3. Inspect any fresh residual before changing ranker features or adding more
-   hard-negative coverage.
+1. Inspect the reopened `cookie_scope_include_path_keyword` residual before
+   adding more dataset tasks or ranker features.
+2. Prefer independent non-held-out keyword-propagation coverage or narrow
+   non-leaky cross-domain locality/context metadata if the inspection supports
+   it.
+3. Do not tune broad handcrafted weights or add pass/preferred-label features
+   from this state.

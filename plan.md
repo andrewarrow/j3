@@ -11,6 +11,7 @@ markdown files instead of letting this plan become a changelog.
 - [Core Thesis](#core-thesis)
 - [What Must Exist for Codex-Level Editing](#what-must-exist-for-codex-level-editing)
 - [Current Reality](#current-reality)
+  - [Existing Data and Runs](#existing-data-and-runs)
 - [Strategic Correction](#strategic-correction)
 - [System Architecture](#system-architecture)
   - [1. Prompt and Intent Layer](#1-prompt-and-intent-layer)
@@ -26,6 +27,7 @@ markdown files instead of letting this plan become a changelog.
   - [Clarification Policy](#clarification-policy)
   - [Prompt-to-Spec Schema](#prompt-to-spec-schema)
   - [Prompt Data We Need](#prompt-data-we-need)
+  - [Prompt Corpus Scale](#prompt-corpus-scale)
   - [Prompt Data Sources](#prompt-data-sources)
   - [Prompt Data Quality Rules](#prompt-data-quality-rules)
 - [Repair and Ranking Track](#repair-and-ranking-track)
@@ -158,6 +160,48 @@ Known useful pieces:
     `change_module_constant`, `modify_condition`, and `rename_symbol`.
 
 This is necessary foundation work. It is not enough for the full goal.
+
+### Existing Data and Runs
+
+The project already has local training artifacts, but they are not prompt
+understanding data.
+
+Current data:
+
+- `data/transitions/apache-python/*.jsonl` contains mined Python before/after
+  file transitions from the Apache-licensed local corpus described in
+  `TRAINING.md`.
+- `runs/apache-python-git/model.json` is the current prototype repair-ranking
+  checkpoint trained from synthetic source transitions plus mined git
+  transitions.
+- `runs/apache-python-git/examples.jsonl` is the generated transition training
+  example dump for that checkpoint.
+- `runs/apache-python-git/greenshot-5-candidate-outcomes.jsonl` and
+  `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` are candidate
+  outcome datasets from actual repair attempts.
+- `runs/apache-python-git/ranker-*` contains trained candidate-ranker artifacts
+  and metrics from those outcome rows.
+
+How these are used today:
+
+- `j3 train --data ... --transitions data/transitions/apache-python` consumes
+  Python source and mined git transitions to produce a prototype model under
+  `runs/`.
+- `j3 eval --checkpoint runs/apache-python-git/model.json ...` uses that model
+  to score/rank repair candidates.
+- `j3 train-ranker --candidate-outcomes runs/...jsonl` consumes candidate
+  outcome rows to train the separate candidate ranker.
+
+What is missing:
+
+- No current `data/` or `runs/` artifact trains prompt-to-spec understanding.
+- No current artifact learns from natural-language coding-agent prompts.
+- No current training path maps prompt text to new files, hidden behavior
+  tests, or greenfield repo outcomes.
+
+So the source/transition/ranker data is real and useful, but it is not enough
+for user intent. Prompt data is a new first-class dataset, not a replacement for
+the existing repair data.
 
 ## Strategic Correction
 
@@ -417,6 +461,41 @@ Training should cover prompt-to-spec, spec-to-plan, and plan-to-repo outcomes:
 
 This is not general natural-language training. It is coding-agent request
 language aligned to repo changes.
+
+### Prompt Corpus Scale
+
+We are not ready to train a serious prompt encoder yet. We are ready to define
+the schema, collect seed data, build deterministic baselines, and make small
+GreenShot-7 request-to-repo tasks.
+
+Scale targets:
+
+- 100 to 300 hand-authored prompt/spec rows:
+  - Purpose: schema shakeout, rule baselines, prompt phenomena inventory.
+  - Good enough to test `etc.`, ambiguity, task type labels, and request-spec
+    validation.
+  - Not enough for credible generalization claims.
+- 1,000 to 3,000 curated rows:
+  - Purpose: train a small prompt classifier/spec parser for common coding
+    requests.
+  - Should cover creation, feature addition, bug fix, refactor, tests, config,
+    docs, and clarification.
+- 10,000 to 50,000 prompt/spec/repo examples:
+  - Purpose: robust held-out prompt understanding across repos and domains.
+  - Should include mined issue/PR pairs, normalized commit/PR descriptions,
+    human-authored prompts, and synthetic data marked by provenance.
+- 100,000+ examples:
+  - Purpose: serious local prompt encoder pretraining.
+  - Needed if the model must handle many domains, paraphrases, repo styles, and
+    implicit requirement patterns without brittle rules.
+
+The immediate corpus lives outside the repo at `../prompts`:
+
+- `../prompts/README.md`
+- `../prompts/coding_agent_prompts_seed.jsonl`
+
+That seed file is intentionally small and human-authored. It should be treated
+as bootstrapping data for schema and evaluation, not model-scale training data.
 
 ### Prompt Data Sources
 
@@ -730,14 +809,20 @@ Do this next, before adding more GreenShot-6 literal/typo tasks:
    - Rerun the GreenShot-6 `split:test` held-out ranker validation.
    - Update this plan only with fresh metrics that were actually run.
 
-2. Add `REQUEST_SPEC.md`.
+2. Normalize the new prompt seed corpus.
+   - Validate `../prompts/coding_agent_prompts_seed.jsonl`.
+   - Add a small prompt-corpus summary/check command or test.
+   - Decide whether prompt data should stay outside the repo, be referenced from
+     `TRAINING.md`, or be copied into `data/prompts/` once the schema is stable.
+
+3. Add `REQUEST_SPEC.md`.
    - Define `request-spec-v1`.
    - Include the calculator prompt with `etc.` expanded to multiply/divide as a
      high-confidence inferred default.
    - Include at least one ambiguous prompt where the correct action is
      clarification.
 
-3. Start GreenShot-7 with the calculator CLI request-to-repo task.
+4. Start GreenShot-7 with the calculator CLI request-to-repo task.
    - Empty repo input.
    - Prompt: "make me a simple cli python app that's a basic calculator, it
      should let the user add two numbers, subtract, etc."

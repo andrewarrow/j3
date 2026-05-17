@@ -7,16 +7,17 @@ new implementation facts change the 24-hour plan itself. Record any
 
 ## Status
 
-- Current phase: structured greenfield action planning complete; ready for repo materialization
-- Completed iterations: 4
+- Current phase: calculator repo materialization complete; ready for CLI wiring
+  or GreenShot-7 runner work
+- Completed iterations: 5
 - Passing focused tests: prompt seed JSONL validation, `test -s REQUEST_SPEC.md`,
   GreenShot-7 fixture JSON validation, `pytest tests/test_request_spec.py -q`,
   `pytest tests/test_greenfield_calculator.py -q`, `git diff --check`
-- Latest implementation commit: `8b1d6891e7611ff06962f43d1b1016f9d1d6958f`
-  (`Add greenfield action planning`)
+- Latest implementation commit: pending for Worker Iteration 5
+  (`Build calculator repos from plans`)
 - Current blocker: none
-- Next task: materialize generated calculator repos from `greenfield-plan-v1`
-  actions and run subprocess smoke checks
+- Next task: add CLI entry point wiring for prompt-to-repo implementation, without
+  expanding beyond the calculator request-to-repo path
 
 ## Worker Iteration Template
 
@@ -146,4 +147,28 @@ Use this shape for each worker handoff:
 - Push: succeeded to `origin/main`
 - Next: Materialize generated calculator repos from `greenfield-plan-v1`
   actions and run subprocess smoke checks.
+- Blockers: none
+
+### Iteration 5: Build calculator repos from plans
+
+- Worker: Codex Worker Iteration 5
+- Goal: Materialize deterministic calculator repos from `greenfield-plan-v1`
+  action payloads and validate generated repos with subprocess smoke checks.
+- Files changed:
+  - `greenfield.py`
+  - `tests/test_greenfield_calculator.py`
+  - `plans/today.progress.md`
+- Tests run:
+  - `pytest tests/test_greenfield_calculator.py -q`
+  - `pytest tests/test_request_spec.py -q`
+  - `git diff --check`
+- Result: Added `BuildResult`, `build_calculator_repo`, and
+  `materialize_calculator_repo`; generated dependency-free `calculator.py` and
+  subprocess pytest coverage from structured action payloads; covered
+  four-operation, add-only, hidden-like subprocess, and blocked clarification
+  cases.
+- Commit: pending until Worker Iteration 5 commit is created
+- Push: pending
+- Next: Add CLI entry point wiring for prompt-to-repo implementation without
+  broadening the calculator slice.
 - Blockers: none

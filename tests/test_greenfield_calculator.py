@@ -1,9 +1,15 @@
 from __future__ import annotations
 
 import json
+import subprocess
+import sys
 from pathlib import Path
 
-from greenfield import plan_calculator_repo
+from greenfield import (
+    build_calculator_repo,
+    materialize_calculator_repo,
+    plan_calculator_repo,
+)
 from request_spec import parse_request_to_spec
 
 
@@ -22,6 +28,25 @@ def _spec_from_fixture(name: str):
 
 def _action(record: dict[str, object], kind: str) -> dict[str, object]:
     return next(action for action in record["actions"] if action["kind"] == kind)  # type: ignore[index]
+
+
+def _run_calculator(repo: Path, *argv: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [sys.executable, str(repo / "calculator.py"), *argv],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+
+def _run_generated_pytest(repo: Path) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [sys.executable, "-m", "pytest", "tests/test_calculator_cli.py", "-q"],
+        cwd=repo,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
 
 
 def test_plan_calculator_repo_for_four_operation_fixture() -> None:
@@ -147,3 +172,80 @@ def test_plan_calculator_repo_reports_blocked_clarification_specs() -> None:
         "reason": "request_spec_has_blocking_clarifications",
         "clarifications_needed": record["blockers"],
     }
+
+
+def test_materialize_four_operation_calculator_repo(tmp_path: Path) -> None:
+    plan = plan_calculator_repo(_spec_from_fixture("calculator_named_ops"))
+    result = materialize_calculator_repo(plan, tmp_path)
+
+    assert result.to_record()["status"] == "built"
+    assert result.files_written == ["calculator.py", "tests/test_calculator_cli.py"]
+    assert sorted(
+        path.relative_to(tmp_path).as_posix()
+        for path in tmp_path.rglob("*")
+        if path.is_file()
+    ) == ["calculator.py", "tests/test_calculator_cli.py"]
+
+    generated_pytest = _run_generated_pytest(tmp_path)
+    assert (
+        generated_pytest.returncode == 0
+    ), generated_pytest.stdout + generated_pytest.stderr
+
+    assert _run_calculator(tmp_path, "2", "+", "3").stdout.strip() == "5"
+    assert _run_calculator(tmp_path, "2", "add", "3").stdout.strip() == "5"
+    assert _run_calculator(tmp_path, "5", "-", "2").stdout.strip() == "3"
+    assert _run_calculator(tmp_path, "4", "multiply", "3").stdout.strip() == "12"
+    assert _run_calculator(tmp_path, "4", "x", "3").stdout.strip() == "12"
+    assert _run_calculator(tmp_path, "8", "/", "2").stdout.strip() == "4"
+    assert _run_calculator(tmp_path, "9", "div", "4").stdout.strip() == "2.25"
+
+    unknown_operator = _run_calculator(tmp_path, "2", "power", "3")
+    assert unknown_operator.returncode != 0
+    assert "Unknown operator" in unknown_operator.stderr
+
+    divide_by_zero = _run_calculator(tmp_path, "8", "/", "0")
+    assert divide_by_zero.returncode != 0
+    assert "Cannot divide by zero" in divide_by_zero.stderr
+
+
+def test_materialize_add_only_calculator_repo(tmp_path: Path) -> None:
+    result = build_calculator_repo(_spec_from_fixture("calculator_add_only"), tmp_path)
+
+    assert result.status == "built"
+    source = (tmp_path / "calculator.py").read_text(encoding="utf-8")
+    assert '"add": (' in source
+    assert '"subtract": (' not in source
+    assert '"multiply": (' not in source
+    assert '"divide": (' not in source
+
+    generated_pytest = _run_generated_pytest(tmp_path)
+    assert (
+        generated_pytest.returncode == 0
+    ), generated_pytest.stdout + generated_pytest.stderr
+
+    assert _run_calculator(tmp_path, "2", "+", "3").stdout.strip() == "5"
+    assert _run_calculator(tmp_path, "2", "plus", "3").stdout.strip() == "5"
+
+    subtract = _run_calculator(tmp_path, "5", "-", "2")
+    assert subtract.returncode != 0
+    assert "Unknown operator" in subtract.stderr
+
+    divide = _run_calculator(tmp_path, "8", "/", "2")
+    assert divide.returncode != 0
+    assert "Unknown operator" in divide.stderr
+
+
+def test_materialize_reports_blocked_clarification_plan(tmp_path: Path) -> None:
+    plan = plan_calculator_repo(_spec_from_fixture("calculator_scientific_unclear"))
+    result = materialize_calculator_repo(plan, tmp_path)
+
+    assert result.status == "blocked"
+    assert result.files_written == []
+    assert result.blockers == [
+        {
+            "field": "features",
+            "question": "Which scientific calculator operations should be supported?",
+        }
+    ]
+    assert not (tmp_path / "calculator.py").exists()
+    assert not (tmp_path / "tests").exists()

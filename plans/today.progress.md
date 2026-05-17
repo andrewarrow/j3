@@ -721,8 +721,8 @@ Use this shape for each worker handoff:
   prompt-only nearest-neighbor baseline metrics, and bounded residual examples
   containing prompt, action, expected, predicted, prompt-only, and distance
   fields. Added the evaluation-only `eval-prompt-repo-transitions` CLI command.
-- Commit: pending before commit; final hash reported by worker.
-- Push: pending.
+- Commit: `5f9fcb9`
+- Push: succeeded to `main`.
 - Next: wire transition rows/model/eval into `demo-prompt-jepa` report
   artifacts.
 - Blockers: none.

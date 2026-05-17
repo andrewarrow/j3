@@ -26,8 +26,7 @@ new implementation facts change the 24-hour plan itself. Record any
   - `python -m py_compile prompt_intents.py request_spec.py cli/handlers.py cli/parser.py cli/__init__.py`
   - `pytest tests/test_prompt_intents.py tests/test_request_spec.py tests/test_existing_repo_change.py tests/test_cli.py -q`
   - `python cli.py implement --prompt "make a graphing calculator" --out <tmp>`
-- Latest implementation commit: pending iteration 12 commit; final worker
-  report includes the pushed hash.
+- Latest implementation commit: `c4cfe62754627648c8e86ff6863d3e902cc641b4`
 - Current blocker: learned production routing remains blocked; the
   family-level target is perfect locally, but fine-grained
   `unsupported_requirement` still has held-out residuals after graphing/
@@ -709,9 +708,8 @@ Use this shape for each worker handoff:
     learned routing remains blocked because the scientific-graphing row still
     confuses feature scope with graphical interface, and a vague math/domain
     row also regressed at the fine-grained level.
-- Commit: pending at progress-log update time; final worker report includes
-  the pushed commit hash.
-- Push: pending at progress-log update time.
+- Commit: `c4cfe62754627648c8e86ff6863d3e902cc641b4`
+- Push: succeeded to `main`
 - Next: collect broader labels for graphing/scientific feature scope and vague
   domain-clarification prompts, or keep learned routing at the family level
   only if production routing is reconsidered.

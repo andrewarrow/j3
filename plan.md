@@ -142,6 +142,11 @@ Recent work:
   validation slice. The held-out plan solved but did not pass at rank 1
   (`pass@1=0/1`, average first passing index 5.0), confirming it is useful
   ranking signal for the next hard-negative inspection.
+- GreenShot-6 hard negatives for `http_cache_directive`, `mapping_value`, and
+  `operator_boundary` were inspected and summarized in `HARD_NEGATIVES.md`.
+  The issue is ranking signal, not missing actions: the correct candidates
+  exist, but local same-score decoys and multiple passing operator repairs need
+  richer metadata before ranker feature changes.
 
 Last focused verification:
 
@@ -216,10 +221,10 @@ Keep this section as the live queue. When work is completed, move it to
 
 Immediate next sequence:
 
-1. Inspect the GreenShot-6 hard negatives before changing ranker features,
-   especially `http_cache_directive`, `mapping_value`, and `operator_boundary`.
-2. Add before/after AST delta features to candidate outcome rows.
-3. Record whether candidates are equivalent or overlapping.
+1. Add before/after AST delta features to candidate outcome rows.
+2. Record whether candidates are equivalent or overlapping.
+3. Use the GreenShot-6 hard-negative notes in `HARD_NEGATIVES.md` when
+   validating ranker feature changes.
 4. Add more real git-history tasks only after the current hard-negative/ranker
    signal has been used.
 
@@ -252,7 +257,6 @@ Goal: train on candidates the current system actually finds tempting.
 
 Next tasks:
 
-- Summarize high-scoring failed candidates from the GreenShot-6 outcome rows.
 - Use GreenShot-5 and GreenShot-6 rows for ranker training and validation.
 - Prefer held-out family/source-type validation over in-sample pass@1.
 - Re-run GreenShot-6 with `--explore-after-pass 5` after the next batch of

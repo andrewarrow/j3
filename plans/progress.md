@@ -851,7 +851,7 @@ meaningful work. Do not replace this file with a daily reset.
   records by purpose and validation result without checking in raw source
   blobs.
 - Commit: 04b35ff
-- Push: pending
+- Push: succeeded
 - Next: wire these records into tests-only planning attribution and mark
   `knowledge_not_used` when a wedge candidate lacks layout, import, or
   validation citations.
@@ -877,8 +877,8 @@ meaningful work. Do not replace this file with a daily reset.
   generated candidates, no candidate validation runtime, zero production-file
   modifications, zero actual writes outside allowlists, hidden-like agreement
   not run, and zero hosted usage. Gate 2 remains `remain_shadow_only`.
-- Commit: pending
-- Push: pending
+- Commit: ac153149868190c8c6c12192bedef9cdd47a5a27
+- Push: succeeded
 - Next: add a generic repo-state-aware tests-only planner that can select the
   accepted test file, import style, and behavior-specific pytest cases from
   real repository evidence and local knowledge records.

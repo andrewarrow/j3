@@ -42,14 +42,15 @@ Long-term target:
 
 ### OPS-002: Add a lightweight plan consistency check
 
-- Status: active
+- Status: done
 - Why: stale task IDs and forgotten active entries will accumulate as parallel
   work grows.
 - Write scope: a small checker command or test around `plans/active.md` and
   `plans/backlog.md`.
 - Acceptance: focused test catches missing task IDs, invalid statuses, and
-  active tasks not present in backlog.
-- Tests: new focused test plus `git diff --check`.
+  active tasks not present in backlog, plus active/done drift between active
+  board and backlog.
+- Tests: `pytest tests/test_plan_consistency.py -q`; `git diff --check`.
 
 ### OPS-003: Make the coordinator loop continuous
 
@@ -277,11 +278,10 @@ Long-term target:
 
 Start with these unless fresh evidence changes the order:
 
-1. `TRANS-004`: rerun targeted `greenshot_6_subset` matrix evidence after
-   `ACT-002`.
-2. `OPS-002`: add a lightweight plan consistency check.
-3. `GS7-002`: add five non-calculator request-to-repo fixtures.
-4. `DATA-003`: prototype issue/PR mining manifest.
+1. `GS7-002`: add five non-calculator request-to-repo fixtures.
+2. `DATA-003`: prototype issue/PR mining manifest.
+3. `REPO-001`: summarize repo-state encoder coverage.
+4. `ACT-001`: create action coverage map from residuals.
 5. Coordinator review: choose between GreenShot-7 fixture expansion, scorer
    ranking work, or broader data provenance work based on the targeted rerun
    and schema validation.

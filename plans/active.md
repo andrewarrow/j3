@@ -16,15 +16,7 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-### `OPS-002`: Add a lightweight plan consistency check
-
-- Owner: worker Chandrasekhar (`019e3b15-7b3a-7461-9dc5-4db9b20d168e`)
-- Status: active
-- Write scope: small checker command or test around `plans/active.md` and
-  `plans/backlog.md`, plus `plans/progress.md` and `plans/active.md`.
-- Acceptance: focused test catches missing task IDs, invalid statuses, active
-  tasks missing from backlog, and completed/active status drift.
-- Tests: new focused test plus `git diff --check`.
+No active worker tasks.
 
 ## Ready Queue
 
@@ -60,6 +52,10 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `OPS-002`: added a lightweight plan consistency parser and focused pytest
+  check for `plans/active.md` and `plans/backlog.md`. The check catches
+  malformed task headings, invalid status values, active tasks missing from
+  backlog, and active/backlog status drift.
 - `TRANS-004`: reran targeted `greenshot_6_subset` transition matrix evidence
   after the `ACT-002` subscript-key fix. The
   `http_no_store_directive_subscript_key` production and shadow candidates now

@@ -302,3 +302,22 @@ meaningful work. Do not replace this file with a daily reset.
 - Next: keep `TRANS-003` blocked until the remaining scorer-ranking gaps are
   addressed or explicitly accepted for a broader matrix run.
 - Blockers: none
+
+### 2026-05-18 - OPS-002 - Plan consistency check
+
+- Owner: worker OPS-002
+- Files changed: `j3/plan_consistency.py`, `tests/test_plan_consistency.py`,
+  `plans/active.md`, `plans/backlog.md`, `plans/progress.md`
+- Tests: `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `python -m py_compile j3/plan_consistency.py` -> passed;
+  `git diff --check` -> passed.
+- Result: added a lightweight Markdown parser and focused pytest check for
+  `plans/active.md` and `plans/backlog.md`. The check validates task-heading
+  IDs, status values from the backlog status list, active tasks existing in
+  backlog, active/backlog status drift, and leading task references in the
+  active board ready, blocked, and completed sections.
+- Commit: this OPS-002 commit
+- Push: pushed by worker after commit creation
+- Next: run `pytest tests/test_plan_consistency.py -q` after coordinator plan
+  edits so stale active/backlog task drift is caught before dispatch.
+- Blockers: none

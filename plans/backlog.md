@@ -1420,7 +1420,7 @@ Long-term target:
 
 ### DATA-019: Constrained Click command-docs materializer spike
 
-- Status: active
+- Status: done
 - Why: DATA-017 identified `docs/commands.md` as the largest accepted-edit
   coverage hole for the validated Click #2745 source/test candidate. The hard
   question is whether a local constrained generator can produce useful repo
@@ -1441,6 +1441,20 @@ Long-term target:
 - Tests: focused docs materializer tests, plan consistency, `git diff
   --check`, and a live pinned Click checkout smoke with docs validation when
   feasible.
+- Completion note: added a bounded Click commands docs materializer for exactly
+  `pallets__click-issue-2745-pr-3364`. The materializer generates the
+  `### Multi-value parameters` section, mentions `nargs > 1` and
+  the `{class}` role for `Tuple`, includes a whitespace-splitting example, and
+  inserts only into `docs/commands.md` before `## Context Defaults`. The live
+  pinned checkout changed only `docs/commands.md`; no source, test, changelog,
+  or config files changed. Sphinx docs validation was attempted after
+  installing docs dependencies and blocked in `2.887s` on
+  `docs_reference_resolution_failure` because the new `options.md` heading
+  link needs the separate DATA-017 `docs/conf.py` `myst_heading_anchors = 3`
+  auxiliary edit, which DATA-019 was not allowed to materialize. Report:
+  `docs/DATA_019_CLICK_COMMANDS_DOCS_MATERIALIZER_2026-05-18.md`; artifacts:
+  `/tmp/j3-data-019-live/candidate.json` and
+  `/tmp/j3-data-019-live/report.md`.
 
 ## Next Recommended Queue
 

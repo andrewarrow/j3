@@ -2462,3 +2462,46 @@ meaningful work. Do not replace this file with a daily reset.
   `pytest-dev__pytest-issue-14442-pr-14443` first; no pytest row is ready for
   candidate attempt yet.
 - Blockers: none for checkout, setup, or baseline validation.
+
+### 2026-05-18 - DATA-019 - Click command-docs materializer spike
+
+- Owner: worker Russell (`019e3c40-8544-7cf2-be80-dc987b70a98e`).
+- Files changed: `j3/issue_pr_docs_materializer.py`,
+  `tests/test_issue_pr_docs_materializer.py`,
+  `docs/DATA_019_CLICK_COMMANDS_DOCS_MATERIALIZER_2026-05-18.md`,
+  `plans/active.md`, `plans/backlog.md`, `plans/progress.md`.
+- Tests: `python -m py_compile j3/issue_pr_docs_materializer.py
+  tests/test_issue_pr_docs_materializer.py` -> passed; `pytest
+  tests/test_issue_pr_docs_materializer.py -q` -> 4 passed; live CLI smoke
+  `python -m j3.issue_pr_docs_materializer --repo-path
+  /tmp/j3-data-019-live/click --manifest
+  examples/issue_pr_mini_replay/manifest.json --candidate-artifact
+  /tmp/j3-data-014-live/candidate.json --auxiliary-gap-audit
+  /tmp/j3-data-017-aux-gap/audit.jsonl --out
+  /tmp/j3-data-019-live/candidate.json --report
+  /tmp/j3-data-019-live/report.md --validate --validation-command
+  ".venv-docs/bin/python -m sphinx -W -b dirhtml docs
+  /tmp/j3-data-019-live/docs-dirhtml" --validation-timeout-seconds 240` ->
+  materialized `docs/commands.md` and recorded docs validation blocker; `pytest
+  tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check` ->
+  passed.
+- Result: added a constrained local generator/inserter for the Click
+  `default_map` multi-value commands docs section, with no hosted LLM use. The
+  generated section has the expected `### Multi-value parameters` heading,
+  mentions `nargs > 1` and the `{class}` role for `Tuple`, includes the
+  whitespace-splitting example `"point": "3 4"`, and preserves unrelated
+  command docs. The live pinned Click checkout at
+  `8a2b48901a08b3d2ec3a9bbd151948a9765368c6` changed only
+  `docs/commands.md`; source, tests, changelog, and config files remained
+  unchanged. Docs validation was feasible after installing docs dependencies,
+  but failed in `2.887s` with `docs_reference_resolution_failure` because the
+  new `options.md` heading link requires the separate DATA-017
+  `docs/conf.py` `myst_heading_anchors = 3` auxiliary edit, which DATA-019 did
+  not write.
+- Commit: pending.
+- Push: pending.
+- Next: the smallest follow-up for full docs validation is the DATA-017
+  `docs/conf.py` Sphinx config assignment materializer, followed by rerunning
+  the DATA-019 docs build.
+- Blockers: docs validation remains blocked until the separate `docs/conf.py`
+  heading-anchor auxiliary edit is materialized.

@@ -51,6 +51,18 @@ Long-term target:
   active tasks not present in backlog.
 - Tests: new focused test plus `git diff --check`.
 
+### OPS-003: Make the coordinator loop continuous
+
+- Status: done
+- Why: the previous operating instructions allowed the coordinator to stop after
+  review checkpoints even when ready work remained.
+- Write scope: `AGENTS.md`, `plans/operating-model.md`, `plans/active.md`,
+  `plans/progress.md`.
+- Acceptance: instructions say reviews are checkpoints inside a continuous loop
+  and the coordinator should dispatch the next ready tasks unless explicitly
+  stopped or concretely blocked.
+- Tests: `git diff --check`.
+
 ## Workstream B: GreenShot-7 Request-To-Repo
 
 ### GS7-001: Refresh current GreenShot-7 baseline

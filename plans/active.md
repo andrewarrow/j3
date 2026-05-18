@@ -7,9 +7,9 @@ This is the live coordinator board. Keep it current and compact.
 - Coordinator mode: persistent multi-week execution.
 - Parallel worker default: 2.
 - Parallel worker maximum: 3, only with disjoint write scopes.
-- Current review state: coordinator review complete after eight worker slices;
-  no active workers. Next useful loop should verify the ACT-002 matrix impact
-  and add the lightweight plan consistency gate before broader expansion.
+- Current review state: continuous loop mode. The active set may be empty only
+  while the coordinator is recording the next assignments; ready work should be
+  dispatched rather than leaving the board idle.
 - Current product gate stance: transition ranking remains shadow-only; the
   2026-05-18 `TRANS-001` matrix decision was `remain_shadow_only`.
 

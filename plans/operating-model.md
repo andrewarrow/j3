@@ -21,6 +21,24 @@ Recommended model level: `xhigh`. The coordinator is the agent in charge and
 must spend its reasoning budget on task selection, worker scoping, integration
 review, strategic drift detection, and deciding when to pause.
 
+### Continuous Loop Contract
+
+The coordinator/worker process is a loop. Once the user starts the agent loop,
+the coordinator should continue cycling through assignment, worker execution,
+review, integration, and the next assignment. A review checkpoint is not a
+stopping condition. An empty active board is only a transient state while the
+coordinator is choosing and recording the next assignments.
+
+After every completed worker batch, the coordinator must either:
+
+- dispatch the next bounded ready task or tasks, or
+- record the explicit blocker that prevents dispatch.
+
+Do not end a loop turn solely because the previous batch completed, because a
+review was performed, or because the next tasks require choosing. Stop only when
+the user explicitly asks to pause/stop, no ready tasks remain, useful work is
+blocked, or continuing would require an unsafe or unavailable decision.
+
 1. Re-read `plans/active.md`, `plans/backlog.md`, and the latest
    `plans/progress.md` entries.
 2. Choose one to three bounded tasks whose results would materially advance the
@@ -36,10 +54,13 @@ review, strategic drift detection, and deciding when to pause.
    plan updates before starting more work in that area.
 8. Update `plans/active.md` and `plans/progress.md`.
 9. Reassess after three to five completed worker tasks, after any gate failure,
-   or when multiple residuals point to the same missing capability.
+   or when multiple residuals point to the same missing capability, then assign
+   the next ready task unless a concrete blocker prevents it.
 
-The coordinator may pause all workers. A short pause for choosing the right next
-task is better than parallel work that does not move the project.
+The coordinator may briefly let the active set drain while reviewing results,
+but should not leave it drained when ready work exists. A short checkpoint for
+choosing the right next task is better than parallel work that does not move the
+project, but the checkpoint should normally end with new assignments.
 
 ## Model Selection
 
@@ -116,7 +137,9 @@ Do a coordinator review when any of these happen:
 - a task starts requiring broad architecture changes
 
 Review output should be a small edit to `plans/active.md`, `plans/backlog.md`,
-or `plans/progress.md`, not a new daily plan.
+or `plans/progress.md`, not a new daily plan. After the review, continue the
+loop by dispatching the next ready task or recording the blocker that prevents
+dispatch.
 
 ## Capability Direction
 

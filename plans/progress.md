@@ -243,8 +243,22 @@ meaningful work. Do not replace this file with a daily reset.
   remaining transition work is evidence refresh and scorer-ranking clusters.
   Prompt corpus validation is now repeatable, with current corpora at zero
   errors and review warnings.
-- Commit: pending
-- Push: pending
+- Commit: eec882613e656560a3b0186dd325b2b0caa2c1d8
+- Push: succeeded
 - Next: start a fresh loop with `TRANS-004` and `OPS-002`, or pair `GS7-002`
   with `DATA-003` if the priority shifts toward request-to-repo/data growth.
+- Blockers: none
+
+### 2026-05-18 - OPS-003 - Continuous loop instruction fix
+
+- Owner: coordinator
+- Files changed: `AGENTS.md`, `plans/operating-model.md`,
+  `plans/active.md`, `plans/progress.md`
+- Tests: `git diff --check` passed
+- Result: clarified that the coordinator/worker process is a continuous loop.
+  Review checkpoints no longer imply stopping, and an empty active board is
+  only a transient state while the coordinator records the next assignment.
+- Commit: pending
+- Push: pending
+- Next: dispatch the next ready tasks instead of ending at the review state.
 - Blockers: none

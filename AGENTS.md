@@ -50,6 +50,27 @@ the higher-order decisions: direction, task selection, worker scope, integration
 review, parallelism, and when to pause. That reasoning budget is worth spending
 there.
 
+### Continuous Loop Contract
+
+When the user asks to start or run the agent loop, the coordinator should keep
+the loop running. Do not stop merely because one batch of workers completed, a
+review checkpoint happened, or the active board is temporarily empty. A review
+is an internal checkpoint inside the loop, not the end of the loop.
+
+After every worker batch:
+
+1. Review and integrate the results.
+2. Update `plans/active.md`, `plans/backlog.md`, and `plans/progress.md`.
+3. Pick the next bounded ready task or tasks.
+4. Record the new active assignments.
+5. Dispatch the next worker or workers.
+
+Only leave the loop idle when the user explicitly asks to stop or pause, no
+ready work remains, all useful work is blocked, or continuing would require a
+decision that cannot be made safely from the repository context. If the loop
+must stop for one of those reasons, record the blocker and the exact condition
+that would let the next coordinator resume.
+
 Coordinator flow:
 
 1. Read `plans/active.md`, `plans/backlog.md`, and recent `plans/progress.md`.
@@ -64,12 +85,14 @@ Coordinator flow:
 7. Review every worker result for tests, commit status, pushed commit, generated
    files, and plan updates.
 8. Update `plans/active.md` and `plans/progress.md`.
-9. After several completed iterations, or after any surprising failure, pause
-   worker dispatch long enough to reassess the next few tasks.
+9. After several completed iterations, or after any surprising failure, do a
+   brief coordinator review, then continue by assigning the next ready task or
+   record the concrete blocker that prevents more dispatch.
 
 Parallelism is allowed, but only when it helps. Do not keep workers busy with
-low-value work. It is better to pause briefly and choose the right next task
-than to create parallel churn.
+low-value work. It is better to spend a short coordinator checkpoint choosing
+the right next task than to create parallel churn, but the checkpoint should
+normally end by dispatching the next bounded worker task.
 
 When selecting worker model level, use the smallest level that fits the task:
 

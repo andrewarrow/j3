@@ -47,7 +47,7 @@ This is the live coordinator board. Keep it current and compact.
 ### `DATA-040`: Live pytest issue/PR decoy validation slice
 
 - Status: active
-- Owner: pending.
+- Owner: worker Faraday (`019e3ce2-e1b3-7b81-bc8c-e0f586ba8c49`).
 - Write scope: issue/PR decoy validation and ranking-evidence modules/tests
   only (`j3/issue_pr_decoy_validation.py`,
   `j3/issue_pr_candidate_ranking.py`, their focused tests, optional
@@ -66,7 +66,7 @@ This is the live coordinator board. Keep it current and compact.
 ### `MAT-010`: First held-out typed-builder materialization probe
 
 - Status: active
-- Owner: pending.
+- Owner: worker Jason (`019e3ce2-e1e6-7c31-b22c-94d4ef57ffbf`).
 - Write scope: new typed-builder materialization module/tests/docs only
   (`j3/heldout_typed_builder_candidate.py`,
   `tests/test_heldout_typed_builder_candidate.py`, optional `docs/MAT_010_*`,

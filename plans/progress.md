@@ -3818,3 +3818,17 @@ meaningful work. Do not replace this file with a daily reset.
 - Push: pending.
 - Next: spawn one worker for `DATA-040` and one worker for `MAT-010`.
 - Blockers: none.
+
+### 2026-05-18 - Worker IDs - DATA-040 / MAT-010
+
+- Owner: coordinator.
+- Files changed: `plans/active.md` and `plans/progress.md`.
+- Tests: `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff
+  --check` -> passed.
+- Result: recorded worker Faraday
+  (`019e3ce2-e1b3-7b81-bc8c-e0f586ba8c49`) for `DATA-040` and worker Jason
+  (`019e3ce2-e1e6-7c31-b22c-94d4ef57ffbf`) for `MAT-010`.
+- Commit: pending.
+- Push: pending.
+- Next: continue non-overlapping coordinator review while both workers run.
+- Blockers: none.

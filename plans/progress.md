@@ -3721,3 +3721,40 @@ meaningful work. Do not replace this file with a daily reset.
 - Push: succeeded.
 - Next: continue non-overlapping coordinator review while both workers run.
 - Blockers: none.
+
+### 2026-05-18 - MAT-009 - Held-out pytest scanner source-region candidate
+
+- Owner: worker Epicurus (`019e3cd1-0252-7193-bffa-6920c4a721ac`) with
+  coordinator integration after worker pause.
+- Files changed: `j3/heldout_source_region_candidate.py`,
+  `tests/test_heldout_source_region_candidate.py`,
+  `docs/MAT_009_PYTEST_14475_SOURCE_REGION_CANDIDATE_2026-05-18.md`,
+  `plans/active.md`, `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `python -m py_compile j3/heldout_source_region_candidate.py
+  tests/test_heldout_source_region_candidate.py` -> passed; `pytest
+  tests/test_heldout_source_region_candidate.py -q` -> 5 passed; live fresh
+  checkout run `python -m j3.heldout_source_region_candidate --candidate
+  pytest-14475 --repo-path /tmp/j3-mat-009-pytest-14475-final/repo
+  --accepted-diff /tmp/j3-mat-009-pytest-14475/accepted.diff --out
+  /tmp/j3-mat-009-pytest-14475-final/candidate.json --report
+  /tmp/j3-mat-009-pytest-14475-final/report.md --diff-out
+  /tmp/j3-mat-009-pytest-14475-final/candidate.diff --validate
+  --validation-timeout-seconds 180` -> validated; focused validation passed
+  in `0.078s`.
+- Result: materialized the held-out `pytest-dev/pytest#14475`
+  mark-expression scanner source/test edit using reusable action records:
+  `replace_function_region` and `insert_pytest_function_after_anchor`. The
+  final fresh checkout at `7df5d80ff3a98714a1d3cdbe82941229e511f4b3` changed
+  only `src/_pytest/mark/expression.py` and
+  `testing/test_mark_expression.py`. Full accepted-diff parity is false
+  because the PR also adds `changelog/14474.bugfix.rst`; source/test scoped
+  accepted-diff parity is true. The first pytest-runner validation command
+  imported `_pytest` from an older temp checkout, so the final command forces
+  `PYTHONPATH=src` and directly exercises the accepted regression in the
+  candidate checkout.
+- Commit: pending.
+- Push: pending.
+- Next: finish DATA-039 integration, then dispatch the next hard falsification
+  slice based on whether live decoys are cleanly rankable.
+- Blockers: none for MAT-009; broader materialization still needs typed-builder
+  and repo-convention rows beyond constrained source/test edits.

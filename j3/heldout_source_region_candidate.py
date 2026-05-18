@@ -31,12 +31,24 @@ HELDOUT_SOURCE_REGION_CANDIDATE_SCHEMA_VERSION = (
 )
 PYTEST_INSERTION_SCHEMA_VERSION = "repo-convention-pytest-insertion-v1"
 DEFAULT_REQUESTS_BASE_REF = "b684dcb9bbf3aa557d1238e72062c4a29737dd1c"
+DEFAULT_PYTEST_SCANNER_BASE_REF = "7df5d80ff3a98714a1d3cdbe82941229e511f4b3"
 DEFAULT_VALIDATION_COMMAND = (
     "python -m pytest "
     "tests/test_utils.py::test_should_bypass_proxies_no_proxy_domain_boundary -q"
 )
+DEFAULT_PYTEST_SCANNER_VALIDATION_COMMAND = (
+    "PYTHONPATH=src python -c "
+    "\"from _pytest.mark.expression import Expression; "
+    "matcher=lambda name, **kwargs: "
+    "name in {r'\\\\nfoo\\\\n', r'test\\\\case', 'mark'}; "
+    "assert Expression.compile(r'\\\\nfoo\\\\n and mark(x=\\\"y\\\")').evaluate(matcher); "
+    "assert Expression.compile(r'mark(x=\\\"y\\\") and \\\\nfoo\\\\n').evaluate(matcher); "
+    "assert Expression.compile(r'test\\\\case and mark(x=\\\"y\\\")').evaluate(matcher)\""
+)
 REQUESTS_UTILS_PATH = "src/requests/utils.py"
 REQUESTS_TEST_UTILS_PATH = "tests/test_utils.py"
+PYTEST_EXPRESSION_PATH = "src/_pytest/mark/expression.py"
+PYTEST_MARK_EXPRESSION_TEST_PATH = "testing/test_mark_expression.py"
 
 
 class HeldoutSourceRegionCandidateError(ValueError):
@@ -259,6 +271,67 @@ def build_requests_no_proxy_domain_boundary_spec(
             {
                 "action_kind": "insert_pytest_function_after_anchor",
                 "reused_from": ["GS7-008", "GS7-009", "DATA-014"],
+                "evidence": (
+                    "same repo-convention pytest insertion shape; target "
+                    "test file, anchor function, and inserted function are parameters"
+                ),
+            },
+        ),
+    )
+
+
+def build_pytest_mark_expression_scanner_spec(
+    repo_path: Path,
+    *,
+    base_ref: str = DEFAULT_PYTEST_SCANNER_BASE_REF,
+    validation_command: str = DEFAULT_PYTEST_SCANNER_VALIDATION_COMMAND,
+) -> HeldoutSourceRegionSpec:
+    """Build the held-out pytest mark-expression scanner candidate spec."""
+
+    source_text = _repo_file(repo_path, PYTEST_EXPRESSION_PATH).read_text(
+        encoding="utf-8"
+    )
+    source_action = _mark_expression_scanner_source_action(source_text)
+    test_action = PytestInsertionAction(
+        target_file=PYTEST_MARK_EXPRESSION_TEST_PATH,
+        anchor_function_name="test_backslash_not_treated_specially",
+        function_name="test_backslash_in_identifier_with_string_literal",
+        insertion_source=_mark_expression_scanner_test_source(),
+        rationale=(
+            "insert a focused regression after the existing mark expression "
+            "backslash scanner test"
+        ),
+    )
+    return HeldoutSourceRegionSpec(
+        candidate_id="mat-009-pytest-mark-expression-scanner",
+        repo_id="pytest-dev/pytest",
+        repo_url="https://github.com/pytest-dev/pytest",
+        repo_split="held_out",
+        base_ref=base_ref,
+        reference_pr_url="https://github.com/pytest-dev/pytest/pull/14475",
+        prompt=(
+            "Fix mark expression scanning so a backslash outside the current "
+            "string literal does not reject expressions that also contain "
+            "string literal arguments."
+        ),
+        source_file=PYTEST_EXPRESSION_PATH,
+        test_file=PYTEST_MARK_EXPRESSION_TEST_PATH,
+        validation_command=validation_command,
+        allowed_write_paths=(PYTEST_EXPRESSION_PATH, PYTEST_MARK_EXPRESSION_TEST_PATH),
+        source_action=source_action,
+        test_action=test_action,
+        action_family_reuse_evidence=(
+            {
+                "action_kind": SourceRegionActionKind.REPLACE_FUNCTION_REGION.value,
+                "reused_from": ["MAT-008"],
+                "evidence": (
+                    "same bounded function-region action schema; target file, "
+                    "method, line range, and replacement are parameters"
+                ),
+            },
+            {
+                "action_kind": "insert_pytest_function_after_anchor",
+                "reused_from": ["MAT-008", "GS7-008", "GS7-009", "DATA-014"],
                 "evidence": (
                     "same repo-convention pytest insertion shape; target "
                     "test file, anchor function, and inserted function are parameters"
@@ -546,7 +619,7 @@ def render_candidate_report(candidate: HeldoutSourceRegionCandidate) -> str:
     validation = candidate.validation
     comparison = candidate.accepted_diff_comparison
     lines = [
-        "# MAT-008 Held-Out Source-Region Candidate",
+        "# Held-Out Source-Region Candidate",
         "",
         f"- Candidate: `{candidate.candidate_id}`",
         f"- Repo: `{candidate.repo_id}`",
@@ -554,10 +627,14 @@ def render_candidate_report(candidate: HeldoutSourceRegionCandidate) -> str:
         f"- Reference PR: {candidate.reference_pr_url}",
         f"- Status: `{candidate.status}`",
         f"- Changed files: `{candidate.mutation_scope.get('actual_changed_files')}`",
+        f"- Accepted changed files: "
+        f"`{comparison.get('accepted_changed_files')}`",
         f"- Validation: `{validation.get('status')}` "
         f"(`{candidate.validation_command}`)",
         f"- Accepted diff normalized match: "
         f"`{comparison.get('normalized_diff_equal')}`",
+        f"- Accepted source/test scoped match: "
+        f"`{comparison.get('scoped_normalized_diff_equal')}`",
         f"- Zero hosted LLM source judgment: "
         f"`{candidate.zero_hosted_llm_source_judgment}`",
         "",
@@ -649,6 +726,61 @@ def _no_proxy_domain_boundary_test_source() -> str:
             '    """',
             '    no_proxy = "localhost, anotherdomain.com, newdomain.com:1234, .d.o.t"',
             "    assert should_bypass_proxies(url, no_proxy=no_proxy) == expected",
+        ]
+    )
+
+
+def _mark_expression_scanner_source_action(source: str) -> SourceRegionAction:
+    already_applied = '                if (backslash_pos := value.find("\\\\")) != -1:'
+    original = '                if (backslash_pos := input.find("\\\\")) != -1:'
+    start_line = _line_number(source, already_applied if already_applied in source else original)
+    end_needle = "                    )"
+    end_line = _first_line_after(source, start_line, end_needle)
+    return SourceRegionAction(
+        kind=SourceRegionActionKind.REPLACE_FUNCTION_REGION,
+        target=SourceRegionTarget(
+            file_path=PYTEST_EXPRESSION_PATH,
+            function_name="lex",
+            region_name="current_string_literal_backslash_check",
+            start_line=start_line,
+            end_line=end_line,
+        ),
+        replacement_source=_mark_expression_scanner_source_replacement(),
+        constraints=SourceRegionConstraints(max_changed_source_lines=6),
+        rationale=(
+            "search for unsupported escaping within the current string token "
+            "and report the token-relative column"
+        ),
+    )
+
+
+def _mark_expression_scanner_source_replacement() -> str:
+    return "\n".join(
+        [
+            '                if (backslash_pos := value.find("\\\\")) != -1:',
+            "                    raise SyntaxError(",
+            "                        r'escaping with \"\\\" not supported in marker expression',",
+            "                        (FILE_NAME, 1, pos + backslash_pos + 1, input),",
+            "                    )",
+        ]
+    )
+
+
+def _mark_expression_scanner_test_source() -> str:
+    return "\n".join(
+        [
+            "def test_backslash_in_identifier_with_string_literal() -> None:",
+            '    r"""Backslashes in identifiers should not cause false rejections when the',
+            "    expression also contains string literals. Regression test for a bug where",
+            "    the scanner searched the entire input for backslashes instead of only the",
+            '    current string literal value."""',
+            "",
+            "    def matcher(name: str, /, **kwargs: str | int | bool | None) -> bool:",
+            '        return {r"\\nfoo\\n", r"test\\case", "mark"}.__contains__(name)',
+            "",
+            '    assert evaluate(r\'\\nfoo\\n and mark(x="y")\', matcher)',
+            '    assert evaluate(r\'mark(x="y") and \\nfoo\\n\', matcher)',
+            '    assert evaluate(r\'test\\case and mark(x="y")\', matcher)',
         ]
     )
 
@@ -848,11 +980,26 @@ def _accepted_diff_comparison(
     accepted_diff = accepted_diff_path.read_text(encoding="utf-8")
     normalized_candidate = _normalize_diff(candidate_diff)
     normalized_accepted = _normalize_diff(accepted_diff)
+    candidate_changed_files = _diff_changed_files(candidate_diff)
+    accepted_changed_files = _diff_changed_files(accepted_diff)
+    scoped_accepted_diff = _filter_diff_to_paths(
+        accepted_diff,
+        candidate_changed_files,
+    )
+    normalized_scoped_accepted = _normalize_diff(scoped_accepted_diff)
     return {
         "accepted_diff_available": True,
+        "candidate_changed_files": candidate_changed_files,
+        "accepted_changed_files": accepted_changed_files,
+        "changed_file_sets_equal": candidate_changed_files == accepted_changed_files,
         "candidate_diff_line_count": len(candidate_diff.splitlines()),
         "accepted_diff_line_count": len(accepted_diff.splitlines()),
         "normalized_diff_equal": normalized_candidate == normalized_accepted,
+        "scoped_paths": candidate_changed_files,
+        "scoped_accepted_diff_line_count": len(scoped_accepted_diff.splitlines()),
+        "scoped_normalized_diff_equal": (
+            normalized_candidate == normalized_scoped_accepted
+        ),
         "parity_diff": ""
         if normalized_candidate == normalized_accepted
         else "".join(
@@ -875,6 +1022,42 @@ def _normalize_diff(diff: str) -> str:
             line = re.sub(r"^(@@ -\d+(?:,\d+)? \+\d+(?:,\d+)? @@).*$", r"\1", line)
         lines.append(line.rstrip())
     return "\n".join(lines).strip() + "\n"
+
+
+def _diff_changed_files(diff: str) -> list[str]:
+    files: list[str] = []
+    for line in diff.splitlines():
+        if not line.startswith("diff --git "):
+            continue
+        parts = line.split()
+        if len(parts) < 4:
+            continue
+        path = parts[3]
+        if path.startswith("b/"):
+            path = path[2:]
+        files.append(path)
+    return files
+
+
+def _filter_diff_to_paths(diff: str, paths: Sequence[str]) -> str:
+    path_set = set(paths)
+    sections: list[list[str]] = []
+    current: list[str] = []
+    include_current = False
+    for line in diff.splitlines(keepends=True):
+        if line.startswith("diff --git "):
+            if current and include_current:
+                sections.append(current)
+            current = [line]
+            parts = line.split()
+            path = parts[3][2:] if len(parts) >= 4 and parts[3].startswith("b/") else ""
+            include_current = path in path_set
+            continue
+        if current:
+            current.append(line)
+    if current and include_current:
+        sections.append(current)
+    return "".join("".join(section) for section in sections)
 
 
 def _diff_summary(diff: str) -> dict[str, object]:
@@ -912,7 +1095,12 @@ def _json_copy(value: Any) -> object:
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Materialize the MAT-008 held-out source-region candidate."
+        description="Materialize a held-out source-region candidate."
+    )
+    parser.add_argument(
+        "--candidate",
+        choices=("requests-7427", "pytest-14475"),
+        default="requests-7427",
     )
     parser.add_argument("--repo-path", type=Path, required=True)
     parser.add_argument("--accepted-diff", type=Path)
@@ -924,7 +1112,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--no-write", action="store_true")
     args = parser.parse_args(argv)
 
-    spec = build_requests_no_proxy_domain_boundary_spec(args.repo_path)
+    if args.candidate == "pytest-14475":
+        spec = build_pytest_mark_expression_scanner_spec(args.repo_path)
+    else:
+        spec = build_requests_no_proxy_domain_boundary_spec(args.repo_path)
     candidate = materialize_heldout_source_region_candidate(
         args.repo_path,
         spec,

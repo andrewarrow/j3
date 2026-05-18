@@ -726,7 +726,7 @@ Long-term target:
 
 ### MAT-009: Held-out pytest scanner source-region candidate
 
-- Status: active
+- Status: done
 - Why: MAT-008 is one held-out constrained-source win, but MAT-007's failure
   criteria require reuse across more than one held-out row. `pytest#14475` is
   the closest pytest-family constrained-source/test probe after DATA-029.
@@ -743,6 +743,18 @@ Long-term target:
   family, stop and record that as action-vocabulary explosion evidence.
 - Tests: focused source-region candidate tests, plan consistency,
   `git diff --check`, and live focused validation when materialized.
+- Result: materialized and live-validated on a fresh checkout at
+  `7df5d80ff3a98714a1d3cdbe82941229e511f4b3`. The reusable source/test
+  action records changed only `src/_pytest/mark/expression.py` and
+  `testing/test_mark_expression.py`; source/test scoped accepted-diff parity
+  is true, while full accepted-diff parity is false only because the accepted
+  PR also adds `changelog/14474.bugfix.rst`. Focused validation passed in
+  `0.078s`.
+- Artifacts: `/tmp/j3-mat-009-pytest-14475-final/candidate.json`,
+  `/tmp/j3-mat-009-pytest-14475-final/report.md`,
+  `/tmp/j3-mat-009-pytest-14475-final/candidate.diff`,
+  `/tmp/j3-mat-009-pytest-14475-final/accepted.diff`, and
+  `docs/MAT_009_PYTEST_14475_SOURCE_REGION_CANDIDATE_2026-05-18.md`.
 
 ### KNOW-001: Local knowledge inventory for the wedge
 

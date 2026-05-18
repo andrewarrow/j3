@@ -61,21 +61,6 @@ This is the live coordinator board. Keep it current and compact.
   can now be ranked against live failing decoys without leaking labels. If
   decoy materialization or validation is too broad, record the exact blocker.
 
-### `MAT-009`: Held-out pytest scanner source-region candidate
-
-- Status: active
-- Owner: worker Epicurus (`019e3cd1-0252-7193-bffa-6920c4a721ac`).
-- Write scope: held-out source-region candidate module/tests or extensions,
-  optional MAT-009 docs/report, generated artifacts under `/tmp`, and planning
-  updates. Avoid editing DATA-039-owned ranking/decoy modules.
-- Acceptance: attempt the MAT-007 recommended `pytest-dev/pytest#14475`
-  scanner fix using reusable source-region and pytest insertion action records,
-  not a PR-named action kind. Determine and record the pinned base ref,
-  accepted changed files, validation command, mutation scope, candidate-after
-  diff/AST metadata, accepted-diff comparison, and live validation result or
-  exact blocker. If the row requires a new bespoke action family, stop and
-  record that as evidence for vocabulary explosion.
-
 ## Ready Queue
 
 These are good next assignments for the next loop:
@@ -107,6 +92,21 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `MAT-009`: materialized and live-validated the held-out
+  `pytest-dev/pytest#14475` mark-expression scanner source/test candidate
+  using reusable `replace_function_region` and
+  `insert_pytest_function_after_anchor` action records. The final fresh
+  checkout at `7df5d80ff3a98714a1d3cdbe82941229e511f4b3` changed only
+  `src/_pytest/mark/expression.py` and `testing/test_mark_expression.py`.
+  Full accepted-diff parity is false because the PR also adds
+  `changelog/14474.bugfix.rst`; source/test scoped accepted-diff parity is
+  true. Focused validation passed in `0.078s` with `PYTHONPATH=src` forced to
+  the candidate checkout. Artifacts:
+  `/tmp/j3-mat-009-pytest-14475-final/candidate.json`,
+  `/tmp/j3-mat-009-pytest-14475-final/report.md`,
+  `/tmp/j3-mat-009-pytest-14475-final/candidate.diff`,
+  `/tmp/j3-mat-009-pytest-14475-final/accepted.diff`, and
+  `docs/MAT_009_PYTEST_14475_SOURCE_REGION_CANDIDATE_2026-05-18.md`.
 - `MAT-008`: materialized and live-validated the held-out
   `psf/requests#7427` no-proxy domain-boundary source/test candidate using
   reusable action records, not a PR-named action kind. The final fresh checkout

@@ -6,6 +6,8 @@ from textwrap import dedent
 
 from j3.heldout_source_region_candidate import (
     _accepted_diff_comparison,
+    _mark_expression_scanner_source_replacement,
+    build_pytest_mark_expression_scanner_spec,
     build_requests_no_proxy_domain_boundary_spec,
     materialize_heldout_source_region_candidate,
 )
@@ -104,6 +106,88 @@ def test_accepted_diff_comparison_ignores_hunk_context_labels(tmp_path: Path) ->
     assert comparison["normalized_diff_equal"] is True
 
 
+def test_pytest_scanner_spec_uses_reusable_action_kinds(tmp_path: Path) -> None:
+    repo = _write_pytest_fixture_repo(tmp_path / "pytest")
+
+    spec = build_pytest_mark_expression_scanner_spec(repo)
+
+    assert spec.source_action.kind == SourceRegionActionKind.REPLACE_FUNCTION_REGION
+    assert spec.test_action.kind == "insert_pytest_function_after_anchor"
+    assert "pytest_14475" not in spec.source_action.kind.value
+    assert "pytest_14475" not in spec.test_action.kind
+    assert spec.allowed_write_paths == (
+        "src/_pytest/mark/expression.py",
+        "testing/test_mark_expression.py",
+    )
+
+
+def test_materializes_pytest_scanner_candidate_with_reusable_actions(
+    tmp_path: Path,
+) -> None:
+    accepted_repo = _write_pytest_fixture_repo(tmp_path / "accepted")
+    accepted_candidate = materialize_heldout_source_region_candidate(
+        accepted_repo,
+        build_pytest_mark_expression_scanner_spec(
+            accepted_repo,
+            base_ref=_repo_head(accepted_repo),
+        ),
+        write=True,
+        validate=False,
+    )
+    accepted_diff = tmp_path / "accepted.diff"
+    accepted_diff.write_text(
+        _changelog_diff() + str(accepted_candidate.candidate_after["candidate_diff"]),
+        encoding="utf-8",
+    )
+
+    repo = _write_pytest_fixture_repo(tmp_path / "candidate")
+    candidate = materialize_heldout_source_region_candidate(
+        repo,
+        build_pytest_mark_expression_scanner_spec(repo, base_ref=_repo_head(repo)),
+        write=True,
+        validate=False,
+        accepted_diff_path=accepted_diff,
+    )
+    record = candidate.to_record()
+
+    assert record["status"] == "materialized"
+    assert record["residual_labels"] == ["candidate_validation_deferred"]
+    assert record["mutation_scope"]["actual_changed_files"] == [
+        "src/_pytest/mark/expression.py",
+        "testing/test_mark_expression.py",
+    ]
+    assert record["mutation_scope"]["writes_outside_allowlist"] == []
+    assert record["accepted_diff_comparison"]["accepted_changed_files"] == [
+        "changelog/14474.bugfix.rst",
+        "src/_pytest/mark/expression.py",
+        "testing/test_mark_expression.py",
+    ]
+    assert record["accepted_diff_comparison"]["normalized_diff_equal"] is False
+    assert record["accepted_diff_comparison"]["scoped_normalized_diff_equal"] is True
+    assert record["zero_hosted_llm_source_judgment"] is True
+    assert (
+        'r\'escaping with "\\" not supported in marker expression\''
+        in _mark_expression_scanner_source_replacement()
+    )
+    assert (
+        'r\'escaping with "\\\\" not supported in marker expression\''
+        not in _mark_expression_scanner_source_replacement()
+    )
+    action_kinds = [action["kind"] for action in record["action_records"]]
+    assert action_kinds == [
+        "replace_function_region",
+        "insert_pytest_function_after_anchor",
+    ]
+    source_after = record["candidate_after"]["source_file"]["candidate_after"]
+    assert source_after["ast_parse_ok"] is True
+    assert source_after["signature_preserved"] is True
+    assert 'value.find("\\\\")' in source_after["diff"]
+    assert "pos + backslash_pos + 1" in source_after["diff"]
+    test_after = record["candidate_after"]["test_file"]["candidate_after"]
+    assert test_after["ast_parse_ok"] is True
+    assert "test_backslash_in_identifier_with_string_literal" in test_after["diff"]
+
+
 def _write_requests_fixture_repo(repo: Path) -> Path:
     (repo / "src" / "requests").mkdir(parents=True)
     (repo / "tests").mkdir(parents=True)
@@ -177,6 +261,136 @@ def _write_requests_fixture_repo(repo: Path) -> Path:
         check=True,
     )
     return repo
+
+
+def _write_pytest_fixture_repo(repo: Path) -> Path:
+    (repo / "src" / "_pytest" / "mark").mkdir(parents=True)
+    (repo / "testing").mkdir(parents=True)
+    (repo / "src" / "_pytest" / "mark" / "expression.py").write_text(
+        dedent(
+            r'''
+            from __future__ import annotations
+
+            import re
+            from collections.abc import Iterator
+            from dataclasses import dataclass
+            from enum import Enum
+
+            FILE_NAME = "<pytest match expression>"
+
+
+            class TokenType(Enum):
+                STRING = "string"
+
+
+            @dataclass
+            class Token:
+                type: TokenType
+                value: str
+                pos: int
+
+
+            class Scanner:
+                __slots__ = ("current", "input", "tokens")
+
+                def __init__(self, input: str) -> None:
+                    self.input = input
+                    self.tokens = self.lex(input)
+                    self.current = next(self.tokens)
+
+                def lex(self, input: str) -> Iterator[Token]:
+                    pos = 0
+                    while pos < len(input):
+                        if (quote_char := input[pos]) in ("'", '"'):
+                            end_quote_pos = input.find(quote_char, pos + 1)
+                            if end_quote_pos == -1:
+                                raise SyntaxError(
+                                    f'closing quote "{quote_char}" is missing',
+                                    (FILE_NAME, 1, pos + 1, input),
+                                )
+                            value = input[pos : end_quote_pos + 1]
+                            if (backslash_pos := input.find("\\")) != -1:
+                                raise SyntaxError(
+                                    r'escaping with "\" not supported in marker expression',
+                                    (FILE_NAME, 1, backslash_pos + 1, input),
+                                )
+                            yield Token(TokenType.STRING, value, pos)
+                            pos += len(value)
+                        else:
+                            match = re.match(r"(:?\w|:|\+|-|\.|\[|\]|\\|/)+", input[pos:])
+                            if match:
+                                pos += len(match.group(0))
+                            else:
+                                pos += 1
+            '''
+        ).lstrip(),
+        encoding="utf-8",
+    )
+    (repo / "testing" / "test_mark_expression.py").write_text(
+        dedent(
+            r'''
+            from __future__ import annotations
+
+            import pytest
+
+
+            def evaluate(input: str, matcher):
+                return True
+
+
+            def test_backslash_not_treated_specially() -> None:
+                r"""Backslashes in identifiers are regular identifier characters."""
+
+                def matcher(name: str, /, **kwargs: str | int | bool | None) -> bool:
+                    return {r"\nfoo\n"}.__contains__(name)
+
+                assert evaluate(r"\nfoo\n", matcher)
+                assert not evaluate(r"foo", matcher)
+                with pytest.raises(SyntaxError):
+                    evaluate("\nfoo\n", matcher)
+
+
+            @pytest.mark.parametrize(
+                ("expr", "column", "message"),
+                (("(", 2, "expected"),),
+            )
+            def test_syntax_errors(expr: str, column: int, message: str) -> None:
+                assert column
+            '''
+        ).lstrip(),
+        encoding="utf-8",
+    )
+    subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+    subprocess.run(["git", "add", "."], cwd=repo, check=True)
+    subprocess.run(
+        [
+            "git",
+            "-c",
+            "user.name=j3-test",
+            "-c",
+            "user.email=j3-test@example.invalid",
+            "commit",
+            "-q",
+            "-m",
+            "base",
+        ],
+        cwd=repo,
+        check=True,
+    )
+    return repo
+
+
+def _changelog_diff() -> str:
+    return (
+        "diff --git a/changelog/14474.bugfix.rst "
+        "b/changelog/14474.bugfix.rst\n"
+        "new file mode 100644\n"
+        "index 00000000000..333d4d34d9a\n"
+        "--- /dev/null\n"
+        "+++ b/changelog/14474.bugfix.rst\n"
+        "@@ -0,0 +1 @@\n"
+        "+Fixed a scanner regression.\n"
+    )
 
 
 def _repo_head(repo: Path) -> str:

@@ -1014,3 +1014,25 @@ meaningful work. Do not replace this file with a daily reset.
   threshold. Workers: Ampere (`019e3b88-2a6d-7b12-beff-78d036b82178`) and
   Kepler (`019e3b88-6317-7b33-8774-b95ee2f2c0d0`).
 - Blockers: none
+
+### 2026-05-18 - REAL-005 - Gate A live baseline preflight
+
+- Owner: worker Kepler (`019e3b88-6317-7b33-8774-b95ee2f2c0d0`)
+- Files changed: `docs/REAL_005_GATE_A_PREFLIGHT_2026-05-18.md`,
+  `plans/active.md`, `plans/backlog.md`, `plans/progress.md`
+- Tests: live command
+  `PATH=/tmp/j3-real-005-gate-a-preflight/.venv/bin:$PATH python -m j3.real_repo_preflight --manifest examples/real_repo_eval_ladder.json --repo h11 --repo humanize --work-root /tmp/j3-real-005-gate-a-preflight/repos --outcome /tmp/j3-real-005-gate-a-preflight/outcomes.jsonl`
+  -> passed with 4 rows, runtime 8.047 seconds, `blocker_labels = ["none"]`;
+  `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check`
+  -> passed.
+- Result: live baseline preflight passed for held-out `h11` and `humanize`.
+  Checkout, setup, baseline validation, and allowed-write preflight checks all
+  passed. Combined with `REAL-004` `iniconfig`, Gate A now has three
+  baseline-passing repositories. Failures are not classified as agent failures
+  because no candidate generation or edit validation was attempted.
+- Commit: pending
+- Push: pending
+- Next: proceed to tests-only candidate scoring only after `GS7-008` closes the
+  `iniconfig` test-case materialization gap; treat any future `boltons`
+  baseline run as separate validation evidence.
+- Blockers: none

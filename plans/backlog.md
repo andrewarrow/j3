@@ -556,7 +556,7 @@ Long-term target:
 
 ### REAL-005: Extend live baseline preflight toward Gate A
 
-- Status: active
+- Status: done
 - Why: `REAL-004` proved one calibration repo only; Gate A requires at least
   three repositories passing baseline validation before real-repo scoring is
   trustworthy.
@@ -569,6 +569,12 @@ Long-term target:
   combined with `REAL-004`. Classify failures as environment, setup, or
   validation, not agent failures.
 - Tests: live command/report smoke, plan consistency, and `git diff --check`.
+- Completion note: live `h11` and `humanize` preflight passed from pinned
+  checkouts. The run emitted 4 task rows to
+  `/tmp/j3-real-005-gate-a-preflight/outcomes.jsonl`, recorded checkout, setup,
+  baseline validation, network policy, runtime 8.047 seconds, and
+  `blocker_label = none`. Combined with `REAL-004` `iniconfig`, Gate A now has
+  three baseline-passing repositories.
 
 ### DATA-005: Issue/PR replay preflight runner
 
@@ -590,8 +596,6 @@ Start with these unless fresh evidence changes the order:
 
 1. `GS7-008`: materialize real-repo pytest cases for the iniconfig calibration
    task.
-2. `REAL-005`: extend live baseline preflight to at least two more ladder
-   repositories so Gate A can be assessed.
-3. `KNOW-003`: wire knowledge-use attribution into tests-only planning.
-4. `MODEL-006`: candidate-after or AST-delta observation for ranking evidence.
-5. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.
+2. `KNOW-003`: wire knowledge-use attribution into tests-only planning.
+3. `MODEL-006`: candidate-after or AST-delta observation for ranking evidence.
+4. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.

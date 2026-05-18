@@ -15,9 +15,10 @@ This is the live coordinator board. Keep it current and compact.
   were `remain_shadow_only`. Tests-only wedge guarded opt-in also remains
   blocked after `REAL-003` scored `pass@3 = 0/4`; `GS7-007` now produces a
   calibration planner candidate, but it is blocked by
-  `test_case_materialization_gap` before candidate validation. `REAL-004`
-  proved one live calibration preflight for `iniconfig`, but Gate A still needs
-  at least three repositories passing baseline validation.
+  `test_case_materialization_gap` before candidate validation. `REAL-005`
+  extends live baseline preflight to `h11` and `humanize`, so Gate A now has
+  three baseline-passing repositories when combined with `REAL-004`
+  `iniconfig`.
 
 ## Active Tasks
 
@@ -40,25 +41,6 @@ This is the live coordinator board. Keep it current and compact.
   of claiming a pass.
 - Tests: focused planner/materializer tests,
   `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
-
-### `REAL-005`: Extend live baseline preflight toward Gate A
-
-- Status: active
-- Owner: worker Kepler (`019e3b88-6317-7b33-8774-b95ee2f2c0d0`)
-- Started: 2026-05-18
-- Goal: test whether cheap validation is viable beyond the `iniconfig`
-  calibration repo by running live baseline preflight on at least two more
-  ladder repositories.
-- Write scope: compact report under `docs/`, generated output under `/tmp`,
-  small preflight runner fixes only if directly required, focused tests if code
-  changes, and plan updates.
-- Acceptance: run live preflight for at least two of `h11`, `humanize`, and
-  `boltons`; record checkout/setup/baseline command results, runtime, network
-  policy, blocker labels, and whether Gate A has enough passing repos when
-  combined with `REAL-004`. Classify failures as environment, setup, or
-  validation, not agent failures.
-- Tests: live command/report smoke, `pytest tests/test_plan_consistency.py -q`,
-  and `git diff --check`.
 
 ## Ready Queue
 
@@ -92,6 +74,14 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `REAL-005`: ran live baseline preflight for held-out `h11` and `humanize`.
+  Checkout, setup, baseline validation, and allowed-write preflight checks all
+  passed for 4 task rows in 8.047 seconds with `blocker_label = none`; JSONL is
+  under `/tmp/j3-real-005-gate-a-preflight/outcomes.jsonl` and the compact
+  report is `docs/REAL_005_GATE_A_PREFLIGHT_2026-05-18.md`. Combined with
+  `REAL-004` `iniconfig`, Gate A now has three repositories passing baseline
+  validation. `boltons` remains untested by this run because the threshold was
+  already met.
 - `GS7-007`: added `j3/real_repo_tests_planner.py` and a synthetic
   manifest-derived `iniconfig` checkout test. The planner consumes repo-state
   coverage plus local knowledge records to select `testing/test_iniconfig.py`,

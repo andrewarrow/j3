@@ -6,10 +6,12 @@ from pathlib import Path
 from j3.issue_pr_candidate_attempt import (
     CLICK_DEFAULT_MAP_REPLAY_ID,
     CLICK_SEMVER_REPLAY_ID,
+    PYTEST_STRICT_ADDOPTS_REPLAY_ID,
     REQUESTS_REPLAY_ID,
     main,
     run_click_default_map_issue_pr_candidate_attempt,
     run_click_semver_issue_pr_candidate_attempt,
+    run_pytest_strict_addopts_issue_pr_candidate_attempt,
     run_requests_issue_pr_candidate_attempt,
     write_issue_pr_candidate_attempt_report,
 )
@@ -380,6 +382,98 @@ def test_click_semver_candidate_attempt_cli_writes_json_and_report(
     assert report_path.exists()
 
 
+def test_pytest_strict_addopts_candidate_materializes_source_test_only(
+    tmp_path: Path,
+) -> None:
+    repo = _write_synthetic_pytest_checkout(tmp_path / "pytest")
+
+    attempt = run_pytest_strict_addopts_issue_pr_candidate_attempt(
+        repo,
+        manifest_path=MANIFEST_PATH,
+        write=True,
+        validate=False,
+        readiness_records=[_pytest_strict_addopts_ready_row()],
+        prompt_spec_records=[_pytest_strict_addopts_prompt_spec_row()],
+        validation_records=[_pytest_strict_addopts_validation_row()],
+        local_knowledge_records=[
+            _pytest_strict_addopts_knowledge_row("repo_changed_file_context"),
+            _pytest_strict_addopts_knowledge_row("pytest_repo_test_patterns"),
+        ],
+        materialization_audit_records=[
+            _pytest_strict_addopts_audit_row("src/_pytest/config/__init__.py"),
+            _pytest_strict_addopts_audit_row("testing/test_config.py"),
+            _pytest_strict_addopts_audit_row("testing/test_mark.py"),
+        ],
+    )
+    record = attempt.to_record()
+
+    assert record["replay_id"] == PYTEST_STRICT_ADDOPTS_REPLAY_ID
+    assert record["status"] == "materialized"
+    assert record["mutation_scope"]["allowed_write_path_check_passed"] is True
+    assert record["mutation_scope"]["files_changed"] == [
+        "src/_pytest/config/__init__.py",
+        "testing/test_config.py",
+        "testing/test_mark.py",
+    ]
+    assert record["mutation_scope"]["materialization_gap_paths"] == [
+        "AUTHORS",
+        "changelog/14442.bugfix.rst",
+    ]
+    assert record["structured_action_coverage"]["behavior_edit_covered"] is True
+    assert record["structured_action_coverage"]["accepted_edit_covered"] is False
+    assert "accepted_auxiliary_paths_not_materialized" in record["residual_labels"]
+    assert len(record["evidence"]["materialization_audit"]) == 3
+    assert "from .findpaths import parse_override_ini" in (
+        repo / "src" / "_pytest" / "config" / "__init__.py"
+    ).read_text(encoding="utf-8")
+    assert "addopts = --strict-config" in (
+        repo / "testing" / "test_config.py"
+    ).read_text(encoding="utf-8")
+    assert "addopts = --strict-markers" in (
+        repo / "testing" / "test_mark.py"
+    ).read_text(encoding="utf-8")
+    assert not (repo / "changelog" / "14442.bugfix.rst").exists()
+    assert (repo / "AUTHORS").read_text(encoding="utf-8") == "Existing Author\n"
+
+
+def test_pytest_strict_addopts_candidate_validation_report_and_cli(
+    tmp_path: Path,
+) -> None:
+    repo = _write_synthetic_pytest_checkout(tmp_path / "pytest")
+    out_path = tmp_path / "candidate.json"
+    report_path = tmp_path / "candidate.md"
+
+    exit_code = main(
+        [
+            "--manifest",
+            str(MANIFEST_PATH),
+            "--replay-id",
+            PYTEST_STRICT_ADDOPTS_REPLAY_ID,
+            "--repo-path",
+            str(repo),
+            "--setup-command",
+            "python -c 'print(\"setup ok\")'",
+            "--validation-command",
+            "python -c 'print(\"validation ok\")'",
+            "--validate",
+            "--out",
+            str(out_path),
+            "--report",
+            str(report_path),
+        ]
+    )
+
+    assert exit_code == 0
+    record = json.loads(out_path.read_text(encoding="utf-8"))
+    assert record["status"] == "validated"
+    assert record["validation"]["status"] == "passed"
+    assert record["residual_labels"] == [
+        "candidate_validation_passed",
+        "accepted_auxiliary_paths_not_materialized",
+    ]
+    assert "DATA-024 Pytest #14442" in report_path.read_text(encoding="utf-8")
+
+
 def _write_synthetic_requests_checkout(repo: Path) -> Path:
     (repo / "src" / "requests").mkdir(parents=True)
     (repo / "tests").mkdir(parents=True)
@@ -423,6 +517,119 @@ class TestRequests:
 
     def _patch_adapter_gzipped_redirect(self, session, url):
         return None
+""",
+        encoding="utf-8",
+    )
+    return repo
+
+
+def _write_synthetic_pytest_checkout(repo: Path) -> Path:
+    (repo / "src" / "_pytest" / "config").mkdir(parents=True)
+    (repo / "testing").mkdir(parents=True)
+    (repo / "changelog").mkdir()
+    (repo / "AUTHORS").write_text("Existing Author\n", encoding="utf-8")
+    (repo / "src" / "_pytest" / "config" / "__init__.py").write_text(
+        """from __future__ import annotations
+
+import copy
+import os
+import shlex
+
+from .findpaths import determine_setup
+
+
+class Config:
+    def parse(self, args: list[str], addopts: bool = True) -> None:
+        if addopts:
+            env_addopts = os.environ.get("PYTEST_ADDOPTS", "")
+            if len(env_addopts):
+                args[:] = (
+                    self._validate_args(shlex.split(env_addopts), "via PYTEST_ADDOPTS")
+                    + args
+                )
+
+        ns = self._parser.parse_known_args(args, namespace=copy.copy(self.option))
+        rootpath, inipath, inicfg, ignored_config_files = determine_setup(
+            inifile=ns.inifilename,
+            override_ini=ns.override_ini,
+            args=ns.file_or_dir,
+            rootdir_cmd_arg=ns.rootdir or None,
+            invocation_dir=self.invocation_params.dir,
+        )
+        self._rootpath = rootpath
+        self._inipath = inipath
+        self._ignored_config_files = ignored_config_files
+        self._inicfg = inicfg
+
+        self._parser.addini("addopts", "Extra command line options", "args")
+
+        if addopts:
+            args[:] = (
+                self._validate_args(self.getini("addopts"), "via addopts config") + args
+            )
+
+        self.known_args_namespace = self._parser.parse_known_args(
+            args, namespace=copy.copy(self.option)
+        )
+        self._checkversion()
+""",
+        encoding="utf-8",
+    )
+    (repo / "testing" / "test_config.py").write_text(
+        """import pytest
+
+
+class TestParseIni:
+    @pytest.mark.parametrize("option_name", ["strict_config", "strict"])
+    def test_strict_config_ini_option(
+        self, pytester: Pytester, option_name: str
+    ) -> None:
+        \"\"\"Test that strict_config and strict ini options enable strict config checking.\"\"\"
+        pytester.makeini(
+            f\"\"\"
+            [pytest]
+            unknown_option = 1
+            {option_name} = True
+            \"\"\"
+        )
+        result = pytester.runpytest()
+        result.stderr.fnmatch_lines("ERROR: Unknown config option: unknown_option")
+        assert result.ret == pytest.ExitCode.USAGE_ERROR
+""",
+        encoding="utf-8",
+    )
+    (repo / "testing" / "test_mark.py").write_text(
+        """import pytest
+
+
+@pytest.mark.parametrize(
+    "option_name", ["--strict-markers", "--strict", "strict_markers", "strict"]
+)
+def test_strict_prohibits_unregistered_markers(
+    pytester: Pytester, option_name: str
+) -> None:
+    pytester.makepyfile(
+        \"\"\"
+        import pytest
+        @pytest.mark.unregisteredmark
+        def test_hello():
+            pass
+    \"\"\"
+    )
+    if option_name in ("strict_markers", "strict"):
+        pytester.makeini(
+            f\"\"\"
+            [pytest]
+            {option_name} = true
+            \"\"\"
+        )
+        result = pytester.runpytest()
+    else:
+        result = pytester.runpytest(option_name)
+    assert result.ret != 0
+    result.stdout.fnmatch_lines(
+        ["'unregisteredmark' not found in `markers` configuration option"]
+    )
 """,
         encoding="utf-8",
     )
@@ -671,6 +878,52 @@ def _click_semver_knowledge_row(category: str) -> dict[str, object]:
         "id": f"click:{category}",
         "links": {"task_ids": [CLICK_SEMVER_REPLAY_ID]},
         "data": {"knowledge_category": category},
+    }
+
+
+def _pytest_strict_addopts_ready_row() -> dict[str, object]:
+    return {
+        "record_kind": "issue_pr_candidate_readiness",
+        "replay_id": PYTEST_STRICT_ADDOPTS_REPLAY_ID,
+        "ready_for_candidate_attempt": True,
+        "validation_command": "pytest testing/test_config.py testing/test_mark.py -q",
+    }
+
+
+def _pytest_strict_addopts_prompt_spec_row() -> dict[str, object]:
+    return {
+        "record_kind": "issue_pr_prompt_spec",
+        "replay_id": PYTEST_STRICT_ADDOPTS_REPLAY_ID,
+        "status": "normalized",
+        "prompt_spec_kind": "pytest_strict_addopts_config",
+    }
+
+
+def _pytest_strict_addopts_validation_row() -> dict[str, object]:
+    return {
+        "record_kind": "issue_pr_replay_preflight_outcome",
+        "replay_id": PYTEST_STRICT_ADDOPTS_REPLAY_ID,
+        "status": "passed",
+        "validation_command": "pytest testing/test_config.py testing/test_mark.py -q",
+    }
+
+
+def _pytest_strict_addopts_knowledge_row(category: str) -> dict[str, object]:
+    return {
+        "record_type": "pytest_pattern_record",
+        "id": f"pytest:{category}",
+        "links": {"task_ids": [PYTEST_STRICT_ADDOPTS_REPLAY_ID]},
+        "data": {"knowledge_category": category},
+    }
+
+
+def _pytest_strict_addopts_audit_row(path: str) -> dict[str, object]:
+    return {
+        "record_kind": "issue_pr_materialization_audit",
+        "audit_id": f"DATA-023/{PYTEST_STRICT_ADDOPTS_REPLAY_ID}/{path}",
+        "replay_id": PYTEST_STRICT_ADDOPTS_REPLAY_ID,
+        "path": path,
+        "classification": "requiring_constrained_local_generator_or_source_region_action",
     }
 
 

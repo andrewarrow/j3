@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
 from typing import Mapping, Sequence
 
+from j3.ast_delta import python_ast_delta_metadata
 from j3.issue_pr_preflight import (
     load_issue_pr_replay_manifest,
     select_issue_pr_replay_record,
@@ -54,6 +55,28 @@ CLICK_SEMVER_SOURCE_PATH = "src/click/core.py"
 CLICK_SEMVER_TEST_PATH = "tests/test_options.py"
 CLICK_SEMVER_VALIDATION_COMMAND = "pytest tests/test_options.py -q"
 CLICK_SEMVER_SETUP_COMMAND = "python -m pip install -e . pytest"
+PYTEST_STRICT_ADDOPTS_REPLAY_ID = "pytest-dev__pytest-issue-14442-pr-14443"
+PYTEST_STRICT_ADDOPTS_ACTION_FAMILY = "pytest_strict_addopts_source_test_candidate"
+PYTEST_STRICT_ADDOPTS_SOURCE_PATH = "src/_pytest/config/__init__.py"
+PYTEST_STRICT_ADDOPTS_TEST_CONFIG_PATH = "testing/test_config.py"
+PYTEST_STRICT_ADDOPTS_TEST_MARK_PATH = "testing/test_mark.py"
+PYTEST_STRICT_ADDOPTS_AUXILIARY_PATHS = [
+    "AUTHORS",
+    "changelog/14442.bugfix.rst",
+]
+PYTEST_STRICT_ADDOPTS_SOURCE_TEST_PATHS = [
+    PYTEST_STRICT_ADDOPTS_SOURCE_PATH,
+    PYTEST_STRICT_ADDOPTS_TEST_CONFIG_PATH,
+    PYTEST_STRICT_ADDOPTS_TEST_MARK_PATH,
+]
+PYTEST_STRICT_ADDOPTS_ACCEPTED_PATHS = [
+    *PYTEST_STRICT_ADDOPTS_AUXILIARY_PATHS,
+    *PYTEST_STRICT_ADDOPTS_SOURCE_TEST_PATHS,
+]
+PYTEST_STRICT_ADDOPTS_VALIDATION_COMMAND = (
+    "pytest testing/test_config.py testing/test_mark.py -q"
+)
+PYTEST_STRICT_ADDOPTS_SETUP_COMMAND = "python -m pip install -e . pytest"
 
 
 class IssuePrCandidateAttemptError(ValueError):
@@ -978,6 +1001,342 @@ def run_click_semver_issue_pr_candidate_attempt(
     )
 
 
+def run_pytest_strict_addopts_issue_pr_candidate_attempt(
+    repo_path: Path,
+    *,
+    manifest_path: Path = Path("examples/issue_pr_mini_replay/manifest.json"),
+    replay_id: str = PYTEST_STRICT_ADDOPTS_REPLAY_ID,
+    readiness_records: Sequence[Mapping[str, object]] = (),
+    prompt_spec_records: Sequence[Mapping[str, object]] = (),
+    validation_records: Sequence[Mapping[str, object]] = (),
+    local_knowledge_records: Sequence[Mapping[str, object]] = (),
+    materialization_audit_records: Sequence[Mapping[str, object]] = (),
+    setup_command: str | None = None,
+    validation_command: str | None = None,
+    write: bool = True,
+    validate: bool = False,
+    validation_timeout_seconds: int = 120,
+) -> IssuePrCandidateAttempt:
+    """Attempt the DATA-024 pytest #14442/#14443 source/test-only candidate."""
+
+    if replay_id != PYTEST_STRICT_ADDOPTS_REPLAY_ID:
+        raise IssuePrCandidateAttemptError(
+            f"unsupported replay id: {replay_id}",
+            blocker={
+                "field": "replay_id",
+                "reason": "unsupported_issue_pr_candidate",
+                "message": (
+                    "DATA-024 may attempt only "
+                    "pytest-dev__pytest-issue-14442-pr-14443"
+                ),
+            },
+        )
+    resolved_repo = repo_path.expanduser().resolve()
+    if not resolved_repo.is_dir():
+        raise IssuePrCandidateAttemptError(
+            f"repo does not exist: {resolved_repo}",
+            blocker={
+                "field": "repo_path",
+                "reason": "missing_repo_before_checkout",
+                "message": f"repo does not exist: {resolved_repo}",
+            },
+        )
+
+    manifest_path = manifest_path.expanduser().resolve()
+    manifest = load_issue_pr_replay_manifest(manifest_path)
+    replay_record = select_issue_pr_replay_record(manifest, replay_id)
+    repo = _required_str(replay_record, "repo")
+    prompt = _required_str(replay_record, "prompt_text")
+    repo_before_ref = _mapping(replay_record["repo_before_ref"])
+    expected_sha = _required_str(repo_before_ref, "sha")
+    accepted_change = _mapping(replay_record["accepted_change"])
+    accepted_paths = _string_sequence(accepted_change.get("changed_files"))
+    if accepted_paths != PYTEST_STRICT_ADDOPTS_ACCEPTED_PATHS:
+        raise IssuePrCandidateAttemptError(
+            "pytest strict addopts candidate allowlist changed unexpectedly",
+            blocker={
+                "field": "accepted_change.changed_files",
+                "reason": "unexpected_allowed_write_scope",
+                "message": "DATA-024 expects exactly the pytest #14443 accepted paths",
+            },
+        )
+
+    blockers: list[dict[str, str]] = []
+    materialization_gaps: list[dict[str, str]] = []
+    actions: list[dict[str, object]] = [
+        {
+            "kind": "select_replay_row",
+            "target": replay_id,
+            "payload": {
+                "manifest_path": str(manifest_path),
+                "repo": repo,
+                "repo_before_ref": expected_sha,
+            },
+        },
+        {
+            "kind": "declare_source_test_only_scope",
+            "target": replay_id,
+            "payload": {
+                "planned_write_files": PYTEST_STRICT_ADDOPTS_SOURCE_TEST_PATHS,
+                "excluded_auxiliary_paths": PYTEST_STRICT_ADDOPTS_AUXILIARY_PATHS,
+            },
+        },
+    ]
+    head = _git_stdout(resolved_repo, ("rev-parse", "HEAD"))
+    if head:
+        actions.append(
+            {
+                "kind": "verify_repo_before_ref",
+                "target": ".",
+                "payload": {"expected": expected_sha, "actual": head},
+            }
+        )
+        if head != expected_sha:
+            blockers.append(
+                {
+                    "field": "repo_before_ref",
+                    "reason": "repo_before_ref_mismatch",
+                    "message": f"expected {expected_sha}, got {head}",
+                }
+            )
+
+    source_materialization: dict[str, object] = {}
+    test_config_materialization: dict[str, object] = {}
+    test_mark_materialization: dict[str, object] = {}
+    if not blockers:
+        try:
+            source_materialization = _materialize_pytest_strict_addopts_source(
+                resolved_repo,
+                write=write,
+            )
+            actions.extend(_pytest_strict_addopts_source_actions())
+        except IssuePrCandidateAttemptError as error:
+            source_materialization = {
+                "status": "blocked",
+                "target_source_file": PYTEST_STRICT_ADDOPTS_SOURCE_PATH,
+            }
+            blockers.append(error.blocker)
+
+    if not blockers:
+        try:
+            test_config_materialization = (
+                _materialize_pytest_strict_config_addopts_test(
+                    resolved_repo,
+                    write=write,
+                )
+            )
+            actions.append(
+                {
+                    "kind": "pytest_parametrize_existing_test_refine",
+                    "target": PYTEST_STRICT_ADDOPTS_TEST_CONFIG_PATH,
+                    "payload": {
+                        "test_name": "TestParseIni.test_strict_config_ini_option",
+                        "added_case": "addopts = --strict-config",
+                    },
+                }
+            )
+        except IssuePrCandidateAttemptError as error:
+            test_config_materialization = {
+                "status": "blocked",
+                "target_test_file": PYTEST_STRICT_ADDOPTS_TEST_CONFIG_PATH,
+            }
+            blockers.append(error.blocker)
+
+    if not blockers:
+        try:
+            test_mark_materialization = _materialize_pytest_strict_markers_addopts_test(
+                resolved_repo,
+                write=write,
+            )
+            actions.append(
+                {
+                    "kind": "pytest_parametrize_existing_test_refine",
+                    "target": PYTEST_STRICT_ADDOPTS_TEST_MARK_PATH,
+                    "payload": {
+                        "test_name": "test_strict_prohibits_unregistered_markers",
+                        "added_case": "addopts = --strict-markers",
+                    },
+                }
+            )
+        except IssuePrCandidateAttemptError as error:
+            test_mark_materialization = {
+                "status": "blocked",
+                "target_test_file": PYTEST_STRICT_ADDOPTS_TEST_MARK_PATH,
+            }
+            blockers.append(error.blocker)
+
+    candidate_diff = _candidate_diff(resolved_repo, PYTEST_STRICT_ADDOPTS_ACCEPTED_PATHS)
+    changed_files = _string_sequence(candidate_diff.get("changed_files"))
+    planned_changed_files = _unique(
+        [
+            *_source_planned_changed_files(
+                source_materialization, PYTEST_STRICT_ADDOPTS_SOURCE_PATH
+            ),
+            *_string_sequence(test_config_materialization.get("planned_changed_files")),
+            *_string_sequence(test_mark_materialization.get("planned_changed_files")),
+        ]
+    )
+    files_changed = changed_files or planned_changed_files
+    writes_outside_source_test_scope = _paths_outside_allowlist(
+        files_changed,
+        PYTEST_STRICT_ADDOPTS_SOURCE_TEST_PATHS,
+    )
+    if writes_outside_source_test_scope:
+        blockers.append(
+            {
+                "field": "source_test_only_scope",
+                "reason": "writes_outside_source_test_scope",
+                "message": (
+                    "DATA-024 candidate wrote outside the explicit source/test-only "
+                    "scope"
+                ),
+            }
+        )
+    source_test_missing_paths = [
+        path
+        for path in PYTEST_STRICT_ADDOPTS_SOURCE_TEST_PATHS
+        if path not in files_changed
+    ]
+    if not blockers and source_test_missing_paths:
+        blockers.append(
+            {
+                "field": "candidate_diff",
+                "reason": "source_test_edit_not_fully_materialized",
+                "message": "candidate did not materialize required source/test paths: "
+                + ", ".join(source_test_missing_paths),
+            }
+        )
+    auxiliary_missing_paths = [
+        path for path in PYTEST_STRICT_ADDOPTS_AUXILIARY_PATHS if path not in files_changed
+    ]
+    if auxiliary_missing_paths:
+        materialization_gaps.append(
+            {
+                "field": "accepted_change.changed_files",
+                "reason": "accepted_auxiliary_paths_not_materialized",
+                "message": (
+                    "DATA-024 is explicitly source/test-only and did not materialize: "
+                    + ", ".join(auxiliary_missing_paths)
+                ),
+            }
+        )
+
+    selected_setup = setup_command or PYTEST_STRICT_ADDOPTS_SETUP_COMMAND
+    selected_validation = validation_command or _selected_validation_command(
+        validation_records=validation_records,
+        readiness_records=readiness_records,
+        replay_id=PYTEST_STRICT_ADDOPTS_REPLAY_ID,
+        default_command=PYTEST_STRICT_ADDOPTS_VALIDATION_COMMAND,
+    )
+    validation = _deferred_validation_record(
+        setup_command=selected_setup,
+        validation_command=selected_validation,
+    )
+    if validate and not blockers:
+        validation = validate_issue_pr_candidate(
+            resolved_repo,
+            setup_command=selected_setup,
+            validation_command=selected_validation,
+            timeout_seconds=validation_timeout_seconds,
+        )
+
+    if validation.get("status") == "failed":
+        blockers.append(
+            {
+                "field": "validation",
+                "reason": "candidate_validation_failed",
+                "message": "focused pytest #14442 validation command failed",
+            }
+        )
+    elif validation.get("status") == "timeout":
+        blockers.append(
+            {
+                "field": "validation",
+                "reason": "candidate_validation_timeout",
+                "message": "focused pytest #14442 validation command timed out",
+            }
+        )
+
+    structured_action_coverage = _pytest_strict_addopts_structured_action_coverage(
+        blockers=blockers,
+        materialization_gaps=materialization_gaps,
+        files_changed=files_changed,
+        validation=validation,
+    )
+    residual_labels = [blocker["reason"] for blocker in blockers]
+    if not residual_labels:
+        if validation.get("status") == "passed":
+            residual_labels = ["candidate_validation_passed"]
+        elif validate:
+            residual_labels = [f"candidate_validation_{validation.get('status')}"]
+        else:
+            residual_labels = ["candidate_validation_deferred"]
+    residual_labels.extend(gap["reason"] for gap in materialization_gaps)
+
+    status = "blocked" if blockers else "materialized"
+    if not blockers and validation.get("status") == "passed":
+        status = "validated"
+    elif not blockers and not write:
+        status = "planned"
+
+    evidence = _evidence_summary(
+        readiness_records=readiness_records,
+        prompt_spec_records=prompt_spec_records,
+        validation_records=validation_records,
+        local_knowledge_records=local_knowledge_records,
+        materialization_audit_records=materialization_audit_records,
+        replay_id=PYTEST_STRICT_ADDOPTS_REPLAY_ID,
+    )
+    candidate_id = _candidate_id(
+        replay_id=replay_id,
+        repo_before_ref=expected_sha,
+        candidate_diff=str(candidate_diff.get("diff", "")),
+        validation_status=str(validation.get("status", "")),
+    )
+    mutation_scope = {
+        "mode": "issue_pr_candidate_attempt_source_test_only",
+        "accepted_write_paths": list(accepted_paths),
+        "allowed_write_paths": list(PYTEST_STRICT_ADDOPTS_SOURCE_TEST_PATHS),
+        "planned_write_files": list(PYTEST_STRICT_ADDOPTS_SOURCE_TEST_PATHS),
+        "excluded_auxiliary_paths": list(PYTEST_STRICT_ADDOPTS_AUXILIARY_PATHS),
+        "files_changed": files_changed,
+        "writes_outside_allowlist": writes_outside_source_test_scope,
+        "allowed_write_path_check_passed": not writes_outside_source_test_scope,
+        "missing_allowed_write_paths": source_test_missing_paths,
+        "materialization_gap_paths": auxiliary_missing_paths,
+    }
+    return IssuePrCandidateAttempt(
+        candidate_id=candidate_id,
+        replay_id=replay_id,
+        repo=repo,
+        repo_before_ref=expected_sha,
+        prompt=prompt,
+        status=status,
+        action_family=PYTEST_STRICT_ADDOPTS_ACTION_FAMILY,
+        allowed_write_paths=list(PYTEST_STRICT_ADDOPTS_SOURCE_TEST_PATHS),
+        evidence=evidence,
+        actions=actions,
+        source_materialization=source_materialization,
+        test_materialization={
+            "status": (
+                "materialized"
+                if test_config_materialization and test_mark_materialization
+                else "blocked"
+            ),
+            "targets": [
+                test_config_materialization,
+                test_mark_materialization,
+            ],
+        },
+        candidate_diff=candidate_diff,
+        mutation_scope=mutation_scope,
+        validation=validation,
+        structured_action_coverage=structured_action_coverage,
+        blockers=[*blockers, *materialization_gaps],
+        residual_labels=_unique(residual_labels),
+    )
+
+
 def run_issue_pr_candidate_attempt(
     repo_path: Path,
     *,
@@ -987,6 +1346,7 @@ def run_issue_pr_candidate_attempt(
     prompt_spec_records: Sequence[Mapping[str, object]] = (),
     validation_records: Sequence[Mapping[str, object]] = (),
     local_knowledge_records: Sequence[Mapping[str, object]] = (),
+    materialization_audit_records: Sequence[Mapping[str, object]] = (),
     setup_command: str | None = None,
     validation_command: str | None = None,
     write: bool = True,
@@ -1040,6 +1400,22 @@ def run_issue_pr_candidate_attempt(
             validate=validate,
             validation_timeout_seconds=validation_timeout_seconds,
         )
+    if replay_id == PYTEST_STRICT_ADDOPTS_REPLAY_ID:
+        return run_pytest_strict_addopts_issue_pr_candidate_attempt(
+            repo_path,
+            manifest_path=manifest_path,
+            replay_id=replay_id,
+            readiness_records=readiness_records,
+            prompt_spec_records=prompt_spec_records,
+            validation_records=validation_records,
+            local_knowledge_records=local_knowledge_records,
+            materialization_audit_records=materialization_audit_records,
+            setup_command=setup_command,
+            validation_command=validation_command,
+            write=write,
+            validate=validate,
+            validation_timeout_seconds=validation_timeout_seconds,
+        )
     raise IssuePrCandidateAttemptError(
         f"unsupported replay id: {replay_id}",
         blocker={
@@ -1047,7 +1423,8 @@ def run_issue_pr_candidate_attempt(
             "reason": "unsupported_issue_pr_candidate",
             "message": (
                 "supported candidate attempts are DATA-012 Requests, DATA-014 "
-                "Click default_map, and DATA-016 Click semver default"
+                "Click default_map, DATA-016 Click semver default, and DATA-024 "
+                "pytest strict addopts"
             ),
         },
     )
@@ -1137,6 +1514,8 @@ def write_issue_pr_candidate_attempt_report(
         if record.get("replay_id") == CLICK_DEFAULT_MAP_REPLAY_ID
         else "DATA-016 Click semver Issue/PR Candidate Attempt"
         if record.get("replay_id") == CLICK_SEMVER_REPLAY_ID
+        else "DATA-024 Pytest #14442 Source/Test Candidate Attempt"
+        if record.get("replay_id") == PYTEST_STRICT_ADDOPTS_REPLAY_ID
         else "DATA-012 Requests Issue/PR Candidate Attempt"
     )
     lines = [
@@ -1210,6 +1589,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--prompt-spec-evidence", type=Path, action="append", default=[])
     parser.add_argument("--validation-evidence", type=Path, action="append", default=[])
     parser.add_argument("--local-knowledge-evidence", type=Path, action="append", default=[])
+    parser.add_argument(
+        "--materialization-audit-evidence",
+        type=Path,
+        action="append",
+        default=[],
+    )
     parser.add_argument("--setup-command", default=REQUESTS_SETUP_COMMAND)
     parser.add_argument("--validation-command", default=REQUESTS_VALIDATION_COMMAND)
     parser.add_argument("--validation-timeout-seconds", type=int, default=120)
@@ -1231,6 +1616,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             setup_command = CLICK_SEMVER_SETUP_COMMAND
         if validation_command == REQUESTS_VALIDATION_COMMAND:
             validation_command = CLICK_SEMVER_VALIDATION_COMMAND
+    elif args.replay_id == PYTEST_STRICT_ADDOPTS_REPLAY_ID:
+        if setup_command == REQUESTS_SETUP_COMMAND:
+            setup_command = PYTEST_STRICT_ADDOPTS_SETUP_COMMAND
+        if validation_command == REQUESTS_VALIDATION_COMMAND:
+            validation_command = PYTEST_STRICT_ADDOPTS_VALIDATION_COMMAND
 
     attempt = run_issue_pr_candidate_attempt(
         args.repo_path,
@@ -1240,6 +1630,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         prompt_spec_records=load_jsonl_many(args.prompt_spec_evidence),
         validation_records=load_jsonl_many(args.validation_evidence),
         local_knowledge_records=load_jsonl_many(args.local_knowledge_evidence),
+        materialization_audit_records=load_jsonl_many(
+            args.materialization_audit_evidence
+        ),
         setup_command=setup_command,
         validation_command=validation_command,
         write=not args.plan_only,
@@ -1600,6 +1993,330 @@ def _materialize_click_semver_default_help_test(
     )
 
 
+def _pytest_strict_addopts_source_actions() -> list[dict[str, object]]:
+    return [
+        {
+            "kind": "python_from_import_insert",
+            "target": PYTEST_STRICT_ADDOPTS_SOURCE_PATH,
+            "payload": {
+                "module": ".findpaths",
+                "name": "parse_override_ini",
+                "after_import": "from .findpaths import determine_setup",
+            },
+        },
+        {
+            "kind": "config_parse_addopts_override_source_region",
+            "target": PYTEST_STRICT_ADDOPTS_SOURCE_PATH,
+            "payload": {
+                "function_name": "Config.parse",
+                "anchor": "post_addopts_parse_known_args",
+                "effect": "update _inicfg from addopts-supplied override_ini once",
+            },
+        },
+    ]
+
+
+def _materialize_pytest_strict_addopts_source(
+    repo_path: Path,
+    *,
+    write: bool,
+) -> dict[str, object]:
+    source_path = _repo_file(repo_path, PYTEST_STRICT_ADDOPTS_SOURCE_PATH)
+    before_text = source_path.read_text(encoding="utf-8")
+    after_text = before_text
+
+    import_line = "from .findpaths import parse_override_ini\n"
+    if import_line not in after_text:
+        anchor = "from .findpaths import determine_setup\n"
+        if anchor not in after_text:
+            raise IssuePrCandidateAttemptError(
+                "pytest strict addopts import anchor not found",
+                blocker={
+                    "field": "source_materialization",
+                    "reason": "source_import_anchor_not_found",
+                    "message": "could not find determine_setup import anchor",
+                },
+            )
+        after_text = after_text.replace(anchor, anchor + import_line, 1)
+
+    override_block = "\n".join(
+        [
+            "        if addopts:",
+            "            # addopts may have added overrides (especially via OverrideIniAction).",
+            "            # The thing can be endlessly circular but we only do one level (#14442).",
+            "            if overrides := parse_override_ini(self.known_args_namespace.override_ini):",
+            "                self._inicfg.update(overrides)",
+            "                self._inicache.clear()",
+        ]
+    )
+    if override_block not in after_text:
+        old_block = "\n".join(
+            [
+                "        self.known_args_namespace = self._parser.parse_known_args(",
+                "            args, namespace=copy.copy(self.option)",
+                "        )",
+                "        self._checkversion()",
+            ]
+        )
+        new_block = "\n".join(
+            [
+                "        self.known_args_namespace = self._parser.parse_known_args(",
+                "            args, namespace=copy.copy(self.option)",
+                "        )",
+                override_block,
+                "        self._checkversion()",
+            ]
+        )
+        if old_block not in after_text:
+            raise IssuePrCandidateAttemptError(
+                "pytest strict addopts Config.parse anchor not found",
+                blocker={
+                    "field": "source_materialization",
+                    "reason": "source_region_anchor_not_found",
+                    "message": (
+                        "could not find post-addopts parse_known_args anchor in "
+                        "Config.parse"
+                    ),
+                },
+            )
+        after_text = after_text.replace(old_block, new_block, 1)
+
+    planned_changed_files = (
+        [PYTEST_STRICT_ADDOPTS_SOURCE_PATH] if after_text != before_text else []
+    )
+    if write and planned_changed_files:
+        source_path.write_text(after_text, encoding="utf-8")
+    return _python_source_candidate_after(
+        before_text=before_text,
+        after_text=after_text,
+        source_file=PYTEST_STRICT_ADDOPTS_SOURCE_PATH,
+        planned_changed_files=planned_changed_files,
+        wrote_file=write and bool(planned_changed_files),
+        status="materialized" if planned_changed_files else "already_applied",
+    )
+
+
+def _materialize_pytest_strict_config_addopts_test(
+    repo_path: Path,
+    *,
+    write: bool,
+) -> dict[str, object]:
+    test_path = _repo_file(repo_path, PYTEST_STRICT_ADDOPTS_TEST_CONFIG_PATH)
+    before_text = test_path.read_text(encoding="utf-8")
+    if '"addopts = --strict-config"' in before_text:
+        return _test_candidate_after(
+            before_text=before_text,
+            after_text=before_text,
+            target_test_file=PYTEST_STRICT_ADDOPTS_TEST_CONFIG_PATH,
+            planned_changed_files=[],
+            wrote_file=False,
+            status="already_applied",
+        )
+
+    old_test = "\n".join(
+        [
+            '    @pytest.mark.parametrize("option_name", ["strict_config", "strict"])',
+            "    def test_strict_config_ini_option(",
+            "        self, pytester: Pytester, option_name: str",
+            "    ) -> None:",
+            "        \"\"\"Test that strict_config and strict ini options enable strict config checking.\"\"\"",
+            "        pytester.makeini(",
+            "            f\"\"\"",
+            "            [pytest]",
+            "            unknown_option = 1",
+            "            {option_name} = True",
+            "            \"\"\"",
+            "        )",
+            "        result = pytester.runpytest()",
+            "        result.stderr.fnmatch_lines(\"ERROR: Unknown config option: unknown_option\")",
+            "        assert result.ret == pytest.ExitCode.USAGE_ERROR",
+        ]
+    )
+    new_test = "\n".join(
+        [
+            "    @pytest.mark.parametrize(",
+            '        "option",',
+            "        [",
+            '            "strict_config = true",',
+            '            "strict = true",',
+            '            "addopts = --strict-config",',
+            "        ],",
+            "    )",
+            "    def test_strict_config_ini_option(self, pytester: Pytester, option: str) -> None:",
+            "        \"\"\"Test that strict_config and strict ini options enable strict config checking.\"\"\"",
+            "        pytester.makeini(",
+            "            f\"\"\"",
+            "            [pytest]",
+            "            unknown_option = 1",
+            "            {option}",
+            "            \"\"\"",
+            "        )",
+            "        result = pytester.runpytest()",
+            "        result.stderr.fnmatch_lines(\"ERROR: Unknown config option: unknown_option\")",
+            "        assert result.ret == pytest.ExitCode.USAGE_ERROR",
+        ]
+    )
+    if old_test not in before_text:
+        raise IssuePrCandidateAttemptError(
+            "pytest strict config test replacement anchor not found",
+            blocker={
+                "field": "test_materialization",
+                "reason": "test_anchor_not_found",
+                "message": "could not find TestParseIni.test_strict_config_ini_option",
+            },
+        )
+    after_text = before_text.replace(old_test, new_test, 1)
+    planned_changed_files = (
+        [PYTEST_STRICT_ADDOPTS_TEST_CONFIG_PATH] if after_text != before_text else []
+    )
+    if write and planned_changed_files:
+        test_path.write_text(after_text, encoding="utf-8")
+    return _test_candidate_after(
+        before_text=before_text,
+        after_text=after_text,
+        target_test_file=PYTEST_STRICT_ADDOPTS_TEST_CONFIG_PATH,
+        planned_changed_files=planned_changed_files,
+        wrote_file=write and bool(planned_changed_files),
+        status="materialized" if planned_changed_files else "unchanged",
+    )
+
+
+def _materialize_pytest_strict_markers_addopts_test(
+    repo_path: Path,
+    *,
+    write: bool,
+) -> dict[str, object]:
+    test_path = _repo_file(repo_path, PYTEST_STRICT_ADDOPTS_TEST_MARK_PATH)
+    before_text = test_path.read_text(encoding="utf-8")
+    if '"addopts = --strict-markers"' in before_text:
+        return _test_candidate_after(
+            before_text=before_text,
+            after_text=before_text,
+            target_test_file=PYTEST_STRICT_ADDOPTS_TEST_MARK_PATH,
+            planned_changed_files=[],
+            wrote_file=False,
+            status="already_applied",
+        )
+
+    old_test = "\n".join(
+        [
+            "@pytest.mark.parametrize(",
+            '    "option_name", ["--strict-markers", "--strict", "strict_markers", "strict"]',
+            ")",
+            "def test_strict_prohibits_unregistered_markers(",
+            "    pytester: Pytester, option_name: str",
+            ") -> None:",
+            "    pytester.makepyfile(",
+            "        \"\"\"",
+            "        import pytest",
+            "        @pytest.mark.unregisteredmark",
+            "        def test_hello():",
+            "            pass",
+            "    \"\"\"",
+            "    )",
+            '    if option_name in ("strict_markers", "strict"):',
+            "        pytester.makeini(",
+            "            f\"\"\"",
+            "            [pytest]",
+            "            {option_name} = true",
+            "            \"\"\"",
+            "        )",
+            "        result = pytester.runpytest()",
+            "    else:",
+            "        result = pytester.runpytest(option_name)",
+            "    assert result.ret != 0",
+            "    result.stdout.fnmatch_lines(",
+            "        [\"'unregisteredmark' not found in `markers` configuration option\"]",
+            "    )",
+        ]
+    )
+    new_test = "\n".join(
+        [
+            "@pytest.mark.parametrize(",
+            '    "option",',
+            "    [",
+            '        "--strict-markers",',
+            '        "--strict",',
+            '        "strict_markers = true",',
+            '        "strict = true",',
+            '        "addopts = --strict-markers",',
+            "    ],",
+            ")",
+            "def test_strict_prohibits_unregistered_markers(pytester: Pytester, option: str) -> None:",
+            "    pytester.makepyfile(",
+            "        \"\"\"",
+            "        import pytest",
+            "        @pytest.mark.unregisteredmark",
+            "        def test_hello():",
+            "            pass",
+            "    \"\"\"",
+            "    )",
+            '    if option.startswith("-"):',
+            "        result = pytester.runpytest(option)",
+            "    else:",
+            "        pytester.makeini(",
+            "            f\"\"\"",
+            "            [pytest]",
+            "            {option}",
+            "            \"\"\"",
+            "        )",
+            "        result = pytester.runpytest()",
+            "    assert result.ret != 0",
+            "    result.stdout.fnmatch_lines(",
+            "        [\"'unregisteredmark' not found in `markers` configuration option\"]",
+            "    )",
+        ]
+    )
+    if old_test not in before_text:
+        raise IssuePrCandidateAttemptError(
+            "pytest strict markers test replacement anchor not found",
+            blocker={
+                "field": "test_materialization",
+                "reason": "test_anchor_not_found",
+                "message": "could not find test_strict_prohibits_unregistered_markers",
+            },
+        )
+    after_text = before_text.replace(old_test, new_test, 1)
+    planned_changed_files = (
+        [PYTEST_STRICT_ADDOPTS_TEST_MARK_PATH] if after_text != before_text else []
+    )
+    if write and planned_changed_files:
+        test_path.write_text(after_text, encoding="utf-8")
+    return _test_candidate_after(
+        before_text=before_text,
+        after_text=after_text,
+        target_test_file=PYTEST_STRICT_ADDOPTS_TEST_MARK_PATH,
+        planned_changed_files=planned_changed_files,
+        wrote_file=write and bool(planned_changed_files),
+        status="materialized" if planned_changed_files else "unchanged",
+    )
+
+
+def _python_source_candidate_after(
+    *,
+    before_text: str,
+    after_text: str,
+    source_file: str,
+    planned_changed_files: Sequence[str],
+    wrote_file: bool,
+    status: str,
+) -> dict[str, object]:
+    diff = _unified_diff(before_text, after_text, source_file)
+    compile(after_text, source_file, "exec")
+    return {
+        "status": status,
+        "target_source_file": source_file,
+        "planned_changed_files": list(planned_changed_files),
+        "wrote_file": wrote_file,
+        "sha256_before": _sha256_text(before_text),
+        "sha256_after": _sha256_text(after_text),
+        "diff_summary": _diff_summary(before_text, after_text),
+        "diff": diff,
+        "ast_parse_ok": True,
+        "ast_delta": python_ast_delta_metadata(before_text, after_text),
+    }
+
+
 def _test_candidate_after(
     *,
     before_text: str,
@@ -1648,6 +2365,7 @@ def _evidence_summary(
     prompt_spec_records: Sequence[Mapping[str, object]],
     validation_records: Sequence[Mapping[str, object]],
     local_knowledge_records: Sequence[Mapping[str, object]],
+    materialization_audit_records: Sequence[Mapping[str, object]] = (),
     replay_id: str = REQUESTS_REPLAY_ID,
 ) -> dict[str, object]:
     return {
@@ -1670,6 +2388,11 @@ def _evidence_summary(
             local_knowledge_records,
             replay_id=replay_id,
         ),
+        "materialization_audit": _matching_evidence(
+            materialization_audit_records,
+            replay_field="replay_id",
+            replay_id=replay_id,
+        ),
     }
 
 
@@ -1683,6 +2406,7 @@ def _matching_evidence(
         {
             "record_kind": record.get("record_kind"),
             "id": record.get("id")
+            or record.get("audit_id")
             or record.get("candidate_id")
             or f"{record.get('record_kind', 'evidence')}/{replay_id}",
             "source": record.get("_source_path") or record.get("_readiness_source_path"),
@@ -1826,6 +2550,54 @@ def _click_semver_structured_action_coverage(
     }
 
 
+def _pytest_strict_addopts_structured_action_coverage(
+    *,
+    blockers: Sequence[Mapping[str, str]],
+    materialization_gaps: Sequence[Mapping[str, str]],
+    files_changed: Sequence[str],
+    validation: Mapping[str, object],
+) -> dict[str, object]:
+    source_test_paths = set(PYTEST_STRICT_ADDOPTS_SOURCE_TEST_PATHS)
+    changed = set(files_changed)
+    behavior_covered = not blockers and source_test_paths.issubset(changed)
+    accepted_edit_covered = behavior_covered and not materialization_gaps
+    labels = []
+    if PYTEST_STRICT_ADDOPTS_SOURCE_PATH in changed:
+        labels.extend(
+            [
+                "python_from_import_insert_covered",
+                "config_parse_addopts_override_source_region_covered",
+            ]
+        )
+    if PYTEST_STRICT_ADDOPTS_TEST_CONFIG_PATH in changed:
+        labels.append("pytest_parametrize_existing_test_refine_config_covered")
+    if PYTEST_STRICT_ADDOPTS_TEST_MARK_PATH in changed:
+        labels.append("pytest_parametrize_existing_test_refine_mark_covered")
+    if validation.get("status") == "passed":
+        labels.append("focused_validation_covered")
+    if materialization_gaps:
+        labels.append("accepted_auxiliary_paths_not_covered")
+    return {
+        "accepted_edit_covered": accepted_edit_covered,
+        "behavior_edit_covered": behavior_covered,
+        "source_test_only_scope": True,
+        "coverage_labels": labels,
+        "materialization_gap": (
+            None
+            if accepted_edit_covered
+            else "accepted_auxiliary_authors_changelog_materialization_gap"
+        ),
+        "note": (
+            "The DATA-024 candidate covers only the behavior-changing pytest "
+            "source/test slice with a deterministic import inserter, a bounded "
+            "Config.parse insertion, and two constrained existing-pytest-test "
+            "refinements. Full accepted-edit parity remains false because AUTHORS "
+            "and changelog/14442.bugfix.rst are deliberately excluded auxiliary "
+            "paths in this slice."
+        ),
+    }
+
+
 def _deferred_validation_record(
     *,
     setup_command: str,
@@ -1954,6 +2726,9 @@ def _source_planned_changed_files(
         return []
     if source_materialization.get("status") == "blocked":
         return []
+    direct_diff = str(source_materialization.get("diff") or "")
+    if direct_diff:
+        return [file_path]
     candidate_after = _mapping(source_materialization.get("candidate_after"))
     diff = str(candidate_after.get("diff") or "")
     return [file_path] if diff else []

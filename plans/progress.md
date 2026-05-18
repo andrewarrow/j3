@@ -2812,3 +2812,37 @@ meaningful work. Do not replace this file with a daily reset.
 - Next: use these observations in a later held-out scoring run before changing
   any production ranking or guarded-use gate.
 - Blockers: none.
+
+### 2026-05-18 - DATA-024 - Pytest #14442 source/test candidate attempt
+
+- Owner: worker Mill (`019e3c60-cfa4-7083-b87d-ab07caff5b22`).
+- Files changed: `j3/issue_pr_candidate_attempt.py`,
+  `tests/test_issue_pr_candidate_attempt.py`,
+  `docs/DATA_024_PYTEST_14442_SOURCE_TEST_CANDIDATE_2026-05-18.md`,
+  `plans/active.md`, `plans/backlog.md`, `plans/progress.md`.
+- Tests: `python -m py_compile j3/issue_pr_candidate_attempt.py
+  tests/test_issue_pr_candidate_attempt.py` -> passed; `pytest
+  tests/test_issue_pr_candidate_attempt.py -q` -> 14 passed; live CLI
+  `python -m j3.issue_pr_candidate_attempt --replay-id
+  pytest-dev__pytest-issue-14442-pr-14443 --repo-path
+  /tmp/j3-data-018-pytest-preflight/repos/pytest-dev__pytest-pytest-dev__pytest-issue-14442-pr-14443-8f81c76744da
+  ... --validate --validation-command "pytest testing/test_config.py
+  testing/test_mark.py -q"` -> validated; `python -m py_compile` over the
+  live touched pytest files -> passed; `pytest tests/test_plan_consistency.py
+  -q` -> passed; `git diff --check` -> passed.
+- Result: materialized exactly the explicit source/test-only candidate for
+  `pytest-dev__pytest-issue-14442-pr-14443`. The live pinned pytest checkout
+  changed only `src/_pytest/config/__init__.py`, `testing/test_config.py`, and
+  `testing/test_mark.py`; `AUTHORS` and `changelog/14442.bugfix.rst` were not
+  written. Candidate JSON records actions, candidate diff, mutation scope,
+  validation command/runtime/pass-fail, DATA-018/021/022/023 provenance, and
+  structured-action coverage. Focused validation passed in `4.574s`
+  (`6.598s` including setup). Full accepted-edit coverage remains false with
+  residual `accepted_auxiliary_paths_not_materialized`.
+- Commit: pending.
+- Push: pending.
+- Next: coordinator can decide whether to implement the AUTHORS/changelog
+  auxiliary materializers or use the source/test validated candidate for later
+  ranking/scoring evidence.
+- Blockers: none for the source/test candidate; auxiliary accepted-edit parity
+  remains out of scope for DATA-024.

@@ -1594,7 +1594,7 @@ Long-term target:
 
 ### DATA-024: Pytest #14442 source/test candidate attempt
 
-- Status: active
+- Status: done
 - Why: DATA-022 says pytest #14442 is candidate-ready and DATA-023 says full
   accepted-edit parity is not currently expressible. The hard next proof is
   whether the current stack can materialize and validate the behavior-changing
@@ -1614,6 +1614,20 @@ Long-term target:
   blocker.
 - Tests: focused candidate-attempt tests, plan consistency, `git diff
   --check`, and live validation when feasible.
+- Completion note: added the DATA-024 source/test-only pytest #14442 candidate
+  attempt path. The live pinned pytest checkout changed only
+  `src/_pytest/config/__init__.py`, `testing/test_config.py`, and
+  `testing/test_mark.py`; `AUTHORS` and `changelog/14442.bugfix.rst` remained
+  untouched and are recorded as explicit auxiliary residuals. The candidate
+  record includes actions, candidate diff, mutation scope, validation
+  command/runtime/pass-fail, DATA-018/021/022/023 provenance, and structured
+  action coverage. Live validation passed with `pytest testing/test_config.py
+  testing/test_mark.py -q` after installing the checkout; full accepted-edit
+  coverage remains false only because the auxiliary paths are excluded from
+  this slice. Artifacts:
+  `/tmp/j3-data-024-pytest-14442-source-test/candidate.json`,
+  `/tmp/j3-data-024-pytest-14442-source-test/report.md`, and
+  `docs/DATA_024_PYTEST_14442_SOURCE_TEST_CANDIDATE_2026-05-18.md`.
 
 ## Next Recommended Queue
 

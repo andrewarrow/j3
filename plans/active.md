@@ -44,17 +44,7 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-- `DATA-024`: worker Mill (`019e3c60-cfa4-7083-b87d-ab07caff5b22`) to attempt
-  a source/test-only pytest #14442 candidate for
-  `pytest-dev__pytest-issue-14442-pr-14443`, explicitly excluding `AUTHORS`
-  and `changelog/14442.bugfix.rst` from this slice. Ownership: a bounded
-  pytest issue/PR candidate-attempt module/path plus focused tests, generated
-  `/tmp` artifacts, optional compact report under `docs/`, and plan updates.
-  Acceptance: live pinned pytest checkout changes only
-  `src/_pytest/config/__init__.py`, `testing/test_config.py`, and
-  `testing/test_mark.py`, records candidate diff/actions/mutation scope,
-  validates with `pytest testing/test_config.py testing/test_mark.py -q`, and
-  preserves auxiliary-path residuals honestly.
+- none.
 
 ## Ready Queue
 
@@ -87,6 +77,20 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `DATA-024`: added a bounded source/test-only pytest #14442 candidate attempt
+  for exactly `pytest-dev__pytest-issue-14442-pr-14443`. The live pinned
+  pytest checkout at `8f81c76744daf72d4f77cfc8423f4bdc60733d78` changed only
+  `src/_pytest/config/__init__.py`, `testing/test_config.py`, and
+  `testing/test_mark.py`, with no `AUTHORS` or
+  `changelog/14442.bugfix.rst` writes. The candidate record includes actions,
+  candidate diff, mutation scope, DATA-018/021/022/023 provenance, validation
+  command/runtime/pass-fail, and structured-action coverage. Focused live
+  validation passed with `pytest testing/test_config.py testing/test_mark.py
+  -q` after installing the checkout, while full accepted-edit coverage remains
+  false with residual `accepted_auxiliary_paths_not_materialized`. Artifacts:
+  `/tmp/j3-data-024-pytest-14442-source-test/candidate.json`,
+  `/tmp/j3-data-024-pytest-14442-source-test/report.md`, and
+  `docs/DATA_024_PYTEST_14442_SOURCE_TEST_CANDIDATE_2026-05-18.md`.
 - `MODEL-006`: added a shadow-only candidate-change observation normalizer and
   wired nested candidate-after / AST-delta metadata into transition
   action-choice change context and persisted candidate-ranker record features.

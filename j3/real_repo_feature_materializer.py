@@ -33,6 +33,7 @@ H11_BYTESIFY_OBJECT_MESSAGE_TASK_ID = "h11-feature-bytesify-object-message"
 HUMANIZE_NATURALSIZE_ZERO_FORMAT_TASK_ID = (
     "humanize-feature-naturalsize-zero-format"
 )
+BOLTONS_SLUGIFY_MAX_LENGTH_TASK_ID = "boltons-feature-slugify-max-length"
 CANDIDATE_VALIDATION_DEFERRED = "candidate_validation_deferred"
 
 
@@ -148,12 +149,16 @@ def materialize_real_repo_feature_candidate(
     elif repo_id == "humanize" and task_id == HUMANIZE_NATURALSIZE_ZERO_FORMAT_TASK_ID:
         target_source_file = "src/humanize/filesize.py"
         target_test_file = "tests/test_filesize.py"
+    elif repo_id == "boltons" and task_id == BOLTONS_SLUGIFY_MAX_LENGTH_TASK_ID:
+        target_source_file = "boltons/strutils.py"
+        target_test_file = "tests/test_strutils.py"
     else:
         raise _blocker_error(
             "one-file feature materialization is only implemented for "
             "h11-feature-bytesify-object-message and "
             "iniconfig-feature-section-default and "
-            "humanize-feature-naturalsize-zero-format",
+            "humanize-feature-naturalsize-zero-format and "
+            "boltons-feature-slugify-max-length",
             field="task_id",
             reason="unsupported_real_repo_feature_task",
         )
@@ -193,8 +198,10 @@ def materialize_real_repo_feature_candidate(
             source_action = _h11_bytesify_object_message_source_action(source_text)
         elif task_id == INICONFIG_SECTION_DEFAULT_TASK_ID:
             source_action = _iniconfig_section_default_source_action(source_text)
-        else:
+        elif task_id == HUMANIZE_NATURALSIZE_ZERO_FORMAT_TASK_ID:
             source_action = _humanize_naturalsize_zero_format_source_action(source_text)
+        else:
+            source_action = _boltons_slugify_max_length_source_action(source_text)
         source_result = materialize_source_region(
             resolved_repo,
             source_action,
@@ -232,8 +239,14 @@ def materialize_real_repo_feature_candidate(
             target_test_file=target_test_file,
             write=write and not blockers,
         )
-    else:
+    elif task_id == HUMANIZE_NATURALSIZE_ZERO_FORMAT_TASK_ID:
         test_materialization = _materialize_humanize_zero_format_tests(
+            resolved_repo,
+            target_test_file=target_test_file,
+            write=write and not blockers,
+        )
+    else:
+        test_materialization = _materialize_boltons_slugify_max_length_tests(
             resolved_repo,
             target_test_file=target_test_file,
             write=write and not blockers,
@@ -597,6 +610,54 @@ def _humanize_naturalsize_zero_format_source_action(source: str) -> SourceRegion
     )
 
 
+def _boltons_slugify_max_length_source_action(source: str) -> SourceRegionAction:
+    if "max_length=None" in source:
+        raise SourceRegionMaterializationError(
+            "boltons slugify max_length edit is already applied",
+            residual="already_applied",
+        )
+
+    start_line = _line_number(
+        source,
+        "def slugify(text, delim='_', lower=True, ascii=False):",
+    )
+    end_line = _line_number(source, "    return ret")
+    source_lines = source.splitlines()
+    replacement_lines = list(source_lines[start_line - 1 : end_line])
+    replacement_lines[0] = (
+        "def slugify(text, delim='_', lower=True, ascii=False, max_length=None):"
+    )
+    _insert_after(
+        replacement_lines,
+        "        ret = ret.lower()",
+        "    if max_length is not None:\n"
+        "        ret = ret[:max_length]\n"
+        "        trim_delim = asciify(delim) if ascii else delim\n"
+        "        if trim_delim:\n"
+        "            ret = ret.rstrip(trim_delim)",
+    )
+    return SourceRegionAction(
+        kind=SourceRegionActionKind.REPLACE_FUNCTION_REGION,
+        target=SourceRegionTarget(
+            file_path="boltons/strutils.py",
+            function_name="slugify",
+            region_name="max_length_signature_and_truncation",
+            start_line=start_line,
+            end_line=end_line,
+        ),
+        replacement_source="\n".join(replacement_lines),
+        constraints=SourceRegionConstraints(
+            max_changed_source_lines=12,
+            must_preserve_signature=False,
+        ),
+        rationale=(
+            "add an optional max_length keyword that truncates the final slug "
+            "after existing ascii/lower behavior and strips any trailing "
+            "configured delimiter characters left by the truncation"
+        ),
+    )
+
+
 def _materialize_h11_object_message_test(
     repo: Path,
     *,
@@ -794,6 +855,79 @@ def _merge_humanize_zero_format_tests(existing_text: str) -> str:
     return existing_text.rstrip() + "\n\n\n" + append_block
 
 
+def _materialize_boltons_slugify_max_length_tests(
+    repo: Path,
+    *,
+    target_test_file: str,
+    write: bool,
+) -> dict[str, object]:
+    target_path = _repo_file(repo, target_test_file)
+    before_text = target_path.read_text(encoding="utf-8") if target_path.exists() else ""
+    after_text = _merge_boltons_slugify_max_length_tests(before_text)
+    planned_changed_files = [target_test_file] if after_text != before_text else []
+    if write and planned_changed_files:
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        target_path.write_text(after_text, encoding="utf-8")
+    status = "already_applied"
+    files_changed: list[str] = []
+    if planned_changed_files:
+        status = "materialized" if write else "planned"
+        files_changed = list(planned_changed_files) if write else []
+    return {
+        "status": status,
+        "files_changed": files_changed,
+        "candidate_after": _text_candidate_after_record(
+            file_path=target_test_file,
+            before_text=before_text,
+            after_text=after_text,
+            planned_changed_files=planned_changed_files,
+            wrote_file=write and bool(planned_changed_files),
+            test_case_ids=[
+                "boltons_slugify_max_length_truncates_final_slug",
+                "boltons_slugify_max_length_strips_configured_delimiter",
+                "boltons_slugify_max_length_default_behavior_unchanged",
+            ],
+            test_functions=[
+                "test_slugify_max_length_truncates_final_slug",
+                "test_slugify_max_length_avoids_trailing_delimiter",
+                "test_slugify_max_length_default_behavior_is_unchanged",
+            ],
+        ),
+    }
+
+
+def _merge_boltons_slugify_max_length_tests(existing_text: str) -> str:
+    first_function = "test_slugify_max_length_truncates_final_slug"
+    if f"def {first_function}" in existing_text:
+        return existing_text
+    append_block = (
+        "def test_slugify_max_length_truncates_final_slug() -> None:\n"
+        "    assert strutils.slugify(\n"
+        "        \"First post! Hi!!!!~1    \", max_length=10\n"
+        "    ) == \"first_post\"\n"
+        "\n\n"
+        "def test_slugify_max_length_avoids_trailing_delimiter() -> None:\n"
+        "    assert strutils.slugify(\n"
+        "        \"alpha beta gamma\", delim=\"-\", max_length=6\n"
+        "    ) == \"alpha\"\n"
+        "    assert strutils.slugify(\n"
+        "        \"alpha beta gamma\", delim=\"--\", max_length=12\n"
+        "    ) == \"alpha--beta\"\n"
+        "\n\n"
+        "def test_slugify_max_length_default_behavior_is_unchanged() -> None:\n"
+        "    assert strutils.slugify(\"First post! Hi!!!!~1    \") == \"first_post_hi_1\"\n"
+        "    assert strutils.slugify(\n"
+        "        \"MiXeD Case Input\", delim=\"-\", lower=False\n"
+        "    ) == \"MiXeD-Case-Input\"\n"
+        "    assert strutils.slugify(\n"
+        "        \"Kurt G\\u00f6del's pretty cool.\", ascii=True\n"
+        "    ) == b\"kurt_goedel_s_pretty_cool\"\n"
+    )
+    if not existing_text.strip():
+        return "from boltons import strutils\n\n\n" + append_block
+    return existing_text.rstrip() + "\n\n\n" + append_block
+
+
 def _text_candidate_after_record(
     *,
     file_path: str,
@@ -845,6 +979,7 @@ def _production_python_files(repo: Path, *, repo_id: str) -> list[str]:
         "h11": repo / "h11",
         "iniconfig": repo / "src" / "iniconfig",
         "humanize": repo / "src" / "humanize",
+        "boltons": repo / "boltons",
     }
     package_root = package_roots.get(repo_id)
     if package_root is None:

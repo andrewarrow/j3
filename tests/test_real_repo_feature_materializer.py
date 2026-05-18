@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 from j3.real_repo_feature_materializer import (
+    BOLTONS_SLUGIFY_MAX_LENGTH_TASK_ID,
     CANDIDATE_VALIDATION_DEFERRED,
     H11_BYTESIFY_OBJECT_MESSAGE_TASK_ID,
     HUMANIZE_NATURALSIZE_ZERO_FORMAT_TASK_ID,
@@ -45,6 +46,17 @@ def _manifest_humanize_feature_rows() -> tuple[dict[str, object], dict[str, obje
         item
         for item in repo["tasks"]
         if item["id"] == HUMANIZE_NATURALSIZE_ZERO_FORMAT_TASK_ID
+    )
+    return repo, task
+
+
+def _manifest_boltons_feature_rows() -> tuple[dict[str, object], dict[str, object]]:
+    manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+    repo = next(item for item in manifest["repositories"] if item["id"] == "boltons")
+    task = next(
+        item
+        for item in repo["tasks"]
+        if item["id"] == BOLTONS_SLUGIFY_MAX_LENGTH_TASK_ID
     )
     return repo, task
 
@@ -321,6 +333,81 @@ def test_naturalsize() -> None:
     assert humanize.naturalsize(1) == "1 Byte"
     assert humanize.naturalsize(1024, True) == "1.0 KiB"
     assert humanize.naturalsize(1024, False, True) == "1.0K"
+""",
+        encoding="utf-8",
+    )
+
+
+def _write_synthetic_boltons_checkout(repo: Path) -> None:
+    (repo / "boltons").mkdir()
+    (repo / "tests").mkdir()
+    (repo / "boltons" / "__init__.py").write_text(
+        """from __future__ import annotations
+
+from . import strutils
+
+__all__ = ["strutils"]
+""",
+        encoding="utf-8",
+    )
+    (repo / "boltons" / "strutils.py").write_text(
+        """import re
+import string
+import unicodedata
+
+_punct_ws_str = string.punctuation + string.whitespace
+_punct_re = re.compile('[' + _punct_ws_str + ']+')
+
+
+def slugify(text, delim='_', lower=True, ascii=False):
+    \"\"\"
+    A basic function that turns text full of scary characters
+    (i.e., punctuation and whitespace), into a relatively safe
+    lowercased string separated only by the delimiter specified
+    by *delim*, which defaults to ``_``.
+
+    The *ascii* convenience flag will :func:`asciify` the slug if
+    you require ascii-only slugs.
+
+    >>> slugify('First post! Hi!!!!~1    ')
+    'first_post_hi_1'
+
+    >>> slugify("Kurt G\\u00f6del's pretty cool.", ascii=True) == \\
+        b'kurt_goedel_s_pretty_cool'
+    True
+
+    \"\"\"
+    ret = delim.join(split_punct_ws(text)) or delim if text else ''
+    if ascii:
+        ret = asciify(ret)
+    if lower:
+        ret = ret.lower()
+    return ret
+
+
+def split_punct_ws(text):
+    return [w for w in _punct_re.split(text) if w]
+
+
+def asciify(text, ignore=False):
+    text = text.replace("\\u00f6", "oe")
+    return unicodedata.normalize("NFKD", text).encode("ascii", "ignore")
+""",
+        encoding="utf-8",
+    )
+    (repo / "boltons" / "iterutils.py").write_text("", encoding="utf-8")
+    (repo / "tests" / "test_strutils.py").write_text(
+        """from boltons import strutils
+
+
+def test_slugify_existing_behavior() -> None:
+    assert strutils.slugify("First post! Hi!!!!~1    ") == "first_post_hi_1"
+    assert strutils.slugify(
+        "MiXeD Case Input", delim="-", lower=False
+    ) == "MiXeD-Case-Input"
+    assert strutils.slugify(
+        "Kurt G\\u00f6del's pretty cool.", ascii=True
+    ) == b"kurt_goedel_s_pretty_cool"
 """,
         encoding="utf-8",
     )
@@ -758,6 +845,134 @@ def test_materializes_humanize_naturalsize_zero_format_feature(
     assert "test_naturalsize_zero_format_default_behavior_is_unchanged" in (
         test_after_text
     )
+
+
+def test_materializes_boltons_slugify_max_length_feature(tmp_path: Path) -> None:
+    repo, task = _manifest_boltons_feature_rows()
+    _write_synthetic_boltons_checkout(tmp_path)
+    production_before = {
+        "boltons/__init__.py": (tmp_path / "boltons" / "__init__.py").read_bytes(),
+        "boltons/iterutils.py": (tmp_path / "boltons" / "iterutils.py").read_bytes(),
+        "boltons/strutils.py": (tmp_path / "boltons" / "strutils.py").read_bytes(),
+    }
+    test_before = (tmp_path / "tests" / "test_strutils.py").read_text(
+        encoding="utf-8"
+    )
+
+    candidate = materialize_real_repo_feature_candidate(
+        tmp_path,
+        repo=repo,
+        task=task,
+        validate=True,
+    )
+    row = candidate.to_record()
+
+    assert json.loads(json.dumps(row, sort_keys=True)) == row
+    assert row["repo_id"] == "boltons"
+    assert row["repo_split"] == "heldout"
+    assert row["task_id"] == "boltons-feature-slugify-max-length"
+    assert row["status"] == "materialized"
+    assert row["target_source_file"] == "boltons/strutils.py"
+    assert row["target_test_file"] == "tests/test_strutils.py"
+    assert row["validation"]["status"] == "passed"
+    assert row["validation"]["selected_command"] == (
+        "python -m pytest tests/test_strutils.py -q"
+    )
+    assert row["validation"]["candidate_validation_network_allowed"] is False
+    assert row["zero_hosted_usage_confirmed"] is True
+    assert row["blockers"] == []
+    assert row["residual_labels"] == ["candidate_validation_passed"]
+
+    mutation_scope = row["mutation_scope"]
+    assert mutation_scope["mode"] == "one_file_feature"
+    assert mutation_scope["planned_write_files"] == [
+        "boltons/strutils.py",
+        "tests/test_strutils.py",
+    ]
+    assert mutation_scope["files_changed"] == [
+        "boltons/strutils.py",
+        "tests/test_strutils.py",
+    ]
+    assert mutation_scope["writes_outside_allowlist"] == []
+    assert mutation_scope["production_files"] == [
+        "boltons/__init__.py",
+        "boltons/iterutils.py",
+        "boltons/strutils.py",
+    ]
+    assert mutation_scope["production_files_changed"] == ["boltons/strutils.py"]
+    assert mutation_scope["maximum_production_files_changed"] == 1
+    assert mutation_scope["allowed_production_file"] == "boltons/strutils.py"
+    assert mutation_scope["one_production_file_constraint_preserved"] is True
+
+    assert row["production_file_hashes_before"]["boltons/__init__.py"] == (
+        row["production_file_hashes_after"]["boltons/__init__.py"]
+    )
+    assert row["production_file_hashes_before"]["boltons/iterutils.py"] == (
+        row["production_file_hashes_after"]["boltons/iterutils.py"]
+    )
+    assert row["production_file_hashes_before"]["boltons/strutils.py"] != (
+        row["production_file_hashes_after"]["boltons/strutils.py"]
+    )
+    assert (tmp_path / "boltons" / "__init__.py").read_bytes() == (
+        production_before["boltons/__init__.py"]
+    )
+    assert (tmp_path / "boltons" / "iterutils.py").read_bytes() == (
+        production_before["boltons/iterutils.py"]
+    )
+    assert (tmp_path / "boltons" / "strutils.py").read_bytes() != (
+        production_before["boltons/strutils.py"]
+    )
+
+    source_after = row["candidate_after"]["source_file"]
+    assert source_after["status"] == "materialized"
+    assert source_after["target_function"] == "slugify"
+    assert source_after["touched_region"]["region_name"] == (
+        "max_length_signature_and_truncation"
+    )
+    assert source_after["candidate_after"]["ast_parse_ok"] is True
+    assert source_after["candidate_after"]["signature_preserved"] is False
+    assert source_after["candidate_after"]["import_changes"] == {
+        "added": [],
+        "removed": [],
+    }
+    assert "max_length=None" in source_after["candidate_after"]["diff"]
+    assert "ret = ret[:max_length]" in source_after["candidate_after"]["diff"]
+    assert "ret.rstrip(trim_delim)" in source_after["candidate_after"]["diff"]
+
+    test_after = row["candidate_after"]["test_file"]
+    assert test_after["planned_changed_files"] == ["tests/test_strutils.py"]
+    assert test_after["wrote_file"] is True
+    assert test_after["test_case_ids"] == [
+        "boltons_slugify_max_length_truncates_final_slug",
+        "boltons_slugify_max_length_strips_configured_delimiter",
+        "boltons_slugify_max_length_default_behavior_unchanged",
+    ]
+    assert test_after["ast_delta"]["ast_parse_ok"] is True
+    assert test_after["sha256_before"] != test_after["sha256_after"]
+    assert "test_slugify_max_length_avoids_trailing_delimiter" in test_after["diff"]
+
+    namespace: dict[str, object] = {}
+    exec(
+        (tmp_path / "boltons" / "strutils.py").read_text(encoding="utf-8"),
+        namespace,
+    )
+    slugify = namespace["slugify"]
+
+    assert slugify("First post! Hi!!!!~1    ", max_length=10) == "first_post"
+    assert slugify("alpha beta gamma", delim="-", max_length=6) == "alpha"
+    assert slugify("alpha beta gamma", delim="--", max_length=12) == "alpha--beta"
+    assert slugify("First post! Hi!!!!~1    ") == "first_post_hi_1"
+    assert slugify("MiXeD Case Input", delim="-", lower=False) == "MiXeD-Case-Input"
+    assert slugify("Kurt G\u00f6del's pretty cool.", ascii=True) == (
+        b"kurt_goedel_s_pretty_cool"
+    )
+
+    test_after_text = (tmp_path / "tests" / "test_strutils.py").read_text(
+        encoding="utf-8"
+    )
+    assert test_after_text != test_before
+    assert "from boltons import strutils" in test_after_text
+    assert "test_slugify_max_length_default_behavior_is_unchanged" in test_after_text
 
 
 def test_materializer_blocks_when_source_region_is_not_expressible(

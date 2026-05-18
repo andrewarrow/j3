@@ -37,29 +37,12 @@ This is the live coordinator board. Keep it current and compact.
   `h11-feature-bytesify-object-message`, and
   `humanize-feature-naturalsize-zero-format` when candidate validation passes,
   writes stay inside task allowlists, only the task's single allowlisted
-  production file changes, and hidden-like checks do not disagree. Boltons
-  remains an explicit source-feature materialization blocker.
+  production file changes, and hidden-like checks do not disagree. `MAT-006`
+  now materializes and live-validates the remaining held-out boltons one-file
+  source feature candidate; the full one-file feature gate still needs to be
+  rescored before expanding guarded opt-in scope to boltons.
 
 ## Active Tasks
-
-### MAT-006: Remaining Boltons One-File Feature Materializer
-
-- Status: active
-- Owner: worker Popper (`019e3bdd-9514-7162-a0bc-6fdad4543684`).
-- Write scope: `j3/real_repo_feature_materializer.py`,
-  `tests/test_real_repo_feature_materializer.py`, optional compact docs,
-  generated live artifacts under `/tmp`, and plan updates.
-- Target task: `boltons-feature-slugify-max-length`.
-- Acceptance: attempt the pinned `boltons` one-file feature task with a
-  bounded source-region or typed-builder action; preserve the one-production-
-  file constraint for `boltons/strutils.py`; add focused validation coverage
-  in `tests/test_strutils.py`; record candidate-after diff/AST metadata,
-  mutation scope, validation result, runtime, zero hosted usage, and a
-  machine-readable blocker if the edit cannot be expressed.
-- Required checks: focused feature materializer tests, `pytest
-  tests/test_plan_consistency.py -q`, `git diff --check`, and live targeted
-  validation when a candidate is materialized.
-
 
 ## Ready Queue
 
@@ -94,6 +77,18 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `MAT-006`: materialized the remaining held-out one-file source feature
+  candidate for `boltons-feature-slugify-max-length`. The feature materializer
+  now supports a bounded `slugify` source-region edit in `boltons/strutils.py`,
+  appends focused validation coverage to `tests/test_strutils.py` for
+  `max_length` truncation, avoiding trailing configured delimiters, and
+  unchanged behavior without `max_length`, records source/test candidate-after
+  diff and AST metadata, production hashes, mutation scope, validation runtime,
+  and zero hosted usage. Live validation against the pinned boltons checkout
+  under `/tmp/j3-mat-006-live.3KJIUG/boltons` passed with
+  `45 passed in 0.03s`, changing only `boltons/strutils.py` among production
+  files and writing nothing outside the task allowlist. Candidate record:
+  `/tmp/j3-mat-006-live.3KJIUG/candidate.json`.
 - `DATA-006`: added issue/PR replay batch preflight, JSONL summary, Markdown
   report support, and command runtime/stage accounting. The live first batch
   under `/tmp/j3-data-006-live-preflight` ran the first three

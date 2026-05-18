@@ -1678,3 +1678,37 @@ meaningful work. Do not replace this file with a daily reset.
   recipe work before attempting issue/PR candidate edits.
 - Blockers: none for DATA-006; the Requests row records a validation recipe
   blocker, not a candidate-edit failure.
+
+### 2026-05-18 - MAT-006 - boltons one-file feature materializer
+
+- Owner: worker Popper (`019e3bdd-9514-7162-a0bc-6fdad4543684`)
+- Files changed: `j3/real_repo_feature_materializer.py`,
+  `tests/test_real_repo_feature_materializer.py`, `plans/active.md`,
+  `plans/backlog.md`, `plans/progress.md`
+- Tests: `python -m py_compile j3/real_repo_feature_materializer.py
+  tests/test_real_repo_feature_materializer.py` -> passed; `pytest
+  tests/test_real_repo_feature_materializer.py -q` -> 6 passed; `pytest
+  tests/test_real_repo_feature_shadow_score.py -q` -> 3 passed; live setup
+  against `/tmp/j3-mat-006-live.3KJIUG/boltons` with `python -m pip install
+  -e . -r requirements-test.txt` -> passed; live materializer run wrote
+  `/tmp/j3-mat-006-live.3KJIUG/candidate.json`, changed only
+  `boltons/strutils.py` among production files, and validation
+  `python -m pytest tests/test_strutils.py -q` -> 45 passed in 0.03s;
+  `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check`
+  -> passed.
+- Result: materialized `boltons-feature-slugify-max-length` with one bounded
+  source-region action in `boltons/strutils.py` and focused coverage in
+  `tests/test_strutils.py` for `max_length` truncation, avoiding trailing
+  configured delimiters including a multi-character delimiter, unchanged
+  default behavior without `max_length`, and the existing public
+  `from boltons import strutils` import style. The candidate record includes
+  source and test candidate-after diff/AST metadata, production hashes for
+  boltons package files before/after, mutation scope, validation runtime
+  0.248 seconds, zero writes outside the task allowlist, residual label
+  `candidate_validation_passed`, and zero hosted usage.
+- Commit: pending
+- Push: pending
+- Next: rerun the one-file feature shadow scorer so boltons is counted with
+  h11, iniconfig, and humanize before expanding guarded one-file feature
+  opt-in scope.
+- Blockers: none

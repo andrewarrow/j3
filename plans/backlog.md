@@ -617,7 +617,7 @@ Long-term target:
 
 ### MAT-006: Remaining boltons one-file feature materialization probe
 
-- Status: active
+- Status: done
 - Why: the one-file feature gate now passes at `3/4`, but the remaining
   `boltons-feature-slugify-max-length` blocker is the direct test of whether
   the source-region approach can finish the held-out feature ladder instead of
@@ -633,6 +633,14 @@ Long-term target:
   blocker if the edit cannot be expressed.
 - Tests: focused materializer tests, plan consistency, `git diff --check`, and
   live targeted validation when a candidate is materialized.
+- Completion note: materialized `boltons-feature-slugify-max-length` with one
+  bounded `slugify` source-region edit in `boltons/strutils.py` and focused
+  coverage in `tests/test_strutils.py` for `max_length` truncation, avoiding a
+  trailing configured delimiter, unchanged default behavior without
+  `max_length`, and the existing public `from boltons import strutils` import
+  style. Live validation against the pinned boltons checkout passed with
+  `45 passed in 0.03s`; candidate record:
+  `/tmp/j3-mat-006-live.3KJIUG/candidate.json`.
 
 ### KNOW-001: Local knowledge inventory for the wedge
 
@@ -983,9 +991,7 @@ Long-term target:
 
 Start with these unless fresh evidence changes the order:
 
-1. `MAT-006`: attempt the remaining held-out boltons one-file feature
-   materializer.
-2. `KNOW-003`: broaden knowledge-use attribution where scoring shows missing
+1. `KNOW-003`: broaden knowledge-use attribution where scoring shows missing
    local-knowledge evidence.
-3. `MODEL-006`: candidate-after or AST-delta observation for ranking evidence.
-4. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.
+2. `MODEL-006`: candidate-after or AST-delta observation for ranking evidence.
+3. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.

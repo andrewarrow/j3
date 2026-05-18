@@ -50,6 +50,15 @@ CLICK_REPLAY_REQUIRED_KNOWLEDGE_CATEGORIES = (
     "click_empty_string_check_semantics",
     "third_party_semver_version_reproduction",
 )
+REQUESTS_REPLAY_REQUIRED_KNOWLEDGE_CATEGORIES = (
+    "repo_changed_file_context",
+    "focused_validation_recipe",
+    "requests_prepare_body_stream_detection",
+    "requests_getattr_file_wrapper_behavior",
+    "requests_redirect_rewind_body_semantics",
+    "requests_pytest_httpbin_fixture_setup",
+    "requests_ranking_changed_test_patterns",
+)
 
 
 def extract_local_knowledge_records(
@@ -255,6 +264,104 @@ def build_click_replay_local_knowledge_records(
             prompt_source=prompt_source,
             changed_files=changed_files,
             validation_command=validation_command,
+            links=links,
+        )
+    )
+
+    for record in records:
+        validate_local_knowledge_record(record)
+    return tuple(records)
+
+
+def build_requests_replay_local_knowledge_records(
+    repo: Path,
+    replay_row: Mapping[str, object],
+    *,
+    retrieved_at: str = "unknown",
+    setup_commands: Sequence[str] = (),
+    baseline_validation_commands: Sequence[str] = (),
+) -> tuple[dict[str, object], ...]:
+    """Build Requests issue/PR replay knowledge rows from a repo-before checkout."""
+
+    resolved = repo.expanduser().resolve()
+    if not resolved.is_dir():
+        raise FileNotFoundError(f"repo does not exist: {resolved}")
+
+    replay_id = _required_str(replay_row, "id")
+    if replay_id != "psf__requests-issue-7432-pr-7433":
+        raise ValueError(f"unsupported Requests replay row: {replay_id}")
+
+    repo_id = _required_str(replay_row, "repo")
+    repo_before_ref = _mapping(replay_row.get("repo_before_ref"), field="repo_before_ref")
+    accepted_change = _mapping(replay_row.get("accepted_change"), field="accepted_change")
+    validation = _mapping(replay_row.get("validation"), field="validation")
+    provenance_license = _mapping(
+        replay_row.get("provenance_license"),
+        field="provenance_license",
+    )
+    prompt_source = _mapping(replay_row.get("prompt_source"), field="prompt_source")
+    stable_split = _mapping(replay_row.get("stable_split"), field="stable_split")
+
+    changed_files = _string_sequence(accepted_change.get("changed_files", ()))
+    split = _required_str(stable_split, "split")
+    _validate_split(split)
+    focused_validation_command = (
+        ".venv/bin/python -m pytest tests/test_requests.py -q "
+        "-k 'prepare_body or rewind_body or getattr_proxy_stream_follows_redirect'"
+    )
+
+    context = {
+        "repo_id": repo_id,
+        "repo_ref": _required_str(repo_before_ref, "sha"),
+        "split": split,
+        "repo_url": _optional_str(provenance_license.get("repository_url")),
+        "license": _optional_str(provenance_license.get("license_spdx")),
+        "retrieved_at": retrieved_at,
+    }
+    links = {
+        "task_ids": [replay_id],
+        "outcome_ids": ["DATA-008/psf__requests-issue-7432-pr-7433"],
+        "residual_labels": ["local_knowledge_gap"],
+    }
+    task = {
+        "id": replay_id,
+        "task_type": "issue_pr_replay",
+        "allowed_write_paths": changed_files,
+        "public_validation_commands": [focused_validation_command],
+        "expected_failure_modes": ["local_knowledge_gap"],
+        "required_knowledge_categories": REQUESTS_REPLAY_REQUIRED_KNOWLEDGE_CATEGORIES,
+    }
+
+    records: list[dict[str, object]] = [
+        _requests_changed_file_context_record(
+            resolved,
+            context,
+            replay_row=replay_row,
+            changed_files=changed_files,
+            links=links,
+        )
+    ]
+    records.extend(
+        _validation_recipe_records(
+            resolved,
+            context,
+            setup_commands=setup_commands,
+            baseline_validation_commands=baseline_validation_commands,
+            tasks=[task],
+            outcome_ids_by_task={
+                replay_id: ["DATA-008/psf__requests-issue-7432-pr-7433"]
+            },
+        )
+    )
+    records.extend(
+        _requests_library_idiom_records(
+            resolved,
+            context,
+            replay_id=replay_id,
+            prompt_source=prompt_source,
+            changed_files=changed_files,
+            manifest_validation_command=_required_str(validation, "command"),
+            focused_validation_command=focused_validation_command,
             links=links,
         )
     )
@@ -597,6 +704,39 @@ def _click_repo_test_pattern_record(
     )
 
 
+def _requests_changed_file_context_record(
+    repo: Path,
+    context: Mapping[str, str],
+    *,
+    replay_row: Mapping[str, object],
+    changed_files: Sequence[str],
+    links: Mapping[str, Sequence[str]],
+) -> dict[str, object]:
+    source_path = _requests_source_path(changed_files)
+    test_path = _requests_test_path(changed_files)
+    data = {
+        "knowledge_category": "repo_changed_file_context",
+        "replay_id": _required_str(replay_row, "id"),
+        "issue_pr": _issue_pr_summary(replay_row),
+        "changed_files": list(changed_files),
+        "source_files": [source_path],
+        "test_files": [test_path],
+        "source_context": _requests_models_semantic_context(repo / source_path),
+        "test_context": _requests_test_semantic_context(repo / test_path),
+    }
+    return _source_record(
+        record_type="repo_changed_file_context_record",
+        repo=repo,
+        context=context,
+        source_kind="accepted_diff_context",
+        source_path=",".join(changed_files),
+        provenance_paths=[*changed_files, "task:" + _required_str(replay_row, "id")],
+        confidence="observed",
+        links=links,
+        data=data,
+    )
+
+
 def _click_library_idiom_records(
     repo: Path,
     context: Mapping[str, str],
@@ -729,6 +869,181 @@ def _click_library_idiom_records(
             source_kind="repo_file",
             source_path=source_path if row["knowledge_category"].startswith("click_") else test_path,
             provenance_paths=[source_path, test_path, "task:" + replay_id],
+            confidence="observed",
+            links=links,
+            data=row,
+        )
+        for row in rows
+    )
+
+
+def _requests_library_idiom_records(
+    repo: Path,
+    context: Mapping[str, str],
+    *,
+    replay_id: str,
+    prompt_source: Mapping[str, object],
+    changed_files: Sequence[str],
+    manifest_validation_command: str,
+    focused_validation_command: str,
+    links: Mapping[str, Sequence[str]],
+) -> tuple[dict[str, object], ...]:
+    source_path = _requests_source_path(changed_files)
+    test_path = _requests_test_path(changed_files)
+    models_context = _requests_models_semantic_context(repo / source_path)
+    test_context = _requests_test_semantic_context(repo / test_path)
+    redirect_context = _requests_redirect_semantic_context(repo)
+    fixture_context = _requests_fixture_context(repo)
+    base = {
+        "replay_id": replay_id,
+        "target_source_path": source_path,
+        "target_test_path": test_path,
+        "manifest_validation_command": manifest_validation_command,
+        "focused_validation_command": focused_validation_command,
+    }
+    rows = [
+        {
+            **base,
+            "knowledge_category": "requests_prepare_body_stream_detection",
+            "problem_label": "prepare_body_attribute_proxy_stream_detection",
+            "behavior_facts": [
+                "PreparedRequest.prepare_body separates streamed bodies from raw data before encoding parameters.",
+                "Streamed bodies get super_len detection, body position recording through tell, and either Content-Length or Transfer-Encoding.",
+                "The accepted fix treats objects that expose __iter__ via attribute proxying as streams, not form data.",
+            ],
+            "source_evidence": {
+                "methods": _pick_methods(
+                    models_context,
+                    ["PreparedRequest.prepare_body", "PreparedRequest.prepare_content_length"],
+                ),
+                "stream_detection": models_context["stream_detection"],
+                "body_position_tracking": models_context["body_position_tracking"],
+                "header_effects": models_context["header_effects"],
+            },
+        },
+        {
+            **base,
+            "knowledge_category": "requests_getattr_file_wrapper_behavior",
+            "problem_label": "file_wrapper_dunder_iter_via_getattr",
+            "behavior_facts": [
+                "The issue-specific wrapper delegates file methods through __getattr__ instead of defining __iter__ directly.",
+                "A candidate should cover this with a local wrapper around io.BytesIO and a 307 redirect POST.",
+                "The future accepted test is named test_getattr_proxy_stream_follows_redirect.",
+            ],
+            "issue_pr": {
+                "issue_number": prompt_source.get("issue_number"),
+                "issue_title": prompt_source.get("issue_title"),
+                "issue_url": prompt_source.get("issue_url"),
+                "pull_request_number": prompt_source.get("pull_request_number"),
+                "pull_request_url": prompt_source.get("pull_request_url"),
+            },
+            "source_evidence": {
+                "stream_detection": models_context["stream_detection"],
+            },
+            "test_evidence": {
+                "expected_new_test": {
+                    "name": "test_getattr_proxy_stream_follows_redirect",
+                    "fixture_arguments": ["httpbin"],
+                    "local_class_methods": ["__getattr__"],
+                    "request_shape": "requests.post(httpbin('redirect-to?url=/post&status_code=307'), data=AttrProxy())",
+                    "assertion_shape": "response json data echoes uploaded bytes",
+                },
+                "neighbor_rewind_tests": test_context["rewind_tests"],
+            },
+        },
+        {
+            **base,
+            "knowledge_category": "requests_redirect_rewind_body_semantics",
+            "problem_label": "redirect_reuses_stream_body_after_307",
+            "behavior_facts": [
+                "Redirect handling rewinds a prepared request body only when _body_position is not None and a length or transfer header marks the body as resendable.",
+                "requests.utils.rewind_body seeks to the recorded integer body position and raises UnrewindableBodyError otherwise.",
+                "The issue regression is observable on redirects because a misclassified wrapper is not rewound and resent as the original bytes.",
+            ],
+            "source_evidence": redirect_context,
+            "test_evidence": {
+                "manual_redirect_tests": test_context["redirect_tests"],
+                "rewind_tests": test_context["rewind_tests"],
+            },
+        },
+        {
+            **base,
+            "knowledge_category": "requests_pytest_httpbin_fixture_setup",
+            "problem_label": "pytest_httpbin_fixture_dependencies",
+            "behavior_facts": [
+                "Requests wraps pytest-httpbin's httpbin and httpbin_secure fixtures in tests/conftest.py to normalize URL construction.",
+                "DATA-008 proved the focused replay recipe needs pytest-httpbin==2.1.0, httpbin~=0.10.0, and trustme in the checkout venv.",
+                "The focused command uses a -k selector so repo-before passes and the accepted issue-specific test is selected once present.",
+            ],
+            "fixture_evidence": fixture_context,
+            "validation_evidence": {
+                "setup_command": (
+                    "python -m venv .venv && .venv/bin/python -m pip install -q "
+                    "--upgrade pip setuptools wheel && .venv/bin/python -m pip "
+                    "install -q -e . pytest pytest-httpbin==2.1.0 httpbin~=0.10.0 trustme"
+                ),
+                "focused_command": focused_validation_command,
+                "repo_before_smoke": "5 passed, 333 deselected",
+                "accepted_merge_smoke": "6 passed, 333 deselected",
+            },
+        },
+        {
+            **base,
+            "knowledge_category": "requests_ranking_changed_test_patterns",
+            "problem_label": "rank_stream_predicate_and_redirect_test_over_encoding_decoys",
+            "behavior_facts": [
+                "Ranking should prefer a bounded prepare_body stream predicate edit in src/requests/models.py.",
+                "Changed tests live in TestRequests near rewind_body coverage and use requests.post plus httpbin redirect helpers.",
+                "Candidates that only edit form encoding, content length for raw bytes, or broad redirect history behavior miss the issue-specific wrapper shape.",
+            ],
+            "source_evidence": {
+                "accepted_change_shape": {
+                    "source_file": source_path,
+                    "changed_function": "PreparedRequest.prepare_body",
+                    "predicate_keywords": ["Iterable", "hasattr", "__iter__", "Mapping"],
+                },
+                "method_calls": _pick_methods(
+                    models_context,
+                    ["PreparedRequest.prepare_body"],
+                ),
+            },
+            "test_evidence": {
+                "target_test_class": "TestRequests",
+                "future_test_name": "test_getattr_proxy_stream_follows_redirect",
+                "neighboring_test_names": [
+                    item["name"] for item in test_context["rewind_tests"]
+                ],
+                "httpbin_fixture_required": "httpbin",
+            },
+        },
+    ]
+    return tuple(
+        _source_record(
+            record_type=(
+                "pytest_pattern_record"
+                if row["knowledge_category"] == "requests_ranking_changed_test_patterns"
+                else "library_idiom_record"
+            ),
+            repo=repo,
+            context=context,
+            source_kind="repo_file",
+            source_path=(
+                "tests/conftest.py"
+                if row["knowledge_category"] == "requests_pytest_httpbin_fixture_setup"
+                else test_path
+                if row["knowledge_category"] in {
+                    "requests_getattr_file_wrapper_behavior",
+                    "requests_ranking_changed_test_patterns",
+                }
+                else source_path
+            ),
+            provenance_paths=_requests_idiom_provenance_paths(
+                repo,
+                row["knowledge_category"],
+                source_path=source_path,
+                test_path=test_path,
+                replay_id=replay_id,
+            ),
             confidence="observed",
             links=links,
             data=row,
@@ -1320,6 +1635,390 @@ def _click_test_path(changed_files: Sequence[str]) -> str:
     raise ValueError("Click replay row must include a test changed file")
 
 
+def _requests_source_path(changed_files: Sequence[str]) -> str:
+    for path in changed_files:
+        if path == "src/requests/models.py":
+            return path
+    for path in changed_files:
+        if path.endswith(".py") and not _is_test_file(path):
+            return path
+    raise ValueError("Requests replay row must include a source changed file")
+
+
+def _requests_test_path(changed_files: Sequence[str]) -> str:
+    for path in changed_files:
+        if path == "tests/test_requests.py":
+            return path
+    for path in changed_files:
+        if _is_test_file(path):
+            return path
+    raise ValueError("Requests replay row must include a test changed file")
+
+
+def _requests_models_semantic_context(path: Path) -> dict[str, object]:
+    tree = _parse_python(path)
+    methods = _class_method_contexts(tree, class_names={"PreparedRequest"})
+    prepare_body = _class_method_node(
+        tree,
+        class_name="PreparedRequest",
+        method_name="prepare_body",
+    )
+    return {
+        "methods": methods,
+        "stream_detection": _requests_stream_detection_shape(prepare_body),
+        "body_position_tracking": _body_position_shape(prepare_body),
+        "header_effects": _header_assignment_shape(prepare_body),
+        "sha256": _sha256_bytes(path.read_bytes()),
+    }
+
+
+def _requests_test_semantic_context(path: Path) -> dict[str, object]:
+    tree = _parse_python(path)
+    functions = _class_functions(tree, class_name="TestRequests")
+    relevant = [
+        node
+        for node in functions
+        if any(
+            token in node.name
+            for token in (
+                "prepare_body",
+                "rewind_body",
+                "redirect",
+                "stream",
+                "transfer_enc",
+            )
+        )
+    ]
+    return {
+        "test_class": {
+            "name": "TestRequests",
+            "method_count": len(functions),
+            "line_span": _class_line_span(tree, "TestRequests"),
+        },
+        "rewind_tests": [
+            _function_test_shape(node)
+            for node in relevant
+            if "rewind_body" in node.name or "prepare_body" in node.name
+        ][:12],
+        "redirect_tests": [
+            _function_test_shape(node)
+            for node in relevant
+            if "redirect" in node.name or "transfer_enc" in node.name
+        ][:12],
+        "imports": list(_imports(tree))[:30],
+        "sha256": _sha256_bytes(path.read_bytes()),
+    }
+
+
+def _requests_redirect_semantic_context(repo: Path) -> dict[str, object]:
+    sessions_path = repo / "src/requests/sessions.py"
+    utils_path = repo / "src/requests/utils.py"
+    sessions_tree = _parse_python(sessions_path)
+    utils_tree = _parse_python(utils_path)
+    resolve_redirects = _class_method_node(
+        sessions_tree,
+        class_name="SessionRedirectMixin",
+        method_name="resolve_redirects",
+    ) or _class_method_node(
+        sessions_tree,
+        class_name="Session",
+        method_name="resolve_redirects",
+    )
+    rewind_body = _module_function_node(utils_tree, "rewind_body")
+    return {
+        "resolve_redirects": _function_semantic_shape(resolve_redirects),
+        "rewind_body": _function_semantic_shape(rewind_body),
+        "rewindable_predicate": _rewindable_predicate_shape(resolve_redirects),
+        "rewind_body_error_paths": _raise_call_shapes(rewind_body),
+        "provenance_files": [
+            {
+                "path": "src/requests/sessions.py",
+                "sha256": _sha256_bytes(sessions_path.read_bytes()),
+            },
+            {
+                "path": "src/requests/utils.py",
+                "sha256": _sha256_bytes(utils_path.read_bytes()),
+            },
+        ],
+    }
+
+
+def _requests_fixture_context(repo: Path) -> dict[str, object]:
+    pyproject = _load_pyproject(repo)
+    conftest_path = repo / "tests/conftest.py"
+    conftest_tree = _parse_python(conftest_path)
+    fixtures = [
+        _function_semantic_shape(node)
+        for node in ast.walk(conftest_tree)
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+        and any(_call_name(decorator).endswith("fixture") for decorator in node.decorator_list)
+    ]
+    optional_dependencies = _nested_mapping(
+        pyproject,
+        ("project", "optional-dependencies"),
+    )
+    dev_dependencies = _string_sequence(optional_dependencies.get("dev", ()))
+    return {
+        "config_files": [
+            path
+            for path in ("pyproject.toml", "requirements-dev.txt", "tests/conftest.py")
+            if (repo / path).exists()
+        ],
+        "dev_dependencies": [
+            dependency
+            for dependency in dev_dependencies
+            if any(name in dependency for name in ("pytest-httpbin", "httpbin", "trustme"))
+        ],
+        "conftest_fixtures": fixtures,
+        "conftest_imports": list(_imports(conftest_tree)),
+        "conftest_sha256": _sha256_bytes(conftest_path.read_bytes()),
+    }
+
+
+def _requests_idiom_provenance_paths(
+    repo: Path,
+    knowledge_category: object,
+    *,
+    source_path: str,
+    test_path: str,
+    replay_id: str,
+) -> list[str]:
+    paths = [source_path, test_path, "task:" + replay_id]
+    if knowledge_category == "requests_redirect_rewind_body_semantics":
+        paths.extend(["src/requests/sessions.py", "src/requests/utils.py"])
+    if knowledge_category == "requests_pytest_httpbin_fixture_setup":
+        paths.extend(
+            path
+            for path in ("pyproject.toml", "requirements-dev.txt", "tests/conftest.py")
+            if (repo / path).exists()
+        )
+    return paths
+
+
+def _class_method_contexts(
+    tree: ast.Module,
+    *,
+    class_names: set[str],
+) -> dict[str, dict[str, object]]:
+    methods: dict[str, dict[str, object]] = {}
+    for class_node in [node for node in tree.body if isinstance(node, ast.ClassDef)]:
+        if class_node.name not in class_names:
+            continue
+        for child in class_node.body:
+            if not isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                continue
+            key = f"{class_node.name}.{child.name}"
+            methods[key] = _function_semantic_shape(child)
+    return methods
+
+
+def _class_method_node(
+    tree: ast.Module,
+    *,
+    class_name: str,
+    method_name: str,
+) -> ast.FunctionDef | ast.AsyncFunctionDef | None:
+    for node in tree.body:
+        if not isinstance(node, ast.ClassDef) or node.name != class_name:
+            continue
+        for child in node.body:
+            if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)) and (
+                child.name == method_name
+            ):
+                return child
+    return None
+
+
+def _class_functions(
+    tree: ast.Module,
+    *,
+    class_name: str,
+) -> list[ast.FunctionDef | ast.AsyncFunctionDef]:
+    for node in tree.body:
+        if isinstance(node, ast.ClassDef) and node.name == class_name:
+            return [
+                child
+                for child in node.body
+                if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef))
+            ]
+    return []
+
+
+def _class_line_span(tree: ast.Module, class_name: str) -> list[int] | None:
+    for node in tree.body:
+        if isinstance(node, ast.ClassDef) and node.name == class_name:
+            return [node.lineno, node.end_lineno or node.lineno]
+    return None
+
+
+def _module_function_node(
+    tree: ast.Module,
+    name: str,
+) -> ast.FunctionDef | ast.AsyncFunctionDef | None:
+    for node in tree.body:
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == name:
+            return node
+    return None
+
+
+def _function_semantic_shape(
+    node: ast.FunctionDef | ast.AsyncFunctionDef | None,
+) -> dict[str, object]:
+    if node is None:
+        return {}
+    return {
+        "name": node.name,
+        "line_span": [node.lineno, node.end_lineno or node.lineno],
+        "argument_names": [arg.arg for arg in node.args.args],
+        "call_names": sorted(_calls_in_node(node))[:40],
+        "mentions": sorted(_names_in_node(node))[:60],
+    }
+
+
+def _requests_stream_detection_shape(
+    node: ast.FunctionDef | ast.AsyncFunctionDef | None,
+) -> dict[str, object]:
+    if node is None:
+        return {}
+    iterable_checks = []
+    for child in ast.walk(node):
+        if isinstance(child, ast.If) and "data" in _names_in_node(child.test):
+            test_names = sorted(_names_in_node(child.test))
+            if "Iterable" in test_names or "__iter__" in _string_constants(child.test):
+                iterable_checks.append(
+                    {
+                        "line": child.lineno,
+                        "test_shape": type(child.test).__name__,
+                        "test_names": test_names,
+                        "call_names": sorted(_calls_in_node(child.test)),
+                        "string_literals": sorted(_string_constants(child.test)),
+                    }
+                )
+    return {
+        "iterable_checks": iterable_checks,
+        "has_iterable_isinstance_check": any(
+            "isinstance" in item["call_names"] and "Iterable" in item["test_names"]
+            for item in iterable_checks
+        ),
+        "has_dunder_iter_hasattr_check": any(
+            "hasattr" in item["call_names"] and "__iter__" in item["string_literals"]
+            for item in iterable_checks
+        ),
+        "excluded_raw_data_types": sorted(
+            _names_in_node(node) & {"str", "bytes", "list", "tuple", "Mapping"}
+        ),
+    }
+
+
+def _body_position_shape(
+    node: ast.FunctionDef | ast.AsyncFunctionDef | None,
+) -> dict[str, object]:
+    if node is None:
+        return {}
+    assignments = []
+    for child in ast.walk(node):
+        if not isinstance(child, ast.Assign):
+            continue
+        targets = [
+            _call_name(target)
+            for target in child.targets
+            if _call_name(target).endswith("_body_position")
+        ]
+        if targets:
+            assignments.append(
+                {
+                    "line": child.lineno,
+                    "targets": targets,
+                    "value_calls": sorted(_calls_in_node(child.value)),
+                    "value_names": sorted(_names_in_node(child.value)),
+                }
+            )
+    return {
+        "assignments": assignments,
+        "getattr_tell_lines": [
+            child.lineno
+            for child in ast.walk(node)
+            if isinstance(child, ast.Call)
+            and _call_name(child.func) == "getattr"
+            and "tell" in _string_constants(child)
+        ],
+    }
+
+
+def _header_assignment_shape(
+    node: ast.FunctionDef | ast.AsyncFunctionDef | None,
+) -> list[dict[str, object]]:
+    if node is None:
+        return []
+    rows = []
+    for child in ast.walk(node):
+        if not isinstance(child, ast.Assign):
+            continue
+        for target in child.targets:
+            if not isinstance(target, ast.Subscript):
+                continue
+            target_name = _call_name(target.value)
+            if target_name != "self.headers":
+                continue
+            rows.append(
+                {
+                    "line": child.lineno,
+                    "key_literals": sorted(_string_constants(target.slice)),
+                    "value_calls": sorted(_calls_in_node(child.value)),
+                    "value_names": sorted(_names_in_node(child.value)),
+                }
+            )
+    return rows
+
+
+def _rewindable_predicate_shape(
+    node: ast.FunctionDef | ast.AsyncFunctionDef | None,
+) -> list[dict[str, object]]:
+    if node is None:
+        return []
+    rows = []
+    for child in ast.walk(node):
+        if isinstance(child, ast.Assign) and any(
+            _call_name(target) == "rewindable" for target in child.targets
+        ):
+            rows.append(
+                {
+                    "line": child.lineno,
+                    "value_shape": type(child.value).__name__,
+                    "names": sorted(_names_in_node(child.value)),
+                    "string_literals": sorted(_string_constants(child.value)),
+                    "call_names": sorted(_calls_in_node(child.value)),
+                }
+            )
+    return rows
+
+
+def _raise_call_shapes(
+    node: ast.FunctionDef | ast.AsyncFunctionDef | None,
+) -> list[dict[str, object]]:
+    if node is None:
+        return []
+    rows = []
+    for child in ast.walk(node):
+        if isinstance(child, ast.Raise) and child.exc is not None:
+            rows.append(
+                {
+                    "line": child.lineno,
+                    "exception": _call_name(child.exc),
+                    "string_literals": sorted(_string_constants(child.exc)),
+                }
+            )
+    return rows
+
+
+def _string_constants(node: ast.AST) -> set[str]:
+    return {
+        child.value
+        for child in ast.walk(node)
+        if isinstance(child, ast.Constant) and isinstance(child.value, str)
+    }
+
+
 def _pytest_config_list(
     pyproject: Mapping[str, object],
     pytest_ini: Mapping[str, str],
@@ -1619,6 +2318,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         description="Emit compact local-knowledge records from local sources."
     )
     parser.add_argument("--click-replay-row", help="issue/PR replay row id to extract")
+    parser.add_argument("--requests-replay-row", help="issue/PR replay row id to extract")
     parser.add_argument(
         "--manifest",
         type=Path,
@@ -1642,11 +2342,24 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
+    if args.click_replay_row and args.requests_replay_row:
+        parser.error("choose only one replay extraction mode")
     if args.click_replay_row:
         if args.repo is None:
             parser.error("--repo is required with --click-replay-row")
         row = _load_manifest_replay_row(args.manifest, args.click_replay_row)
         records = build_click_replay_local_knowledge_records(
+            args.repo,
+            row,
+            retrieved_at=args.retrieved_at,
+            setup_commands=args.setup_command,
+            baseline_validation_commands=args.baseline_validation_command,
+        )
+    elif args.requests_replay_row:
+        if args.repo is None:
+            parser.error("--repo is required with --requests-replay-row")
+        row = _load_manifest_replay_row(args.manifest, args.requests_replay_row)
+        records = build_requests_replay_local_knowledge_records(
             args.repo,
             row,
             retrieved_at=args.retrieved_at,

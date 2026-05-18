@@ -1942,3 +1942,38 @@ meaningful work. Do not replace this file with a daily reset.
   KNOW-004, and KNOW-005 evidence to decide which first-batch replay rows are
   ready for candidate generation.
 - Blockers: none for Click #2745 prompt/spec normalization.
+
+### 2026-05-18 - KNOW-005 - Requests replay local knowledge records
+
+- Owner: worker Gibbs (`019e3c08-c0ad-7141-900f-ae92ca2b8620`).
+- Files changed: `j3/local_knowledge.py`, `tests/test_local_knowledge.py`,
+  `plans/active.md`, `plans/backlog.md`, `plans/progress.md`.
+- Tests: `python -m py_compile j3/local_knowledge.py
+  tests/test_local_knowledge.py` -> passed; `pytest
+  tests/test_local_knowledge.py -q` -> 5 passed; CLI smoke `python -m
+  j3.local_knowledge --requests-replay-row
+  psf__requests-issue-7432-pr-7433 --manifest
+  examples/issue_pr_mini_replay/manifest.json --repo
+  /tmp/j3-data-008-live/repos/psf__requests-psf__requests-issue-7432-pr-7433-0b401c76b6e8
+  --out /tmp/j3-know-005-requests-records.jsonl --retrieved-at
+  2026-05-18T00:00:00Z --setup-command "python -m venv .venv &&
+  .venv/bin/python -m pip install -q --upgrade pip setuptools wheel &&
+  .venv/bin/python -m pip install -q -e . pytest pytest-httpbin==2.1.0
+  httpbin~=0.10.0 trustme" --baseline-validation-command
+  ".venv/bin/python -m pytest tests/test_requests.py -q -k 'prepare_body or
+  rewind_body or getattr_proxy_stream_follows_redirect'"` -> passed with 7
+  records; `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff
+  --check` -> passed.
+- Result: added compact Requests replay knowledge support without hosted LLM
+  use and without candidate source edits. The emitted record categories are
+  changed-file context, focused validation recipe, prepare-body stream
+  detection, `__getattr__` file-wrapper behavior, redirect/rewind body
+  semantics, pytest-httpbin/trustme fixture setup, and ranking-relevant
+  changed/test patterns, all linked to the replay row with provenance hashes
+  and split `train`.
+- Commit: pending.
+- Push: pending.
+- Next: `DATA-010` can use DATA-008 validation, DATA-009 prompt/spec, and
+  KNOW-005 Requests knowledge to evaluate candidate-readiness for the first
+  issue/PR replay rows.
+- Blockers: none.

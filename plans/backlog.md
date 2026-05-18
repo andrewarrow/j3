@@ -709,7 +709,7 @@ Long-term target:
 
 ### KNOW-005: Requests replay local knowledge records
 
-- Status: active
+- Status: done
 - Why: `DATA-008` turned the Requests replay blocker from validation setup into
   candidate readiness. The row still needs local knowledge for body
   preparation, file-wrapper behavior, redirect rewind semantics, repo tests,
@@ -726,6 +726,13 @@ Long-term target:
   no hosted LLM use.
 - Tests: focused local-knowledge tests, plan consistency, `git diff --check`,
   and a smoke command or fixture proving records can be emitted.
+- Completion note: added a narrow Requests #7432/#7433 extractor and CLI smoke
+  path. The live DATA-008 repo-before checkout emitted seven compact records:
+  changed-file context, focused validation recipe, prepare-body stream
+  detection, `__getattr__` file-wrapper behavior, redirect/rewind body
+  semantics, pytest-httpbin/trustme fixture setup, and ranking-relevant
+  changed/test patterns. Smoke artifact:
+  `/tmp/j3-know-005-requests-records.jsonl`.
 
 ### WEDGE-001: Product wedge decision
 

@@ -7,8 +7,10 @@ import pytest
 
 from j3.local_knowledge import (
     CLICK_REPLAY_REQUIRED_KNOWLEDGE_CATEGORIES,
+    REQUESTS_REPLAY_REQUIRED_KNOWLEDGE_CATEGORIES,
     build_click_replay_local_knowledge_records,
     build_knowledge_use_record,
+    build_requests_replay_local_knowledge_records,
     extract_local_knowledge_records,
     validate_local_knowledge_record,
     write_local_knowledge_jsonl,
@@ -300,6 +302,281 @@ def _click_replay_row() -> dict[str, object]:
     }
 
 
+def _write_requests_replay_repo(repo: Path) -> None:
+    (repo / "src" / "requests").mkdir(parents=True)
+    (repo / "tests").mkdir()
+    (repo / "pyproject.toml").write_text(
+        """[project]
+name = "requests"
+version = "3.0.0"
+
+[project.optional-dependencies]
+dev = ["pytest-httpbin==2.1.0", "httpbin~=0.10.0", "trustme"]
+""",
+        encoding="utf-8",
+    )
+    (repo / "requirements-dev.txt").write_text(
+        "pytest-httpbin==2.1.0\nhttpbin~=0.10.0\ntrustme\n",
+        encoding="utf-8",
+    )
+    (repo / "src" / "requests" / "__init__.py").write_text(
+        """from .models import Request
+from .sessions import Session
+""",
+        encoding="utf-8",
+    )
+    (repo / "src" / "requests" / "models.py").write_text(
+        '''from __future__ import annotations
+
+from collections.abc import Iterable, Mapping
+
+
+basestring = (str, bytes)
+
+
+def builtin_str(value):
+    return str(value)
+
+
+def super_len(value):
+    return len(value)
+
+
+class Request:
+    pass
+
+
+class PreparedRequest:
+    def __init__(self):
+        self.headers = {}
+        self._body_position = None
+        self.body = None
+
+    def _encode_files(self, files, data):
+        return b"", "multipart/form-data"
+
+    def _encode_params(self, data):
+        return data
+
+    def prepare_body(self, data, files, json=None):
+        body = None
+        content_type = None
+        if isinstance(data, Iterable) and not isinstance(data, (str, bytes, list, tuple, Mapping)):
+            try:
+                length = super_len(data)
+            except (TypeError, AttributeError, OSError):
+                length = None
+            body = data
+            if getattr(body, "tell", None) is not None:
+                try:
+                    self._body_position = body.tell()
+                except OSError:
+                    self._body_position = object()
+            if length:
+                self.headers["Content-Length"] = builtin_str(length)
+            else:
+                self.headers["Transfer-Encoding"] = "chunked"
+        else:
+            raw_data = data
+            if files:
+                body, content_type = self._encode_files(files, raw_data)
+            elif raw_data:
+                body = self._encode_params(raw_data)
+                if isinstance(data, basestring) or hasattr(data, "read"):
+                    content_type = None
+                else:
+                    content_type = "application/x-www-form-urlencoded"
+            self.prepare_content_length(body)
+            if content_type and ("content-type" not in self.headers):
+                self.headers["Content-Type"] = content_type
+        self.body = body
+
+    def prepare_content_length(self, body):
+        if body is not None:
+            length = super_len(body)
+            if length:
+                self.headers["Content-Length"] = builtin_str(length)
+''',
+        encoding="utf-8",
+    )
+    (repo / "src" / "requests" / "sessions.py").write_text(
+        '''from __future__ import annotations
+
+from .utils import rewind_body
+
+
+class SessionRedirectMixin:
+    def resolve_redirects(self, resp, prepared_request):
+        headers = prepared_request.headers
+        rewindable = prepared_request._body_position is not None and (
+            "Content-Length" in headers or "Transfer-Encoding" in headers
+        )
+        if rewindable:
+            rewind_body(prepared_request)
+        return prepared_request
+
+
+class Session(SessionRedirectMixin):
+    pass
+''',
+        encoding="utf-8",
+    )
+    (repo / "src" / "requests" / "utils.py").write_text(
+        '''from __future__ import annotations
+
+integer_types = (int,)
+
+
+class UnrewindableBodyError(Exception):
+    pass
+
+
+def rewind_body(prepared_request):
+    body_seek = getattr(prepared_request.body, "seek", None)
+    if body_seek is not None and isinstance(prepared_request._body_position, integer_types):
+        try:
+            body_seek(prepared_request._body_position)
+        except OSError:
+            raise UnrewindableBodyError(
+                "An error occurred when rewinding request body for redirect."
+            )
+    else:
+        raise UnrewindableBodyError("Unable to rewind request body for redirect.")
+''',
+        encoding="utf-8",
+    )
+    (repo / "tests" / "conftest.py").write_text(
+        '''from __future__ import annotations
+
+import pytest
+
+
+def prepare_url(value):
+    httpbin_url = value.url.rstrip("/") + "/"
+
+    def inner(*suffix):
+        return httpbin_url + "/".join(suffix)
+
+    return inner
+
+
+@pytest.fixture(autouse=True)
+def clean_proxy_environ(monkeypatch):
+    monkeypatch.delenv("http_proxy", raising=False)
+
+
+@pytest.fixture
+def httpbin(httpbin):
+    return prepare_url(httpbin)
+
+
+@pytest.fixture
+def httpbin_secure(httpbin_secure):
+    return prepare_url(httpbin_secure)
+''',
+        encoding="utf-8",
+    )
+    (repo / "tests" / "test_requests.py").write_text(
+        '''from __future__ import annotations
+
+import io
+
+import pytest
+
+import requests
+from requests.utils import UnrewindableBodyError
+
+
+class TestRequests:
+    def test_manual_redirect_with_partial_body_read(self, httpbin):
+        response = requests.Session().resolve_redirects
+        assert response is not None
+
+    def test_prepare_body_position_non_stream(self):
+        prep = requests.PreparedRequest()
+        prep.prepare_body(b"the data", None)
+        assert prep._body_position is None
+
+    def test_rewind_body(self):
+        data = io.BytesIO(b"the data")
+        prep = requests.PreparedRequest()
+        prep.prepare_body(data, None)
+        assert prep._body_position == 0
+        requests.utils.rewind_body(prep)
+
+    def test_rewind_body_failed_seek(self):
+        class BadFileObj:
+            def tell(self):
+                return 0
+
+            def seek(self, pos, whence=0):
+                raise OSError()
+
+            def __iter__(self):
+                return iter(())
+
+        prep = requests.PreparedRequest()
+        prep.prepare_body(BadFileObj(), None)
+        with pytest.raises(UnrewindableBodyError):
+            requests.utils.rewind_body(prep)
+''',
+        encoding="utf-8",
+    )
+
+
+def _requests_replay_row() -> dict[str, object]:
+    return {
+        "id": "psf__requests-issue-7432-pr-7433",
+        "repo": "psf/requests",
+        "prompt_text": (
+            "Fix issue #7432: `prepare_body` stream detection regression. "
+            "Accepted PR #7433 fixes stream detection for `__getattr__`-based file wrappers."
+        ),
+        "prompt_source": {
+            "issue_number": 7432,
+            "issue_title": "`prepare_body` stream detection regression",
+            "issue_url": "https://github.com/psf/requests/issues/7432",
+            "pull_request_number": 7433,
+            "pull_request_title": (
+                "Fix `prepare_body` stream detection for `__getattr__`-based file wrappers"
+            ),
+            "pull_request_url": "https://github.com/psf/requests/pull/7433",
+        },
+        "repo_before_ref": {
+            "provider": "github",
+            "repo": "psf/requests",
+            "branch": "main",
+            "sha": "0b401c76b6e80a4eecf3c690085b2553f6e261ca",
+        },
+        "accepted_change": {
+            "kind": "merged_pull_request",
+            "pull_request_url": "https://github.com/psf/requests/pull/7433",
+            "diff_url": "https://github.com/psf/requests/pull/7433.diff",
+            "merge_commit_sha": "6404f345e562d962abe6700a1c357ec1e7e18232",
+            "changed_files": ["src/requests/models.py", "tests/test_requests.py"],
+        },
+        "validation": {
+            "command": "pytest tests/test_requests.py -q",
+            "source": "inferred_from_changed_tests",
+            "availability": "partial",
+        },
+        "provenance_license": {
+            "repository_url": "https://github.com/psf/requests",
+            "license_spdx": "Apache-2.0",
+        },
+        "stable_split": {
+            "method": "sha256(id) % 100",
+            "bucket": 42,
+            "split": "train",
+        },
+        "initial_residual_labels": [
+            "prompt_spec_parsing_gap",
+            "local_knowledge_gap",
+            "ranking_gap",
+        ],
+    }
+
+
 def test_extract_local_knowledge_records_emit_wedge_record_families(
     tmp_path: Path,
 ) -> None:
@@ -544,6 +821,100 @@ def test_click_replay_local_knowledge_records_cover_required_categories(
     assert semver["issue_pr"]["issue_number"] == 3298  # type: ignore[index]
 
     output = write_local_knowledge_jsonl(first, tmp_path / "click_records.jsonl")
+    output_text = output.read_text(encoding="utf-8")
+    assert "raw_source" not in output_text
+    assert "source_text" not in output_text
+
+
+def test_requests_replay_local_knowledge_records_cover_required_categories(
+    tmp_path: Path,
+) -> None:
+    _write_requests_replay_repo(tmp_path)
+
+    records = build_requests_replay_local_knowledge_records(
+        tmp_path,
+        _requests_replay_row(),
+        retrieved_at="2026-05-18T00:00:00Z",
+        setup_commands=[
+            "python -m venv .venv && .venv/bin/python -m pip install -q "
+            "--upgrade pip setuptools wheel && .venv/bin/python -m pip "
+            "install -q -e . pytest pytest-httpbin==2.1.0 httpbin~=0.10.0 trustme"
+        ],
+        baseline_validation_commands=[
+            ".venv/bin/python -m pytest tests/test_requests.py -q "
+            "-k 'prepare_body or rewind_body or getattr_proxy_stream_follows_redirect'"
+        ],
+    )
+
+    assert {record["record_type"] for record in records} == {
+        "library_idiom_record",
+        "pytest_pattern_record",
+        "repo_changed_file_context_record",
+        "validation_recipe_record",
+    }
+
+    categories = {
+        record["data"]["knowledge_category"]  # type: ignore[index]
+        for record in records
+        if isinstance(record["data"], dict)
+    }
+    assert categories == set(REQUESTS_REPLAY_REQUIRED_KNOWLEDGE_CATEGORIES)
+
+    for record in records:
+        validate_local_knowledge_record(record)
+        assert record["split"] == "train"
+        assert record["links"]["task_ids"] == ["psf__requests-issue-7432-pr-7433"]
+        assert record["links"]["residual_labels"] == ["local_knowledge_gap"]
+
+    by_category = {
+        record["data"]["knowledge_category"]: record
+        for record in records
+        if isinstance(record["data"], dict)
+    }
+    changed_context = by_category["repo_changed_file_context"]["data"]
+    assert isinstance(changed_context, dict)
+    assert changed_context["changed_files"] == [
+        "src/requests/models.py",
+        "tests/test_requests.py",
+    ]
+
+    validation = by_category["focused_validation_recipe"]["data"]
+    assert isinstance(validation, dict)
+    assert validation["focused_commands"] == [
+        ".venv/bin/python -m pytest tests/test_requests.py -q "
+        "-k 'prepare_body or rewind_body or getattr_proxy_stream_follows_redirect'"
+    ]
+    assert validation["required_knowledge_categories"] == list(
+        REQUESTS_REPLAY_REQUIRED_KNOWLEDGE_CATEGORIES
+    )
+
+    stream = by_category["requests_prepare_body_stream_detection"]["data"]
+    assert isinstance(stream, dict)
+    stream_evidence = stream["source_evidence"]
+    assert isinstance(stream_evidence, dict)
+    stream_detection = stream_evidence["stream_detection"]
+    assert isinstance(stream_detection, dict)
+    assert stream_detection["has_iterable_isinstance_check"] is True
+    assert stream_detection["has_dunder_iter_hasattr_check"] is False
+
+    wrapper = by_category["requests_getattr_file_wrapper_behavior"]["data"]
+    assert isinstance(wrapper, dict)
+    assert (
+        wrapper["test_evidence"]["expected_new_test"]["name"]  # type: ignore[index]
+        == "test_getattr_proxy_stream_follows_redirect"
+    )
+
+    fixtures = by_category["requests_pytest_httpbin_fixture_setup"]["data"]
+    assert isinstance(fixtures, dict)
+    fixture_evidence = fixtures["fixture_evidence"]
+    assert isinstance(fixture_evidence, dict)
+    assert fixture_evidence["dev_dependencies"] == [
+        "pytest-httpbin==2.1.0",
+        "httpbin~=0.10.0",
+        "trustme",
+    ]
+
+    output = write_local_knowledge_jsonl(records, tmp_path / "requests_records.jsonl")
     output_text = output.read_text(encoding="utf-8")
     assert "raw_source" not in output_text
     assert "source_text" not in output_text

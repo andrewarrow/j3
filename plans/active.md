@@ -44,27 +44,8 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-### `KNOW-005`: Requests replay local knowledge records
-
-- Status: active
-- Owner: worker Gibbs (`019e3c08-c0ad-7141-900f-ae92ca2b8620`).
-- Why: `DATA-008` removed the validation setup blocker for
-  `psf__requests-issue-7432-pr-7433`, but candidate generation still needs
-  local knowledge for request body preparation, stream detection, redirects,
-  repo tests, and the hermetic validation recipe.
-- Write scope: `j3/local_knowledge.py`, `tests/test_local_knowledge.py`,
-  optional compact report, generated outputs under `/tmp`, and plan updates.
-  Do not edit prompt/spec or issue/PR preflight modules.
-- Acceptance: emit compact, provenance-bearing local-knowledge records for the
-  Requests row: changed-file context for `src/requests/models.py` and
-  `tests/test_requests.py`, the DATA-008 focused validation recipe,
-  request-body preparation and stream-detection semantics,
-  `__getattr__`-based file-wrapper behavior, redirect/rewind body semantics,
-  pytest/httpbin fixture setup, and ranking-relevant changed/test patterns.
-  Add only the smallest schema extension needed. No hosted LLM use.
-- Tests: focused local-knowledge tests, `pytest
-  tests/test_plan_consistency.py -q`, `git diff --check`, and a smoke command
-  proving the records can be emitted.
+No active worker tasks are currently recorded. The coordinator should dispatch
+the next ready task unless a review or blocker prevents useful continuation.
 
 ## Ready Queue
 
@@ -101,6 +82,15 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `KNOW-005`: added a narrow Requests replay local-knowledge extractor and CLI
+  smoke path for `psf__requests-issue-7432-pr-7433`. The emitted records cover
+  changed-file context for `src/requests/models.py` and
+  `tests/test_requests.py`, the DATA-008 focused validation recipe,
+  `PreparedRequest.prepare_body` stream detection and body-position tracking,
+  `__getattr__`-based file-wrapper behavior, redirect/rewind semantics through
+  `resolve_redirects` and `rewind_body`, pytest-httpbin/trustme fixture setup,
+  and ranking-relevant source/test patterns. Smoke artifact:
+  `/tmp/j3-know-005-requests-records.jsonl`.
 - `DATA-009`: added machine-readable prompt/spec normalization for
   `pallets__click-issue-2745-pr-3364` without candidate source edits. The
   `issue_pr_prompt_spec` record captures the minimal reproduction, observed

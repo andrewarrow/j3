@@ -969,3 +969,28 @@ meaningful work. Do not replace this file with a daily reset.
   extend live baseline preflight to at least two more ladder repos before Gate A
   is claimed.
 - Blockers: none
+
+### 2026-05-18 - GS7-007 - Generic real-repo tests-only planner
+
+- Owner: worker Lagrange (`019e3b7d-1fb3-7741-bce8-3617790203ce`)
+- Files changed: `j3/real_repo_tests_planner.py`,
+  `tests/test_real_repo_tests_planner.py`, `plans/active.md`,
+  `plans/backlog.md`, `plans/progress.md`
+- Tests: `pytest tests/test_real_repo_tests_planner.py -q` -> 2 passed;
+  `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check` -> passed.
+- Result: added a non-mutating real-repo tests-only planner/candidate record
+  for the calibration `iniconfig-tests-parse-comments` task. The planner
+  inspects repo-state coverage and local knowledge records to select
+  `testing/test_iniconfig.py`, records `from iniconfig import IniConfig,
+  ParseError` import-style evidence, protects `src/iniconfig/__init__.py` with
+  before hashes, preserves production files in the mutation scope, emits the
+  targeted validation command, cites pytest layout/public API/validation/pytest
+  pattern knowledge, and blocks on `test_case_materialization_gap` instead of
+  pretending the task passes.
+- Commit: pending
+- Push: pending
+- Next: implement behavior-specific pytest case materialization for this
+  candidate surface, then rerun the REAL-003 tests-only shadow score with
+  generated candidates.
+- Blockers: `test_case_materialization_gap`

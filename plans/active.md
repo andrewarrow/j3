@@ -13,30 +13,13 @@ This is the live coordinator board. Keep it current and compact.
 - Current product gate stance: transition ranking remains shadow-only; the
   2026-05-18 `TRANS-001` full matrix and `TRANS-004` targeted subset decisions
   were `remain_shadow_only`. Tests-only wedge guarded opt-in also remains
-  blocked after `REAL-003` scored `pass@3 = 0/4` with no real-repo candidates.
-  `REAL-004` proved one live calibration preflight for `iniconfig`, but Gate A
-  still needs at least three repositories passing baseline validation.
+  blocked after `REAL-003` scored `pass@3 = 0/4`; `GS7-007` now produces a
+  calibration planner candidate, but it is blocked by
+  `test_case_materialization_gap` before candidate validation. `REAL-004`
+  proved one live calibration preflight for `iniconfig`, but Gate A still needs
+  at least three repositories passing baseline validation.
 
 ## Active Tasks
-
-### `GS7-007`: Generic real-repo tests-only planner
-
-- Status: active
-- Owner: worker Lagrange (`019e3b7d-1fb3-7741-bce8-3617790203ce`)
-- Started: 2026-05-18
-- Goal: attack the `REAL-003` `pass@3 = 0/4` residual by building the first
-  generic repo-state-aware tests-only planner for a real ladder task.
-- Write scope: a focused real-repo tests-only planner module/tests, optional
-  integration with local knowledge records, and plan updates.
-- Acceptance: for the `iniconfig-tests-parse-comments` calibration task,
-  inspect repo-state and local knowledge to select `testing/test_iniconfig.py`,
-  preserve production files, emit a structured tests-only candidate/action
-  record with target test file, import style evidence, validation command,
-  mutation scope, residual labels, and knowledge citations where available. If
-  behavior-specific pytest case materialization is not ready, emit that exact
-  blocker instead of pretending the task passes.
-- Tests: focused planner tests, `pytest tests/test_plan_consistency.py -q`, and
-  `git diff --check`.
 
 ## Ready Queue
 
@@ -70,6 +53,14 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `GS7-007`: added `j3/real_repo_tests_planner.py` and a synthetic
+  manifest-derived `iniconfig` checkout test. The planner consumes repo-state
+  coverage plus local knowledge records to select `testing/test_iniconfig.py`,
+  records import-style evidence from `from iniconfig import IniConfig,
+  ParseError`, protects `src/iniconfig/__init__.py` with before hashes, emits
+  the targeted validation command, cites pytest layout, public API, validation,
+  and pytest pattern knowledge, and honestly blocks on
+  `test_case_materialization_gap` instead of claiming a passing candidate.
 - `REAL-004`: added minimal `iniconfig` subset/CLI support for
   `j3.real_repo_preflight`, ran the live preflight against the pinned
   `pytest-dev/iniconfig` checkout, and recorded

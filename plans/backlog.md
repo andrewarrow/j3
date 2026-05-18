@@ -147,7 +147,7 @@ Long-term target:
 
 ### GS7-007: Generic real-repo tests-only planner
 
-- Status: active
+- Status: done
 - Why: `REAL-003` scored `pass@3 = 0/4` because the current tests-only builder
   only supports a root `slugify.py` fixture and cannot target real package/test
   layouts.
@@ -161,6 +161,13 @@ Long-term target:
   behavior-specific pytest case materialization is not ready, emit that exact
   blocker instead of pretending the task passes.
 - Tests: focused planner tests, plan consistency, and `git diff --check`.
+- Completion note: added a generic non-mutating planner/candidate record for
+  the calibration `iniconfig-tests-parse-comments` task. It consumes repo-state
+  coverage and local knowledge records to select `testing/test_iniconfig.py`,
+  records import-style evidence, validation command, mutation scope, protected
+  production hashes, residual labels, and knowledge citations, then blocks
+  honestly on `test_case_materialization_gap` because behavior-specific pytest
+  case materialization is not implemented yet.
 
 ## Workstream C: Prompt Corpus And Intent Data
 
@@ -547,9 +554,8 @@ Long-term target:
 
 Start with these unless fresh evidence changes the order:
 
-1. `GS7-007`: generic real-repo tests-only planner for the calibration task.
-2. `KNOW-003`: wire knowledge-use attribution into tests-only planning.
-3. Extend live baseline preflight to at least two more ladder repositories so
+1. `KNOW-003`: wire knowledge-use attribution into tests-only planning.
+2. Extend live baseline preflight to at least two more ladder repositories so
    Gate A can be assessed.
-4. `MODEL-006`: candidate-after or AST-delta observation for ranking evidence.
-5. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.
+3. `MODEL-006`: candidate-after or AST-delta observation for ranking evidence.
+4. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.

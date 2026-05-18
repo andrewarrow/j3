@@ -171,7 +171,7 @@ Long-term target:
 
 ### GS7-008: Materialize real-repo pytest cases for iniconfig
 
-- Status: active
+- Status: done
 - Why: `GS7-007` selected the correct test file and import style but stopped at
   `test_case_materialization_gap`; the next proof is whether j3 can materialize
   concrete pytest cases for a real repo calibration task.
@@ -186,6 +186,14 @@ Long-term target:
   of claiming a pass.
 - Tests: focused planner/materializer tests, plan consistency, and
   `git diff --check`.
+- Completion note: added narrow materialization for the calibration
+  `iniconfig-tests-parse-comments` task. The planner appends pytest cases for
+  comment-only lines, inline section comments, and duplicate key error
+  reporting to `testing/test_iniconfig.py`, records candidate-after diff/hash
+  metadata plus actual mutation scope, preserves production file hashes, cites
+  local knowledge, and leaves validation as an explicit deferred residual until
+  the selected command is run. A live cloned pinned checkout passed
+  `python -m pytest testing/test_iniconfig.py -q` with `54 passed in 0.03s`.
 
 ## Workstream C: Prompt Corpus And Intent Data
 

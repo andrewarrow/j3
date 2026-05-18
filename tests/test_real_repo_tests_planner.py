@@ -8,7 +8,7 @@ from j3.local_knowledge import (
     validate_local_knowledge_record,
 )
 from j3.real_repo_tests_planner import (
-    TEST_CASE_MATERIALIZATION_BLOCKER,
+    CANDIDATE_VALIDATION_DEFERRED,
     plan_real_repo_tests_only_candidate,
 )
 
@@ -54,15 +54,47 @@ pythonpath = ["src"]
 
 
 class ParseError(ValueError):
-    pass
+    def __init__(self, path: str, lineno: int, msg: str) -> None:
+        super().__init__(path, lineno, msg)
+        self.path = path
+        self.lineno = lineno
+        self.msg = msg
+
+    def __str__(self) -> str:
+        return f"{self.path}:{self.lineno + 1}: {self.msg}"
 
 
 class IniConfig:
-    def __init__(self, source: str) -> None:
+    def __init__(self, source: str, data: str | None = None) -> None:
         self.source = source
+        self.sections = _parse_sections(source, data) if data is not None else {}
 
     def __getitem__(self, name: str) -> str:
-        raise KeyError(name)
+        return self.sections[name]
+
+
+def _parse_sections(path: str, data: str) -> dict[str, dict[str, str]]:
+    sections: dict[str, dict[str, str]] = {}
+    current: str | None = None
+    for lineno, raw_line in enumerate(data.splitlines()):
+        line = raw_line.strip()
+        if not line or line[0] in "#;":
+            continue
+        if line.startswith("["):
+            section_line = line
+            for marker in "#;":
+                section_line = section_line.split(marker)[0].rstrip()
+            current = section_line[1:-1]
+            sections[current] = {}
+            continue
+        if current is None:
+            raise ParseError(path, lineno, "no section header defined")
+        name, value = line.split("=", 1)
+        key = name.strip()
+        if key in sections[current]:
+            raise ParseError(path, lineno, f"duplicate name {key!r}")
+        sections[current][key] = value.strip()
+    return sections
 """,
         encoding="utf-8",
     )
@@ -112,11 +144,15 @@ def _knowledge_records(
     )
 
 
-def test_real_repo_tests_planner_selects_iniconfig_test_file_and_blocks_cases(
+def test_real_repo_tests_planner_materializes_iniconfig_test_cases(
     tmp_path: Path,
 ) -> None:
     repo, task = _manifest_iniconfig_rows()
     _write_synthetic_iniconfig_checkout(tmp_path)
+    source_before = (tmp_path / "src" / "iniconfig" / "__init__.py").read_bytes()
+    test_before = (tmp_path / "testing" / "test_iniconfig.py").read_text(
+        encoding="utf-8"
+    )
     records = _knowledge_records(tmp_path, repo, task)
 
     candidate = plan_real_repo_tests_only_candidate(
@@ -133,22 +169,13 @@ def test_real_repo_tests_planner_selects_iniconfig_test_file_and_blocks_cases(
     assert row["action_family"] == "tests_only_existing_repo_pytest"
     assert row["repo_id"] == "iniconfig"
     assert row["task_id"] == "iniconfig-tests-parse-comments"
-    assert row["status"] == "blocked"
+    assert row["status"] == "materialized"
     assert row["target_test_file"] == "testing/test_iniconfig.py"
     assert row["validation_commands"] == [
         "python -m pytest testing/test_iniconfig.py -q"
     ]
-    assert row["residual_labels"] == [TEST_CASE_MATERIALIZATION_BLOCKER]
-    assert row["blockers"] == [
-        {
-            "field": "test_case_materialization",
-            "reason": TEST_CASE_MATERIALIZATION_BLOCKER,
-            "message": (
-                "repo-state test placement and import style are selected, but "
-                "behavior-specific pytest case materialization is not implemented"
-            ),
-        }
-    ]
+    assert row["residual_labels"] == [CANDIDATE_VALIDATION_DEFERRED]
+    assert row["blockers"] == []
 
     assert [action["kind"] for action in row["actions"]] == [
         "inspect_repo_state",
@@ -168,28 +195,72 @@ def test_real_repo_tests_planner_selects_iniconfig_test_file_and_blocks_cases(
     } <= set(select_test_file["payload"]["selection_sources"])
 
     mutation_scope = row["mutation_scope"]
-    assert mutation_scope == {
-        "mode": "tests_only",
-        "planned_write_files": ["testing/test_iniconfig.py"],
-        "files_changed": [],
-        "production_files": ["src/iniconfig/__init__.py"],
-        "production_files_changed": [],
-        "writes_outside_allowlist": [],
-        "production_files_must_remain_unchanged": True,
-    }
+    assert mutation_scope["mode"] == "tests_only"
+    assert mutation_scope["planned_write_files"] == ["testing/test_iniconfig.py"]
+    assert mutation_scope["files_changed"] == ["testing/test_iniconfig.py"]
+    assert mutation_scope["production_files"] == ["src/iniconfig/__init__.py"]
+    assert mutation_scope["production_files_changed"] == []
+    assert mutation_scope["writes_outside_allowlist"] == []
+    assert mutation_scope["production_files_must_remain_unchanged"] is True
+    assert mutation_scope["candidate_after"]["target_test_file"] == (
+        "testing/test_iniconfig.py"
+    )
+    assert mutation_scope["candidate_after"]["test_case_ids"] == [
+        "iniconfig_comment_only_lines",
+        "iniconfig_inline_section_comments",
+        "iniconfig_duplicate_key_reports_name",
+    ]
     assert row["production_files"] == ["src/iniconfig/__init__.py"]
     assert set(row["production_file_hashes_before"]) == {
         "src/iniconfig/__init__.py"
     }
+    assert (tmp_path / "src" / "iniconfig" / "__init__.py").read_bytes() == (
+        source_before
+    )
 
     validation = row["validation"]
     assert validation == {
         "status": "not_run",
         "commands": ["python -m pytest testing/test_iniconfig.py -q"],
         "selected_command": "python -m pytest testing/test_iniconfig.py -q",
-        "not_run_reason": TEST_CASE_MATERIALIZATION_BLOCKER,
+        "not_run_reason": CANDIDATE_VALIDATION_DEFERRED,
         "candidate_validation_network_allowed": False,
     }
+
+    candidate_after = row["candidate_after"]
+    assert candidate_after["available"] is True
+    assert candidate_after["wrote_file"] is True
+    assert candidate_after["planned_changed_files"] == ["testing/test_iniconfig.py"]
+    assert candidate_after["test_functions"] == [
+        "test_comment_only_lines_are_ignored_between_entries",
+        "test_inline_section_comments_are_stripped",
+        "test_duplicate_key_error_reports_offending_key",
+    ]
+    assert candidate_after["sha256_before"] != candidate_after["sha256_after"]
+    assert candidate_after["diff_summary"]["added_line_count"] > 0
+
+    materialize_action = row["actions"][3]
+    assert materialize_action["payload"]["status"] == "materialized"
+    assert [
+        case["id"] for case in materialize_action["payload"]["cases"]
+    ] == candidate_after["test_case_ids"]
+
+    test_after = (tmp_path / "testing" / "test_iniconfig.py").read_text(
+        encoding="utf-8"
+    )
+    assert test_after != test_before
+    assert "test_comment_only_lines_are_ignored_between_entries" in test_after
+    assert "test_inline_section_comments_are_stripped" in test_after
+    assert "test_duplicate_key_error_reports_offending_key" in test_after
+
+    rerow = plan_real_repo_tests_only_candidate(
+        tmp_path,
+        repo=repo,
+        task=task,
+        local_knowledge_records=records,
+    ).to_record()
+    assert rerow["status"] == "already_applied"
+    assert rerow["mutation_scope"]["files_changed"] == []
 
 
 def test_real_repo_tests_planner_cites_import_style_and_knowledge_use(
@@ -269,8 +340,8 @@ def test_real_repo_tests_planner_cites_import_style_and_knowledge_use(
         "tests_only_existing_repo_pytest"
     )
     assert knowledge_use["data"]["validation_result"] == {
-        "status": "blocked",
+        "status": "materialized",
         "command": "python -m pytest testing/test_iniconfig.py -q",
-        "reason": TEST_CASE_MATERIALIZATION_BLOCKER,
+        "reason": CANDIDATE_VALIDATION_DEFERRED,
     }
     assert knowledge_use["data"]["cited_purposes"] == citations

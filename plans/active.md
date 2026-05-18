@@ -13,34 +13,15 @@ This is the live coordinator board. Keep it current and compact.
 - Current product gate stance: transition ranking remains shadow-only; the
   2026-05-18 `TRANS-001` full matrix and `TRANS-004` targeted subset decisions
   were `remain_shadow_only`. Tests-only wedge guarded opt-in also remains
-  blocked after `REAL-003` scored `pass@3 = 0/4`; `GS7-007` now produces a
-  calibration planner candidate, but it is blocked by
-  `test_case_materialization_gap` before candidate validation. `REAL-005`
-  extends live baseline preflight to `h11` and `humanize`, so Gate A now has
-  three baseline-passing repositories when combined with `REAL-004`
-  `iniconfig`.
+  blocked after `REAL-003` scored `pass@3 = 0/4`; `GS7-008` now materializes
+  and live-validates the `iniconfig` calibration candidate, but the full
+  tests-only shadow score has not been rerun. `REAL-005` extends live baseline
+  preflight to `h11` and `humanize`, so Gate A now has three
+  baseline-passing repositories when combined with `REAL-004` `iniconfig`.
 
 ## Active Tasks
 
-### `GS7-008`: Materialize real-repo pytest cases for iniconfig
-
-- Status: active
-- Owner: worker Ampere (`019e3b88-2a6d-7b12-beff-78d036b82178`)
-- Started: 2026-05-18
-- Goal: close the `GS7-007` `test_case_materialization_gap` for the
-  `iniconfig-tests-parse-comments` calibration task without broadening to
-  arbitrary real-repo edits.
-- Write scope: `j3/real_repo_tests_planner.py`,
-  `tests/test_real_repo_tests_planner.py`, optional generated outputs under
-  `/tmp`, and plan updates.
-- Acceptance: materialize behavior-specific pytest cases into
-  `testing/test_iniconfig.py` for comment-only lines, inline section comments,
-  and duplicate keys; preserve production files; emit candidate-after mutation
-  scope, validation command, knowledge citations, and residual labels. If the
-  live pinned repo reveals incompatible APIs, record that exact blocker instead
-  of claiming a pass.
-- Tests: focused planner/materializer tests,
-  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+No active worker tasks are recorded after `GS7-008` and `REAL-005` completed.
 
 ## Ready Queue
 
@@ -74,6 +55,14 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `GS7-008`: materialized the `iniconfig-tests-parse-comments` calibration
+  candidate into `testing/test_iniconfig.py` with pytest cases for
+  comment-only lines, inline section comments, and duplicate key error
+  reporting. The candidate record now includes candidate-after diff/hash
+  metadata, actual mutation scope, validation command, knowledge citations,
+  residual labels, and protected production hashes. Live validation against a
+  cloned pinned checkout under `/tmp/j3-gs7-008-iniconfig.TdMlTU/iniconfig`
+  passed with `54 passed in 0.03s`, changing only `testing/test_iniconfig.py`.
 - `REAL-005`: ran live baseline preflight for held-out `h11` and `humanize`.
   Checkout, setup, baseline validation, and allowed-write preflight checks all
   passed for 4 task rows in 8.047 seconds with `blocker_label = none`; JSONL is

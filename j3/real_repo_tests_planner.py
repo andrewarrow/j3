@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import difflib
 import hashlib
 import json
 from dataclasses import dataclass, field
@@ -20,6 +21,8 @@ REAL_REPO_TESTS_CANDIDATE_SCHEMA_VERSION = "real-repo-tests-candidate-v1"
 REAL_REPO_TESTS_CANDIDATE_KIND = "real_repo_tests_only_candidate"
 REAL_REPO_TESTS_ACTION_FAMILY = "tests_only_existing_repo_pytest"
 TEST_CASE_MATERIALIZATION_BLOCKER = "test_case_materialization_gap"
+INICONFIG_PARSE_COMMENTS_TASK_ID = "iniconfig-tests-parse-comments"
+CANDIDATE_VALIDATION_DEFERRED = "candidate_validation_deferred"
 
 
 class RealRepoTestsPlannerError(ValueError):
@@ -88,6 +91,7 @@ class RealRepoTestsCandidate:
     repo_state_evidence: dict[str, object] = field(default_factory=dict)
     import_style_evidence: dict[str, object] = field(default_factory=dict)
     mutation_scope: dict[str, object] = field(default_factory=dict)
+    candidate_after: dict[str, object] = field(default_factory=dict)
     validation: dict[str, object] = field(default_factory=dict)
     knowledge_citations: dict[str, list[str]] = field(default_factory=dict)
     knowledge_use_record: dict[str, object] | None = None
@@ -119,6 +123,7 @@ class RealRepoTestsCandidate:
             "repo_state_evidence": _json_copy(self.repo_state_evidence),
             "import_style_evidence": _json_copy(self.import_style_evidence),
             "mutation_scope": _json_copy(self.mutation_scope),
+            "candidate_after": _json_copy(self.candidate_after),
             "validation": _json_copy(self.validation),
             "knowledge_citations": {
                 purpose: list(record_ids)
@@ -141,13 +146,15 @@ def plan_real_repo_tests_only_candidate(
     repo: Mapping[str, object],
     task: Mapping[str, object],
     local_knowledge_records: Sequence[Mapping[str, object]] = (),
+    write: bool = True,
 ) -> RealRepoTestsCandidate:
-    """Plan a non-mutating tests-only candidate from repo state and knowledge.
+    """Plan and optionally materialize a tests-only candidate from repo state.
 
-    This first generic real-repo planner intentionally stops before behavior-
-    specific pytest case materialization. The candidate is useful because it
-    proves the planner can select the local test file and import style without
-    editing production files, then emits a precise materialization blocker.
+    This slice remains deliberately narrow. It can materialize pytest cases for
+    the calibration ``iniconfig-tests-parse-comments`` task after selecting the
+    local test file and import style from repo-state and local-knowledge
+    evidence. Other real-repo tests-only tasks still receive an explicit
+    materialization blocker instead of a repo-specific guess.
     """
 
     resolved_repo = repo_path.expanduser().resolve()
@@ -230,36 +237,83 @@ def plan_real_repo_tests_only_candidate(
         _validation_command_for_target(validation_commands, target_test_file)
         or validation_commands[0]
     )
-    residual_labels = [TEST_CASE_MATERIALIZATION_BLOCKER]
+    materialization = _materialize_pytest_cases_for_task(
+        resolved_repo,
+        repo_id=repo_id,
+        task_id=task_id,
+        target_test_file=target_test_file,
+        import_style_evidence=import_style_evidence,
+        write=write,
+    )
+    files_changed = _string_sequence(
+        materialization["files_changed"],
+        field="materialization.files_changed",
+    )
+    candidate_after = _mapping(
+        materialization["candidate_after"],
+        field="materialization.candidate_after",
+    )
+    production_hashes_after = _file_hashes(resolved_repo, production_files)
+    production_changed = [
+        path
+        for path in production_files
+        if production_hashes.get(path) != production_hashes_after.get(path)
+    ]
+
+    blockers: list[dict[str, str]] = []
+    materialization_blocker = materialization.get("blocker")
+    if materialization_blocker is not None:
+        blockers.append(dict(_mapping(materialization_blocker, field="blocker")))
+    if production_changed:
+        blockers.append(
+            {
+                "field": "production_files",
+                "reason": "production_file_modified",
+                "message": "tests-only materialization changed a production file",
+            }
+        )
+
+    residual_labels: list[str] = []
+    if blockers:
+        residual_labels.extend(blocker["reason"] for blocker in blockers)
+    else:
+        residual_labels.append(CANDIDATE_VALIDATION_DEFERRED)
     if not citations:
         residual_labels.append("knowledge_not_used")
 
-    blocker = {
-        "field": "test_case_materialization",
-        "reason": TEST_CASE_MATERIALIZATION_BLOCKER,
-        "message": (
-            "repo-state test placement and import style are selected, but "
-            "behavior-specific pytest case materialization is not implemented"
-        ),
-    }
+    status = str(materialization["status"])
+    if blockers:
+        status = "blocked"
+    validation_not_run_reason = (
+        residual_labels[0] if residual_labels else CANDIDATE_VALIDATION_DEFERRED
+    )
     validation = {
         "status": "not_run",
         "commands": list(validation_commands),
         "selected_command": selected_validation_command,
-        "not_run_reason": TEST_CASE_MATERIALIZATION_BLOCKER,
+        "not_run_reason": validation_not_run_reason,
         "candidate_validation_network_allowed": False,
     }
     mutation_scope = {
         "mode": "tests_only",
         "planned_write_files": [target_test_file],
-        "files_changed": [],
+        "files_changed": list(files_changed),
         "production_files": list(production_files),
-        "production_files_changed": [],
+        "production_files_changed": production_changed,
         "writes_outside_allowlist": _paths_outside_allowlist(
-            [target_test_file],
+            files_changed,
             allowed_write_paths,
         ),
         "production_files_must_remain_unchanged": True,
+        "candidate_after": {
+            "target_test_file": target_test_file,
+            "test_case_ids": list(candidate_after.get("test_case_ids", [])),
+            "sha256_before": candidate_after.get("sha256_before"),
+            "sha256_after": candidate_after.get("sha256_after"),
+            "planned_changed_files": list(
+                candidate_after.get("planned_changed_files", [])
+            ),
+        },
     }
 
     candidate_id = _candidate_id(
@@ -269,6 +323,10 @@ def plan_real_repo_tests_only_candidate(
         target_test_file=target_test_file,
         validation_command=selected_validation_command,
         citations=citations,
+        test_case_ids=_string_sequence(
+            candidate_after.get("test_case_ids", []),
+            field="candidate_after.test_case_ids",
+        ),
     )
     retrieved_record_ids = _unique(
         [record_id for record_ids in citations.values() for record_id in record_ids]
@@ -281,9 +339,9 @@ def plan_real_repo_tests_only_candidate(
             retrieved_record_ids=retrieved_record_ids,
             action_family=REAL_REPO_TESTS_ACTION_FAMILY,
             validation_result={
-                "status": "blocked",
+                "status": status,
                 "command": selected_validation_command,
-                "reason": TEST_CASE_MATERIALIZATION_BLOCKER,
+                "reason": validation_not_run_reason,
             },
             split=repo_split,
             residual_labels=residual_labels,
@@ -315,10 +373,13 @@ def plan_real_repo_tests_only_candidate(
             RealRepoTestsActionKind.MATERIALIZE_PYTEST_CASES,
             target=target_test_file,
             payload={
-                "status": "blocked",
-                "blocker": TEST_CASE_MATERIALIZATION_BLOCKER,
+                "status": status,
+                "test_framework": "pytest",
+                "cases": _json_copy(materialization["cases"]),
+                "blocker": materialization.get("blocker"),
                 "write_policy": "append_or_refine_test_file_only",
                 "production_files_must_remain_unchanged": True,
+                "candidate_after": _json_copy(candidate_after),
             },
         ),
         RealRepoTestsAction(
@@ -327,7 +388,7 @@ def plan_real_repo_tests_only_candidate(
                 "commands": list(validation_commands),
                 "selected_command": selected_validation_command,
                 "status": "not_run",
-                "not_run_reason": TEST_CASE_MATERIALIZATION_BLOCKER,
+                "not_run_reason": validation_not_run_reason,
             },
         ),
     ]
@@ -340,7 +401,7 @@ def plan_real_repo_tests_only_candidate(
         task_id=task_id,
         task_type=task_type,
         prompt=prompt,
-        status="blocked",
+        status=status,
         target_test_file=target_test_file,
         validation_commands=list(validation_commands),
         allowed_write_paths=list(allowed_write_paths),
@@ -359,10 +420,11 @@ def plan_real_repo_tests_only_candidate(
         },
         import_style_evidence=import_style_evidence,
         mutation_scope=mutation_scope,
+        candidate_after=dict(candidate_after),
         validation=validation,
         knowledge_citations=citations,
         knowledge_use_record=knowledge_use_record,
-        blockers=[blocker],
+        blockers=blockers,
         residual_labels=residual_labels,
     )
 
@@ -371,6 +433,262 @@ def blocker_from_error(error: RealRepoTestsPlannerError) -> dict[str, str]:
     """Return a JSON-compatible planner blocker."""
 
     return dict(error.blocker)
+
+
+def _materialize_pytest_cases_for_task(
+    repo: Path,
+    *,
+    repo_id: str,
+    task_id: str,
+    target_test_file: str,
+    import_style_evidence: Mapping[str, object],
+    write: bool,
+) -> dict[str, object]:
+    if repo_id != "iniconfig" or task_id != INICONFIG_PARSE_COMMENTS_TASK_ID:
+        blocker = {
+            "field": "test_case_materialization",
+            "reason": TEST_CASE_MATERIALIZATION_BLOCKER,
+            "message": (
+                "behavior-specific pytest case materialization is only "
+                "implemented for iniconfig-tests-parse-comments"
+            ),
+        }
+        return _blocked_materialization(target_test_file, blocker)
+
+    api_blocker = _iniconfig_api_blocker(import_style_evidence)
+    if api_blocker is not None:
+        return _blocked_materialization(target_test_file, api_blocker)
+
+    target_path = _repo_path(repo, target_test_file)
+    before_text = (
+        target_path.read_text(encoding="utf-8") if target_path.exists() else ""
+    )
+    after_text = _merge_iniconfig_parse_comments_tests(before_text)
+    planned_changed_files = [target_test_file] if after_text != before_text else []
+    if write and planned_changed_files:
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        target_path.write_text(after_text, encoding="utf-8")
+
+    status = "already_applied"
+    files_changed: list[str] = []
+    if planned_changed_files:
+        status = "materialized" if write else "planned"
+        files_changed = list(planned_changed_files) if write else []
+
+    return {
+        "status": status,
+        "files_changed": files_changed,
+        "cases": _iniconfig_parse_comments_case_records(),
+        "candidate_after": _candidate_after_record(
+            target_test_file=target_test_file,
+            before_text=before_text,
+            after_text=after_text,
+            planned_changed_files=planned_changed_files,
+            wrote_file=write and bool(planned_changed_files),
+        ),
+    }
+
+
+def _blocked_materialization(
+    target_test_file: str,
+    blocker: Mapping[str, str],
+) -> dict[str, object]:
+    return {
+        "status": "blocked",
+        "files_changed": [],
+        "cases": [],
+        "blocker": dict(blocker),
+        "candidate_after": {
+            "target_test_file": target_test_file,
+            "available": False,
+            "test_case_ids": [],
+            "planned_changed_files": [],
+            "wrote_file": False,
+            "not_available_reason": blocker["reason"],
+        },
+    }
+
+
+def _iniconfig_api_blocker(
+    import_style_evidence: Mapping[str, object],
+) -> dict[str, str] | None:
+    selected = {
+        (str(item.get("module", "")), str(item.get("imported", "")))
+        for item_value in _sequence(
+            import_style_evidence.get("selected_public_imports", []),
+            field="selected_public_imports",
+        )
+        for item in [_mapping(item_value, field="selected_public_import")]
+    }
+    required = {("iniconfig", "IniConfig"), ("iniconfig", "ParseError")}
+    missing = sorted(f"{module}.{name}" for module, name in required - selected)
+    if not missing:
+        return None
+    return {
+        "field": "public_api",
+        "reason": "unsupported_public_api",
+        "message": (
+            "iniconfig test materialization requires existing tests to import "
+            "IniConfig and ParseError; missing " + ", ".join(missing)
+        ),
+    }
+
+
+def _merge_iniconfig_parse_comments_tests(existing_text: str) -> str:
+    required_functions = [
+        "test_comment_only_lines_are_ignored_between_entries",
+        "test_inline_section_comments_are_stripped",
+        "test_duplicate_key_error_reports_offending_key",
+    ]
+    if all(f"def {name}" in existing_text for name in required_functions):
+        return existing_text
+
+    append_block = _render_iniconfig_parse_comments_tests_append_block()
+    if not existing_text.strip():
+        return (
+            "from __future__ import annotations\n"
+            "\n"
+            "import pytest\n"
+            "\n"
+            "from iniconfig import IniConfig, ParseError\n"
+            "\n\n"
+            + append_block
+        )
+    return existing_text.rstrip() + "\n\n\n" + append_block
+
+
+def _render_iniconfig_parse_comments_tests_append_block() -> str:
+    return (
+        '@pytest.mark.parametrize("marker", ["#", ";"])\n'
+        "def test_comment_only_lines_are_ignored_between_entries(marker: str) -> None:\n"
+        "    config = IniConfig(\n"
+        '        "comments.ini",\n'
+        "        data=(\n"
+        '            f"{marker} file header comment\\n"\n'
+        '            "[section]\\n"\n'
+        '            f"{marker} comment before first key\\n"\n'
+        '            "name = Alice\\n"\n'
+        '            f"{marker} comment before second key\\n"\n'
+        '            "role = Developer\\n"\n'
+        "        ),\n"
+        "    )\n"
+        "\n"
+        '    assert config["section"]["name"] == "Alice"\n'
+        '    assert config["section"]["role"] == "Developer"\n'
+        '    assert list(config["section"]) == ["name", "role"]\n'
+        "\n\n"
+        "@pytest.mark.parametrize(\n"
+        '    ("marker", "section_name"),\n'
+        '    [("#", "main"), (";", "secondary")],\n'
+        ")\n"
+        "def test_inline_section_comments_are_stripped(\n"
+        "    marker: str, section_name: str\n"
+        ") -> None:\n"
+        "    config = IniConfig(\n"
+        '        "comments.ini",\n'
+        "        data=(\n"
+        '            f"[{section_name}] {marker} inline section comment\\n"\n'
+        '            "key = value\\n"\n'
+        "        ),\n"
+        "    )\n"
+        "\n"
+        "    assert list(config.sections) == [section_name]\n"
+        '    assert config[section_name]["key"] == "value"\n'
+        "\n\n"
+        "def test_duplicate_key_error_reports_offending_key() -> None:\n"
+        "    with pytest.raises(ParseError) as excinfo:\n"
+        "        IniConfig(\n"
+        '            "comments.ini",\n'
+        '            data="[section]\\nname = Alice\\nname = Bob\\n",\n'
+        "        )\n"
+        "\n"
+        "    assert excinfo.value.msg == \"duplicate name 'name'\"\n"
+        "    assert excinfo.value.lineno == 2\n"
+        '    assert "name" in str(excinfo.value)\n'
+    )
+
+
+def _iniconfig_parse_comments_case_records() -> list[dict[str, object]]:
+    return [
+        {
+            "id": "iniconfig_comment_only_lines",
+            "behavior": "comment-only lines are ignored between entries",
+            "function": "test_comment_only_lines_are_ignored_between_entries",
+            "comment_markers": ["#", ";"],
+            "assertions": [
+                "parsed section keeps real keys",
+                "comment-only lines are not materialized as keys",
+            ],
+        },
+        {
+            "id": "iniconfig_inline_section_comments",
+            "behavior": "inline section comments are stripped from section names",
+            "function": "test_inline_section_comments_are_stripped",
+            "comment_markers": ["#", ";"],
+            "assertions": [
+                "section name excludes inline comment text",
+                "key after commented section remains accessible",
+            ],
+        },
+        {
+            "id": "iniconfig_duplicate_key_reports_name",
+            "behavior": "duplicate key ParseError reports offending key name",
+            "function": "test_duplicate_key_error_reports_offending_key",
+            "comment_markers": [],
+            "assertions": [
+                "ParseError.msg includes duplicate key name",
+                "ParseError line number points at duplicate assignment",
+            ],
+        },
+    ]
+
+
+def _candidate_after_record(
+    *,
+    target_test_file: str,
+    before_text: str,
+    after_text: str,
+    planned_changed_files: Sequence[str],
+    wrote_file: bool,
+) -> dict[str, object]:
+    diff_lines = list(
+        difflib.unified_diff(
+            before_text.splitlines(),
+            after_text.splitlines(),
+            fromfile=f"a/{target_test_file}",
+            tofile=f"b/{target_test_file}",
+            lineterm="",
+        )
+    )
+    added_lines = [
+        line
+        for line in diff_lines
+        if line.startswith("+") and not line.startswith("+++")
+    ]
+    removed_lines = [
+        line
+        for line in diff_lines
+        if line.startswith("-") and not line.startswith("---")
+    ]
+    case_records = _iniconfig_parse_comments_case_records()
+    return {
+        "target_test_file": target_test_file,
+        "available": True,
+        "wrote_file": wrote_file,
+        "planned_changed_files": list(planned_changed_files),
+        "test_case_ids": [str(case["id"]) for case in case_records],
+        "test_functions": [str(case["function"]) for case in case_records],
+        "sha256_before": hashlib.sha256(before_text.encode("utf-8")).hexdigest(),
+        "sha256_after": hashlib.sha256(after_text.encode("utf-8")).hexdigest(),
+        "byte_count_before": len(before_text.encode("utf-8")),
+        "byte_count_after": len(after_text.encode("utf-8")),
+        "diff_summary": {
+            "added_line_count": len(added_lines),
+            "removed_line_count": len(removed_lines),
+            "changed": before_text != after_text,
+        },
+        "diff": "\n".join(diff_lines),
+    }
 
 
 def _validated_knowledge_records(
@@ -614,9 +932,13 @@ def _paths_outside_allowlist(
 def _file_hashes(repo: Path, relative_paths: Sequence[str]) -> dict[str, str]:
     hashes = {}
     for relative_path in relative_paths:
-        path = repo / Path(*PurePosixPath(relative_path).parts)
+        path = _repo_path(repo, relative_path)
         hashes[relative_path] = hashlib.sha256(path.read_bytes()).hexdigest()
     return hashes
+
+
+def _repo_path(repo: Path, relative_path: str) -> Path:
+    return repo / Path(*PurePosixPath(_normalize_relative_path(relative_path)).parts)
 
 
 def _candidate_id(
@@ -627,6 +949,7 @@ def _candidate_id(
     target_test_file: str,
     validation_command: str,
     citations: Mapping[str, Sequence[str]],
+    test_case_ids: Sequence[str],
 ) -> str:
     return "real-repo-tests-" + _sha256_json(
         {
@@ -636,6 +959,7 @@ def _candidate_id(
             "target_test_file": target_test_file,
             "validation_command": validation_command,
             "citations": {key: list(value) for key, value in citations.items()},
+            "test_case_ids": list(test_case_ids),
         }
     )[:16]
 

@@ -1036,3 +1036,29 @@ meaningful work. Do not replace this file with a daily reset.
   `iniconfig` test-case materialization gap; treat any future `boltons`
   baseline run as separate validation evidence.
 - Blockers: none
+
+### 2026-05-18 - GS7-008 - Iniconfig pytest materialization
+
+- Owner: worker Ampere (`019e3b88-2a6d-7b12-beff-78d036b82178`)
+- Files changed: `j3/real_repo_tests_planner.py`,
+  `tests/test_real_repo_tests_planner.py`, `plans/active.md`,
+  `plans/backlog.md`, `plans/progress.md`
+- Tests: `pytest tests/test_real_repo_tests_planner.py -q` -> 2 passed;
+  live candidate check against
+  `/tmp/j3-gs7-008-iniconfig.TdMlTU/iniconfig` with selected command
+  `python -m pytest testing/test_iniconfig.py -q` -> 54 passed;
+  `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check` -> passed.
+- Result: closed the `test_case_materialization_gap` for the
+  `iniconfig-tests-parse-comments` calibration task without broadening to other
+  real repositories. The candidate now appends behavior-specific pytest cases
+  for comment-only lines, inline section comments, and duplicate key error
+  reporting to `testing/test_iniconfig.py`; records candidate-after diff/hash
+  metadata, actual mutation scope, validation command, protected production
+  hashes, knowledge citations, and residual labels; and preserves production
+  files byte-for-byte in both synthetic and live checks.
+- Commit: pending worker commit
+- Push: pending worker push
+- Next: rerun or extend the tests-only shadow score with this candidate surface
+  before considering guarded tests-only opt-in.
+- Blockers: none

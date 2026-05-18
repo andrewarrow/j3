@@ -988,8 +988,8 @@ meaningful work. Do not replace this file with a daily reset.
   targeted validation command, cites pytest layout/public API/validation/pytest
   pattern knowledge, and blocks on `test_case_materialization_gap` instead of
   pretending the task passes.
-- Commit: pending
-- Push: pending
+- Commit: 4135a7c
+- Push: succeeded
 - Next: implement behavior-specific pytest case materialization for this
   candidate surface, then rerun the REAL-003 tests-only shadow score with
   generated candidates.

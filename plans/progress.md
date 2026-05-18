@@ -3020,8 +3020,8 @@ meaningful work. Do not replace this file with a daily reset.
   local-knowledge rows. Residual labels remain `materialization_gap` and
   `ranking_gap`; materialization and ranking are the next-stage challenges
   before any candidate attempt.
-- Commit: this commit.
-- Push: pending.
+- Commit: 4ff073f.
+- Push: succeeded.
 - Next: DATA-028 can use the DATA-027 readiness row as candidate-attempt
   precondition evidence while auditing materialization coverage.
 - Blockers: none.

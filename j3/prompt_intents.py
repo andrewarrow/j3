@@ -20,6 +20,7 @@ from typing import Callable, Iterable, Sequence
 PROMPT_INTENT_SCHEMA_VERSION = "prompt-intent-label-v1"
 EVAL_SCHEMA_VERSION = "prompt-intent-eval-v1"
 LEARNED_BASELINE_SCHEMA_VERSION = "prompt-intent-token-perceptron-v1"
+LEARNED_BASELINE_REPORT_SCHEMA_VERSION = "prompt-intent-learned-baseline-report-v1"
 PROMPT_FEATURE_SCHEMA_VERSION = "prompt-token-bigram-char-skipgram-v2"
 PROMPT_CORPUS_PROFILE_SCHEMA_VERSION = "prompt-corpus-profile-v1"
 PROMPT_CORPUS_VALIDATION_SCHEMA_VERSION = "prompt-corpus-validation-v1"
@@ -113,6 +114,7 @@ TARGET_FIELDS = [
     "artifacts",
     "unsupported_requirements",
     "clarification_fields",
+    "inferred_defaults",
 ]
 SCALAR_TARGET_FIELDS = (
     "repo_mode",
@@ -155,6 +157,7 @@ class PromptIntentTarget:
     artifacts: tuple[str, ...] = ()
     unsupported_requirements: tuple[str, ...] = ()
     clarification_fields: tuple[str, ...] = ()
+    inferred_defaults: tuple[str, ...] = ()
     target_files: tuple[str, ...] = ()
 
     def to_record(self) -> dict[str, object]:
@@ -172,6 +175,7 @@ class PromptIntentTarget:
             "artifacts": list(self.artifacts),
             "unsupported_requirements": list(self.unsupported_requirements),
             "clarification_fields": list(self.clarification_fields),
+            "inferred_defaults": list(self.inferred_defaults),
             "target_files": list(self.target_files),
         }
 
@@ -1008,6 +1012,83 @@ def evaluate_prompt_intent_label_model(
     )
 
 
+def evaluate_prompt_intent_learned_baseline(
+    records: Sequence[PromptIntentRecord],
+    *,
+    target_fields: Sequence[str] = SCALAR_TARGET_FIELDS,
+    train_split: str = "train",
+    eval_splits: Sequence[str] = ("validation", "test"),
+    epochs: int = DEFAULT_LEARNED_BASELINE_EPOCHS,
+    residual_limit: int = 25,
+) -> dict[str, object]:
+    """Return a compact learned-baseline report for the current prompt corpus."""
+
+    if not records:
+        raise ValueError("at least one prompt intent record is required")
+    if epochs < 1:
+        raise ValueError("epochs must be at least 1")
+
+    fields = _baseline_report_fields(target_fields)
+    field_models = {
+        field: _field_baseline_for_report(
+            records,
+            target_field=field,
+            train_split=train_split,
+            eval_splits=eval_splits,
+            epochs=epochs,
+        )
+        for field in fields
+    }
+    inferred_model = _train_inferred_default_baseline(
+        records,
+        train_split=train_split,
+        epochs=epochs,
+    )
+
+    split_reports: dict[str, dict[str, object]] = {}
+    residual_groups: dict[tuple[str, str, str, str], dict[str, object]] = {}
+    for split in eval_splits:
+        split_records = [record for record in records if record.split == split]
+        split_reports[split] = _evaluate_baseline_report_split(
+            split_records,
+            split=split,
+            fields=fields,
+            field_models=field_models,
+            inferred_model=inferred_model,
+            residual_groups=residual_groups,
+            residual_limit=residual_limit,
+        )
+
+    return {
+        "schema_version": LEARNED_BASELINE_REPORT_SCHEMA_VERSION,
+        "total_rows": len(records),
+        "train_split": train_split,
+        "train_rows": sum(1 for record in records if record.split == train_split),
+        "eval_splits": list(eval_splits),
+        "target_fields": list(fields),
+        "field_models": {
+            field: _field_model_report(field_models[field])
+            for field in fields
+        },
+        "inferred_default_model": {
+            "status": inferred_model["status"],
+            "labels": list(inferred_model["labels"]),
+        },
+        "splits": split_reports,
+        "grouped_residuals": sorted(
+            residual_groups.values(),
+            key=lambda group: (
+                str(group["split"]),
+                str(group["target_field"]),
+                -int(group["count"]),
+                str(group["expected"]),
+                str(group["predicted"]),
+            ),
+        ),
+        "decision": "evaluation_only_not_wired_to_production",
+    }
+
+
 @lru_cache(maxsize=8)
 def _default_records(path: Path) -> tuple[PromptIntentRecord, ...]:
     return tuple(load_prompt_intent_records(path))
@@ -1064,6 +1145,11 @@ def _record_from_row(row: dict[str, object], *, index: int) -> PromptIntentRecor
         field="expected.unsupported_requirements",
         index=index,
     )
+    inferred_defaults = _tuple_strs(
+        expected.get("inferred", []),
+        field="expected.inferred",
+        index=index,
+    )
     clarification_fields = _tuple_strs(
         expected.get("clarification_fields", []),
         field="expected.clarification_fields",
@@ -1092,6 +1178,7 @@ def _record_from_row(row: dict[str, object], *, index: int) -> PromptIntentRecor
         artifacts=artifacts,
         unsupported_requirements=unsupported_requirements,
         clarification_fields=clarification_fields,
+        inferred_defaults=inferred_defaults,
         target_files=_tuple_strs(
             expected.get("target_files", []),
             field="expected.target_files",
@@ -1194,6 +1281,9 @@ def _target_from_prediction(
         ),
         clarification_fields=_tuple_prediction(
             prediction.get("clarification_fields", expected.clarification_fields)
+        ),
+        inferred_defaults=_tuple_prediction(
+            prediction.get("inferred_defaults", expected.inferred_defaults)
         ),
         target_files=_tuple_prediction(prediction.get("target_files", expected.target_files)),
     )
@@ -2059,7 +2149,395 @@ def _target_context(target: PromptIntentTarget) -> dict[str, object]:
         "artifacts": list(target.artifacts),
         "unsupported_requirements": list(target.unsupported_requirements),
         "clarification_fields": list(target.clarification_fields),
+        "inferred_defaults": list(target.inferred_defaults),
     }
+
+
+def _baseline_report_fields(target_fields: Sequence[str]) -> tuple[str, ...]:
+    fields = list(target_fields)
+    for required in ("expected_action", "requires_clarification"):
+        if required not in fields:
+            fields.append(required)
+    invalid = [field for field in fields if field not in SCALAR_TARGET_FIELDS]
+    if invalid:
+        raise ValueError(
+            "target_fields must be scalar prompt-intent fields; "
+            f"invalid={', '.join(invalid)}"
+        )
+    return tuple(dict.fromkeys(fields))
+
+
+def _field_baseline_for_report(
+    records: Sequence[PromptIntentRecord],
+    *,
+    target_field: str,
+    train_split: str,
+    eval_splits: Sequence[str],
+    epochs: int,
+) -> dict[str, object]:
+    train_records = [record for record in records if record.split == train_split]
+    label_counts = Counter(
+        _scalar_target_value(record, target_field) for record in train_records
+    )
+    majority_label = _majority_label(label_counts)
+    if len(label_counts) < 2:
+        return {
+            "status": "constant_single_train_label",
+            "target_field": target_field,
+            "train_rows": len(train_records),
+            "majority_label": majority_label,
+            "labels": tuple(sorted(label_counts)),
+            "model": None,
+            "metrics": {
+                split: _evaluate_constant_label_baseline(
+                    [record for record in records if record.split == split],
+                    target_field=target_field,
+                    baseline_label=majority_label,
+                )
+                for split in eval_splits
+            },
+        }
+
+    result = train_prompt_intent_token_baseline(
+        records,
+        target_field=target_field,
+        train_split=train_split,
+        eval_splits=eval_splits,
+        epochs=epochs,
+    )
+    return {
+        "status": "trained",
+        "target_field": target_field,
+        "train_rows": result.train_rows,
+        "majority_label": result.majority_label,
+        "labels": result.model.labels,
+        "model": result.model,
+        "metrics": result.metrics,
+    }
+
+
+def _evaluate_constant_label_baseline(
+    records: Sequence[PromptIntentRecord],
+    *,
+    target_field: str,
+    baseline_label: str,
+) -> PromptIntentLabelMetrics:
+    residuals: list[PromptIntentLabelResidual] = []
+    confusion: dict[str, dict[str, int]] = {}
+    correct = 0
+    for record in records:
+        expected = _scalar_target_value(record, target_field)
+        confusion.setdefault(expected, {})
+        confusion[expected][baseline_label] = (
+            confusion[expected].get(baseline_label, 0) + 1
+        )
+        if expected == baseline_label:
+            correct += 1
+        else:
+            residuals.append(
+                PromptIntentLabelResidual(
+                    target_field=target_field,
+                    row_id=record.row_id,
+                    split=record.split,
+                    source_type=record.source_type,
+                    prompt=record.prompt,
+                    expected=expected,
+                    predicted=baseline_label,
+                    baseline_label=baseline_label,
+                    baseline_correct=baseline_label == expected,
+                    tags=record.tags,
+                    target_context=_target_context(record.target),
+                )
+            )
+    return PromptIntentLabelMetrics(
+        split=records[0].split if records else "empty",
+        total=len(records),
+        correct=correct,
+        baseline_label=baseline_label,
+        baseline_correct=correct,
+        confusion={
+            expected: dict(sorted(predictions.items()))
+            for expected, predictions in sorted(confusion.items())
+        },
+        residuals=tuple(residuals),
+    )
+
+
+def _field_model_report(field_model: dict[str, object]) -> dict[str, object]:
+    metrics = field_model["metrics"]
+    assert isinstance(metrics, dict)
+    return {
+        "status": field_model["status"],
+        "train_rows": field_model["train_rows"],
+        "majority_label": field_model["majority_label"],
+        "labels": list(field_model["labels"]),  # type: ignore[arg-type]
+        "metrics": {
+            split: _compact_label_metrics(metric)
+            for split, metric in sorted(metrics.items())
+            if isinstance(metric, PromptIntentLabelMetrics)
+        },
+    }
+
+
+def _compact_label_metrics(metrics: PromptIntentLabelMetrics) -> dict[str, object]:
+    return {
+        "total": metrics.total,
+        "correct": metrics.correct,
+        "accuracy": metrics.accuracy,
+        "baseline": {
+            "label": metrics.baseline_label,
+            "correct": metrics.baseline_correct,
+            "accuracy": metrics.baseline_accuracy,
+        },
+        "residual_count": len(metrics.residuals),
+        "confusion": metrics.confusion,
+    }
+
+
+def _predict_field_for_report(
+    field_model: dict[str, object],
+    prompt: str,
+) -> str:
+    model = field_model.get("model")
+    if isinstance(model, PromptIntentTokenPerceptronModel):
+        return model.predict_label(prompt)
+    return str(field_model["majority_label"])
+
+
+def _evaluate_baseline_report_split(
+    records: Sequence[PromptIntentRecord],
+    *,
+    split: str,
+    fields: Sequence[str],
+    field_models: dict[str, dict[str, object]],
+    inferred_model: dict[str, object],
+    residual_groups: dict[tuple[str, str, str, str], dict[str, object]],
+    residual_limit: int,
+) -> dict[str, object]:
+    field_correct = {field: 0 for field in fields}
+    exact_field_matches = 0
+    ambiguity_correct = 0
+    clarification_correct = 0
+    inferred_true_positive = 0
+    inferred_false_positive = 0
+    inferred_false_negative = 0
+    inferred_exact_matches = 0
+
+    for record in records:
+        predictions = {
+            field: _predict_field_for_report(field_models[field], record.prompt)
+            for field in fields
+        }
+        row_exact = True
+        for field in fields:
+            expected = _scalar_target_value(record, field)
+            predicted = predictions[field]
+            if predicted == expected:
+                field_correct[field] += 1
+            else:
+                row_exact = False
+                _add_baseline_residual_group(
+                    residual_groups,
+                    split=split,
+                    target_field=field,
+                    expected=expected,
+                    predicted=predicted,
+                    record=record,
+                    residual_limit=residual_limit,
+                )
+        if row_exact:
+            exact_field_matches += 1
+
+        if predictions["requires_clarification"] == record.target.requires_clarification:
+            clarification_correct += 1
+        if _predicted_ambiguity(predictions) == _expected_ambiguity(record):
+            ambiguity_correct += 1
+
+        predicted_inferred = set(
+            _predict_inferred_defaults(inferred_model, record.prompt)
+        )
+        expected_inferred = set(record.target.inferred_defaults)
+        if predicted_inferred == expected_inferred:
+            inferred_exact_matches += 1
+        for label in sorted(expected_inferred & predicted_inferred):
+            inferred_true_positive += 1
+        for label in sorted(predicted_inferred - expected_inferred):
+            inferred_false_positive += 1
+            _add_baseline_residual_group(
+                residual_groups,
+                split=split,
+                target_field="inferred_defaults",
+                expected="<absent>",
+                predicted=label,
+                record=record,
+                residual_limit=residual_limit,
+            )
+        for label in sorted(expected_inferred - predicted_inferred):
+            inferred_false_negative += 1
+            _add_baseline_residual_group(
+                residual_groups,
+                split=split,
+                target_field="inferred_defaults",
+                expected=label,
+                predicted="<missing>",
+                record=record,
+                residual_limit=residual_limit,
+            )
+
+    total = len(records)
+    return {
+        "total": total,
+        "exact_field_accuracy": {
+            "correct": exact_field_matches,
+            "total": total,
+            "accuracy": exact_field_matches / total if total else 0.0,
+        },
+        "field_accuracy": {
+            field: {
+                "correct": correct,
+                "total": total,
+                "accuracy": correct / total if total else 0.0,
+            }
+            for field, correct in field_correct.items()
+        },
+        "clarification_accuracy": {
+            "correct": clarification_correct,
+            "total": total,
+            "accuracy": clarification_correct / total if total else 0.0,
+        },
+        "ambiguity_accuracy": {
+            "correct": ambiguity_correct,
+            "total": total,
+            "accuracy": ambiguity_correct / total if total else 0.0,
+        },
+        "inferred_default_metrics": {
+            "true_positive": inferred_true_positive,
+            "false_positive": inferred_false_positive,
+            "false_negative": inferred_false_negative,
+            "precision": (
+                inferred_true_positive
+                / (inferred_true_positive + inferred_false_positive)
+                if inferred_true_positive + inferred_false_positive
+                else 0.0
+            ),
+            "recall": (
+                inferred_true_positive
+                / (inferred_true_positive + inferred_false_negative)
+                if inferred_true_positive + inferred_false_negative
+                else 0.0
+            ),
+            "exact_match_accuracy": {
+                "correct": inferred_exact_matches,
+                "total": total,
+                "accuracy": inferred_exact_matches / total if total else 0.0,
+            },
+        },
+    }
+
+
+def _expected_ambiguity(record: PromptIntentRecord) -> bool:
+    return (
+        record.target.requires_clarification == "yes"
+        or record.target.expected_action == "ask_clarification"
+        or record.target.task_type == "clarify"
+        or "ambiguous" in record.tags
+    )
+
+
+def _predicted_ambiguity(predictions: dict[str, str]) -> bool:
+    return (
+        predictions.get("requires_clarification") == "yes"
+        or predictions.get("expected_action") == "ask_clarification"
+    )
+
+
+def _add_baseline_residual_group(
+    groups: dict[tuple[str, str, str, str], dict[str, object]],
+    *,
+    split: str,
+    target_field: str,
+    expected: str,
+    predicted: str,
+    record: PromptIntentRecord,
+    residual_limit: int,
+) -> None:
+    key = (split, target_field, expected, predicted)
+    group = groups.setdefault(
+        key,
+        {
+            "split": split,
+            "target_field": target_field,
+            "expected": expected,
+            "predicted": predicted,
+            "count": 0,
+            "examples": [],
+        },
+    )
+    group["count"] = int(group["count"]) + 1
+    examples = group["examples"]
+    assert isinstance(examples, list)
+    if len(examples) < residual_limit:
+        examples.append(
+            {
+                "id": record.row_id,
+                "source_type": record.source_type,
+                "task_type": record.target.task_type,
+                "repo_mode": record.target.repo_mode,
+                "prompt": record.prompt,
+            }
+        )
+
+
+def _train_inferred_default_baseline(
+    records: Sequence[PromptIntentRecord],
+    *,
+    train_split: str,
+    epochs: int,
+) -> dict[str, object]:
+    train_records = [record for record in records if record.split == train_split]
+    labels = tuple(
+        sorted(
+            {
+                label
+                for record in train_records
+                for label in record.target.inferred_defaults
+            }
+        )
+    )
+    weights = {label: Counter() for label in labels}
+    if not labels:
+        return {"status": "constant_empty", "labels": labels, "weights": weights}
+
+    for _epoch in range(epochs):
+        for record in train_records:
+            features = _prompt_token_features(record.prompt)
+            expected_labels = set(record.target.inferred_defaults)
+            for label in labels:
+                expected = 1 if label in expected_labels else -1
+                predicted = 1 if _score_label(features, weights[label]) > 0 else -1
+                if predicted == expected:
+                    continue
+                for feature, value in features.items():
+                    weights[label][feature] += expected * value
+
+    return {"status": "trained_one_vs_rest", "labels": labels, "weights": weights}
+
+
+def _predict_inferred_defaults(
+    model: dict[str, object],
+    prompt: str,
+) -> tuple[str, ...]:
+    labels = model["labels"]
+    weights = model["weights"]
+    if not isinstance(labels, tuple) or not isinstance(weights, dict):
+        return ()
+    features = _prompt_token_features(prompt)
+    return tuple(
+        label
+        for label in labels
+        if isinstance(label, str)
+        and _score_label(features, weights.get(label, {})) > 0
+    )
 
 
 def _majority_label(label_counts: Counter[str]) -> str:

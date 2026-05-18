@@ -9,6 +9,7 @@ from j3.prompt_intents import (
     PROMPT_FEATURE_SCHEMA_VERSION,
     _prompt_token_features,
     evaluate_prompt_intent_predictions,
+    evaluate_prompt_intent_learned_baseline,
     load_prompt_intent_records,
     predict_prompt_intent,
     profile_prompt_corpus_rows,
@@ -683,8 +684,88 @@ def test_trains_token_baseline_only_from_train_split(tmp_path: Path) -> None:
             "artifacts": [],
             "unsupported_requirements": [],
             "clarification_fields": [],
+            "inferred_defaults": [],
         },
     }
+
+
+def test_learned_baseline_report_groups_current_corpus_residuals(tmp_path: Path) -> None:
+    path = tmp_path / "labels.jsonl"
+    path.write_text(
+        "\n".join(
+            [
+                (
+                    '{"id":"train-create","split":"train","source_type":"test",'
+                    '"task_type":"create_app","repo_mode":"new_repo","domain":"calculator",'
+                    '"prompt":"create a calculator cli with multiply default",'
+                    '"expected":{"action":"emit_request_spec","clarify":false,'
+                    '"inferred":["multiply"]}}'
+                ),
+                (
+                    '{"id":"train-change","split":"train","source_type":"test",'
+                    '"task_type":"add_feature","repo_mode":"existing_repo","domain":"parser",'
+                    '"prompt":"change the existing parser",'
+                    '"expected":{"action":"emit_existing_repo_change_spec",'
+                    '"clarify":false,"inferred":[]}}'
+                ),
+                (
+                    '{"id":"train-clarify","split":"train","source_type":"test",'
+                    '"task_type":"clarify","repo_mode":"unknown","domain":"quality",'
+                    '"prompt":"make it better somehow",'
+                    '"expected":{"action":"ask_clarification","clarify":true,'
+                    '"clarification_fields":["goal"],"inferred":[]}}'
+                ),
+                (
+                    '{"id":"test-create","split":"test","source_type":"test",'
+                    '"task_type":"create_app","repo_mode":"new_repo","domain":"calculator",'
+                    '"prompt":"create a calculator cli with multiply default",'
+                    '"expected":{"action":"emit_request_spec","clarify":false,'
+                    '"inferred":["multiply"]}}'
+                ),
+                (
+                    '{"id":"test-unseen-default","split":"test","source_type":"test",'
+                    '"task_type":"bugfix","repo_mode":"existing_repo","domain":"config",'
+                    '"prompt":"prefer value change over key rename",'
+                    '"expected":{"action":"emit_existing_repo_change_spec",'
+                    '"clarify":false,'
+                    '"inferred":["prefer_value_change_over_key_rename"]}}'
+                ),
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    records = load_prompt_intent_records(path)
+
+    report = evaluate_prompt_intent_learned_baseline(
+        records,
+        target_fields=("expected_action", "repo_mode"),
+        eval_splits=("test",),
+    )
+
+    assert report["schema_version"] == "prompt-intent-learned-baseline-report-v1"
+    assert report["target_fields"] == [
+        "expected_action",
+        "repo_mode",
+        "requires_clarification",
+    ]
+    assert report["field_models"]["expected_action"]["status"] == "trained"  # type: ignore[index]
+    test_metrics = report["splits"]["test"]  # type: ignore[index]
+    assert test_metrics["total"] == 2
+    assert test_metrics["clarification_accuracy"]["accuracy"] == 1.0  # type: ignore[index]
+    inferred = test_metrics["inferred_default_metrics"]  # type: ignore[index]
+    assert inferred["true_positive"] == 1
+    assert inferred["false_negative"] == 1
+    assert inferred["recall"] == 0.5
+    inferred_groups = [
+        group
+        for group in report["grouped_residuals"]  # type: ignore[union-attr]
+        if group["target_field"] == "inferred_defaults"
+    ]
+    assert {
+        (group["expected"], group["predicted"])
+        for group in inferred_groups
+    } == {("prefer_value_change_over_key_rename", "<missing>")}
 
 
 def test_seed_corpus_learned_baseline_reports_held_out_metrics() -> None:

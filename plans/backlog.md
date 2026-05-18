@@ -263,7 +263,7 @@ Long-term target:
 
 ### MODEL-001: Re-evaluate learned prompt intent baseline
 
-- Status: active
+- Status: done
 - Why: prompt-intent progress needs held-out domain evidence and residuals.
 - Write scope: model/eval commands and focused tests, not broad architecture.
 - Acceptance: report exact-field accuracy, ambiguity accuracy, inferred-default
@@ -352,8 +352,7 @@ Long-term target:
 
 Start with these unless fresh evidence changes the order:
 
-1. `MODEL-001`: re-evaluate learned prompt intent baseline.
-2. `GS7-004`: implement clarification as a first-class outcome.
-3. `SCALE-001`: draft local pretraining feasibility inventory.
-4. `GS7-005`: add tests-only existing-repo support for one-file libraries.
-5. `GS7-006`: add repo-state-aware library convention edits.
+1. `SCALE-001`: draft local pretraining feasibility inventory.
+2. `GS7-005`: add tests-only existing-repo support for one-file libraries.
+3. `GS7-006`: add repo-state-aware library convention edits.
+4. `MODEL-003`: scorer residual slice for add-keyword decoys.

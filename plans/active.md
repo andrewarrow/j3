@@ -16,17 +16,8 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-### `MODEL-001`: Re-evaluate learned prompt intent baseline
-
-- Owner: worker Socrates (`019e3b31-5757-7a83-9f73-06f1313f2064`)
-- Status: active
-- Write scope: prompt intent evaluation code/tests/docs as needed, plus plan
-  updates. Do not touch GreenShot request-spec/greenfield files.
-- Acceptance: reports exact-field accuracy, ambiguity/clarification accuracy,
-  inferred-default precision/recall, and grouped residuals on the current
-  prompt corpus.
-- Tests: focused prompt-intent tests or CLI smoke,
-  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+No active worker tasks are recorded after `MODEL-001` and `GS7-004` completion.
+The coordinator should dispatch the next ready task unless pausing for review.
 
 ## Ready Queue
 
@@ -62,6 +53,13 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `MODEL-001`: added a compact learned prompt-intent baseline report helper and
+  recorded the 2026-05-18 current-corpus metrics in
+  `docs/MODEL_001_PROMPT_INTENT_BASELINE_2026-05-18.md`. Current expanded
+  corpus evaluation: validation exact-field 10/42 and test exact-field 9/72;
+  clarification accuracy remains high at 40/42 validation and 68/72 test;
+  inferred-default precision/recall is 0.000 on held-out splits because the
+  positive labels are sparse and include a test-only unseen default.
 - `GS7-004`: added a first-class `clarification-response-v1` outcome for
   ambiguous request-to-repo prompts. Blocked GreenShot plans, build results,
   JSONL attempt rows, and public `implement` output now carry structured

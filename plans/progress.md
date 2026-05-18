@@ -507,3 +507,31 @@ meaningful work. Do not replace this file with a daily reset.
 - Next: `GS7-005` can build on the existing tests-only classified gap without
   treating clarification outcomes as generated repo failures.
 - Blockers: none
+
+### 2026-05-18 - MODEL-001 - Prompt intent baseline re-evaluation
+
+- Owner: worker Socrates (`019e3b31-5757-7a83-9f73-06f1313f2064`)
+- Files changed: `j3/prompt_intents.py`, `tests/test_prompt_intents.py`,
+  `docs/MODEL_001_PROMPT_INTENT_BASELINE_2026-05-18.md`,
+  `plans/active.md`, `plans/backlog.md`, `plans/progress.md`
+- Tests: `pytest tests/test_prompt_intents.py -q` -> 17 passed;
+  Python report smoke against `../prompts/coding_agent_prompts_expanded_v0.jsonl`
+  wrote `/tmp/j3-model-001-baseline-report.json`; `python -m py_compile
+  j3/prompt_intents.py` -> passed; `pytest tests/test_plan_consistency.py -q`
+  -> 6 passed; `git diff --check` -> passed.
+- Result: added `evaluate_prompt_intent_learned_baseline`, which reports
+  exact-field accuracy, per-field accuracy, clarification and ambiguity
+  accuracy, inferred-default precision/recall, and grouped residuals without
+  wiring the baseline into production. Current 320-row expanded corpus metrics:
+  validation exact-field 10/42 (0.238), test exact-field 9/72 (0.125),
+  validation clarification 40/42 (0.952), test clarification 68/72 (0.944),
+  validation ambiguity 40/42 (0.952), test ambiguity 69/72 (0.958), and
+  inferred-default precision/recall 0.000 on held-out splits because positives
+  are sparse and include a test-only unseen default.
+- Commit: final hash reported by worker after commit creation
+- Push: pending
+- Next: use the grouped residuals to prioritize prompt-intent label/data work
+  around high-cardinality `domain`, `task_type`, and `primary_artifact`, and
+  add more reviewed inferred-default examples before treating default recall as
+  meaningful.
+- Blockers: none

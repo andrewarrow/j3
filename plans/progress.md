@@ -3562,8 +3562,8 @@ meaningful work. Do not replace this file with a daily reset.
   constrained-generator and typed-builder buckets, so the next materialization
   task should require reusable source-region/method-insert/call-site/pytest
   insertion action records rather than another PR-named materializer.
-- Commit: pending.
-- Push: pending.
+- Commit: 237af70.
+- Push: succeeded.
 - Next: attempt `requests#7427` or `pytest#14475` with reusable
   parameterized source-region and pytest insertion actions, or build the typed
   annotation/import middle layer exposed by the 7 held-out typed-builder rows.

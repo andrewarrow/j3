@@ -1998,7 +1998,7 @@ Long-term target:
 
 ### DATA-036: Pip validation recipe scripttest probe
 
-- Status: active
+- Status: done
 - Why: DATA-032 proved that adding `installer` removes the first pip fixture
   import blocker but exposes `scripttest`. Validation remains untrustworthy
   until the row either has a bounded hermetic setup recipe or is explicitly
@@ -2018,6 +2018,24 @@ Long-term target:
 - Tests: focused preflight tests if code changes, plan consistency,
   `git diff --check`, and live bounded preflight command or exact blocker if
   live preflight cannot complete.
+- Completion note: added a focused classifier for pytest plugin option
+  failures and ran the candidate-free recipe attempt for exactly
+  `pypa__pip-issue-12018-pr-13886`. The setup command
+  `python -m pip install -e . installer scripttest` explicitly adds
+  `scripttest` to DATA-032's `installer` recipe and reaches
+  `pytest tests/functional/test_install_reqs.py -q` on repo-before
+  `8df7b668b3766e1d4a71246509d64aeec47a805b`. Checkout, ref verification, and
+  setup passed, but validation remains blocked on fixture/tooling setup:
+  pytest rejects pip's configured socket options
+  `--disable-socket --allow-unix-socket --allow-hosts=localhost`, so the next
+  explicit dependency is `pytest-socket`. Runtime was `4.758s`; first failed
+  stage is `validation`, command classification is
+  `dependency_fixture_setup_failure`, evidence acquisition status is
+  `blocked_on_validation_recipe`, and the row is not ready for prompt/spec or
+  local-knowledge acquisition. Artifacts:
+  `/tmp/j3-data-036-pip-validation-scripttest/attempts-data-036.jsonl`,
+  `/tmp/j3-data-036-pip-validation-scripttest/report-data-036.md`, and
+  `docs/DATA_036_PIP_VALIDATION_RECIPE_SCRIPTTEST_PROBE_2026-05-18.md`.
 
 ## Next Recommended Queue
 

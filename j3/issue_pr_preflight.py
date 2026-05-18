@@ -19,6 +19,12 @@ ISSUE_PR_PREFLIGHT_SCHEMA_VERSION = "issue-pr-replay-preflight-v1"
 ISSUE_PR_VALIDATION_RECIPE_SCHEMA_VERSION = "issue-pr-validation-recipe-attempt-v1"
 DEFAULT_SETUP_COMMAND = "python -m pip install -e ."
 DEFAULT_TIMEOUT_SECONDS = 120
+PYTEST_PLUGIN_OPTION_HINTS = {
+    "--allow-hosts": "pytest-socket",
+    "--allow-unix-socket": "pytest-socket",
+    "--disable-socket": "pytest-socket",
+    "--enable-socket": "pytest-socket",
+}
 
 Command = str | Sequence[str]
 SubprocessRunner = Callable[
@@ -1679,6 +1685,7 @@ def _looks_like_dependency_fixture_failure(text: str) -> bool:
         "modulenotfounderror",
         "no module named",
         "failed to import",
+        "pytest: error: unrecognized arguments",
     )
     return any(pattern in text for pattern in patterns)
 
@@ -1698,6 +1705,7 @@ def _command_failure_evidence(result: Mapping[str, object]) -> dict[str, object]
     lines = [line.rstrip() for line in text.splitlines() if line.strip()]
     interesting = _interesting_failure_lines(lines)
     missing_modules = _missing_module_names(lines)
+    missing_pytest_plugins = _missing_pytest_plugins(lines)
     summary = _failure_summary(interesting, lines)
     source_location = _source_location_from_lines(lines)
     return {
@@ -1705,6 +1713,7 @@ def _command_failure_evidence(result: Mapping[str, object]) -> dict[str, object]
         "source_location": source_location,
         "lines": interesting[:4] if interesting else lines[-4:],
         "missing_module_names": missing_modules,
+        "missing_pytest_plugins": missing_pytest_plugins,
     }
 
 
@@ -1729,6 +1738,20 @@ def _missing_module_names(lines: Sequence[str]) -> list[str]:
     return names
 
 
+def _missing_pytest_plugins(lines: Sequence[str]) -> list[str]:
+    names: list[str] = []
+    seen: set[str] = set()
+    for line in lines:
+        lowered = line.lower()
+        if "pytest: error: unrecognized arguments" not in lowered:
+            continue
+        for option, plugin in PYTEST_PLUGIN_OPTION_HINTS.items():
+            if option in line and plugin not in seen:
+                names.append(plugin)
+                seen.add(plugin)
+    return names
+
+
 def _interesting_failure_lines(lines: Sequence[str]) -> list[str]:
     needles = (
         "recursive dependency involving fixture",
@@ -1736,8 +1759,11 @@ def _interesting_failure_lines(lines: Sequence[str]) -> list[str]:
         "ImportError",
         "ModuleNotFoundError",
         "No module named",
+        "pytest: error: unrecognized arguments",
+        "unrecognized arguments",
         "command not found",
         "No such file or directory",
+        "ERROR:",
         "ERROR ",
         "FAILED ",
     )

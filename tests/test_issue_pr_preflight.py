@@ -365,6 +365,56 @@ def test_pip_validation_recipe_records_added_dependency_and_next_missing_module(
     assert "scripttest" in row["fixture_dependency_evidence"]["summary"]
 
 
+def test_pip_validation_recipe_records_pytest_plugin_option_blocker(
+    tmp_path: Path,
+) -> None:
+    manifest = load_issue_pr_replay_manifest(MANIFEST_PATH)
+    record = select_issue_pr_replay_record(manifest, PIP_REPLAY_ID)
+    sha = record["repo_before_ref"]["sha"]
+
+    def runner(command: Command, cwd: Path | None, timeout_seconds: int):
+        command_text = _command_text(command)
+        if command_text == "git rev-parse HEAD":
+            return subprocess.CompletedProcess(command, returncode=0, stdout=f"{sha}\n", stderr="")
+        if command_text == "pytest tests/functional/test_install_reqs.py -q":
+            return subprocess.CompletedProcess(
+                command,
+                returncode=4,
+                stdout="",
+                stderr=(
+                    "ERROR: usage: pytest [options] [file_or_dir] [file_or_dir] [...]\n"
+                    "pytest: error: unrecognized arguments: --disable-socket "
+                    "--allow-unix-socket --allow-hosts=localhost\n"
+                    "  inifile: /tmp/pip/pyproject.toml\n"
+                    "  rootdir: /tmp/pip\n"
+                ),
+            )
+        return subprocess.CompletedProcess(command, returncode=0, stdout="", stderr="")
+
+    attempt = run_issue_pr_validation_recipe_attempt(
+        manifest_path=MANIFEST_PATH,
+        replay_id=PIP_REPLAY_ID,
+        workspace=tmp_path / "work",
+        recipe_name="pip-functional-install-reqs-installer-scripttest",
+        setup_command="python -m pip install -e . installer scripttest",
+        validation_command="pytest tests/functional/test_install_reqs.py -q",
+        dependencies_added=["installer", "scripttest"],
+        runner=runner,
+    )
+    row = attempt.to_record()
+
+    assert row["dependencies_added"] == ["installer", "scripttest"]
+    assert row["status"] == "blocked"
+    assert row["first_failed_stage"] == "validation"
+    assert row["failure_family"] == "dependency_fixture_setup_failure"
+    assert row["command_classification"] == "dependency_fixture_setup_failure"
+    assert row["evidence_acquisition_status"] == "blocked_on_validation_recipe"
+    evidence = row["fixture_dependency_evidence"]
+    assert evidence["missing_module_names"] == []
+    assert evidence["missing_pytest_plugins"] == ["pytest-socket"]
+    assert "--disable-socket" in evidence["summary"]
+
+
 def test_validation_recipe_jsonl_summary_and_report(tmp_path: Path) -> None:
     manifest = load_issue_pr_replay_manifest(MANIFEST_PATH)
     record = select_issue_pr_replay_record(manifest, REQUESTS_REPLAY_ID)

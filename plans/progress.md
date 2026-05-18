@@ -3397,3 +3397,39 @@ meaningful work. Do not replace this file with a daily reset.
 - Push: pending.
 - Next: continue non-overlapping coordinator review while both workers run.
 - Blockers: none.
+
+### 2026-05-18 - DATA-036 - Pip validation recipe scripttest probe
+
+- Owner: worker Poincare (`019e3ca5-4ce1-7701-910c-79e6c8e708b6`).
+- Files changed: `j3/issue_pr_preflight.py`,
+  `tests/test_issue_pr_preflight.py`,
+  `docs/DATA_036_PIP_VALIDATION_RECIPE_SCRIPTTEST_PROBE_2026-05-18.md`,
+  `plans/active.md`, `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `python -m py_compile j3/issue_pr_preflight.py
+  tests/test_issue_pr_preflight.py` -> passed; `pytest
+  tests/test_issue_pr_preflight.py -q` -> 20 passed; live recipe attempt
+  `python -m j3.issue_pr_preflight --recipe-attempt --replay-id
+  pypa__pip-issue-12018-pr-13886 --setup-command "python -m pip install -e .
+  installer scripttest" --validation-command "pytest
+  tests/functional/test_install_reqs.py -q" --dependency-added installer
+  --dependency-added scripttest ...` -> blocked on validation fixture/tooling
+  setup; `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff
+  --check` -> passed.
+- Result: adding `scripttest` advances beyond the DATA-032 missing import
+  blocker, but the pip validation-split row remains blocked before tests run.
+  Checkout, ref verification, and setup passed for repo-before
+  `8df7b668b3766e1d4a71246509d64aeec47a805b`; validation failed because
+  pytest rejected configured socket options
+  `--disable-socket --allow-unix-socket --allow-hosts=localhost`. The attempt
+  records `pytest-socket` as the next explicit fixture/tooling dependency,
+  runtime `4.758s`, first failed stage `validation`, command classification
+  `dependency_fixture_setup_failure`, and evidence acquisition status
+  `blocked_on_validation_recipe`. The row is not ready for prompt/spec or
+  local-knowledge acquisition.
+- Commit: pending.
+- Push: pending.
+- Next: either run a separately bounded recipe probe that adds `pytest-socket`,
+  or park the pip row as too dependency-heavy while prioritizing other
+  validation-split rows.
+- Blockers: pip validation remains blocked on fixture/tooling setup after
+  `installer` and `scripttest`; next explicit dependency is `pytest-socket`.

@@ -61,22 +61,6 @@ This is the live coordinator board. Keep it current and compact.
   py_compile scrapy/pqueues.py && pytest tests/test_pqueues.py -q`, or record
   the exact materialization or validation blocker.
 
-### `DATA-036`: Pip validation recipe scripttest probe
-
-- Status: active
-- Owner: worker Poincare (`019e3ca5-4ce1-7701-910c-79e6c8e708b6`).
-- Write scope: `j3/issue_pr_preflight.py`, `tests/test_issue_pr_preflight.py`,
-  generated outputs under `/tmp`, optional compact report under `docs/`, and
-  planning updates. Do not attempt candidate source edits.
-- Acceptance: continue the DATA-032 pip validation-recipe isolation for
-  `pypa__pip-issue-12018-pr-13886` by adding the next explicit missing
-  dependency, `scripttest`, to the bounded setup recipe. Rerun pre-edit
-  validation for `pytest tests/functional/test_install_reqs.py -q`, record
-  dependencies added, runtime, first failed stage, command classification,
-  evidence-acquisition status, and whether the row is ready for evidence
-  acquisition. If a new missing import appears, record exactly one next blocker
-  and stop rather than chasing an unbounded dependency chain.
-
 ## Ready Queue
 
 These are good next assignments for the next loop:
@@ -108,6 +92,22 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `DATA-036`: continued the DATA-032 pip validation recipe isolation for
+  exactly `pypa__pip-issue-12018-pr-13886` with no candidate edits. The setup
+  command `python -m pip install -e . installer scripttest` explicitly adds
+  `scripttest` to the prior `installer` recipe and reaches the bounded
+  repo-before validation command `pytest tests/functional/test_install_reqs.py
+  -q` on checkout `8df7b668b3766e1d4a71246509d64aeec47a805b`. Checkout, ref
+  verification, and setup passed; validation still failed before tests ran
+  because pytest rejected pip's configured socket options
+  `--disable-socket --allow-unix-socket --allow-hosts=localhost`. The next
+  explicit fixture/tooling dependency is `pytest-socket`; the row remains
+  `blocked_on_validation_recipe` with command classification
+  `dependency_fixture_setup_failure`, not ready for prompt/spec/local-knowledge
+  acquisition. Artifacts:
+  `/tmp/j3-data-036-pip-validation-scripttest/attempts-data-036.jsonl`,
+  `/tmp/j3-data-036-pip-validation-scripttest/report-data-036.md`, and
+  `docs/DATA_036_PIP_VALIDATION_RECIPE_SCRIPTTEST_PROBE_2026-05-18.md`.
 - `DATA-034`: added a machine-readable materialization coverage audit for
   exactly `scrapy__scrapy-issue-7293-pr-7351` with no candidate edits. Both
   accepted paths, `scrapy/pqueues.py` and `tests/test_pqueues.py`, require

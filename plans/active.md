@@ -37,7 +37,7 @@ This is the live coordinator board. Keep it current and compact.
 ### REAL-011: One-File Feature Gate After Iniconfig
 
 - Status: active
-- Owner: worker to be spawned by coordinator.
+- Owner: worker Avicenna (`019e3bcf-0b29-7413-9ecd-a95ef581759b`).
 - Write scope: `j3/real_repo_feature_shadow_score.py`,
   `tests/test_real_repo_feature_shadow_score.py`, optional compact report
   under `docs/`, generated live artifacts under `/tmp`, and plan updates.
@@ -57,7 +57,7 @@ This is the live coordinator board. Keep it current and compact.
 ### MAT-005: Held-Out Humanize One-File Feature Materializer
 
 - Status: active
-- Owner: worker to be spawned by coordinator.
+- Owner: worker Banach (`019e3bcf-0b55-79b3-9ad1-0b5b3a8f7bed`).
 - Write scope: `j3/real_repo_feature_materializer.py`,
   `tests/test_real_repo_feature_materializer.py`, optional compact docs,
   generated live artifacts under `/tmp`, and plan updates.

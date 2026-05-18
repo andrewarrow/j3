@@ -1532,7 +1532,8 @@ meaningful work. Do not replace this file with a daily reset.
 
 - Owner: coordinator.
 - Files changed: `plans/active.md`, `plans/backlog.md`, `plans/progress.md`.
-- Tests: focused verification pending before worker spawn.
+- Tests: `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff
+  --check` -> passed.
 - Result: reviewed `REAL-010` and `MAT-004` worker results. `REAL-010`
   answered the tests-only question with a full `4/4` materialized score, while
   `MAT-004` added a second source-feature materializer but left the
@@ -1540,8 +1541,11 @@ meaningful work. Do not replace this file with a daily reset.
   source-materialization question: `REAL-011` must prove or falsify the gate
   impact of h11 plus iniconfig, and `MAT-005` attacks the next held-out
   source-feature task in `humanize`.
-- Commit: pending
-- Push: pending
-- Next: dispatch two workers with disjoint core write scopes for `REAL-011` and
-  `MAT-005`; update the board with worker ids immediately after spawn.
+- Commit: 67ad71c
+- Push: succeeded
+- Next: workers dispatched for `REAL-011` and `MAT-005`: Avicenna
+  (`019e3bcf-0b29-7413-9ecd-a95ef581759b`) owns the one-file feature gate
+  scorer, and Banach (`019e3bcf-0b55-79b3-9ad1-0b5b3a8f7bed`) owns the
+  held-out humanize feature materializer. Review both results, then continue
+  to the next falsification task.
 - Blockers: none

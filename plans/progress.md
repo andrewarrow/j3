@@ -752,8 +752,8 @@ meaningful work. Do not replace this file with a daily reset.
   for dummy candidate path lists, classify allowed-write violations separately
   from checkout/setup/baseline blockers, and emit one deterministic JSONL row
   per repo task before any j3 scoring.
-- Commit: pending worker commit
-- Push: pending worker push
+- Commit: 180e81f2fd43f66f2c13ad6ff49673ff39fd23bd
+- Push: succeeded
 - Next: use the emitted rows as the baseline viability input for `REAL-003`
   after `GS7-005` lands tests-only existing-repo support.
 - Blockers: none

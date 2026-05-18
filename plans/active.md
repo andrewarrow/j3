@@ -47,7 +47,7 @@ This is the live coordinator board. Keep it current and compact.
 ### `DATA-035`: Scrapy validation-split source/test candidate attempt
 
 - Status: active
-- Owner: worker pending assignment.
+- Owner: worker Raman (`019e3ca5-4caf-77d2-b343-031d80960c20`).
 - Write scope: `j3/issue_pr_candidate_attempt.py`,
   `tests/test_issue_pr_candidate_attempt.py`, generated outputs under `/tmp`,
   optional compact report under `docs/`, and planning updates.
@@ -64,7 +64,7 @@ This is the live coordinator board. Keep it current and compact.
 ### `DATA-036`: Pip validation recipe scripttest probe
 
 - Status: active
-- Owner: worker pending assignment.
+- Owner: worker Poincare (`019e3ca5-4ce1-7701-910c-79e6c8e708b6`).
 - Write scope: `j3/issue_pr_preflight.py`, `tests/test_issue_pr_preflight.py`,
   generated outputs under `/tmp`, optional compact report under `docs/`, and
   planning updates. Do not attempt candidate source edits.

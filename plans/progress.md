@@ -3379,7 +3379,21 @@ meaningful work. Do not replace this file with a daily reset.
   `DATA-035` to attempt the bounded Scrapy source/test candidate and
   `DATA-036` to continue the pip validation-recipe isolation by adding the
   next explicit missing dependency, `scripttest`.
+- Commit: 8a862ec.
+- Push: succeeded.
+- Next: workers dispatched for `DATA-035` and `DATA-036`.
+- Blockers: none.
+
+### 2026-05-18 - Worker IDs - DATA-035 / DATA-036
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/progress.md`.
+- Tests: `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff
+  --check` -> passed.
+- Result: recorded worker Raman
+  (`019e3ca5-4caf-77d2-b343-031d80960c20`) for `DATA-035` and worker
+  Poincare (`019e3ca5-4ce1-7701-910c-79e6c8e708b6`) for `DATA-036`.
 - Commit: pending.
 - Push: pending.
-- Next: dispatch workers for `DATA-035` and `DATA-036`.
+- Next: continue non-overlapping coordinator review while both workers run.
 - Blockers: none.

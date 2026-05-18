@@ -116,6 +116,7 @@ class IssuePrValidationRecipeAttempt:
     recipe_name: str
     setup_command: str
     validation_command: str
+    dependencies_added: tuple[str, ...]
     command_results: tuple[PreflightCommandResult, ...]
     provenance: Mapping[str, object]
 
@@ -145,6 +146,15 @@ class IssuePrValidationRecipeAttempt:
             if failed_result is not None
             else {"summary": "", "source_location": None, "lines": []}
         )
+        first_failed_stage_name = first_failed_stage(self.command_results)
+        command_classification = _validation_recipe_command_classification(
+            failure_family
+        )
+        evidence_acquisition_status = _validation_recipe_evidence_acquisition_status(
+            failure_family=failure_family,
+            first_failed_stage=first_failed_stage_name,
+            provenance=self.provenance,
+        )
         return {
             "schema_version": ISSUE_PR_VALIDATION_RECIPE_SCHEMA_VERSION,
             "record_kind": "issue_pr_validation_recipe_attempt",
@@ -154,14 +164,17 @@ class IssuePrValidationRecipeAttempt:
             "recipe_name": self.recipe_name,
             "setup_command": self.setup_command,
             "validation_command": self.validation_command,
+            "dependencies_added": list(self.dependencies_added),
             "pre_edit": True,
             "candidate_code_edits_attempted": False,
             "status": self.status,
             "runtime_seconds": round(self.runtime_seconds, 3),
             "command_stages_reached": [result.name for result in self.command_results],
-            "first_failed_stage": first_failed_stage(self.command_results),
+            "first_failed_stage": first_failed_stage_name,
             "command_results": [result.to_record() for result in self.command_results],
             "failure_family": failure_family,
+            "command_classification": command_classification,
+            "evidence_acquisition_status": evidence_acquisition_status,
             "fixture_dependency_evidence": evidence,
             "recommendation": _validation_recipe_recommendation(failure_family),
             "required_next_actions": _validation_recipe_next_actions(
@@ -458,6 +471,7 @@ def run_issue_pr_validation_recipe_attempt(
     recipe_name: str,
     setup_command: str,
     validation_command: str,
+    dependencies_added: Sequence[str] = (),
     timeout_seconds: int = DEFAULT_TIMEOUT_SECONDS,
     clean_checkout: bool = True,
     runner: SubprocessRunner | None = None,
@@ -543,6 +557,7 @@ def run_issue_pr_validation_recipe_attempt(
         recipe_name=recipe_name,
         setup_command=setup_command,
         validation_command=validation_command,
+        dependencies_added=tuple(dependencies_added),
         command_results=tuple(command_results),
         provenance=_issue_pr_provenance(
             manifest=manifest,
@@ -559,6 +574,7 @@ def run_issue_pr_validation_recipe_attempts(
     recipe_name: str,
     setup_command: str,
     validation_command: str,
+    dependencies_added: Sequence[str] = (),
     replay_ids: Sequence[str] = (),
     limit: int | None = None,
     timeout_seconds: int = DEFAULT_TIMEOUT_SECONDS,
@@ -581,6 +597,7 @@ def run_issue_pr_validation_recipe_attempts(
             recipe_name=recipe_name,
             setup_command=setup_command,
             validation_command=validation_command,
+            dependencies_added=dependencies_added,
             timeout_seconds=timeout_seconds,
             clean_checkout=clean_checkout,
             runner=runner,
@@ -1111,6 +1128,20 @@ def summarize_issue_pr_validation_recipe_attempts(
     status_counts = Counter(str(row["status"]) for row in rows)
     first_failed_stage_counts = Counter(str(row["first_failed_stage"]) for row in rows)
     failure_family_counts = Counter(str(row["failure_family"]) for row in rows)
+    command_classification_counts = Counter(
+        str(row["command_classification"]) for row in rows
+    )
+    evidence_status_counts = Counter(
+        str(row["evidence_acquisition_status"]) for row in rows
+    )
+    dependency_counts = Counter(
+        dependency
+        for row in rows
+        for dependency in _string_sequence(
+            row.get("dependencies_added"),
+            field="dependencies_added",
+        )
+    )
     runtime_by_replay = {
         str(row["replay_id"]): round(float(row["runtime_seconds"]), 3) for row in rows
     }
@@ -1132,6 +1163,13 @@ def summarize_issue_pr_validation_recipe_attempts(
         "status_counts": dict(sorted(status_counts.items())),
         "first_failed_stage_counts": dict(sorted(first_failed_stage_counts.items())),
         "failure_family_counts": dict(sorted(failure_family_counts.items())),
+        "command_classification_counts": dict(
+            sorted(command_classification_counts.items())
+        ),
+        "evidence_acquisition_status_counts": dict(
+            sorted(evidence_status_counts.items())
+        ),
+        "dependencies_added_counts": dict(sorted(dependency_counts.items())),
         "runtime_seconds": total_runtime,
         "runtime_seconds_by_replay": runtime_by_replay,
         "pre_edit": True,
@@ -1167,22 +1205,29 @@ def write_issue_pr_validation_recipe_attempt_report(
         f"`{_json_inline(report_summary.get('first_failed_stage_counts', {}))}`",
         "- Failure families: "
         f"`{_json_inline(report_summary.get('failure_family_counts', {}))}`",
+        "- Command classifications: "
+        f"`{_json_inline(report_summary.get('command_classification_counts', {}))}`",
+        "- Evidence acquisition statuses: "
+        f"`{_json_inline(report_summary.get('evidence_acquisition_status_counts', {}))}`",
+        "- Dependencies added: "
+        f"`{_json_inline(report_summary.get('dependencies_added_counts', {}))}`",
         f"- Runtime seconds: `{report_summary.get('runtime_seconds', 0)}`",
         "",
         "## Attempts",
         "",
-        "| Replay | Recipe | Status | First failed stage | Failure family | Runtime |",
-        "| --- | --- | --- | --- | --- | ---: |",
+        "| Replay | Recipe | Status | First failed stage | Command | Evidence status | Runtime |",
+        "| --- | --- | --- | --- | --- | --- | ---: |",
     ]
     for row in rows:
         lines.append(
             "| `{replay_id}` | `{recipe}` | `{status}` | `{stage}` | "
-            "`{family}` | `{runtime}` |".format(
+            "`{command}` | `{evidence_status}` | `{runtime}` |".format(
                 replay_id=row["replay_id"],
                 recipe=row["recipe_name"],
                 status=row["status"],
                 stage=row["first_failed_stage"],
-                family=row["failure_family"],
+                command=row["command_classification"],
+                evidence_status=row["evidence_acquisition_status"],
                 runtime=row["runtime_seconds"],
             )
         )
@@ -1194,6 +1239,7 @@ def write_issue_pr_validation_recipe_attempt_report(
                 "",
                 f"- Setup: `{row['setup_command']}`",
                 f"- Validation: `{row['validation_command']}`",
+                f"- Dependencies added: `{_json_inline(row.get('dependencies_added', []))}`",
                 f"- Recommendation: `{row['recommendation']}`",
             ]
         )
@@ -1237,6 +1283,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--validation-command")
     parser.add_argument("--recipe-attempt", action="store_true")
     parser.add_argument("--recipe-name", default="validation_recipe")
+    parser.add_argument("--dependency-added", action="append", default=[])
     parser.add_argument("--timeout-seconds", type=int, default=DEFAULT_TIMEOUT_SECONDS)
     parser.add_argument("--no-clean-checkout", action="store_true")
     args = parser.parse_args(argv)
@@ -1277,6 +1324,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             recipe_name=args.recipe_name,
             setup_command=setup_command,
             validation_command=args.validation_command,
+            dependencies_added=tuple(args.dependency_added),
             replay_ids=tuple(args.replay_id),
             limit=args.limit,
             timeout_seconds=args.timeout_seconds,
@@ -1649,13 +1697,36 @@ def _command_failure_evidence(result: Mapping[str, object]) -> dict[str, object]
     text = _command_output_text(result)
     lines = [line.rstrip() for line in text.splitlines() if line.strip()]
     interesting = _interesting_failure_lines(lines)
-    summary = interesting[0] if interesting else (lines[-1] if lines else "")
+    missing_modules = _missing_module_names(lines)
+    summary = _failure_summary(interesting, lines)
     source_location = _source_location_from_lines(lines)
     return {
         "summary": summary,
         "source_location": source_location,
         "lines": interesting[:4] if interesting else lines[-4:],
+        "missing_module_names": missing_modules,
     }
+
+
+def _failure_summary(interesting: Sequence[str], lines: Sequence[str]) -> str:
+    for line in interesting:
+        lowered = line.lower()
+        if "modulenotfounderror" in lowered or "no module named" in lowered:
+            return line
+    return interesting[0] if interesting else (lines[-1] if lines else "")
+
+
+def _missing_module_names(lines: Sequence[str]) -> list[str]:
+    names: list[str] = []
+    seen: set[str] = set()
+    for line in lines:
+        match = re.search(r"No module named ['\"](?P<module>[^'\"]+)['\"]", line)
+        if match:
+            module = match.group("module")
+            if module not in seen:
+                names.append(module)
+                seen.add(module)
+    return names
 
 
 def _interesting_failure_lines(lines: Sequence[str]) -> list[str]:
@@ -1729,6 +1800,37 @@ def _validation_recipe_recommendation(failure_family: str) -> str:
     if failure_family == "dependency_setup_failure":
         return "fix_dependency_setup_before_candidate_generation"
     return "keep_blocked_until_validation_recipe_passes_pre_edit"
+
+
+def _validation_recipe_command_classification(failure_family: str) -> str:
+    if failure_family == "none":
+        return "commands_passed"
+    return failure_family
+
+
+def _validation_recipe_evidence_acquisition_status(
+    *,
+    failure_family: str,
+    first_failed_stage: str,
+    provenance: Mapping[str, object],
+) -> str:
+    if failure_family == "none":
+        labels = set(
+            _string_sequence(
+                provenance.get("initial_residual_labels"),
+                field="initial_residual_labels",
+            )
+        )
+        if {"prompt_spec_parsing_gap", "local_knowledge_gap"} & labels:
+            return "ready_for_prompt_spec_and_local_knowledge"
+        return "ready_for_candidate_readiness_refresh"
+    if first_failed_stage == "setup" or failure_family == "dependency_setup_failure":
+        return "blocked_on_setup_or_environment"
+    if first_failed_stage == "validation":
+        return "blocked_on_validation_recipe"
+    if first_failed_stage.startswith("checkout_"):
+        return "blocked_on_environment_or_checkout"
+    return "blocked_on_validation_recipe"
 
 
 def _validation_recipe_next_actions(

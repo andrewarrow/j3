@@ -1858,7 +1858,7 @@ Long-term target:
 
 ### DATA-032: Pip validation recipe isolation
 
-- Status: active
+- Status: done
 - Why: DATA-030 showed pip checkout and setup pass, but the baseline validation
   command fails before tests run because `tests/conftest.py` imports missing
   dependency `installer`. Validation must stay cheap and trustworthy; a row
@@ -1878,6 +1878,21 @@ Long-term target:
 - Tests: focused preflight tests if code changes, plan consistency,
   `git diff --check`, and live bounded preflight command or exact blocker if
   live preflight cannot complete.
+- Completion note: isolated the DATA-030 missing-`installer` failure with a
+  candidate-free recipe attempt for exactly
+  `pypa__pip-issue-12018-pr-13886`. The setup command
+  `python -m pip install -e . installer` explicitly adds `installer` and
+  reaches the same bounded validation command,
+  `pytest tests/functional/test_install_reqs.py -q`, on repo-before
+  `8df7b668b3766e1d4a71246509d64aeec47a805b`. Checkout, ref verification, and
+  setup passed, but validation remains blocked on fixture dependency setup: the
+  first new missing module is `scripttest` from `tests/lib/__init__.py` while
+  importing `tests/conftest.py`. Runtime was `5.141s`, first failed stage is
+  `validation`, command classification is `dependency_fixture_setup_failure`,
+  and evidence acquisition status is `blocked_on_validation_recipe`. Artifacts:
+  `/tmp/j3-data-032-pip-validation-recipe/attempts-data-032.jsonl`,
+  `/tmp/j3-data-032-pip-validation-recipe/report-data-032.md`, and
+  `docs/DATA_032_PIP_VALIDATION_RECIPE_ISOLATION_2026-05-18.md`.
 
 ## Next Recommended Queue
 

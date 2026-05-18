@@ -61,22 +61,6 @@ This is the live coordinator board. Keep it current and compact.
   priority-queue test patterns, provenance, split labels, and remaining
   readiness blockers. No candidate edits.
 
-### `DATA-032`: Pip validation recipe isolation
-
-- Status: active
-- Owner: worker Archimedes (`019e3c90-d397-7323-b096-75a565a7ebb3`).
-- Write scope: `j3/issue_pr_preflight.py`, `tests/test_issue_pr_preflight.py`,
-  generated outputs under `/tmp`, optional compact report under `docs/`, and
-  planning updates. Do not attempt candidate source edits.
-- Acceptance: isolate whether `pypa__pip-issue-12018-pr-13886` is blocked by
-  a fixable validation dependency recipe or by a deeper validation problem.
-  Start from the DATA-030 failure (`ModuleNotFoundError: installer` during
-  `tests/conftest.py` import), try the smallest hermetic setup adjustment that
-  makes the pre-edit baseline command meaningful, rerun the bounded preflight,
-  and record runtime, dependencies added, command classification, first failed
-  stage, and whether the row is ready for evidence acquisition or remains
-  blocked. No candidate edits.
-
 ## Ready Queue
 
 These are good next assignments for the next loop:
@@ -108,6 +92,20 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `DATA-032`: isolated the pip validation-split blocker for exactly
+  `pypa__pip-issue-12018-pr-13886` with no candidate edits. The bounded
+  recipe attempt used setup `python -m pip install -e . installer`, explicitly
+  adding `installer`, then reran `pytest tests/functional/test_install_reqs.py
+  -q` against repo-before checkout `8df7b668b3766e1d4a71246509d64aeec47a805b`.
+  Checkout, ref verification, and setup passed, but validation still failed
+  while importing `tests/conftest.py`: `scripttest` is the next missing module.
+  Runtime was `5.141s`; first failed stage is `validation`, command
+  classification is `dependency_fixture_setup_failure`, evidence acquisition
+  status is `blocked_on_validation_recipe`, and the row remains blocked rather
+  than ready for prompt/spec/local-knowledge acquisition. Artifacts:
+  `/tmp/j3-data-032-pip-validation-recipe/attempts-data-032.jsonl`,
+  `/tmp/j3-data-032-pip-validation-recipe/report-data-032.md`, and
+  `docs/DATA_032_PIP_VALIDATION_RECIPE_ISOLATION_2026-05-18.md`.
 - `DATA-029`: added a bounded source/test candidate attempt for exactly
   `pytest-dev__pytest-issue-14462-pr-14466`. The live pinned pytest checkout
   at `fbab7c5dfe63a22f545207e8dc163ed61ad51d98` changed only

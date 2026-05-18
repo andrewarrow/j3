@@ -310,8 +310,59 @@ def test_validation_recipe_attempt_records_fixture_blocker(tmp_path: Path) -> No
     assert row["status"] == "blocked"
     assert row["first_failed_stage"] == "validation"
     assert row["failure_family"] == "dependency_fixture_setup_failure"
+    assert row["command_classification"] == "dependency_fixture_setup_failure"
+    assert row["evidence_acquisition_status"] == "blocked_on_validation_recipe"
     assert "httpbin" in row["fixture_dependency_evidence"]["summary"]
     assert row["recommendation"] == "keep_blocked_until_fixture_setup_is_hermetic"
+
+
+def test_pip_validation_recipe_records_added_dependency_and_next_missing_module(
+    tmp_path: Path,
+) -> None:
+    manifest = load_issue_pr_replay_manifest(MANIFEST_PATH)
+    record = select_issue_pr_replay_record(manifest, PIP_REPLAY_ID)
+    sha = record["repo_before_ref"]["sha"]
+
+    def runner(command: Command, cwd: Path | None, timeout_seconds: int):
+        command_text = _command_text(command)
+        if command_text == "git rev-parse HEAD":
+            return subprocess.CompletedProcess(command, returncode=0, stdout=f"{sha}\n", stderr="")
+        if command_text == "pytest tests/functional/test_install_reqs.py -q":
+            return subprocess.CompletedProcess(
+                command,
+                returncode=4,
+                stdout="",
+                stderr=(
+                    "ImportError while loading conftest '/tmp/pip/tests/conftest.py'.\n"
+                    "tests/conftest.py:41: in <module>\n"
+                    "    from tests.lib import TestFileEnvironment\n"
+                    "tests/lib/__init__.py:25: in <module>\n"
+                    "    from scripttest import TestFileEnvironment\n"
+                    "E   ModuleNotFoundError: No module named 'scripttest'\n"
+                ),
+            )
+        return subprocess.CompletedProcess(command, returncode=0, stdout="", stderr="")
+
+    attempt = run_issue_pr_validation_recipe_attempt(
+        manifest_path=MANIFEST_PATH,
+        replay_id=PIP_REPLAY_ID,
+        workspace=tmp_path / "work",
+        recipe_name="pip-functional-install-reqs-installer",
+        setup_command="python -m pip install -e . installer",
+        validation_command="pytest tests/functional/test_install_reqs.py -q",
+        dependencies_added=["installer"],
+        runner=runner,
+    )
+    row = attempt.to_record()
+
+    assert row["dependencies_added"] == ["installer"]
+    assert row["status"] == "blocked"
+    assert row["first_failed_stage"] == "validation"
+    assert row["failure_family"] == "dependency_fixture_setup_failure"
+    assert row["command_classification"] == "dependency_fixture_setup_failure"
+    assert row["evidence_acquisition_status"] == "blocked_on_validation_recipe"
+    assert row["fixture_dependency_evidence"]["missing_module_names"] == ["scripttest"]
+    assert "scripttest" in row["fixture_dependency_evidence"]["summary"]
 
 
 def test_validation_recipe_jsonl_summary_and_report(tmp_path: Path) -> None:
@@ -331,6 +382,7 @@ def test_validation_recipe_jsonl_summary_and_report(tmp_path: Path) -> None:
         recipe_name="requests-focused",
         setup_command="python -m pip install -r requirements-dev.txt",
         validation_command="python -m pytest tests/test_requests.py -q -k prepare_body",
+        dependencies_added=["requirements-dev.txt"],
         runner=runner,
     )
     outcome_path = write_issue_pr_validation_recipe_attempt_jsonl(
@@ -355,10 +407,16 @@ def test_validation_recipe_jsonl_summary_and_report(tmp_path: Path) -> None:
     assert written[0]["recipe_name"] == "requests-focused"
     assert summary["status_counts"] == {"passed": 1}
     assert summary["failure_family_counts"] == {"none": 1}
+    assert summary["command_classification_counts"] == {"commands_passed": 1}
+    assert summary["evidence_acquisition_status_counts"] == {
+        "ready_for_prompt_spec_and_local_knowledge": 1
+    }
+    assert summary["dependencies_added_counts"] == {"requirements-dev.txt": 1}
     assert summary["runtime_seconds"] == 1.5
     report = report_path.read_text(encoding="utf-8")
     assert "DATA-008 Issue/PR Validation Recipe Attempts" in report
     assert "requests-focused" in report
+    assert "requirements-dev.txt" in report
 
 
 def test_timeout_drilldown_classifies_timeout() -> None:

@@ -3195,3 +3195,35 @@ meaningful work. Do not replace this file with a daily reset.
 - Push: pending.
 - Next: continue non-overlapping coordinator review while both workers run.
 - Blockers: none.
+
+### 2026-05-18 - DATA-032 - Pip validation recipe isolation
+
+- Owner: worker Archimedes (`019e3c90-d397-7323-b096-75a565a7ebb3`).
+- Files changed: `j3/issue_pr_preflight.py`,
+  `tests/test_issue_pr_preflight.py`,
+  `docs/DATA_032_PIP_VALIDATION_RECIPE_ISOLATION_2026-05-18.md`,
+  `plans/active.md`, `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `python -m py_compile j3/issue_pr_preflight.py
+  tests/test_issue_pr_preflight.py` -> passed; `pytest
+  tests/test_issue_pr_preflight.py -q` -> 19 passed; live recipe attempt
+  `python -m j3.issue_pr_preflight --recipe-attempt --replay-id
+  pypa__pip-issue-12018-pr-13886 --setup-command "python -m pip install -e .
+  installer" --validation-command "pytest tests/functional/test_install_reqs.py
+  -q" --dependency-added installer ...` -> blocked on validation fixture
+  dependency setup; `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check` -> passed.
+- Result: isolated the DATA-030 pip validation-split blocker with no candidate
+  edits. Adding the missing `installer` dependency in setup reached the bounded
+  repo-before validation command, but validation still failed while importing
+  `tests/conftest.py`; the first new missing module is `scripttest` from
+  `tests/lib/__init__.py`. Runtime was `5.141s`, first failed stage is
+  `validation`, command classification is `dependency_fixture_setup_failure`,
+  and evidence acquisition status is `blocked_on_validation_recipe`. The row
+  remains blocked and is not ready for prompt/spec/local-knowledge acquisition.
+- Commit: pending.
+- Push: pending.
+- Next: either define a bounded pip functional-test fixture setup recipe that
+  includes `scripttest` and any subsequent explicit imports, or keep the row
+  blocked while prioritizing Scrapy evidence acquisition.
+- Blockers: pip validation remains blocked on fixture dependency setup after
+  `installer`; next missing module is `scripttest`.

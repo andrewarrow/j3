@@ -203,7 +203,7 @@ Long-term target:
 
 ### REPO-001: Summarize repo-state encoder coverage
 
-- Status: ready
+- Status: active
 - Why: greenfield and transition planning need explicit repo representation.
 - Write scope: repo encoder docs/tests or a small inspection command.
 - Acceptance: reports files, packages, imports, functions/classes, tests,
@@ -212,7 +212,7 @@ Long-term target:
 
 ### ACT-001: Create action coverage map from residuals
 
-- Status: ready
+- Status: active
 - Why: action expansion should be evidence-led.
 - Write scope: docs or command that maps tasks/residuals to supported and
   missing structured actions.

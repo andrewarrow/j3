@@ -16,16 +16,41 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-- None currently recorded.
+### `REPO-001`: Summarize repo-state encoder coverage
+
+- Owner: worker pending assignment
+- Status: active
+- Write scope: `j3/repo_state.py`, `tests/test_repo_state.py`,
+  `docs/REPO_STATE_COVERAGE.md` if a focused doc is useful, and plan updates.
+  Do not touch GreenShot request-spec/greenfield files or action coverage files.
+- Acceptance: fixture repo coverage reports files, packages, imports,
+  functions/classes, tests, configs, entrypoints, and docs while preserving the
+  existing deterministic embedding record.
+- Tests: `pytest tests/test_repo_state.py -q`,
+  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+
+### `ACT-001`: Create action coverage map from residuals
+
+- Owner: worker pending assignment
+- Status: active
+- Write scope: `docs/ACTION_COVERAGE_MAP.md`, optional
+  `j3/action_coverage.py` and `tests/test_action_coverage.py`, and plan
+  updates. Do not touch repo-state files or GreenShot request-spec/greenfield
+  files.
+- Acceptance: maps current residuals and classified request-to-repo gaps to
+  supported structured actions, missing actions, and ranking-only gaps, with
+  small fixture-backed tests if code is added.
+- Tests: focused action-coverage tests if code is added,
+  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
 
 ## Ready Queue
 
 These are good next assignments for the next loop:
 
-1. `REPO-001`: summarize repo-state encoder coverage.
-2. `ACT-001`: create action coverage map from residuals.
-3. `MODEL-001`: re-evaluate learned prompt intent baseline.
-4. `SCALE-001`: draft local pretraining feasibility inventory.
+1. `MODEL-001`: re-evaluate learned prompt intent baseline.
+2. `SCALE-001`: draft local pretraining feasibility inventory.
+3. `GS7-003`: add structured greenfield library builders.
+4. `GS7-004`: implement clarification as a first-class outcome.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 

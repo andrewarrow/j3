@@ -5,6 +5,20 @@ meaningful work. Do not replace this file with a daily reset.
 
 ## 2026-05-18
 
+### 2026-05-18 - REPO-001 / ACT-001 - Coverage assignments
+
+- Owner: coordinator
+- Files changed: `plans/active.md`, `plans/backlog.md`, `plans/progress.md`
+- Tests: pending coordinator dispatch check
+- Result: assigned `REPO-001` and `ACT-001` as the next disjoint loop tasks
+  after completing the GS7/DATA worker review and the `implement` CLI
+  integration fix.
+- Commit: pending coordinator dispatch commit
+- Push: pending coordinator dispatch push
+- Next: spawn the repo-state coverage and action-coverage workers, then update
+  this entry with their agent ids.
+- Blockers: none
+
 ### 2026-05-18 - OPS-001 - Persistent planning migration
 
 - Owner: coordinator

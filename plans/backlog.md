@@ -1554,7 +1554,7 @@ Long-term target:
 
 ### DATA-023: Pytest #14442 materialization coverage audit
 
-- Status: active
+- Status: done
 - Why: before attempting a pytest candidate, the loop needs an honest answer
   to whether the accepted diff can be expressed by the current structured
   action surface or only by new materializers/generators. This directly tests
@@ -1573,6 +1573,17 @@ Long-term target:
   materializer task for each path.
 - Tests: focused audit tests, plan consistency, `git diff --check`, and a CLI
   smoke that emits machine-readable audit rows plus a compact report.
+- Completion note: added a DATA-023 materialization coverage audit module and
+  compact report for all accepted `pytest-dev__pytest-issue-14442-pr-14443`
+  paths. `AUTHORS` is covered by a small proposed deterministic
+  `newline_delimited_sorted_unique_insert_v1`; `changelog/14442.bugfix.rst`
+  needs a constrained changelog-fragment generator; `src/_pytest/config/__init__.py`
+  needs a deterministic import inserter plus bounded `Config.parse` source
+  region; and `testing/test_config.py` plus `testing/test_mark.py` need a
+  constrained existing-pytest-test refiner. Artifacts:
+  `/tmp/j3-data-023-pytest-14442-materialization-audit/audit.jsonl`,
+  `/tmp/j3-data-023-pytest-14442-materialization-audit/report.md`, and
+  `docs/DATA_023_PYTEST_14442_MATERIALIZATION_COVERAGE_AUDIT_2026-05-18.md`.
 
 ## Next Recommended Queue
 

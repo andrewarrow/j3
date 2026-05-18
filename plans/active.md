@@ -44,16 +44,6 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-- `DATA-023`: worker Godel (`019e3c56-c75f-7320-8458-1a6d4fc9c3a9`) to audit
-  materialization coverage for the accepted
-  `pytest-dev__pytest-issue-14442-pr-14443` diff before any candidate edit.
-  Ownership: a focused issue/PR materialization audit module/tests, generated
-  `/tmp` artifacts, optional compact report under `docs/`, and plan updates.
-  Acceptance: classify `AUTHORS`, `changelog/14442.bugfix.rst`,
-  `src/_pytest/config/__init__.py`, `testing/test_config.py`, and
-  `testing/test_mark.py` by current/proposed action coverage, validation
-  cost, likely failure mode, and smallest next falsifiable materializer task.
-
 ## Ready Queue
 
 These are good next assignments for the next loop:
@@ -87,6 +77,19 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `DATA-023`: added a machine-readable materialization coverage audit for the
+  accepted `pytest-dev__pytest-issue-14442-pr-14443` diff. All five accepted
+  paths were classified before any candidate edit: `AUTHORS` is covered by a
+  small proposed deterministic sorted-entry inserter, while
+  `changelog/14442.bugfix.rst`, `src/_pytest/config/__init__.py`,
+  `testing/test_config.py`, and `testing/test_mark.py` require constrained
+  local generator/source-region or pytest-test refiner actions. The audit
+  records manifest, DATA-018, DATA-021 prompt/spec, DATA-021 local-knowledge,
+  accepted diff stats, validation cost, likely failure mode, and the smallest
+  next falsifiable materializer task for each path. Artifacts:
+  `/tmp/j3-data-023-pytest-14442-materialization-audit/audit.jsonl`,
+  `/tmp/j3-data-023-pytest-14442-materialization-audit/report.md`, and
+  `docs/DATA_023_PYTEST_14442_MATERIALIZATION_COVERAGE_AUDIT_2026-05-18.md`.
 - `DATA-022`: refreshed candidate-readiness for exactly
   `pytest-dev__pytest-issue-14442-pr-14443` using DATA-018 preflight evidence
   and DATA-021 prompt/spec plus local-knowledge evidence. The row is

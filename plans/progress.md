@@ -2704,3 +2704,40 @@ meaningful work. Do not replace this file with a daily reset.
   candidate source/test edit.
 - Blockers: none for readiness evidence; remaining challenges are
   materialization scope and ranking, not pre-edit evidence gaps.
+
+### 2026-05-18 - DATA-023 - Pytest #14442 materialization coverage audit
+
+- Owner: worker Godel (`019e3c56-c75f-7320-8458-1a6d4fc9c3a9`).
+- Files changed: `j3/issue_pr_materialization_audit.py`,
+  `tests/test_issue_pr_materialization_audit.py`,
+  `docs/DATA_023_PYTEST_14442_MATERIALIZATION_COVERAGE_AUDIT_2026-05-18.md`,
+  `plans/active.md`, `plans/backlog.md`, `plans/progress.md`.
+- Tests: `python -m py_compile j3/issue_pr_materialization_audit.py
+  tests/test_issue_pr_materialization_audit.py` -> passed; `pytest
+  tests/test_issue_pr_materialization_audit.py -q` -> 3 passed; CLI smoke
+  `python -m j3.issue_pr_materialization_audit --manifest
+  examples/issue_pr_mini_replay/manifest.json --replay-id
+  pytest-dev__pytest-issue-14442-pr-14443 --repo-path
+  /tmp/j3-data-018-pytest-preflight/repos/pytest-dev__pytest-pytest-dev__pytest-issue-14442-pr-14443-8f81c76744da
+  --preflight-outcome /tmp/j3-data-018-pytest-preflight/outcomes.jsonl
+  --prompt-spec-evidence /tmp/j3-data-021-pytest-14442-spec.jsonl
+  --local-knowledge-evidence /tmp/j3-data-021-pytest-14442-knowledge.jsonl
+  --out /tmp/j3-data-023-pytest-14442-materialization-audit/audit.jsonl
+  --report /tmp/j3-data-023-pytest-14442-materialization-audit/report.md`
+  -> emitted 5 rows; `pytest tests/test_plan_consistency.py -q` -> passed;
+  `git diff --check` -> passed.
+- Result: classified all accepted pytest #14442/#14443 paths before any
+  candidate edit. `AUTHORS` is covered by a small proposed deterministic
+  sorted-entry action. `changelog/14442.bugfix.rst`,
+  `src/_pytest/config/__init__.py`, `testing/test_config.py`, and
+  `testing/test_mark.py` require constrained local generator/source-region or
+  pytest-test refiner actions. The rows include DATA-018/DATA-021 provenance,
+  accepted diff stats, action-family recommendation, validation cost, likely
+  failure mode, and smallest next falsifiable materializer task for each path.
+- Commit: pending.
+- Push: pending.
+- Next: a future pytest #14442 candidate attempt should either explicitly use
+  source/test-only scope or first implement the AUTHORS/changelog auxiliary
+  materializers plus config/test refiners recorded by DATA-023.
+- Blockers: no audit blocker; full accepted-edit materialization is not
+  currently expressible by existing structured actions.

@@ -14,16 +14,36 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-No active worker tasks.
+### `DATA-002`: Add prompt/spec schema validation
+
+- Owner: worker Lorentz (`019e395a-dda5-7662-a474-16d7e9945ce7`)
+- Status: active
+- Write scope: request-spec/prompt corpus schema validator, focused tests,
+  concise docs if needed, `plans/progress.md`, `plans/active.md`.
+- Acceptance: validates seed and expanded prompt rows with clear errors for
+  missing fields, bad splits, unsupported labels, list-typed expected fields,
+  synthetic provenance, and cross-split near-duplicate review.
+- Tests: focused schema/profile tests plus `git diff --check`.
+
+### `ACT-002`: Fix subscript-key generation gap from matrix residuals
+
+- Owner: worker Noether (`019e395a-ddca-7a23-9907-647fcd5a5154`)
+- Status: active
+- Write scope: repair patching candidate generation/ranking around subscript
+  keys, focused tests, `plans/progress.md`, `plans/active.md`.
+- Acceptance: `greenshot_6_subset/http_no_store_directive_subscript_key`
+  produces and validates a passing `change_subscript_key` candidate within the
+  configured candidate cap without regressing candidate ranking.
+- Tests: focused patching/candidate ranking tests plus single GreenShot-6 task
+  smoke and `git diff --check`.
 
 ## Ready Queue
 
-These are good next assignments after the current review:
+These are good next assignments after the current active tasks complete:
 
-1. `DATA-002`: add prompt/spec schema validation.
-2. `ACT-002`: fix the subscript-key generation gap from matrix residuals.
-3. `OPS-002`: add a lightweight plan consistency check.
-4. `GS7-002`: add five non-calculator request-to-repo fixtures.
+1. `OPS-002`: add a lightweight plan consistency check.
+2. `GS7-002`: add five non-calculator request-to-repo fixtures.
+3. `DATA-003`: prototype issue/PR mining manifest.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 

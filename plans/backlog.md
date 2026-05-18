@@ -109,7 +109,7 @@ Long-term target:
 
 ### DATA-002: Add prompt/spec schema validation
 
-- Status: ready
+- Status: active
 - Why: learned prompt and transition models need stable fields.
 - Write scope: request-spec schema docs, validator, tests.
 - Acceptance: validates seed and expanded prompt rows with clear errors for
@@ -193,7 +193,7 @@ Long-term target:
 
 ### ACT-002: Fix subscript-key generation gap from matrix residuals
 
-- Status: ready
+- Status: active
 - Why: `TRANS-002` found one candidate-generation gap:
   `greenshot_6_subset/http_no_store_directive_subscript_key` needs the
   `change_subscript_key` candidate from `"no-store"` to `"no_store"` to enter

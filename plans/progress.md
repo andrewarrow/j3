@@ -1732,3 +1732,38 @@ meaningful work. Do not replace this file with a daily reset.
   gate rescore, and Helmholtz (`019e3bec-9d05-7692-861b-4394de9892f2`) owns
   the issue/PR replay blocker drilldown.
 - Blockers: none
+
+### 2026-05-18 - DATA-007 - Issue/PR replay blocker drilldown
+
+- Owner: worker Helmholtz (`019e3bec-9d05-7692-861b-4394de9892f2`)
+- Files changed: `j3/issue_pr_preflight.py`,
+  `tests/test_issue_pr_preflight.py`,
+  `docs/DATA_007_ISSUE_PR_BLOCKER_DRILLDOWN_2026-05-18.md`,
+  `plans/active.md`, `plans/backlog.md`, `plans/progress.md`
+- Tests: `python -m py_compile j3/issue_pr_preflight.py
+  tests/test_issue_pr_preflight.py` -> passed; `pytest
+  tests/test_issue_pr_preflight.py -q` -> 14 passed; smoke drilldown
+  `python -m j3.issue_pr_preflight --from-outcome-jsonl
+  /tmp/j3-data-006-live-preflight/outcomes.jsonl --outcome
+  /tmp/j3-data-007-blocker-drilldown/outcomes.jsonl --report
+  docs/DATA_007_ISSUE_PR_BLOCKER_DRILLDOWN_2026-05-18.md` -> passed with 3
+  rows; `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff
+  --check` -> passed.
+- Result: added machine-readable blocker details to issue/PR preflight outcome
+  rows, summary counts, report output, and a no-rerun JSONL reprocessing mode
+  for DATA-006 outcomes. The first batch now classifies Requests
+  `psf__requests-issue-7432-pr-7433` as
+  `dependency_fixture_setup_failure` with recursive `httpbin` fixture evidence
+  at baseline validation; Click `pallets__click-issue-2745-pr-3364` as
+  `prompt_spec_incomplete` with missing reproduction, observed/expected
+  behavior, affected API, input shape, acceptance test, and `default_map`
+  multi-value fields; and Click `pallets__click-issue-3298-pr-3299` as
+  `local_knowledge_missing` with required Click default/type-conversion,
+  non-string default, empty-string check, repo test-pattern, focused
+  validation, and changed-file context categories.
+- Commit: pending
+- Push: pending
+- Next: fix Requests validation recipe/setup first; turn Click #2745 into a
+  structured prompt/spec; acquire Click local-knowledge records for #3298
+  before candidate generation.
+- Blockers: none for DATA-007; candidate edits remain intentionally unstarted.

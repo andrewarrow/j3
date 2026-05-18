@@ -6,15 +6,20 @@ from pathlib import Path
 
 from j3.issue_pr_preflight import (
     Command,
+    derive_issue_pr_blocker_details,
     classify_pre_edit_residuals,
     first_failed_stage,
+    load_issue_pr_preflight_jsonl,
     load_issue_pr_replay_manifest,
     run_issue_pr_replay_preflight_batch,
     run_issue_pr_replay_preflight,
     select_issue_pr_replay_record,
     select_issue_pr_replay_records,
     summarize_issue_pr_preflight_outcomes,
+    summarize_issue_pr_preflight_records,
     write_issue_pr_preflight_jsonl,
+    write_issue_pr_preflight_records_jsonl,
+    write_issue_pr_preflight_records_report,
     write_issue_pr_preflight_report,
 )
 
@@ -176,6 +181,127 @@ def test_validation_failure_is_validation_blocker(tmp_path: Path) -> None:
     assert row["first_failed_stage"] == "baseline_validation"
     assert row["command_results"][-1]["name"] == "baseline_validation"
     assert row["command_results"][-1]["exit_code"] == 2
+    assert row["blocker_details"][0]["failure_family"] == "validation_recipe_failure"
+
+
+def test_validation_drilldown_classifies_recursive_fixture_setup(
+    tmp_path: Path,
+) -> None:
+    manifest = load_issue_pr_replay_manifest(MANIFEST_PATH)
+    record = select_issue_pr_replay_record(manifest, REQUESTS_REPLAY_ID)
+    sha = record["repo_before_ref"]["sha"]
+
+    def runner(command: Command, cwd: Path | None, timeout_seconds: int):
+        command_text = _command_text(command)
+        if command_text == "git rev-parse HEAD":
+            return subprocess.CompletedProcess(command, returncode=0, stdout=f"{sha}\n", stderr="")
+        if command_text == "pytest tests/test_requests.py -q":
+            return subprocess.CompletedProcess(
+                command,
+                returncode=1,
+                stdout=(
+                    "file tests/test_requests.py, line 124\n"
+                    "file tests/conftest.py, line 34\n"
+                    "E recursive dependency involving fixture 'httpbin' detected\n"
+                ),
+                stderr="",
+            )
+        return subprocess.CompletedProcess(command, returncode=0, stdout="", stderr="")
+
+    outcome = run_issue_pr_replay_preflight(
+        manifest_path=MANIFEST_PATH,
+        replay_id=REQUESTS_REPLAY_ID,
+        workspace=tmp_path,
+        runner=runner,
+    )
+    row = outcome.to_record()
+    detail = row["blocker_details"][0]
+
+    assert detail["blocker_label"] == "validation_baseline_failed"
+    assert detail["failure_family"] == "dependency_fixture_setup_failure"
+    assert detail["evidence_stage"] == "baseline_validation"
+    assert "httpbin" in detail["evidence"]["summary"]
+    assert "hermetic" in detail["required_next_actions"][0]
+
+
+def test_timeout_drilldown_classifies_timeout() -> None:
+    row = {
+        "replay_id": "example",
+        "repo": "owner/repo",
+        "validation_command": "pytest tests -q",
+        "first_failed_stage": "baseline_validation",
+        "blocker_labels": ["validation_baseline_failed"],
+        "residual_category": "validation",
+        "command_results": [
+            {
+                "name": "baseline_validation",
+                "command": "pytest tests -q",
+                "passed": False,
+                "exit_code": None,
+                "timed_out": True,
+                "stdout": "",
+                "stderr": "",
+            }
+        ],
+        "provenance": {"prompt_source": {}},
+    }
+
+    details = derive_issue_pr_blocker_details(row)
+
+    assert details[0]["failure_family"] == "timeout"
+    assert details[0]["timed_out"] is True
+
+
+def test_prompt_spec_drilldown_emits_missing_fields(tmp_path: Path) -> None:
+    manifest = load_issue_pr_replay_manifest(MANIFEST_PATH)
+    record = select_issue_pr_replay_record(manifest, CLICK_REPLAY_ID)
+    sha = record["repo_before_ref"]["sha"]
+
+    def runner(command: Command, cwd: Path | None, timeout_seconds: int):
+        command_text = _command_text(command)
+        stdout = f"{sha}\n" if command_text == "git rev-parse HEAD" else ""
+        return subprocess.CompletedProcess(command, returncode=0, stdout=stdout, stderr="")
+
+    outcome = run_issue_pr_replay_preflight(
+        manifest_path=MANIFEST_PATH,
+        replay_id=CLICK_REPLAY_ID,
+        workspace=tmp_path,
+        runner=runner,
+    )
+    row = outcome.to_record()
+    detail = row["blocker_details"][0]
+
+    assert detail["blocker_type"] == "prompt_spec"
+    assert detail["failure_family"] == "prompt_spec_incomplete"
+    assert "minimal_reproduction" in detail["missing_prompt_fields"]
+    assert "default_map_mutation_timing" in detail["missing_prompt_fields"]
+    assert detail["prompt_source"]["issue_number"] == 2745
+
+
+def test_local_knowledge_drilldown_emits_required_categories(tmp_path: Path) -> None:
+    replay_id = "pallets__click-issue-3298-pr-3299"
+    manifest = load_issue_pr_replay_manifest(MANIFEST_PATH)
+    record = select_issue_pr_replay_record(manifest, replay_id)
+    sha = record["repo_before_ref"]["sha"]
+
+    def runner(command: Command, cwd: Path | None, timeout_seconds: int):
+        command_text = _command_text(command)
+        stdout = f"{sha}\n" if command_text == "git rev-parse HEAD" else ""
+        return subprocess.CompletedProcess(command, returncode=0, stdout=stdout, stderr="")
+
+    outcome = run_issue_pr_replay_preflight(
+        manifest_path=MANIFEST_PATH,
+        replay_id=replay_id,
+        workspace=tmp_path,
+        runner=runner,
+    )
+    detail = outcome.to_record()["blocker_details"][0]
+
+    assert detail["blocker_type"] == "local_knowledge"
+    assert detail["failure_family"] == "local_knowledge_missing"
+    assert "click_parameter_default_handling" in detail["required_knowledge_categories"]
+    assert "third_party_semver_version_reproduction" in detail["required_knowledge_categories"]
+    assert "src/click/core.py" in detail["required_next_actions"][0]
 
 
 def test_batch_summary_and_report_include_counts_and_deferred_labels(
@@ -240,8 +366,10 @@ def test_batch_summary_and_report_include_counts_and_deferred_labels(
         "materialization_gap": 1,
         "ranking_gap": 2,
     }
+    assert summary["missing_prompt_field_counts"]["minimal_reproduction"] == 1
     report = report_path.read_text(encoding="utf-8")
     assert "Pre-edit replay preflight only" in report
+    assert "Blocker Drilldown" in report
     assert REQUESTS_REPLAY_ID in report
     assert CLICK_REPLAY_ID in report
 
@@ -268,6 +396,48 @@ def test_writes_preflight_outcomes_as_jsonl(tmp_path: Path) -> None:
     assert len(rows) == 1
     assert rows[0]["record_kind"] == "issue_pr_replay_preflight_outcome"
     assert rows[0]["replay_id"] == REQUESTS_REPLAY_ID
+    assert rows[0]["blocker_details"][0]["blocker_type"] == "local_knowledge"
+
+
+def test_loads_existing_jsonl_and_writes_drilldown_records(tmp_path: Path) -> None:
+    row = {
+        "schema_version": "issue-pr-replay-preflight-v1",
+        "record_kind": "issue_pr_replay_preflight_outcome",
+        "replay_id": CLICK_REPLAY_ID,
+        "repo": "pallets/click",
+        "validation_command": "pytest tests/test_defaults.py -q",
+        "status": "blocked",
+        "runtime_seconds": 0.1,
+        "command_stages_reached": ["baseline_validation"],
+        "first_failed_stage": "none",
+        "command_results": [],
+        "blocker_labels": ["prompt_spec_ambiguous_or_incomplete"],
+        "residual_category": "prompt_spec",
+        "provenance": {
+            "prompt_text": "Fix default_map multi-value behavior",
+            "prompt_source": {"issue_number": 2745, "pull_request_number": 3364},
+            "accepted_change": {"changed_files": ["src/click/core.py"]},
+            "deferred_agent_residual_labels": ["ranking_gap"],
+        },
+    }
+    source_path = tmp_path / "source.jsonl"
+    source_path.write_text(json.dumps(row) + "\n", encoding="utf-8")
+
+    rows = load_issue_pr_preflight_jsonl(source_path)
+    out_path = write_issue_pr_preflight_records_jsonl(rows, tmp_path / "out.jsonl")
+    summary = summarize_issue_pr_preflight_records(rows, outcome_path=out_path)
+    report_path = write_issue_pr_preflight_records_report(
+        rows,
+        tmp_path / "report.md",
+        summary=summary,
+    )
+
+    written = [json.loads(line) for line in out_path.read_text(encoding="utf-8").splitlines()]
+    assert written[0]["blocker_details"][0]["failure_family"] == "prompt_spec_incomplete"
+    assert summary["missing_prompt_field_counts"]["minimal_reproduction"] == 1
+    assert "DATA-007 Issue/PR Replay Blocker Drilldown" in report_path.read_text(
+        encoding="utf-8"
+    )
 
 
 def test_classification_defers_agent_stage_labels() -> None:

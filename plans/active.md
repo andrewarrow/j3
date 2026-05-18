@@ -62,23 +62,6 @@ This is the live coordinator board. Keep it current and compact.
   tests/test_plan_consistency.py -q`, `git diff --check`, and a live
   score/report smoke command with all four pinned repos when feasible.
 
-### DATA-007: Issue/PR Replay Blocker Drilldown
-
-- Status: active
-- Owner: worker Helmholtz (`019e3bec-9d05-7692-861b-4394de9892f2`).
-- Write scope: `j3/issue_pr_preflight.py`,
-  `tests/test_issue_pr_preflight.py`, optional compact report under `docs/`,
-  generated live artifacts under `/tmp`, and plan updates.
-- Acceptance: use the `DATA-006` first-batch outcomes to make the first
-  blockers actionable: distinguish validation recipe failure from dependency
-  or fixture setup failure for the Requests row, and summarize which prompt
-  and local-knowledge fields are missing for the two Click rows. Add compact
-  blocker-detail/report support if needed, without attempting issue/PR code
-  edits.
-- Required checks: focused issue/PR preflight tests, `pytest
-  tests/test_plan_consistency.py -q`, `git diff --check`, and a smoke command
-  over the DATA-006 JSONL or a fresh bounded preflight when feasible.
-
 ## Ready Queue
 
 These are good next assignments for the next loop:
@@ -112,6 +95,20 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `DATA-007`: added issue/PR replay blocker drilldown support to the preflight
+  outcome schema, JSONL reprocessing mode, summary counts, and compact report.
+  The DATA-006 first batch now classifies Requests
+  `psf__requests-issue-7432-pr-7433` as
+  `dependency_fixture_setup_failure` with recursive `httpbin` fixture evidence,
+  Click `pallets__click-issue-2745-pr-3364` as
+  `prompt_spec_incomplete` with missing reproduction, expected/observed
+  behavior, affected API, input shape, acceptance test, and `default_map`
+  multi-value fields, and Click `pallets__click-issue-3298-pr-3299` as
+  `local_knowledge_missing` with required Click default/type-conversion,
+  non-string default, empty-string check, repo test-pattern, validation, and
+  changed-file context categories. Report:
+  `docs/DATA_007_ISSUE_PR_BLOCKER_DRILLDOWN_2026-05-18.md`; enhanced JSONL:
+  `/tmp/j3-data-007-blocker-drilldown/outcomes.jsonl`.
 - `MAT-006`: materialized the remaining held-out one-file source feature
   candidate for `boltons-feature-slugify-max-length`. The feature materializer
   now supports a bounded `slugify` source-region edit in `boltons/strutils.py`,

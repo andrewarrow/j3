@@ -1007,7 +1007,7 @@ Long-term target:
 
 ### DATA-007: Issue/PR replay blocker drilldown
 
-- Status: active
+- Status: done
 - Why: `DATA-006` proved the issue/PR path blocks before edit quality on
   validation, prompt/spec, and local knowledge; the next proof is whether
   those blockers can be made actionable instead of becoming vague labels.
@@ -1022,13 +1022,21 @@ Long-term target:
   `git diff --check`, and a smoke command over the DATA-006 JSONL or a fresh
   bounded preflight when feasible.
 
+- Completion note: added machine-readable blocker details to issue/PR
+  preflight outcomes, plus JSONL reprocessing and compact report support.
+  DATA-006's first batch now distinguishes the Requests baseline failure as a
+  recursive `httpbin` dependency/fixture setup failure, records missing
+  prompt/spec fields for the Click `default_map` row, and records required
+  Click local-knowledge categories for the non-string `semver.Version` default
+  row. Report: `docs/DATA_007_ISSUE_PR_BLOCKER_DRILLDOWN_2026-05-18.md`;
+  enhanced JSONL: `/tmp/j3-data-007-blocker-drilldown/outcomes.jsonl`.
+
 ## Next Recommended Queue
 
 Start with these unless fresh evidence changes the order:
 
 1. `REAL-012`: rerun the full one-file feature gate after boltons.
-2. `DATA-007`: drill into the issue/PR replay blockers from DATA-006.
-3. `KNOW-003`: broaden knowledge-use attribution where scoring shows missing
+2. `KNOW-003`: broaden knowledge-use attribution where scoring shows missing
    local-knowledge evidence.
-4. `MODEL-006`: candidate-after or AST-delta observation for ranking evidence.
-5. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.
+3. `MODEL-006`: candidate-after or AST-delta observation for ranking evidence.
+4. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.

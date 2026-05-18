@@ -254,7 +254,7 @@ Long-term target:
 
 ### GS7-011: Materialize held-out boltons tests-only candidate
 
-- Status: active
+- Status: done
 - Why: the tests-only gate needs broad held-out evidence and boltons is the
   remaining ladder repo whose baseline has not yet been exercised by candidate
   scoring.
@@ -271,6 +271,14 @@ Long-term target:
 - Tests: focused planner/materializer tests,
   `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and a live
   `python -m pytest tests/test_strutils.py -q` candidate check when available.
+- Completion note: added the remaining held-out tests-only materializer for
+  `boltons-tests-slugify-delimiter`. The planner selects
+  `tests/test_strutils.py` from repo-state plus local-knowledge evidence,
+  appends pytest-discoverable coverage for custom delimiters, empty strings,
+  ascii bytes output, and `lower=False`, preserves production hashes, and emits
+  candidate-after, mutation-scope, validation-command, residual, and
+  knowledge-use metadata. Live validation against the pinned boltons checkout
+  passed with `20 passed in 0.03s`, changing only `tests/test_strutils.py`.
 
 ## Workstream C: Prompt Corpus And Intent Data
 

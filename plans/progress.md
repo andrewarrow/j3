@@ -1366,3 +1366,36 @@ meaningful work. Do not replace this file with a daily reset.
   boltons tests-only materializer. Keep `REAL-010` ready for the full
   tests-only gate after boltons.
 - Blockers: none
+
+### 2026-05-18 - GS7-011 - Held-out boltons tests-only materializer
+
+- Owner: worker Aristotle (`019e3bb9-a3fb-7492-b95f-bb26e5ea19be`)
+- Files changed: `j3/real_repo_tests_planner.py`,
+  `tests/test_real_repo_tests_planner.py`, `plans/active.md`,
+  `plans/backlog.md`, `plans/progress.md`
+- Tests: `python -m py_compile j3/real_repo_tests_planner.py
+  tests/test_real_repo_tests_planner.py` -> passed;
+  `pytest tests/test_real_repo_tests_planner.py -q` -> 5 passed; live setup
+  against `/tmp/j3-gs7-011-boltons-live.VrqnqZ/boltons` with
+  `python -m pip install -e . -r requirements-test.txt` -> passed; live
+  materializer run wrote
+  `/tmp/j3-gs7-011-boltons-live.VrqnqZ/candidate.json` and changed only
+  `tests/test_strutils.py`; live candidate check
+  `python -m pytest tests/test_strutils.py -q` -> 20 passed in 0.03s;
+  `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check`
+  -> passed.
+- Result: materialized the remaining held-out tests-only candidate for
+  `boltons-tests-slugify-delimiter`. The planner selects
+  `tests/test_strutils.py` from repo-state plus local-knowledge evidence,
+  requires the existing public `from boltons import strutils` style, appends
+  pytest-discoverable coverage for custom delimiters, empty strings, ascii
+  bytes output, and `lower=False`, records candidate-after metadata and
+  validation command, emits residual and knowledge-use records, and preserves
+  production files byte-for-byte. The live candidate protected 34 production
+  files, reported zero production-file changes, and had zero writes outside
+  the allowlist.
+- Commit: pending
+- Push: pending
+- Next: run `REAL-010` after integrating `GS7-011` so the full four-row
+  tests-only gate can count boltons alongside iniconfig, h11, and humanize.
+- Blockers: none

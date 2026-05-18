@@ -17,62 +17,22 @@ This is the live coordinator board. Keep it current and compact.
   and live-validates the `iniconfig` calibration candidate. `REAL-005` extends
   live baseline preflight to `h11` and `humanize`, so Gate A now has three
   baseline-passing repositories when combined with `REAL-004` `iniconfig`.
-  `REAL-007` scored the materialized calibration candidate plus the first
-  held-out h11 candidate at `pass@1 = 2/4` and `pass@3 = 2/4`; calibration
-  pass rate is `1/1`, held-out pass rate is `1/3`, and tests-only guarded
-  opt-in remains shadow-only until `REAL-008` counts the held-out `humanize`
-  materializer. `GS7-010` now materializes and live-validates the held-out
-  `humanize` tests-only candidate, and `GS7-011` is active for the remaining
-  boltons tests-only row. `MAT-003` now materializes and live-validates the
+  `REAL-008` scored the materialized calibration candidate plus held-out
+  `h11` and `humanize` candidates at `pass@1 = 3/4` and `pass@3 = 3/4`;
+  calibration pass rate is `1/1`, held-out pass rate is `2/3`, and guarded
+  tests-only opt-in is allowed only for materialized, validation-passing
+  tests-only candidates that write task-allowlisted test files with zero
+  production-file changes, zero writes outside allowlists, and no hidden-like
+  disagreement. `boltons-tests-slugify-delimiter` remains blocked in the
+  `REAL-008` score and should be counted by `REAL-010` now that `GS7-011`
+  has materialized and live-validated it. `MAT-003` now materializes and
+  live-validates the
   first real one-file source feature candidate on held-out `h11`; `REAL-009`
   scores it at
   `pass@1 = 1/4` and `pass@3 = 1/4` across one distinct passing repo, so the
   one-file feature gate remains shadow-only.
 
 ## Active Tasks
-
-### `REAL-008`: Tests-only gate after humanize materializer
-
-- Status: active
-- Owner: worker Kant (`019e3bb9-7038-7ee1-a876-1fa0b475f3cd`).
-- Goal: rerun the tests-only gate with the `GS7-010` humanize materializer
-  counted, separating calibration and held-out evidence.
-- Write scope: `j3/real_repo_shadow_score.py`,
-  `tests/test_real_repo_shadow_score.py`, one compact `docs/REAL_008_*.md`
-  report if useful, generated outputs under `/tmp`, and plan updates.
-- Do not touch: `j3/real_repo_tests_planner.py` or
-  `tests/test_real_repo_tests_planner.py`; those belong to `GS7-011`.
-- Acceptance: score iniconfig, h11, and humanize through materialized
-  candidates; leave boltons as an explicit blocker unless a materializer is
-  already available; report calibration pass rate, held-out pass rate, total
-  pass@1/pass@3, first passing ranks, runtime, mutation-scope violations,
-  hidden-like agreement, zero hosted usage, and guarded-use gate decision.
-- Tests: `pytest tests/test_real_repo_shadow_score.py -q`,
-  `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and a live
-  score/report smoke with pinned `iniconfig`, `h11`, and `humanize` checkout
-  paths.
-
-### `GS7-011`: Materialize held-out boltons tests-only candidate
-
-- Status: active
-- Owner: worker Aristotle (`019e3bb9-a3fb-7492-b95f-bb26e5ea19be`).
-- Goal: attack `boltons-tests-slugify-delimiter` as the remaining held-out
-  tests-only ladder task.
-- Write scope: `j3/real_repo_tests_planner.py`,
-  `tests/test_real_repo_tests_planner.py`, optional generated outputs under
-  `/tmp`, and plan updates.
-- Do not touch: `j3/real_repo_shadow_score.py` or
-  `tests/test_real_repo_shadow_score.py`; those belong to `REAL-008`.
-- Acceptance: select `tests/test_strutils.py` from repo-state and
-  local-knowledge evidence; materialize pytest coverage for custom delimiters,
-  empty strings, ascii output, and `lower=False`; preserve production files;
-  emit candidate-after, mutation-scope, validation-command, residual, and
-  knowledge-use metadata; and live-validate the pinned checkout if setup
-  succeeds. If setup or validation fails, classify environment versus agent
-  failure.
-- Tests: focused planner/materializer tests,
-  `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and a live
-  `python -m pytest tests/test_strutils.py -q` candidate check when available.
 
 ## Ready Queue
 
@@ -111,6 +71,29 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `REAL-008`: reran the tests-only shadow score after `GS7-010`, counting
+  `iniconfig-tests-parse-comments`, `h11-tests-bytesify-memoryview`, and
+  `humanize-tests-naturalsize-negative-strings` through the real-repo tests
+  planner surface. The live `/tmp` run against pinned checkouts scored
+  `pass@1 = 3/4`, `pass@3 = 3/4`, calibration pass@3 `1/1`, held-out pass@3
+  `2/3`, first passing ranks `[1, 1, 1, null]`, candidate validation
+  `passed = 3` and `blocked = 1`, zero production-file modifications, zero
+  writes outside allowlists, zero candidate target path violations,
+  hidden-like agreement for all three passing rows, and zero hosted usage.
+  The gate decision is `allow_guarded_tests_only_opt_in` for materialized,
+  validation-passing tests-only candidates within task allowlists; boltons
+  remains an explicit `test_case_materialization_gap` blocker in this score.
+- `GS7-011`: materialized the remaining held-out tests-only candidate for
+  `boltons-tests-slugify-delimiter`. The planner selects
+  `tests/test_strutils.py` from repo-state plus local-knowledge evidence,
+  requires the selected test file to import public `strutils` from `boltons`,
+  appends pytest-discoverable coverage for custom delimiters, empty strings,
+  ascii bytes output, and `lower=False`, records candidate-after metadata and
+  validation command, emits residual and knowledge-use records, and preserves
+  production files byte-for-byte. Live validation against the pinned boltons
+  checkout under `/tmp/j3-gs7-011-boltons-live.VrqnqZ/boltons` passed with
+  `20 passed in 0.03s`, changing only `tests/test_strutils.py` and no
+  production files.
 - `REAL-009`: scored the `MAT-003` h11 one-file feature candidate against the
   full one-file feature ladder with the new
   `j3.real_repo_feature_shadow_score` command. The live `/tmp` run against the

@@ -54,6 +54,17 @@ def _manifest_humanize_rows() -> tuple[dict[str, object], dict[str, object]]:
     return repo, task
 
 
+def _manifest_boltons_rows() -> tuple[dict[str, object], dict[str, object]]:
+    manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+    repo = next(item for item in manifest["repositories"] if item["id"] == "boltons")
+    task = next(
+        item
+        for item in repo["tasks"]
+        if item["id"] == "boltons-tests-slugify-delimiter"
+    )
+    return repo, task
+
+
 def _write_synthetic_iniconfig_checkout(repo: Path) -> None:
     (repo / "src" / "iniconfig").mkdir(parents=True)
     (repo / "testing").mkdir()
@@ -293,6 +304,78 @@ import humanize
 )
 def test_naturalsize(test_args: list[object], expected: str) -> None:
     assert humanize.naturalsize(*test_args) == expected
+""",
+        encoding="utf-8",
+    )
+
+
+def _write_synthetic_boltons_checkout(repo: Path) -> None:
+    (repo / "boltons").mkdir(parents=True)
+    (repo / "tests").mkdir()
+    (repo / "pyproject.toml").write_text(
+        """[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "boltons"
+version = "23.1.0"
+requires-python = ">=3.8"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+""",
+        encoding="utf-8",
+    )
+    (repo / "boltons" / "__init__.py").write_text(
+        """from __future__ import annotations
+""",
+        encoding="utf-8",
+    )
+    (repo / "boltons" / "strutils.py").write_text(
+        """from __future__ import annotations
+
+import re
+import unicodedata
+
+_punct_re = re.compile(r"[\\W_]+")
+
+
+def asciify(text: str) -> bytes:
+    normalized = unicodedata.normalize("NFKD", text)
+    return normalized.encode("ascii", "ignore")
+
+
+def split_punct_ws(text: str) -> list[str]:
+    return [word for word in _punct_re.split(text) if word]
+
+
+def slugify(
+    text: str, delim: str = "_", lower: bool = True, ascii: bool = False
+) -> str | bytes:
+    ret = delim.join(split_punct_ws(text)) or delim if text else ""
+    if ascii:
+        ret = asciify(ret)
+    if lower:
+        ret = ret.lower()
+    return ret
+""",
+        encoding="utf-8",
+    )
+    (repo / "tests" / "test_strutils.py").write_text(
+        """from __future__ import annotations
+
+import pytest
+
+from boltons import strutils
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [("First post! Hi!!!!~1    ", "first_post_hi_1")],
+)
+def test_slugify_default_delimiter(text: str, expected: str) -> None:
+    assert strutils.slugify(text) == expected
 """,
         encoding="utf-8",
     )
@@ -722,6 +805,157 @@ def test_real_repo_tests_planner_materializes_humanize_naturalsize_cases(
     assert "test_naturalsize_formats_negative_binary_suffixes" in test_after
     assert '("-1024", "-1.0K")' in test_after
     assert '("-1024", "-1.0 KiB")' in test_after
+
+    rerow = plan_real_repo_tests_only_candidate(
+        tmp_path,
+        repo=repo,
+        task=task,
+        local_knowledge_records=records,
+    ).to_record()
+    assert rerow["status"] == "already_applied"
+    assert rerow["mutation_scope"]["files_changed"] == []
+
+
+def test_real_repo_tests_planner_materializes_boltons_slugify_cases(
+    tmp_path: Path,
+) -> None:
+    repo, task = _manifest_boltons_rows()
+    _write_synthetic_boltons_checkout(tmp_path)
+    production_before = {
+        "boltons/__init__.py": (tmp_path / "boltons" / "__init__.py").read_bytes(),
+        "boltons/strutils.py": (tmp_path / "boltons" / "strutils.py").read_bytes(),
+    }
+    test_before = (tmp_path / "tests" / "test_strutils.py").read_text(
+        encoding="utf-8"
+    )
+    records = _knowledge_records(tmp_path, repo, task)
+
+    row = plan_real_repo_tests_only_candidate(
+        tmp_path,
+        repo=repo,
+        task=task,
+        local_knowledge_records=records,
+    ).to_record()
+
+    assert json.loads(json.dumps(row, sort_keys=True)) == row
+    assert row["repo_id"] == "boltons"
+    assert row["repo_split"] == "heldout"
+    assert row["task_id"] == "boltons-tests-slugify-delimiter"
+    assert row["status"] == "materialized"
+    assert row["target_test_file"] == "tests/test_strutils.py"
+    assert row["validation_commands"] == [
+        "python -m pytest tests/test_strutils.py -q"
+    ]
+    assert row["residual_labels"] == [CANDIDATE_VALIDATION_DEFERRED]
+    assert row["blockers"] == []
+
+    select_test_file = row["actions"][1]
+    assert select_test_file["target"] == "tests/test_strutils.py"
+    assert select_test_file["payload"]["repo_state_confirmed"] is True
+    assert {
+        "task.allowed_write_paths",
+        "task.public_validation_commands",
+        "local_knowledge.validation_recipe_record",
+        "local_knowledge.pytest_layout_record",
+    } <= set(select_test_file["payload"]["selection_sources"])
+
+    import_evidence = row["import_style_evidence"]
+    assert ("boltons", "strutils") in {
+        (item["module"], item["imported"])
+        for item in import_evidence["repo_state_imports"]
+    }
+    assert import_evidence["selected_public_imports"] == [
+        {
+            "path": "tests/test_strutils.py",
+            "module": "boltons",
+            "imported": "strutils",
+            "level": 0,
+            "line": 5,
+        }
+    ]
+
+    mutation_scope = row["mutation_scope"]
+    assert mutation_scope["mode"] == "tests_only"
+    assert mutation_scope["planned_write_files"] == ["tests/test_strutils.py"]
+    assert mutation_scope["files_changed"] == ["tests/test_strutils.py"]
+    assert mutation_scope["production_files"] == [
+        "boltons/__init__.py",
+        "boltons/strutils.py",
+    ]
+    assert mutation_scope["production_files_changed"] == []
+    assert mutation_scope["writes_outside_allowlist"] == []
+    assert mutation_scope["production_files_must_remain_unchanged"] is True
+    assert row["production_files"] == [
+        "boltons/__init__.py",
+        "boltons/strutils.py",
+    ]
+    assert set(row["production_file_hashes_before"]) == {
+        "boltons/__init__.py",
+        "boltons/strutils.py",
+    }
+    assert {
+        path: (tmp_path / path).read_bytes() for path in production_before
+    } == production_before
+
+    candidate_after = row["candidate_after"]
+    assert candidate_after["available"] is True
+    assert candidate_after["wrote_file"] is True
+    assert candidate_after["planned_changed_files"] == ["tests/test_strutils.py"]
+    assert candidate_after["test_case_ids"] == [
+        "boltons_slugify_custom_delimiters",
+        "boltons_slugify_empty_string",
+        "boltons_slugify_ascii_output",
+        "boltons_slugify_lower_false",
+    ]
+    assert candidate_after["test_functions"] == [
+        "test_slugify_accepts_custom_delimiters",
+        "test_slugify_empty_string_stays_empty",
+        "test_slugify_ascii_mode_returns_bytes",
+        "test_slugify_preserves_case_when_lower_false",
+    ]
+    assert candidate_after["sha256_before"] != candidate_after["sha256_after"]
+    assert candidate_after["diff_summary"]["added_line_count"] > 0
+
+    materialize_action = row["actions"][3]
+    assert materialize_action["payload"]["status"] == "materialized"
+    assert [
+        case["id"] for case in materialize_action["payload"]["cases"]
+    ] == candidate_after["test_case_ids"]
+
+    validation = row["validation"]
+    assert validation == {
+        "status": "not_run",
+        "commands": ["python -m pytest tests/test_strutils.py -q"],
+        "selected_command": "python -m pytest tests/test_strutils.py -q",
+        "not_run_reason": CANDIDATE_VALIDATION_DEFERRED,
+        "candidate_validation_network_allowed": False,
+    }
+
+    citations = row["knowledge_citations"]
+    assert {"import_style", "pytest_style", "test_location", "validation"} <= set(
+        citations
+    )
+    knowledge_use = row["knowledge_use_record"]
+    assert isinstance(knowledge_use, dict)
+    validate_local_knowledge_record(knowledge_use)
+    assert knowledge_use["record_type"] == "knowledge_use_record"
+    assert knowledge_use["split"] == "heldout"
+    assert knowledge_use["data"]["validation_result"] == {
+        "status": "materialized",
+        "command": "python -m pytest tests/test_strutils.py -q",
+        "reason": CANDIDATE_VALIDATION_DEFERRED,
+    }
+
+    test_after = (tmp_path / "tests" / "test_strutils.py").read_text(
+        encoding="utf-8"
+    )
+    assert test_after != test_before
+    assert "test_slugify_accepts_custom_delimiters" in test_after
+    assert "test_slugify_empty_string_stays_empty" in test_after
+    assert "test_slugify_ascii_mode_returns_bytes" in test_after
+    assert "test_slugify_preserves_case_when_lower_false" in test_after
+    assert '("-1024", "-1.0K")' not in test_after
+    assert 'isinstance(result, bytes)' in test_after
 
     rerow = plan_real_repo_tests_only_candidate(
         tmp_path,

@@ -26,6 +26,7 @@ H11_BYTESIFY_MEMORYVIEW_TASK_ID = "h11-tests-bytesify-memoryview"
 HUMANIZE_NATURALSIZE_NEGATIVE_STRINGS_TASK_ID = (
     "humanize-tests-naturalsize-negative-strings"
 )
+BOLTONS_SLUGIFY_DELIMITER_TASK_ID = "boltons-tests-slugify-delimiter"
 CANDIDATE_VALIDATION_DEFERRED = "candidate_validation_deferred"
 
 
@@ -472,6 +473,13 @@ def _materialize_pytest_cases_for_task(
             import_style_evidence=import_style_evidence,
             write=write,
         )
+    if repo_id == "boltons" and task_id == BOLTONS_SLUGIFY_DELIMITER_TASK_ID:
+        return _materialize_boltons_slugify_delimiter_tests(
+            repo,
+            target_test_file=target_test_file,
+            import_style_evidence=import_style_evidence,
+            write=write,
+        )
 
     blocker = {
         "field": "test_case_materialization",
@@ -480,7 +488,8 @@ def _materialize_pytest_cases_for_task(
             "behavior-specific pytest case materialization is only "
             "implemented for iniconfig-tests-parse-comments and "
             "h11-tests-bytesify-memoryview and "
-            "humanize-tests-naturalsize-negative-strings"
+            "humanize-tests-naturalsize-negative-strings and "
+            "boltons-tests-slugify-delimiter"
         ),
     }
     return _blocked_materialization(target_test_file, blocker)
@@ -615,6 +624,49 @@ def _materialize_humanize_naturalsize_negative_strings_tests(
     }
 
 
+def _materialize_boltons_slugify_delimiter_tests(
+    repo: Path,
+    *,
+    target_test_file: str,
+    import_style_evidence: Mapping[str, object],
+    write: bool,
+) -> dict[str, object]:
+    api_blocker = _boltons_slugify_api_blocker(import_style_evidence)
+    if api_blocker is not None:
+        return _blocked_materialization(target_test_file, api_blocker)
+
+    target_path = _repo_path(repo, target_test_file)
+    before_text = (
+        target_path.read_text(encoding="utf-8") if target_path.exists() else ""
+    )
+    after_text = _merge_boltons_slugify_delimiter_tests(before_text)
+    planned_changed_files = [target_test_file] if after_text != before_text else []
+    if write and planned_changed_files:
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        target_path.write_text(after_text, encoding="utf-8")
+
+    status = "already_applied"
+    files_changed: list[str] = []
+    if planned_changed_files:
+        status = "materialized" if write else "planned"
+        files_changed = list(planned_changed_files) if write else []
+
+    case_records = _boltons_slugify_delimiter_case_records()
+    return {
+        "status": status,
+        "files_changed": files_changed,
+        "cases": case_records,
+        "candidate_after": _candidate_after_record(
+            target_test_file=target_test_file,
+            before_text=before_text,
+            after_text=after_text,
+            planned_changed_files=planned_changed_files,
+            wrote_file=write and bool(planned_changed_files),
+            case_records=case_records,
+        ),
+    }
+
+
 def _blocked_materialization(
     target_test_file: str,
     blocker: Mapping[str, str],
@@ -702,6 +754,29 @@ def _humanize_naturalsize_api_blocker(
         "message": (
             "humanize naturalsize test materialization requires the selected "
             "test file to import the public humanize module"
+        ),
+    }
+
+
+def _boltons_slugify_api_blocker(
+    import_style_evidence: Mapping[str, object],
+) -> dict[str, str] | None:
+    selected = {
+        (str(item.get("module", "")), item.get("imported"))
+        for item_value in _sequence(
+            import_style_evidence.get("selected_public_imports", []),
+            field="selected_public_imports",
+        )
+        for item in [_mapping(item_value, field="selected_public_import")]
+    }
+    if ("boltons", "strutils") in selected:
+        return None
+    return {
+        "field": "public_api",
+        "reason": "unsupported_public_api",
+        "message": (
+            "boltons slugify test materialization requires the selected test "
+            "file to import strutils from the public boltons package"
         ),
     }
 
@@ -894,6 +969,55 @@ def _render_humanize_naturalsize_negative_strings_tests_append_block() -> str:
     )
 
 
+def _merge_boltons_slugify_delimiter_tests(existing_text: str) -> str:
+    required_functions = [
+        "test_slugify_accepts_custom_delimiters",
+        "test_slugify_empty_string_stays_empty",
+        "test_slugify_ascii_mode_returns_bytes",
+        "test_slugify_preserves_case_when_lower_false",
+    ]
+    if all(f"def {name}" in existing_text for name in required_functions):
+        return existing_text
+
+    append_block = _render_boltons_slugify_delimiter_tests_append_block()
+    if not existing_text.strip():
+        return (
+            "from __future__ import annotations\n"
+            "\n"
+            "from boltons import strutils\n"
+            "\n\n"
+            + append_block
+        )
+    return existing_text.rstrip() + "\n\n\n" + append_block
+
+
+def _render_boltons_slugify_delimiter_tests_append_block() -> str:
+    return (
+        "def test_slugify_accepts_custom_delimiters() -> None:\n"
+        "    assert strutils.slugify(\n"
+        '        "First post! Hi!!!!~1    ", delim="-"\n'
+        '    ) == "first-post-hi-1"\n'
+        "    assert strutils.slugify(\n"
+        '        "dots.and spaces / symbols", delim="--"\n'
+        '    ) == "dots--and--spaces--symbols"\n'
+        "\n\n"
+        "def test_slugify_empty_string_stays_empty() -> None:\n"
+        '    assert strutils.slugify("") == ""\n'
+        '    assert strutils.slugify("", delim="-") == ""\n'
+        "\n\n"
+        "def test_slugify_ascii_mode_returns_bytes() -> None:\n"
+        "    result = strutils.slugify(\"Kurt G\\u00f6del's pretty cool.\", ascii=True)\n"
+        "\n"
+        "    assert result == b\"kurt_goedel_s_pretty_cool\"\n"
+        "    assert isinstance(result, bytes)\n"
+        "\n\n"
+        "def test_slugify_preserves_case_when_lower_false() -> None:\n"
+        "    assert strutils.slugify(\n"
+        '        "MiXeD Case Input", delim="-", lower=False\n'
+        '    ) == "MiXeD-Case-Input"\n'
+    )
+
+
 def _h11_bytesify_memoryview_case_records() -> list[dict[str, object]]:
     return [
         {
@@ -957,6 +1081,41 @@ def _humanize_naturalsize_negative_strings_case_records() -> list[dict[str, obje
                 "negative string KiB-scale values render with KiB",
                 "negative string MiB/GiB-scale values render with MiB/GiB",
             ],
+        },
+    ]
+
+
+def _boltons_slugify_delimiter_case_records() -> list[dict[str, object]]:
+    return [
+        {
+            "id": "boltons_slugify_custom_delimiters",
+            "behavior": "custom delimiters join punctuation and whitespace splits",
+            "function": "test_slugify_accepts_custom_delimiters",
+            "assertions": [
+                "hyphen delimiter replaces default underscore",
+                "multi-character delimiter is preserved between words",
+            ],
+        },
+        {
+            "id": "boltons_slugify_empty_string",
+            "behavior": "empty string input remains empty for default and custom delimiters",
+            "function": "test_slugify_empty_string_stays_empty",
+            "assertions": ["empty input returns an empty string"],
+        },
+        {
+            "id": "boltons_slugify_ascii_output",
+            "behavior": "ascii=True returns ascii bytes output",
+            "function": "test_slugify_ascii_mode_returns_bytes",
+            "assertions": [
+                "unicode characters are asciified",
+                "result type is bytes",
+            ],
+        },
+        {
+            "id": "boltons_slugify_lower_false",
+            "behavior": "lower=False preserves case while still applying delimiters",
+            "function": "test_slugify_preserves_case_when_lower_false",
+            "assertions": ["mixed-case words retain their original case"],
         },
     ]
 

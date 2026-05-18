@@ -2741,3 +2741,26 @@ meaningful work. Do not replace this file with a daily reset.
   materializers plus config/test refiners recorded by DATA-023.
 - Blockers: no audit blocker; full accepted-edit materialization is not
   currently expressible by existing structured actions.
+
+### 2026-05-18 - Coordinator Review And Dispatch - DATA-024 / MODEL-006
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, `plans/progress.md`.
+- Tests: `python -m py_compile j3/issue_pr_readiness.py
+  tests/test_issue_pr_readiness.py` -> passed; `pytest
+  tests/test_issue_pr_readiness.py -q` -> 5 passed; `python -m py_compile
+  j3/issue_pr_materialization_audit.py
+  tests/test_issue_pr_materialization_audit.py` -> passed; `pytest
+  tests/test_issue_pr_materialization_audit.py -q` -> 3 passed; `pytest
+  tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check` ->
+  passed.
+- Result: reviewed DATA-022 and DATA-023. Pytest #14442 is now ready for a
+  candidate attempt, but full accepted-edit materialization is not currently
+  expressible. The next loop assigns `DATA-024` as an explicit source/test-only
+  candidate attempt while preserving `AUTHORS` and changelog as residuals, and
+  assigns `MODEL-006` so ranking evidence begins using candidate-after or
+  AST-delta signals rather than staying an abstract gap.
+- Commit: pending coordinator dispatch commit.
+- Push: pending.
+- Next: workers dispatched for `DATA-024` and `MODEL-006`.
+- Blockers: none.

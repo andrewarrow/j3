@@ -461,7 +461,7 @@ Long-term target:
 
 ### MODEL-006: Add candidate-after or AST-delta observation
 
-- Status: ready
+- Status: active
 - Why: identifier, attribute, signature, and wrapper residuals need evidence
   that a candidate changes the failing behavior rather than a nearby name or
   import.
@@ -1585,11 +1585,33 @@ Long-term target:
   `/tmp/j3-data-023-pytest-14442-materialization-audit/report.md`, and
   `docs/DATA_023_PYTEST_14442_MATERIALIZATION_COVERAGE_AUDIT_2026-05-18.md`.
 
+### DATA-024: Pytest #14442 source/test candidate attempt
+
+- Status: active
+- Why: DATA-022 says pytest #14442 is candidate-ready and DATA-023 says full
+  accepted-edit parity is not currently expressible. The hard next proof is
+  whether the current stack can materialize and validate the behavior-changing
+  source/test slice in a new repo while preserving the auxiliary gap honestly.
+- Write scope: a bounded pytest issue/PR candidate-attempt path and tests,
+  generated outputs under `/tmp`, optional compact report under `docs/`, and
+  plan updates.
+- Acceptance: attempt exactly `pytest-dev__pytest-issue-14442-pr-14443` in
+  explicit source/test-only scope. Materialize only
+  `src/_pytest/config/__init__.py`, `testing/test_config.py`, and
+  `testing/test_mark.py`; do not write `AUTHORS` or
+  `changelog/14442.bugfix.rst`. Record actions, candidate diff, mutation
+  scope, validation command/runtime/pass-fail, residual labels,
+  DATA-018/021/022/023 provenance, and structured-action coverage. Run live
+  focused validation with `pytest testing/test_config.py testing/test_mark.py
+  -q` when feasible. If materialization or validation blocks, record the exact
+  blocker.
+- Tests: focused candidate-attempt tests, plan consistency, `git diff
+  --check`, and live validation when feasible.
+
 ## Next Recommended Queue
 
 Start with these unless fresh evidence changes the order:
 
 1. `KNOW-003`: broaden knowledge-use attribution where scoring shows missing
    local-knowledge evidence.
-2. `MODEL-006`: candidate-after or AST-delta observation for ranking evidence.
-3. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.
+2. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.

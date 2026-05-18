@@ -44,16 +44,31 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
+- `DATA-024`: worker to attempt a source/test-only pytest #14442 candidate for
+  `pytest-dev__pytest-issue-14442-pr-14443`, explicitly excluding `AUTHORS`
+  and `changelog/14442.bugfix.rst` from this slice. Ownership: a bounded
+  pytest issue/PR candidate-attempt module/path plus focused tests, generated
+  `/tmp` artifacts, optional compact report under `docs/`, and plan updates.
+  Acceptance: live pinned pytest checkout changes only
+  `src/_pytest/config/__init__.py`, `testing/test_config.py`, and
+  `testing/test_mark.py`, records candidate diff/actions/mutation scope,
+  validates with `pytest testing/test_config.py testing/test_mark.py -q`, and
+  preserves auxiliary-path residuals honestly.
+- `MODEL-006`: worker to add candidate-after or AST-delta observation for
+  ranking evidence without enabling production ranking. Ownership: focused
+  transition/candidate scoring modules and tests only. Acceptance: scorer
+  inputs expose candidate-after/delta signals for held-out residual families
+  and issue/PR candidate records can feed those signals, with focused tests
+  and no guarded-use decision change.
+
 ## Ready Queue
 
 These are good next assignments for the next loop:
 
 1. `KNOW-003`: broaden knowledge-use attribution where scoring shows missing
    local-knowledge evidence.
-2. `MODEL-006`: add candidate-after or AST-delta observation for ranking
-   evidence.
-3. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.
-4. `MODEL-004`: distinguish mapping key and value targets.
+2. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.
+3. `MODEL-004`: distinguish mapping key and value targets.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 

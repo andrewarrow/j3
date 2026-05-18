@@ -429,6 +429,58 @@ Scale targets:
 Keep simple baselines alive. A learned model matters only when it beats them on
 held-out evidence.
 
+### Representation Learning Roadmap
+
+`j3` should not blur deterministic indexing, lightweight learned ranking, and
+neural JEPA training. They are different stages with different evidence bars.
+
+Stage 0 is the current scaffolding: structured records plus deterministic
+feature hashing. Source, prompt, repo, and transition records are converted into
+fixed-size local vectors by hand-designed features and stable hashing. This is
+fast, reproducible, inspectable, and useful for retrieval, smoke ranking,
+residual reports, and artifact schemas. It is not a claim of deep semantic
+understanding.
+
+Stage 1 is sparse or linear learning over structured features. Candidate
+rankers and scorer baselines can learn weights from outcome rows while staying
+cheap and explainable. This stage should continue until it stops improving
+held-out gates.
+
+Stage 2 is small local neural encoders for prompts, code regions, repo state,
+and tool observations. These models should learn embeddings from curated
+prompt/spec rows, docs/examples, issue/PR transitions, candidate outcomes, and
+hard negatives. Their first job is to beat feature-hashing retrieval and linear
+rankers on held-out repos, not to generate source.
+
+Stage 3 is the real JEPA transition model:
+
+```text
+repo_before + request_spec + observations + action
+  -> predicted repo_after / observation_delta / utility / uncertainty
+```
+
+This model should be trained from validated transitions, failed candidates, and
+blocked clarification outcomes. It should predict consequences and rank futures
+before validation, while leaving materialization to structured actions and
+bounded generators.
+
+Stage 4 is broader local pretraining over code, docs, tests, issues, PRs, and
+candidate outcomes. This is the stage that can start replacing some of the
+world knowledge frontier LLMs currently provide. It requires much larger data,
+strong provenance rules, stable splits, and enough compute planning to avoid
+confusing a local experiment with frontier-scale training.
+
+Entry rules:
+
+- Do not train neural encoders until the record schemas and splits are stable.
+- Do not claim neural gains unless they beat deterministic feature-hashing and
+  linear baselines on held-out repos and issue/PR replay rows.
+- Keep learned model outputs in shadow mode until product gates pass.
+- Require every learned decision to leave inspectable evidence: nearest
+  examples, action records, feature attribution, or residual labels.
+- Prefer smaller local models that improve a bounded gate over larger models
+  with vague aggregate metrics.
+
 ### Baselines
 
 - rule-based prompt/spec parser for narrow domains

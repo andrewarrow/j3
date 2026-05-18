@@ -2987,11 +2987,12 @@ meaningful work. Do not replace this file with a daily reset.
 
 - Owner: coordinator.
 - Files changed: `plans/active.md`, `plans/progress.md`.
-- Tests: pending worker-ID checkpoint checks.
+- Tests: `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff
+  --check` -> passed.
 - Result: recorded worker Nash
   (`019e3c77-e8af-72d1-80de-e622fd4b28a7`) for `DATA-027` and worker
   Heisenberg (`019e3c77-e916-7c71-af0d-4260a6c4030c`) for `DATA-028`.
-- Commit: pending coordinator checkpoint commit.
-- Push: pending.
+- Commit: ff2871f.
+- Push: succeeded.
 - Next: continue non-overlapping coordinator review while both workers run.
 - Blockers: none.

@@ -1904,6 +1904,48 @@ Long-term target:
   `/tmp/j3-data-032-pip-validation-recipe/report-data-032.md`, and
   `docs/DATA_032_PIP_VALIDATION_RECIPE_ISOLATION_2026-05-18.md`.
 
+### DATA-033: Scrapy validation-split readiness refresh
+
+- Status: active
+- Why: DATA-030 proved the validation-split Scrapy row has a working checkout,
+  setup, and baseline validation, and DATA-031 supplied prompt/spec plus local
+  knowledge. The next gate must say whether the row is candidate-ready, and if
+  not, exactly which hard blocker remains.
+- Write scope: `j3/issue_pr_readiness.py`,
+  `tests/test_issue_pr_readiness.py`, generated outputs under `/tmp`,
+  optional compact report under `docs/`, and plan updates.
+- Acceptance: consume DATA-030 preflight evidence plus DATA-031 prompt/spec and
+  local-knowledge evidence for exactly `scrapy__scrapy-issue-7293-pr-7351`.
+  Emit one readiness row with missing-evidence labels, allowed write scope,
+  validation command, evidence counts/sources, residual labels, and
+  recommendation. If the row is ready, allowed write scope must be exactly
+  `scrapy/pqueues.py` and `tests/test_pqueues.py`, with no auxiliary paths; if
+  blocked, record the concrete evidence gap.
+- Tests: focused readiness tests, plan consistency, `git diff --check`, and a
+  CLI smoke for the single Scrapy row.
+
+### DATA-034: Scrapy materialization coverage audit
+
+- Status: active
+- Why: before attempting a validation-split candidate, classify whether the
+  accepted Scrapy queue diff is expressible with the current action surface or
+  needs new constrained materializers. This directly tests structured-action
+  coverage outside the train-split pytest/Click comfort zone.
+- Write scope: `j3/issue_pr_materialization_audit.py`,
+  `tests/test_issue_pr_materialization_audit.py`, generated outputs under
+  `/tmp`, optional compact report under `docs/`, and plan updates. Do not
+  attempt candidate edits.
+- Acceptance: inspect accepted paths `scrapy/pqueues.py` and
+  `tests/test_pqueues.py` for exactly `scrapy__scrapy-issue-7293-pr-7351`;
+  classify each as covered by current structured actions, covered by a small
+  proposed deterministic action, requiring constrained local
+  generator/source-region action, or not currently expressible. Record
+  manifest, DATA-030, and DATA-031 provenance, accepted diff stats,
+  action-family recommendation, validation cost, likely failure mode, and the
+  smallest next falsifiable materializer task for each path.
+- Tests: focused audit tests, plan consistency, `git diff --check`, and a CLI
+  smoke that emits machine-readable audit rows plus a compact report.
+
 ## Next Recommended Queue
 
 Start with these unless fresh evidence changes the order:

@@ -44,6 +44,38 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
+### `DATA-033`: Scrapy validation-split readiness refresh
+
+- Status: active
+- Owner: worker pending assignment.
+- Write scope: `j3/issue_pr_readiness.py`,
+  `tests/test_issue_pr_readiness.py`, generated outputs under `/tmp`,
+  optional compact report under `docs/`, and planning updates.
+- Acceptance: consume DATA-030 preflight evidence plus DATA-031 prompt/spec and
+  local-knowledge evidence for exactly `scrapy__scrapy-issue-7293-pr-7351`.
+  Emit one readiness row with missing-evidence labels, allowed write scope,
+  validation command, evidence counts/sources, residual labels, and
+  recommendation. If ready, allowed source/test scope must be exactly
+  `scrapy/pqueues.py` and `tests/test_pqueues.py`; if blocked, record the
+  concrete evidence gap.
+
+### `DATA-034`: Scrapy materialization coverage audit
+
+- Status: active
+- Owner: worker pending assignment.
+- Write scope: `j3/issue_pr_materialization_audit.py`,
+  `tests/test_issue_pr_materialization_audit.py`, generated outputs under
+  `/tmp`, optional compact report under `docs/`, and planning updates. Do not
+  attempt candidate edits.
+- Acceptance: inspect the accepted `scrapy__scrapy-issue-7293-pr-7351` diff
+  against the repo-before checkout and classify accepted paths
+  `scrapy/pqueues.py` and `tests/test_pqueues.py` as covered by current
+  structured actions, covered by a small proposed deterministic action,
+  requiring constrained local generator/source-region action, or not currently
+  expressible. Record provenance, action-family recommendation, validation
+  cost, likely failure mode, and smallest next falsifiable materializer task
+  for each path.
+
 ## Ready Queue
 
 These are good next assignments for the next loop:

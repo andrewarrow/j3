@@ -3298,8 +3298,8 @@ meaningful work. Do not replace this file with a daily reset.
 - Result: recorded worker Wegener
   (`019e3c9c-48a4-7523-ab7f-1c71b29ddd80`) for `DATA-033` and worker James
   (`019e3c9c-48d6-7e32-804c-beb42f62bb01`) for `DATA-034`.
-- Commit: pending.
-- Push: pending.
+- Commit: d2ea1ac.
+- Push: succeeded.
 - Next: continue non-overlapping coordinator review while both workers run.
 - Blockers: none.
 
@@ -3354,8 +3354,32 @@ meaningful work. Do not replace this file with a daily reset.
   `materialization_gap` and `ranking_gap`. Allowed write scope is exactly
   `scrapy/pqueues.py` and `tests/test_pqueues.py`, with no auxiliary paths.
   No candidate source edits were attempted.
-- Commit: pending.
-- Push: pending.
+- Commit: f2c5898.
+- Push: succeeded.
 - Next: use DATA-034 materialization audit before any Scrapy candidate attempt;
   ranking evidence remains a next-stage gap.
+- Blockers: none.
+
+### 2026-05-18 - Coordinator Review And Dispatch - DATA-035 / DATA-036
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, `plans/progress.md`.
+- Tests: `python -m py_compile j3/issue_pr_readiness.py
+  tests/test_issue_pr_readiness.py` -> passed; `pytest
+  tests/test_issue_pr_readiness.py -q` -> 7 passed; `python -m py_compile
+  j3/issue_pr_materialization_audit.py
+  tests/test_issue_pr_materialization_audit.py` -> passed; `pytest
+  tests/test_issue_pr_materialization_audit.py -q` -> 9 passed; `pytest
+  tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check` ->
+  passed.
+- Result: reviewed DATA-033 and DATA-034. Scrapy is now a validation-split row
+  with passing baseline validation, prompt/spec evidence, local knowledge,
+  candidate readiness, and an honest materialization audit showing both
+  accepted paths need constrained materializers. The next dispatch assigns
+  `DATA-035` to attempt the bounded Scrapy source/test candidate and
+  `DATA-036` to continue the pip validation-recipe isolation by adding the
+  next explicit missing dependency, `scripttest`.
+- Commit: pending.
+- Push: pending.
+- Next: dispatch workers for `DATA-035` and `DATA-036`.
 - Blockers: none.

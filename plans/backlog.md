@@ -1969,6 +1969,56 @@ Long-term target:
   `/tmp/j3-data-034-scrapy-materialization-audit/report.md`, and
   `docs/DATA_034_SCRAPY_7293_MATERIALIZATION_COVERAGE_AUDIT_2026-05-18.md`.
 
+### DATA-035: Scrapy validation-split source/test candidate attempt
+
+- Status: active
+- Why: DATA-033 says the validation-split Scrapy row is candidate-ready and
+  DATA-034 identifies the exact source/test materialization gap. The next hard
+  proof is whether j3 can materialize and validate the accepted Scrapy queue
+  edit in a held-out real repo.
+- Write scope: `j3/issue_pr_candidate_attempt.py`,
+  `tests/test_issue_pr_candidate_attempt.py`, generated outputs under `/tmp`,
+  optional compact report under `docs/`, and plan updates.
+- Acceptance: attempt exactly `scrapy__scrapy-issue-7293-pr-7351` in
+  source/test scope. Materialize only `scrapy/pqueues.py` and
+  `tests/test_pqueues.py`; do not write unrelated docs, changelog, config, or
+  packaging files. The source materializer should add
+  `DownloaderAwarePriorityQueue._last_selected_slot`, insert the bounded
+  `_next_slot` helper, make `pop` update rotation state, and keep `peek`
+  non-mutating. The test materializer should add only the accepted Downloader
+  import and two `TestDownloaderAwarePriorityQueue` slot-rotation tests.
+  Record actions, candidate diff, mutation scope, validation
+  command/runtime/pass-fail, residual labels, DATA-030/031/033/034 provenance,
+  and structured-action coverage. Run live validation with `python -m
+  py_compile scrapy/pqueues.py && pytest tests/test_pqueues.py -q` when
+  feasible. If materialization or validation blocks, record the exact blocker
+  instead of broadening scope silently.
+- Tests: focused candidate-attempt tests, plan consistency, `git diff
+  --check`, and live focused validation when feasible.
+
+### DATA-036: Pip validation recipe scripttest probe
+
+- Status: active
+- Why: DATA-032 proved that adding `installer` removes the first pip fixture
+  import blocker but exposes `scripttest`. Validation remains untrustworthy
+  until the row either has a bounded hermetic setup recipe or is explicitly
+  parked as too dependency-heavy for the mini replay ladder.
+- Write scope: `j3/issue_pr_preflight.py`, `tests/test_issue_pr_preflight.py`,
+  generated outputs under `/tmp`, optional compact report under `docs/`, and
+  plan updates. Do not attempt candidate source edits.
+- Acceptance: for exactly `pypa__pip-issue-12018-pr-13886`, run a
+  candidate-free recipe attempt that adds the next explicit missing dependency
+  `scripttest` to the DATA-032 setup recipe, then rerun `pytest
+  tests/functional/test_install_reqs.py -q`. Record the full command sequence,
+  dependencies added, runtime, first failed stage, command classification,
+  evidence-acquisition status, and whether the row becomes ready for
+  prompt/spec/local-knowledge acquisition. If another missing import or fixture
+  dependency appears, record exactly one next blocker and stop; do not chase an
+  unbounded dependency chain in this task.
+- Tests: focused preflight tests if code changes, plan consistency,
+  `git diff --check`, and live bounded preflight command or exact blocker if
+  live preflight cannot complete.
+
 ## Next Recommended Queue
 
 Start with these unless fresh evidence changes the order:

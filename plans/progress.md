@@ -1077,9 +1077,10 @@ meaningful work. Do not replace this file with a daily reset.
   held-out `h11` tests-only materializer. The ready queue now prioritizes
   held-out scoring and a real one-file feature materialization probe over more
   fixture progress.
-- Commit: pending
-- Push: pending
-- Next: dispatch workers for `REAL-006` and `GS7-009`, record their agent IDs,
-  then keep reviewing and reassigning instead of leaving the active board
-  empty.
+- Commit: b4dab92
+- Push: succeeded
+- Next: workers dispatched for `REAL-006` and `GS7-009`: Averroes
+  (`019e3b97-5b97-7831-9de0-3f20aa198824`) owns the scorer rerun, and Euler
+  (`019e3b97-88c5-7ab3-ba40-5e2ea3b8f4bc`) owns the held-out `h11`
+  materializer. Continue local coordinator review while they run.
 - Blockers: none

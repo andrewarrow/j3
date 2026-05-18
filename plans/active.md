@@ -26,7 +26,7 @@ This is the live coordinator board. Keep it current and compact.
 ### `REAL-006`: Rerun tests-only shadow score with candidate materialization
 
 - Status: active
-- Owner: pending worker dispatch.
+- Owner: worker Averroes (`019e3b97-5b97-7831-9de0-3f20aa198824`).
 - Goal: update the tests-only shadow scorer so `GS7-008`'s real-repo
   candidate surface is actually scored for `iniconfig`, while held-out repos
   remain explicit blockers until materializers exist.
@@ -45,7 +45,7 @@ This is the live coordinator board. Keep it current and compact.
 ### `GS7-009`: Materialize first held-out tests-only candidate for `h11`
 
 - Status: active
-- Owner: pending worker dispatch.
+- Owner: worker Euler (`019e3b97-88c5-7ab3-ba40-5e2ea3b8f4bc`).
 - Goal: attack `h11-tests-bytesify-memoryview` as the first held-out
   tests-only generalization proof after the `iniconfig` calibration pass.
 - Write scope: `j3/real_repo_tests_planner.py`,

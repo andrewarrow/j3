@@ -3486,7 +3486,22 @@ meaningful work. Do not replace this file with a daily reset.
   `MAT-007` refreshes real PR materialization coverage after the two candidate
   wins to test whether the structured-action surface is converging on reusable
   families or becoming a bespoke action list.
+- Commit: 88dd2f9.
+- Push: succeeded.
+- Next: worker Rawls (`019e3cb6-0219-70a2-880c-8493517eb714`) owns
+  `DATA-037`; worker Bacon (`019e3cb6-2c94-7423-9a3d-db7e5fa19e1d`) owns
+  `MAT-007`.
+- Blockers: none.
+
+### 2026-05-18 - Worker IDs - DATA-037 / MAT-007
+
+- Owner: coordinator.
+- Files changed: `plans/active.md` and `plans/progress.md`.
+- Tests: pending before commit.
+- Result: recorded worker Rawls
+  (`019e3cb6-0219-70a2-880c-8493517eb714`) for `DATA-037` and worker Bacon
+  (`019e3cb6-2c94-7423-9a3d-db7e5fa19e1d`) for `MAT-007`.
 - Commit: pending.
 - Push: pending.
-- Next: dispatch independent workers for `DATA-037` and `MAT-007`.
+- Next: continue non-overlapping coordinator review while both workers run.
 - Blockers: none.

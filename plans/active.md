@@ -47,7 +47,7 @@ This is the live coordinator board. Keep it current and compact.
 ### `DATA-037`: Real issue/PR candidate ranking decoy harness
 
 - Status: active
-- Owner: pending worker assignment.
+- Owner: worker Rawls (`019e3cb6-0219-70a2-880c-8493517eb714`).
 - Write scope: a new focused issue/PR ranking or decoy-evidence module and
   tests, optional compact docs/report, generated outputs under `/tmp`, and
   planning updates. Do not change production ranking gates.
@@ -62,7 +62,7 @@ This is the live coordinator board. Keep it current and compact.
 ### `MAT-007`: Real PR materialization coverage refresh
 
 - Status: active
-- Owner: pending worker assignment.
+- Owner: worker Bacon (`019e3cb6-2c94-7423-9a3d-db7e5fa19e1d`).
 - Write scope: materialization-audit docs or data under `docs/` and `/tmp`,
   optional focused checker/tests, and planning updates. Do not implement new
   materializers in this task.

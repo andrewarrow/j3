@@ -2422,3 +2422,43 @@ meaningful work. Do not replace this file with a daily reset.
 - Push: succeeded.
 - Next: continue non-overlapping coordinator review while both workers run.
 - Blockers: none.
+
+### 2026-05-18 - DATA-018 - Pytest issue/PR replay preflight batch
+
+- Owner: worker Leibniz (`019e3c40-8521-76d0-8a25-3d9d83147738`).
+- Files changed: `docs/DATA_018_PYTEST_ISSUE_PR_PREFLIGHT_2026-05-18.md`,
+  `plans/active.md`, `plans/backlog.md`, `plans/progress.md`.
+- Tests: live preflight
+  `PATH=/tmp/j3-data-018-pytest-preflight/.venv/bin:$PATH
+  PYTHONPATH=/Users/aa/os/j3 python -m j3.issue_pr_preflight --manifest
+  examples/issue_pr_mini_replay/manifest.json --workspace
+  /tmp/j3-data-018-pytest-preflight/repos --outcome
+  /tmp/j3-data-018-pytest-preflight/outcomes.jsonl --report
+  /tmp/j3-data-018-pytest-preflight/report.md --replay-id
+  pytest-dev__pytest-issue-14442-pr-14443 --replay-id
+  pytest-dev__pytest-issue-14462-pr-14466 --replay-id
+  pytest-dev__pytest-issue-14381-pr-14382 --setup-command
+  "python -m pip install -e . pytest" --timeout-seconds 600` -> passed with
+  `status_counts = {"blocked":3}` and `first_failed_stage_counts =
+  {"none":3}`; `python -m py_compile j3/issue_pr_preflight.py
+  tests/test_issue_pr_preflight.py` -> passed; `pytest
+  tests/test_issue_pr_preflight.py -q` -> 17 passed; `pytest
+  tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check` ->
+  passed.
+- Result: ran the pre-edit pytest issue/PR replay preflight batch with no
+  candidate edits. All three rows cloned the pinned repo-before refs, installed
+  successfully, and passed focused baseline validation: #14442/#14443 passed
+  `353 passed, 2 xfailed in 3.29s`, #14462/#14466 passed `102 passed,
+  18 skipped in 0.15s`, and #14381/#14382 passed `12 passed in 0.31s`.
+  Command output classification is therefore no checkout/setup/validation
+  blocker; remaining blockers are pre-edit evidence gaps. #14442/#14443 and
+  #14462/#14466 need pytest local-knowledge records, while #14381/#14382 needs
+  prompt/spec normalization. Manifest residuals still include prompt/spec,
+  validation, materialization, and ranking gaps as recorded in the checked-in
+  DATA-018 report.
+- Commit: pending.
+- Push: pending.
+- Next: normalize/acquire local knowledge for
+  `pytest-dev__pytest-issue-14442-pr-14443` first; no pytest row is ready for
+  candidate attempt yet.
+- Blockers: none for checkout, setup, or baseline validation.

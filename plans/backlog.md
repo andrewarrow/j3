@@ -1382,7 +1382,7 @@ Long-term target:
 
 ### DATA-018: Pytest issue/PR replay preflight batch
 
-- Status: active
+- Status: done
 - Why: the first three issue/PR candidates are now either validated or have a
   precise auxiliary gap, but they are still a small Requests/Click comfort
   zone. The next falsification pressure is whether the same replay pipeline can
@@ -1404,6 +1404,19 @@ Long-term target:
 - Tests: focused preflight tests if code changes, plan consistency,
   `git diff --check`, and the live bounded preflight command or an exact
   blocker if live preflight cannot complete.
+- Completion note: live preflight ran for all three pytest rows under
+  `/tmp/j3-data-018-pytest-preflight` with no candidate edits. Checkout,
+  setup, and baseline validation passed for every row:
+  #14442/#14443 passed `353 passed, 2 xfailed`, #14462/#14466 passed
+  `102 passed, 18 skipped`, and #14381/#14382 passed `12 passed`.
+  Remaining blockers are pre-edit evidence gaps, not setup or validation:
+  local knowledge for #14442/#14443 and #14462/#14466, prompt/spec
+  normalization for #14381/#14382, plus manifest materialization/ranking
+  residuals where recorded. The first next row for prompt/spec normalization
+  and local-knowledge acquisition is
+  `pytest-dev__pytest-issue-14442-pr-14443`; no pytest row is candidate-ready
+  yet. Report:
+  `docs/DATA_018_PYTEST_ISSUE_PR_PREFLIGHT_2026-05-18.md`.
 
 ### DATA-019: Constrained Click command-docs materializer spike
 

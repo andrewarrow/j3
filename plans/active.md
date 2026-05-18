@@ -44,17 +44,6 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-- `DATA-018`: worker Leibniz (`019e3c40-8521-76d0-8a25-3d9d83147738`) to run
-  a next-batch issue/PR replay preflight on pytest rows beyond the first three
-  (`pytest-dev__pytest-issue-14442-pr-14443`,
-  `pytest-dev__pytest-issue-14462-pr-14466`, and
-  `pytest-dev__pytest-issue-14381-pr-14382`). Ownership:
-  issue/PR preflight report artifacts under `/tmp`, optional focused
-  preflight code/test fixes if the existing runner cannot express the batch,
-  `docs/DATA_018_PYTEST_ISSUE_PR_PREFLIGHT_2026-05-18.md`, and plan updates.
-  Acceptance: no candidate edits, exact setup/baseline/prompt-spec/local
-  knowledge/materialization blockers, validation runtime, and a recommendation
-  for the first candidate-ready pytest row or the blocker preventing that.
 - `DATA-019`: worker Russell (`019e3c40-8544-7cf2-be80-dc987b70a98e`) to
   attempt the hardest DATA-017 auxiliary materialization gap: a constrained
   Click `docs/commands.md` section generator/inserter for
@@ -99,6 +88,20 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `DATA-018`: ran the next-batch pytest issue/PR replay preflight with no
+  candidate edits for `pytest-dev__pytest-issue-14442-pr-14443`,
+  `pytest-dev__pytest-issue-14462-pr-14466`, and
+  `pytest-dev__pytest-issue-14381-pr-14382`. All three rows checked out,
+  installed with `python -m pip install -e . pytest`, and passed baseline
+  validation; first failed stage is `none` for every row. The remaining
+  blockers are pre-edit evidence gaps: local knowledge for #14442/#14443 and
+  #14462/#14466, and prompt/spec normalization for #14381/#14382. Artifacts:
+  `/tmp/j3-data-018-pytest-preflight/outcomes.jsonl`,
+  `/tmp/j3-data-018-pytest-preflight/report.md`, and checked-in report
+  `docs/DATA_018_PYTEST_ISSUE_PR_PREFLIGHT_2026-05-18.md`. First next row:
+  normalize/acquire local knowledge for
+  `pytest-dev__pytest-issue-14442-pr-14443`; no pytest row is candidate-ready
+  yet.
 - `DATA-016`: added a bounded Click semver/non-string default candidate-attempt
   path for exactly `pallets__click-issue-3298-pr-3299`. The live `/tmp`
   attempt on repo-before `04ef3a6f473deb2499721a8d11f92a7d2c0912f2`

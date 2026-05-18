@@ -44,21 +44,8 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-### `MAT-008`: Held-out requests source-region candidate
-
-- Status: active
-- Owner: worker Singer (`019e3cc1-1a8b-70e2-857b-213ff36ba524`).
-- Write scope: a generic held-out source-region candidate module and tests,
-  optional docs/report, generated artifacts under `/tmp`, and planning updates.
-  Do not edit DATA-038-owned ranking or snapshot modules.
-- Acceptance: attempt the MAT-007 recommended `psf/requests#7427`
-  `should_bypass_proxies` domain-boundary edit using reusable action records
-  such as `replace_function_region` plus repo-convention pytest insertion, not
-  a `requests_7427` bespoke action kind. In a pinned live checkout at the
-  MAT-001 base, change only the accepted source/test files when feasible,
-  record candidate-after diff/AST metadata and mutation scope, compare against
-  the accepted PR diff where practical, and run the focused validation command
-  or record the exact materialization/validation blocker.
+No active worker tasks at this instant; the coordinator is recording the next
+dispatch. Continuous loop mode still applies.
 
 ## Ready Queue
 
@@ -91,6 +78,19 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `MAT-008`: materialized and live-validated the held-out
+  `psf/requests#7427` no-proxy domain-boundary source/test candidate using
+  reusable action records, not a PR-named action kind. The final fresh checkout
+  at `b684dcb9bbf3aa557d1238e72062c4a29737dd1c` changed only
+  `src/requests/utils.py` and `tests/test_utils.py`, matched the accepted PR
+  diff after normalizing Git hunk context labels, and passed `python -m pytest
+  tests/test_utils.py::test_should_bypass_proxies_no_proxy_domain_boundary -q`
+  in `0.383s`. Artifacts:
+  `/tmp/j3-mat-008-requests-7427-final/candidate.json`,
+  `/tmp/j3-mat-008-requests-7427-final/report.md`,
+  `/tmp/j3-mat-008-requests-7427-final/candidate.diff`,
+  `/tmp/j3-mat-008-requests-7427-final/accepted.diff`, and
+  `docs/MAT_008_REQUESTS_7427_SOURCE_REGION_CANDIDATE_2026-05-18.md`.
 - `DATA-038`: added sidecar full-file candidate-after snapshots for the
   validated DATA-029 pytest #14462 and DATA-035 Scrapy #7293 issue/PR
   candidates, covering all four touched files with before/after hashes, stored

@@ -688,7 +688,7 @@ Long-term target:
 
 ### MAT-008: Held-out requests source-region candidate
 
-- Status: active
+- Status: done
 - Why: MAT-007 says the next materialization proof must reuse generic
   source-region, method/call-site, and pytest-insertion action shapes on a
   held-out accepted PR instead of adding another PR-named materializer.
@@ -708,6 +708,21 @@ Long-term target:
   broadening scope.
 - Tests: focused source-region candidate tests, plan consistency,
   `git diff --check`, and live focused validation when materialized.
+- Completion note: added `j3.heldout_source_region_candidate` and a focused
+  synthetic regression suite, then materialized the held-out `psf/requests#7427`
+  source/test candidate in a fresh checkout at
+  `b684dcb9bbf3aa557d1238e72062c4a29737dd1c`. The candidate used reusable
+  action records `replace_function_region` and
+  `insert_pytest_function_after_anchor`, changed only `src/requests/utils.py`
+  and `tests/test_utils.py`, matched the accepted PR diff after normalizing Git
+  hunk context labels, and passed `python -m pytest
+  tests/test_utils.py::test_should_bypass_proxies_no_proxy_domain_boundary -q`
+  in `0.383s`. Artifacts:
+  `/tmp/j3-mat-008-requests-7427-final/candidate.json`,
+  `/tmp/j3-mat-008-requests-7427-final/report.md`,
+  `/tmp/j3-mat-008-requests-7427-final/candidate.diff`,
+  `/tmp/j3-mat-008-requests-7427-final/accepted.diff`, and
+  `docs/MAT_008_REQUESTS_7427_SOURCE_REGION_CANDIDATE_2026-05-18.md`.
 
 ### KNOW-001: Local knowledge inventory for the wedge
 

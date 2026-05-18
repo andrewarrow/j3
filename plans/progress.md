@@ -3649,3 +3649,40 @@ meaningful work. Do not replace this file with a daily reset.
   source-region materialization.
 - Blockers: decoy candidate-after/live validation remains missing for honest
   issue/PR pass@1/pass@k scoring.
+
+### 2026-05-18 - MAT-008 - Held-out requests source-region candidate
+
+- Owner: worker Singer (`019e3cc1-1a8b-70e2-857b-213ff36ba524`) with
+  coordinator integration after worker pause.
+- Files changed: `j3/heldout_source_region_candidate.py`,
+  `tests/test_heldout_source_region_candidate.py`,
+  `docs/MAT_008_REQUESTS_7427_SOURCE_REGION_CANDIDATE_2026-05-18.md`,
+  `plans/active.md`, `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `python -m py_compile j3/heldout_source_region_candidate.py
+  tests/test_heldout_source_region_candidate.py` -> passed; `pytest
+  tests/test_heldout_source_region_candidate.py -q` -> 3 passed; live fresh
+  checkout run `python -m j3.heldout_source_region_candidate --repo-path
+  /tmp/j3-mat-008-requests-7427-final/requests --accepted-diff
+  /tmp/j3-mat-008-requests-7427-final/accepted.diff --out
+  /tmp/j3-mat-008-requests-7427-final/candidate.json --report
+  /tmp/j3-mat-008-requests-7427-final/report.md --diff-out
+  /tmp/j3-mat-008-requests-7427-final/candidate.diff --validate` ->
+  validated; focused validation passed in `0.383s`; `pytest
+  tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check` ->
+  passed.
+- Result: materialized the held-out `psf/requests#7427`
+  `should_bypass_proxies` source/test edit using reusable action records:
+  `replace_function_region` and `insert_pytest_function_after_anchor`. The
+  final fresh checkout at `b684dcb9bbf3aa557d1238e72062c4a29737dd1c` changed
+  only `src/requests/utils.py` and `tests/test_utils.py`, recorded
+  candidate-after diff/AST metadata and mutation scope, matched the accepted
+  PR diff after normalizing Git hunk context labels, and passed the focused
+  test. This is held-out evidence against the action-vocabulary explosion
+  concern raised by MAT-007.
+- Commit: pending.
+- Push: pending.
+- Next: either attempt the adjacent held-out `pytest#14475` constrained-source
+  row with the same reusable action discipline, or start the typed
+  annotation/import builder layer exposed by MAT-007's 7 typed-builder rows.
+- Blockers: none for MAT-008; broader materialization generalization still
+  needs more held-out rows.

@@ -22,6 +22,7 @@ REAL_REPO_TESTS_CANDIDATE_KIND = "real_repo_tests_only_candidate"
 REAL_REPO_TESTS_ACTION_FAMILY = "tests_only_existing_repo_pytest"
 TEST_CASE_MATERIALIZATION_BLOCKER = "test_case_materialization_gap"
 INICONFIG_PARSE_COMMENTS_TASK_ID = "iniconfig-tests-parse-comments"
+H11_BYTESIFY_MEMORYVIEW_TASK_ID = "h11-tests-bytesify-memoryview"
 CANDIDATE_VALIDATION_DEFERRED = "candidate_validation_deferred"
 
 
@@ -444,17 +445,40 @@ def _materialize_pytest_cases_for_task(
     import_style_evidence: Mapping[str, object],
     write: bool,
 ) -> dict[str, object]:
-    if repo_id != "iniconfig" or task_id != INICONFIG_PARSE_COMMENTS_TASK_ID:
-        blocker = {
-            "field": "test_case_materialization",
-            "reason": TEST_CASE_MATERIALIZATION_BLOCKER,
-            "message": (
-                "behavior-specific pytest case materialization is only "
-                "implemented for iniconfig-tests-parse-comments"
-            ),
-        }
-        return _blocked_materialization(target_test_file, blocker)
+    if repo_id == "iniconfig" and task_id == INICONFIG_PARSE_COMMENTS_TASK_ID:
+        return _materialize_iniconfig_parse_comments_tests(
+            repo,
+            target_test_file=target_test_file,
+            import_style_evidence=import_style_evidence,
+            write=write,
+        )
+    if repo_id == "h11" and task_id == H11_BYTESIFY_MEMORYVIEW_TASK_ID:
+        return _materialize_h11_bytesify_memoryview_tests(
+            repo,
+            target_test_file=target_test_file,
+            import_style_evidence=import_style_evidence,
+            write=write,
+        )
 
+    blocker = {
+        "field": "test_case_materialization",
+        "reason": TEST_CASE_MATERIALIZATION_BLOCKER,
+        "message": (
+            "behavior-specific pytest case materialization is only "
+            "implemented for iniconfig-tests-parse-comments and "
+            "h11-tests-bytesify-memoryview"
+        ),
+    }
+    return _blocked_materialization(target_test_file, blocker)
+
+
+def _materialize_iniconfig_parse_comments_tests(
+    repo: Path,
+    *,
+    target_test_file: str,
+    import_style_evidence: Mapping[str, object],
+    write: bool,
+) -> dict[str, object]:
     api_blocker = _iniconfig_api_blocker(import_style_evidence)
     if api_blocker is not None:
         return _blocked_materialization(target_test_file, api_blocker)
@@ -475,16 +499,61 @@ def _materialize_pytest_cases_for_task(
         status = "materialized" if write else "planned"
         files_changed = list(planned_changed_files) if write else []
 
+    case_records = _iniconfig_parse_comments_case_records()
     return {
         "status": status,
         "files_changed": files_changed,
-        "cases": _iniconfig_parse_comments_case_records(),
+        "cases": case_records,
         "candidate_after": _candidate_after_record(
             target_test_file=target_test_file,
             before_text=before_text,
             after_text=after_text,
             planned_changed_files=planned_changed_files,
             wrote_file=write and bool(planned_changed_files),
+            case_records=case_records,
+        ),
+    }
+
+
+def _materialize_h11_bytesify_memoryview_tests(
+    repo: Path,
+    *,
+    target_test_file: str,
+    import_style_evidence: Mapping[str, object],
+    write: bool,
+) -> dict[str, object]:
+    api_blocker = _h11_bytesify_api_blocker(import_style_evidence)
+    if api_blocker is not None:
+        return _blocked_materialization(target_test_file, api_blocker)
+
+    target_path = _repo_path(repo, target_test_file)
+    before_text = (
+        target_path.read_text(encoding="utf-8") if target_path.exists() else ""
+    )
+    after_text = _merge_h11_bytesify_memoryview_tests(before_text)
+    planned_changed_files = [target_test_file] if after_text != before_text else []
+    if write and planned_changed_files:
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        target_path.write_text(after_text, encoding="utf-8")
+
+    status = "already_applied"
+    files_changed: list[str] = []
+    if planned_changed_files:
+        status = "materialized" if write else "planned"
+        files_changed = list(planned_changed_files) if write else []
+
+    case_records = _h11_bytesify_memoryview_case_records()
+    return {
+        "status": status,
+        "files_changed": files_changed,
+        "cases": case_records,
+        "candidate_after": _candidate_after_record(
+            target_test_file=target_test_file,
+            before_text=before_text,
+            after_text=after_text,
+            planned_changed_files=planned_changed_files,
+            wrote_file=write and bool(planned_changed_files),
+            case_records=case_records,
         ),
     }
 
@@ -530,6 +599,29 @@ def _iniconfig_api_blocker(
         "message": (
             "iniconfig test materialization requires existing tests to import "
             "IniConfig and ParseError; missing " + ", ".join(missing)
+        ),
+    }
+
+
+def _h11_bytesify_api_blocker(
+    import_style_evidence: Mapping[str, object],
+) -> dict[str, str] | None:
+    repo_imports = {
+        (str(item.get("module", "")), str(item.get("imported", "")))
+        for item_value in _sequence(
+            import_style_evidence.get("repo_state_imports", []),
+            field="repo_state_imports",
+        )
+        for item in [_mapping(item_value, field="repo_state_import")]
+    }
+    if (".._util", "bytesify") in repo_imports:
+        return None
+    return {
+        "field": "public_api",
+        "reason": "unsupported_public_api",
+        "message": (
+            "h11 bytesify test materialization requires the selected test file "
+            "to import bytesify from .._util"
         ),
     }
 
@@ -608,6 +700,89 @@ def _render_iniconfig_parse_comments_tests_append_block() -> str:
     )
 
 
+def _merge_h11_bytesify_memoryview_tests(existing_text: str) -> str:
+    required_functions = [
+        "test_bytesify_accepts_bytes_like_inputs_and_ascii_str",
+        "test_bytesify_rejects_non_ascii_str",
+        "test_bytesify_rejects_int",
+    ]
+    if all(f"def {name}" in existing_text for name in required_functions):
+        return existing_text
+
+    append_block = _render_h11_bytesify_memoryview_tests_append_block()
+    if not existing_text.strip():
+        return (
+            "from __future__ import annotations\n"
+            "\n"
+            "import pytest\n"
+            "\n"
+            "from .._util import bytesify\n"
+            "\n\n"
+            + append_block
+        )
+    return existing_text.rstrip() + "\n\n\n" + append_block
+
+
+def _render_h11_bytesify_memoryview_tests_append_block() -> str:
+    return (
+        "@pytest.mark.parametrize(\n"
+        '    ("value", "expected"),\n'
+        "    [\n"
+        '        (bytearray(b"hello"), b"hello"),\n'
+        '        (memoryview(b"world"), b"world"),\n'
+        '        ("ascii", b"ascii"),\n'
+        "    ],\n"
+        ")\n"
+        "def test_bytesify_accepts_bytes_like_inputs_and_ascii_str(\n"
+        "    value: object, expected: bytes\n"
+        ") -> None:\n"
+        "    assert bytesify(value) == expected\n"
+        "\n\n"
+        "def test_bytesify_rejects_non_ascii_str() -> None:\n"
+        "    with pytest.raises(UnicodeEncodeError):\n"
+        '        bytesify("snowman: \\u2603")\n'
+        "\n\n"
+        "def test_bytesify_rejects_int() -> None:\n"
+        "    with pytest.raises(TypeError, match=\"int\"):\n"
+        "        bytesify(10)\n"
+    )
+
+
+def _h11_bytesify_memoryview_case_records() -> list[dict[str, object]]:
+    return [
+        {
+            "id": "h11_bytesify_bytearray",
+            "behavior": "bytearray input is converted to exact bytes",
+            "function": "test_bytesify_accepts_bytes_like_inputs_and_ascii_str",
+            "assertions": ["bytearray(b'hello') returns b'hello'"],
+        },
+        {
+            "id": "h11_bytesify_memoryview",
+            "behavior": "memoryview input is converted to exact bytes",
+            "function": "test_bytesify_accepts_bytes_like_inputs_and_ascii_str",
+            "assertions": ["memoryview(b'world') returns b'world'"],
+        },
+        {
+            "id": "h11_bytesify_ascii_str",
+            "behavior": "ASCII str input is encoded as ASCII bytes",
+            "function": "test_bytesify_accepts_bytes_like_inputs_and_ascii_str",
+            "assertions": ["'ascii' returns b'ascii'"],
+        },
+        {
+            "id": "h11_bytesify_non_ascii_str",
+            "behavior": "non-ASCII str input preserves UnicodeEncodeError behavior",
+            "function": "test_bytesify_rejects_non_ascii_str",
+            "assertions": ["non-ASCII str raises UnicodeEncodeError"],
+        },
+        {
+            "id": "h11_bytesify_int_type_error",
+            "behavior": "int input preserves TypeError behavior",
+            "function": "test_bytesify_rejects_int",
+            "assertions": ["int input raises TypeError mentioning int"],
+        },
+    ]
+
+
 def _iniconfig_parse_comments_case_records() -> list[dict[str, object]]:
     return [
         {
@@ -650,6 +825,7 @@ def _candidate_after_record(
     after_text: str,
     planned_changed_files: Sequence[str],
     wrote_file: bool,
+    case_records: Sequence[Mapping[str, object]],
 ) -> dict[str, object]:
     diff_lines = list(
         difflib.unified_diff(
@@ -670,7 +846,6 @@ def _candidate_after_record(
         for line in diff_lines
         if line.startswith("-") and not line.startswith("---")
     ]
-    case_records = _iniconfig_parse_comments_case_records()
     return {
         "target_test_file": target_test_file,
         "available": True,

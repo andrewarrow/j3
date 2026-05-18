@@ -1104,3 +1104,33 @@ meaningful work. Do not replace this file with a daily reset.
   review the result and dispatch the next hard-proof task without leaving the
   active board idle.
 - Blockers: none
+
+### 2026-05-18 - GS7-009 - Held-out h11 tests-only materializer
+
+- Owner: worker Euler (`019e3b97-88c5-7ab3-ba40-5e2ea3b8f4bc`)
+- Files changed: `j3/real_repo_tests_planner.py`,
+  `tests/test_real_repo_tests_planner.py`, `plans/active.md`,
+  `plans/backlog.md`, `plans/progress.md`
+- Tests: `python -m py_compile j3/real_repo_tests_planner.py
+  tests/test_real_repo_tests_planner.py` -> passed;
+  `pytest tests/test_real_repo_tests_planner.py -q` -> 3 passed;
+  live h11 materialization against
+  `/tmp/j3-gs7-009-h11-live.HVzhOM/h11` followed by
+  `python -m pytest h11/tests/test_util.py -q` -> 11 passed;
+  `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check` -> passed.
+- Result: materialized the first held-out tests-only candidate for
+  `h11-tests-bytesify-memoryview`. The planner selects
+  `h11/tests/test_util.py` from repo-state plus manifest/local-knowledge
+  evidence, requires the existing `from .._util import bytesify` style,
+  appends pytest coverage for bytearray, memoryview, ASCII str, non-ASCII str,
+  and int TypeError behavior, records candidate-after metadata and validation
+  command, emits residual and knowledge-use records, and preserves production
+  files byte-for-byte. The live candidate changed only
+  `h11/tests/test_util.py`; production hashes remained unchanged across 21
+  protected production files and there were no writes outside the allowlist.
+- Commit: pending
+- Push: pending
+- Next: run `REAL-007` after `REAL-006` finishes, separating calibration
+  `iniconfig` scoring from the held-out h11 materializer result.
+- Blockers: none

@@ -197,7 +197,7 @@ Long-term target:
 
 ### GS7-009: Materialize first held-out tests-only candidate for h11
 
-- Status: active
+- Status: done
 - Why: the iniconfig candidate is calibration evidence only. The next proof is
   whether the same planner/action surface can handle a held-out repo without
   repo-name shortcuts or fixture-shaped assumptions.
@@ -215,6 +215,14 @@ Long-term target:
 - Tests: focused planner/materializer tests,
   `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and a live
   `python -m pytest h11/tests/test_util.py -q` candidate check when available.
+- Completion note: added the first held-out tests-only materializer for
+  `h11-tests-bytesify-memoryview`. The planner selects
+  `h11/tests/test_util.py` from repo-state plus manifest/local-knowledge
+  evidence, appends pytest coverage for bytearray, memoryview, ASCII str,
+  non-ASCII str, and int TypeError behavior, preserves production hashes, and
+  emits candidate-after, mutation-scope, validation-command, residual, and
+  knowledge-use metadata. Live validation against the pinned h11 checkout
+  passed with `11 passed in 0.02s`, changing only `h11/tests/test_util.py`.
 
 ## Workstream C: Prompt Corpus And Intent Data
 

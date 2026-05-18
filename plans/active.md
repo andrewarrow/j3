@@ -18,8 +18,9 @@ This is the live coordinator board. Keep it current and compact.
   now rerun the full tests-only shadow score through that candidate surface.
   `REAL-005` extends live baseline preflight to `h11` and `humanize`, so Gate A
   now has three baseline-passing repositories when combined with `REAL-004`
-  `iniconfig`; `GS7-009` is the first held-out tests-only materialization
-  attempt and should be treated as the next generalization proof.
+  `iniconfig`; `GS7-009` materialized and live-validated the first held-out
+  tests-only h11 candidate, giving `REAL-007` the next scoring input after
+  `REAL-006` finishes calibration scoring.
 
 ## Active Tasks
 
@@ -41,26 +42,6 @@ This is the live coordinator board. Keep it current and compact.
 - Tests: `pytest tests/test_real_repo_shadow_score.py -q`,
   `pytest tests/test_plan_consistency.py -q`, `git diff --check`, plus the
   shadow-score command/report smoke.
-
-### `GS7-009`: Materialize first held-out tests-only candidate for `h11`
-
-- Status: active
-- Owner: worker Euler (`019e3b97-88c5-7ab3-ba40-5e2ea3b8f4bc`).
-- Goal: attack `h11-tests-bytesify-memoryview` as the first held-out
-  tests-only generalization proof after the `iniconfig` calibration pass.
-- Write scope: `j3/real_repo_tests_planner.py`,
-  `tests/test_real_repo_tests_planner.py`, optional generated outputs under
-  `/tmp`, and plan updates.
-- Do not touch: `j3/real_repo_shadow_score.py`; that belongs to `REAL-006`.
-- Acceptance: select `h11/tests/test_util.py` from repo-state and local
-  knowledge, materialize pytest coverage for bytearray, memoryview, ASCII str,
-  non-ASCII str, and int TypeError behavior, preserve production files, emit
-  candidate-after/mutation-scope/knowledge-use metadata, and live-validate the
-  pinned `h11` checkout if setup succeeds. If the held-out repo exposes a
-  materialization or API gap, record that precise blocker.
-- Tests: focused planner/materializer tests,
-  `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and a live
-  `python -m pytest h11/tests/test_util.py -q` candidate check when available.
 
 ## Ready Queue
 
@@ -99,6 +80,16 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `GS7-009`: materialized the first held-out tests-only candidate for
+  `h11-tests-bytesify-memoryview`. The planner selects
+  `h11/tests/test_util.py` from repo-state plus manifest/local-knowledge
+  evidence, requires the existing `bytesify` import from `.._util`, appends
+  pytest coverage for bytearray, memoryview, ASCII str, non-ASCII str, and int
+  TypeError behavior, emits candidate-after/mutation-scope/validation/residual
+  and knowledge-use metadata, and preserves production files byte-for-byte.
+  Live validation against a cloned pinned checkout under
+  `/tmp/j3-gs7-009-h11-live.HVzhOM/h11` passed with `11 passed in 0.02s`,
+  changing only `h11/tests/test_util.py` and no production files.
 - `GS7-008`: materialized the `iniconfig-tests-parse-comments` calibration
   candidate into `testing/test_iniconfig.py` with pytest cases for
   comment-only lines, inline section comments, and duplicate key error

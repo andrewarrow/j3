@@ -98,6 +98,11 @@ class IssuePrPreflightOutcome:
             "provenance": dict(self.provenance),
         }
         row["blocker_details"] = derive_issue_pr_blocker_details(row)
+        row["command_classification"] = classify_issue_pr_command_outcome(row)
+        row["pre_edit_evidence_gaps"] = derive_issue_pr_pre_edit_evidence_gaps(row)
+        row["evidence_acquisition_status"] = (
+            classify_issue_pr_evidence_acquisition_status(row)
+        )
         return row
 
 
@@ -666,20 +671,33 @@ def summarize_issue_pr_preflight_records(
     missing_prompt_field_counts = Counter(
         field
         for row in rows
-        for detail in _detail_records(row)
+        for record in _pre_edit_gap_or_detail_records(add_issue_pr_blocker_details(row))
         for field in _string_sequence(
-            detail.get("missing_prompt_fields"),
+            record.get("missing_prompt_fields"),
             field="missing_prompt_fields",
         )
     )
     required_knowledge_counts = Counter(
         category
         for row in rows
-        for detail in _detail_records(row)
+        for record in _pre_edit_gap_or_detail_records(add_issue_pr_blocker_details(row))
         for category in _string_sequence(
-            detail.get("required_knowledge_categories"),
+            record.get("required_knowledge_categories"),
             field="required_knowledge_categories",
         )
+    )
+    command_classification_counts = Counter(
+        str(add_issue_pr_blocker_details(row).get("command_classification"))
+        for row in rows
+    )
+    evidence_status_counts = Counter(
+        str(add_issue_pr_blocker_details(row).get("evidence_acquisition_status"))
+        for row in rows
+    )
+    evidence_gap_kind_counts = Counter(
+        str(gap.get("kind"))
+        for row in rows
+        for gap in _evidence_gap_records(add_issue_pr_blocker_details(row))
     )
     runtime_by_replay = {
         str(row["replay_id"]): round(float(row["runtime_seconds"]), 3) for row in rows
@@ -706,6 +724,16 @@ def summarize_issue_pr_preflight_records(
         "runtime_seconds_by_replay": runtime_by_replay,
         "command_stage_counts": dict(sorted(stage_counts.items())),
         "first_failed_stage_counts": dict(sorted(first_failed_stage_counts.items())),
+        "command_classification_counts": dict(
+            sorted(command_classification_counts.items())
+        ),
+        "evidence_acquisition_status_counts": dict(
+            sorted(evidence_status_counts.items())
+        ),
+        "evidence_gap_kind_counts": dict(sorted(evidence_gap_kind_counts.items())),
+        "next_validation_split_row_ready_for_evidence_acquisition": (
+            _next_validation_split_ready_row(rows)
+        ),
         "deferred_agent_residual_label_counts": dict(sorted(deferred_counts.items())),
         "failure_family_counts": dict(sorted(failure_family_counts.items())),
         "missing_prompt_field_counts": dict(
@@ -793,6 +821,15 @@ def add_issue_pr_blocker_details(row: Mapping[str, object]) -> dict[str, object]
 
     materialized = dict(row)
     materialized["blocker_details"] = derive_issue_pr_blocker_details(materialized)
+    materialized["command_classification"] = classify_issue_pr_command_outcome(
+        materialized
+    )
+    materialized["pre_edit_evidence_gaps"] = derive_issue_pr_pre_edit_evidence_gaps(
+        materialized
+    )
+    materialized["evidence_acquisition_status"] = (
+        classify_issue_pr_evidence_acquisition_status(materialized)
+    )
     return materialized
 
 
@@ -819,6 +856,112 @@ def derive_issue_pr_blocker_details(
         else:
             details.append(_generic_blocker_detail(row, label=label))
     return details
+
+
+def classify_issue_pr_command_outcome(row: Mapping[str, object]) -> str:
+    """Classify the first command failure without mixing in edit quality."""
+
+    result = _first_failed_command_result(row)
+    if result:
+        return _classify_command_failure(row, result)
+    reached = set(
+        _string_sequence(
+            row.get("command_stages_reached"),
+            field="command_stages_reached",
+        )
+    )
+    if "baseline_validation" in reached:
+        return "commands_passed"
+    if "setup" in reached:
+        return "validation_not_reached"
+    if {"checkout_clone", "checkout_ref", "checkout_verify"} & reached:
+        return "setup_not_reached"
+    return "commands_not_run"
+
+
+def derive_issue_pr_pre_edit_evidence_gaps(
+    row: Mapping[str, object],
+) -> list[dict[str, object]]:
+    """List pre-edit evidence gaps even when a command failure is the blocker."""
+
+    provenance = _provenance(row)
+    labels = set(
+        _string_sequence(
+            provenance.get("initial_residual_labels"),
+            field="initial_residual_labels",
+        )
+    )
+    gaps: list[dict[str, object]] = []
+    if "prompt_spec_parsing_gap" in labels:
+        gaps.append(
+            {
+                "kind": "prompt_spec",
+                "status": "missing",
+                "missing_prompt_fields": _missing_prompt_fields(row),
+                "deferred_until_command_recipe_passes": (
+                    classify_issue_pr_command_outcome(row) != "commands_passed"
+                ),
+            }
+        )
+    if "local_knowledge_gap" in labels:
+        gaps.append(
+            {
+                "kind": "local_knowledge",
+                "status": "missing",
+                "required_knowledge_categories": _required_knowledge_categories(row),
+                "deferred_until_command_recipe_passes": (
+                    classify_issue_pr_command_outcome(row) != "commands_passed"
+                ),
+            }
+        )
+    validation = "available"
+    if row.get("residual_category") == "validation":
+        validation = "blocked"
+    if "validation_gap" in labels:
+        gaps.append(
+            {
+                "kind": "validation",
+                "status": validation,
+                "command_classification": classify_issue_pr_command_outcome(row),
+                "validation_command": row.get("validation_command"),
+            }
+        )
+    for label in ("materialization_gap", "ranking_gap"):
+        if label in labels:
+            gaps.append(
+                {
+                    "kind": label.removesuffix("_gap"),
+                    "status": "deferred_agent_stage",
+                    "deferred_until_pre_edit_evidence_passes": True,
+                }
+            )
+    return gaps
+
+
+def classify_issue_pr_evidence_acquisition_status(
+    row: Mapping[str, object],
+) -> str:
+    """Return the next pre-edit evidence state for this replay row."""
+
+    command_classification = classify_issue_pr_command_outcome(row)
+    if command_classification == "commands_passed":
+        gap_kinds = {
+            str(gap.get("kind"))
+            for gap in derive_issue_pr_pre_edit_evidence_gaps(row)
+            if gap.get("status") == "missing"
+        }
+        if {"prompt_spec", "local_knowledge"} & gap_kinds:
+            return "ready_for_prompt_spec_and_local_knowledge"
+        return "ready_for_candidate_readiness_refresh"
+    if command_classification in {
+        "dependency_setup_failure",
+        "setup_not_reached",
+        "validation_not_reached",
+    }:
+        return "blocked_on_setup_or_environment"
+    if str(row.get("first_failed_stage")) == "baseline_validation":
+        return "blocked_on_validation_recipe"
+    return "blocked_on_environment_or_checkout"
 
 
 def write_issue_pr_preflight_report(
@@ -875,6 +1018,14 @@ def write_issue_pr_preflight_records_report(
         f"`{_json_inline(report_summary.get('command_stage_counts', {}))}`",
         "- First failed stages: "
         f"`{_json_inline(report_summary.get('first_failed_stage_counts', {}))}`",
+        "- Command classifications: "
+        f"`{_json_inline(report_summary.get('command_classification_counts', {}))}`",
+        "- Evidence acquisition statuses: "
+        f"`{_json_inline(report_summary.get('evidence_acquisition_status_counts', {}))}`",
+        "- Evidence gap kinds: "
+        f"`{_json_inline(report_summary.get('evidence_gap_kind_counts', {}))}`",
+        "- Next validation-split row ready for evidence acquisition: "
+        f"`{report_summary.get('next_validation_split_row_ready_for_evidence_acquisition')}`",
         f"- Deferred agent residual labels: `{deferred_counts}`",
         "- Failure families: "
         f"`{_json_inline(report_summary.get('failure_family_counts', {}))}`",
@@ -886,8 +1037,8 @@ def write_issue_pr_preflight_records_report(
         "## Rows",
         "",
         "| Replay | Repo | Status | Blockers | Residual | "
-        "First failed stage | Runtime |",
-        "| --- | --- | --- | --- | --- | --- | ---: |",
+        "First failed stage | Command | Evidence status | Runtime |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- | ---: |",
     ]
     for row in materialized_rows:
         blockers = ", ".join(
@@ -895,16 +1046,28 @@ def write_issue_pr_preflight_records_report(
         ) or "none"
         lines.append(
             "| `{replay_id}` | `{repo}` | `{status}` | `{blockers}` | `{residual}` | "
-            "`{stage}` | `{runtime}` |".format(
+            "`{stage}` | `{command}` | `{evidence_status}` | `{runtime}` |".format(
                 replay_id=row["replay_id"],
                 repo=row["repo"],
                 status=row["status"],
                 blockers=blockers,
                 residual=row["residual_category"],
                 stage=row["first_failed_stage"],
+                command=row.get("command_classification"),
+                evidence_status=row.get("evidence_acquisition_status"),
                 runtime=row["runtime_seconds"],
             )
         )
+    lines.extend(["", "## Pre-Edit Evidence Gaps", ""])
+    for row in materialized_rows:
+        gaps = _evidence_gap_records(row)
+        if not gaps:
+            continue
+        lines.append(f"### `{row['replay_id']}`")
+        lines.append("")
+        for gap in gaps:
+            lines.extend(_evidence_gap_markdown(gap))
+        lines.append("")
     lines.extend(["", "## Blocker Drilldown", ""])
     for row in materialized_rows:
         for detail in _detail_records(row):
@@ -1066,6 +1229,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--workspace", type=Path)
     parser.add_argument("--outcome", type=Path, required=True)
     parser.add_argument("--report", type=Path)
+    parser.add_argument("--report-title")
     parser.add_argument("--from-outcome-jsonl", type=Path)
     parser.add_argument("--replay-id", action="append", default=[])
     parser.add_argument("--limit", type=int)
@@ -1090,6 +1254,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 rows,
                 args.report,
                 summary=summary,
+                title=args.report_title
+                or "DATA-007 Issue/PR Replay Blocker Drilldown",
             )
             summary["report_path"] = str(report_path)
         print(json.dumps(summary, sort_keys=True))
@@ -1132,6 +1298,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 attempts,
                 args.report,
                 summary=summary,
+                title=args.report_title
+                or "DATA-008 Issue/PR Validation Recipe Attempts",
             )
             summary["report_path"] = str(report_path)
         print(json.dumps(summary, sort_keys=True))
@@ -1160,6 +1328,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             outcomes,
             args.report,
             summary=summary,
+            title=args.report_title or "DATA-006 Issue/PR Mini Replay Preflight",
         )
         summary["report_path"] = str(report_path)
     print(json.dumps(summary, sort_keys=True))
@@ -1639,6 +1808,22 @@ def _missing_prompt_fields(row: Mapping[str, object]) -> list[str]:
         )
     if "semver" in prompt_text.lower():
         missing.extend(["non_string_default_type", "empty_string_check_scope"])
+    if "url constraint" in prompt_text.lower() or "extras" in prompt_text.lower():
+        missing.extend(
+            [
+                "pip_constraint_candidate_selection",
+                "requirement_extras_normalization",
+                "url_constraint_reproduction",
+            ]
+        )
+    if "active_downloads" in prompt_text or "priorityqueue" in prompt_text.lower():
+        missing.extend(
+            [
+                "downloader_slot_tie_breaking",
+                "active_download_count_semantics",
+                "priority_queue_ordering_reproduction",
+            ]
+        )
     return missing
 
 
@@ -1693,6 +1878,22 @@ def _required_knowledge_categories(row: Mapping[str, object]) -> list[str]:
             [
                 "click_default_map_callback_semantics",
                 "click_multi_value_parameter_defaults",
+            ]
+        )
+    if repo == "pypa/pip":
+        categories.extend(
+            [
+                "pip_resolvelib_factory_candidate_selection",
+                "pip_install_functional_test_fixtures",
+                "requirement_constraint_extras_semantics",
+            ]
+        )
+    if repo == "scrapy/scrapy":
+        categories.extend(
+            [
+                "scrapy_downloader_aware_priority_queue",
+                "scrapy_slot_active_download_accounting",
+                "scrapy_pqueue_test_patterns",
             ]
         )
     return list(dict.fromkeys(categories))
@@ -1751,11 +1952,72 @@ def _blocker_detail_markdown(
     return lines
 
 
+def _evidence_gap_markdown(gap: Mapping[str, object]) -> list[str]:
+    lines = [
+        f"- `{gap.get('kind')}`: `{gap.get('status')}`",
+    ]
+    missing_fields = _string_sequence(
+        gap.get("missing_prompt_fields"),
+        field="missing_prompt_fields",
+    )
+    if missing_fields:
+        lines.append(f"  - Missing prompt fields: `{_json_inline(list(missing_fields))}`")
+    categories = _string_sequence(
+        gap.get("required_knowledge_categories"),
+        field="required_knowledge_categories",
+    )
+    if categories:
+        lines.append(f"  - Required knowledge: `{_json_inline(list(categories))}`")
+    if gap.get("command_classification"):
+        lines.append(f"  - Command classification: `{gap.get('command_classification')}`")
+    if gap.get("validation_command"):
+        lines.append(f"  - Validation command: `{gap.get('validation_command')}`")
+    return lines
+
+
 def _detail_records(row: Mapping[str, object]) -> tuple[Mapping[str, object], ...]:
     value = row.get("blocker_details")
     if not isinstance(value, list):
         return ()
     return tuple(detail for detail in value if isinstance(detail, dict))
+
+
+def _evidence_gap_records(
+    row: Mapping[str, object],
+) -> tuple[Mapping[str, object], ...]:
+    value = row.get("pre_edit_evidence_gaps")
+    if not isinstance(value, list):
+        return ()
+    return tuple(gap for gap in value if isinstance(gap, dict))
+
+
+def _pre_edit_gap_or_detail_records(
+    row: Mapping[str, object],
+) -> tuple[Mapping[str, object], ...]:
+    gaps = _evidence_gap_records(row)
+    return gaps if gaps else _detail_records(row)
+
+
+def _next_validation_split_ready_row(
+    rows: Sequence[Mapping[str, object]],
+) -> str | None:
+    for row in rows:
+        materialized = add_issue_pr_blocker_details(row)
+        provenance = _provenance(materialized)
+        split = _mapping(
+            provenance.get("stable_split") or {},
+            field="stable_split",
+        ).get("split")
+        if (
+            split == "validation"
+            and materialized.get("evidence_acquisition_status")
+            in {
+                "ready_for_prompt_spec_and_local_knowledge",
+                "ready_for_candidate_readiness_refresh",
+            }
+        ):
+            return str(materialized.get("replay_id"))
+    return None
 
 
 def _first_failed_command_result(row: Mapping[str, object]) -> Mapping[str, object]:

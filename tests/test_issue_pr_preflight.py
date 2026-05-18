@@ -6,7 +6,10 @@ from pathlib import Path
 
 from j3.issue_pr_preflight import (
     Command,
+    classify_issue_pr_command_outcome,
+    classify_issue_pr_evidence_acquisition_status,
     derive_issue_pr_blocker_details,
+    derive_issue_pr_pre_edit_evidence_gaps,
     classify_pre_edit_residuals,
     first_failed_stage,
     load_issue_pr_preflight_jsonl,
@@ -32,6 +35,8 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 MANIFEST_PATH = REPO_ROOT / "examples" / "issue_pr_mini_replay" / "manifest.json"
 REQUESTS_REPLAY_ID = "psf__requests-issue-7432-pr-7433"
 CLICK_REPLAY_ID = "pallets__click-issue-2745-pr-3364"
+PIP_REPLAY_ID = "pypa__pip-issue-12018-pr-13886"
+SCRAPY_REPLAY_ID = "scrapy__scrapy-issue-7293-pr-7351"
 
 
 def test_loads_manifest_and_selects_replay_row() -> None:
@@ -498,12 +503,98 @@ def test_batch_summary_and_report_include_counts_and_deferred_labels(
         "materialization_gap": 1,
         "ranking_gap": 2,
     }
-    assert summary["missing_prompt_field_counts"]["minimal_reproduction"] == 1
+    assert summary["missing_prompt_field_counts"]["minimal_reproduction"] == 2
     report = report_path.read_text(encoding="utf-8")
     assert "Pre-edit replay preflight only" in report
     assert "Blocker Drilldown" in report
     assert REQUESTS_REPLAY_ID in report
     assert CLICK_REPLAY_ID in report
+
+
+def test_validation_split_preflight_records_gap_status_and_next_row(
+    tmp_path: Path,
+) -> None:
+    manifest = load_issue_pr_replay_manifest(MANIFEST_PATH)
+    records = [
+        select_issue_pr_replay_record(manifest, PIP_REPLAY_ID),
+        select_issue_pr_replay_record(manifest, SCRAPY_REPLAY_ID),
+    ]
+    sha_by_prefix = {
+        record["repo_before_ref"]["sha"][:12]: record["repo_before_ref"]["sha"]
+        for record in records
+    }
+
+    def runner(command: Command, cwd: Path | None, timeout_seconds: int):
+        command_text = _command_text(command)
+        if command_text == "git rev-parse HEAD":
+            cwd_text = str(cwd)
+            sha = next(
+                full_sha
+                for prefix, full_sha in sha_by_prefix.items()
+                if prefix in cwd_text
+            )
+            return subprocess.CompletedProcess(
+                command,
+                returncode=0,
+                stdout=f"{sha}\n",
+                stderr="",
+            )
+        if command_text == "pytest tests/functional/test_install_reqs.py -q":
+            return subprocess.CompletedProcess(
+                command,
+                returncode=4,
+                stdout="",
+                stderr="E   ModuleNotFoundError: No module named 'installer'",
+            )
+        return subprocess.CompletedProcess(command, returncode=0, stdout="", stderr="")
+
+    outcomes = run_issue_pr_replay_preflight_batch(
+        manifest_path=MANIFEST_PATH,
+        workspace=tmp_path / "work",
+        replay_ids=[PIP_REPLAY_ID, SCRAPY_REPLAY_ID],
+        runner=runner,
+    )
+    rows = [outcome.to_record() for outcome in outcomes]
+    summary = summarize_issue_pr_preflight_records(rows)
+
+    pip_row, scrapy_row = rows
+    assert classify_issue_pr_command_outcome(pip_row) == "dependency_fixture_setup_failure"
+    assert pip_row["evidence_acquisition_status"] == "blocked_on_validation_recipe"
+    pip_gaps = derive_issue_pr_pre_edit_evidence_gaps(pip_row)
+    assert {gap["kind"] for gap in pip_gaps} == {
+        "local_knowledge",
+        "validation",
+        "materialization",
+        "ranking",
+    }
+    assert "pip_install_functional_test_fixtures" in pip_gaps[0][
+        "required_knowledge_categories"
+    ]
+
+    assert classify_issue_pr_evidence_acquisition_status(scrapy_row) == (
+        "ready_for_prompt_spec_and_local_knowledge"
+    )
+    assert scrapy_row["command_classification"] == "commands_passed"
+    scrapy_gaps = derive_issue_pr_pre_edit_evidence_gaps(scrapy_row)
+    assert {gap["kind"] for gap in scrapy_gaps} == {
+        "prompt_spec",
+        "local_knowledge",
+        "ranking",
+    }
+    prompt_gap = next(gap for gap in scrapy_gaps if gap["kind"] == "prompt_spec")
+    assert "downloader_slot_tie_breaking" in prompt_gap["missing_prompt_fields"]
+    knowledge_gap = next(gap for gap in scrapy_gaps if gap["kind"] == "local_knowledge")
+    assert "scrapy_downloader_aware_priority_queue" in knowledge_gap[
+        "required_knowledge_categories"
+    ]
+    assert (
+        summary["next_validation_split_row_ready_for_evidence_acquisition"]
+        == SCRAPY_REPLAY_ID
+    )
+    assert summary["command_classification_counts"] == {
+        "commands_passed": 1,
+        "dependency_fixture_setup_failure": 1,
+    }
 
 
 def test_writes_preflight_outcomes_as_jsonl(tmp_path: Path) -> None:

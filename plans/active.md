@@ -61,22 +61,6 @@ This is the live coordinator board. Keep it current and compact.
   `pytest testing/python/approx.py -q`, or record the exact materialization or
   validation blocker.
 
-### `DATA-030`: Validation-split issue/PR preflight
-
-- Status: active
-- Owner: worker Halley (`019e3c81-444a-70a2-ae76-02773780452d`).
-- Write scope: `j3/issue_pr_preflight.py`,
-  `tests/test_issue_pr_preflight.py`, generated outputs under `/tmp`,
-  optional compact report under `docs/`, and planning updates. Do not attempt
-  candidate source edits.
-- Acceptance: preflight validation-split rows, starting with
-  `pypa__pip-issue-12018-pr-13886` and including
-  `scrapy__scrapy-issue-7293-pr-7351` if the first row does not expose a setup
-  blocker. Record checkout/setup/baseline validation status, runtime,
-  first-failed stage, command classification, prompt/spec and local-knowledge
-  gaps, materialization/ranking residuals, and whether the validation-split row
-  is ready for evidence acquisition or blocked by environment/setup.
-
 ## Ready Queue
 
 These are good next assignments for the next loop:
@@ -108,6 +92,18 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `DATA-030`: ran validation-split issue/PR preflight for
+  `pypa__pip-issue-12018-pr-13886` and
+  `scrapy__scrapy-issue-7293-pr-7351` with no candidate edits. Pip checkout
+  and setup passed, but baseline validation failed on missing `installer`
+  during `tests/conftest.py` import, so the row is blocked on validation
+  recipe/dependency setup rather than edit quality. Scrapy checkout, setup,
+  and baseline validation passed (`11 passed, 2 skipped`) and is the next
+  validation-split row ready for prompt/spec and local-knowledge acquisition.
+  Artifacts:
+  `/tmp/j3-data-030-validation-preflight/outcomes-data-030.jsonl`,
+  `/tmp/j3-data-030-validation-preflight/report-data-030.md`, and
+  `docs/DATA_030_VALIDATION_SPLIT_PREFLIGHT_2026-05-18.md`.
 - `DATA-028`: added a materialization coverage audit for exactly
   `pytest-dev__pytest-issue-14462-pr-14466`. Both accepted paths,
   `src/_pytest/python_api.py` and `testing/python/approx.py`, require

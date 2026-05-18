@@ -1786,7 +1786,7 @@ Long-term target:
 
 ### DATA-030: Validation-split issue/PR preflight
 
-- Status: active
+- Status: done
 - Why: the issue/PR replay work is still mostly train-split evidence. To test
   generalization outside fixture-shaped rows, the loop needs validation-split
   setup and baseline evidence before any prompt/spec or candidate work.
@@ -1806,6 +1806,19 @@ Long-term target:
 - Tests: focused preflight tests if code changes, plan consistency,
   `git diff --check`, and live bounded preflight commands or exact blockers if
   live preflight cannot complete.
+- Completion note: added explicit pre-edit evidence-gap, command
+  classification, and evidence-acquisition status fields to issue/PR preflight
+  artifacts, then ran live validation-split preflight for
+  `pypa__pip-issue-12018-pr-13886` and
+  `scrapy__scrapy-issue-7293-pr-7351`. Pip checkout and setup passed, but
+  baseline validation failed on missing `installer` while importing
+  `tests/conftest.py`, so it is blocked on validation recipe/dependency setup
+  and not edit quality. Scrapy checkout, setup, and baseline validation passed
+  with `11 passed, 2 skipped`; it is the next validation-split row ready for
+  prompt/spec and local-knowledge acquisition. Artifacts:
+  `/tmp/j3-data-030-validation-preflight/outcomes-data-030.jsonl`,
+  `/tmp/j3-data-030-validation-preflight/report-data-030.md`, and
+  `docs/DATA_030_VALIDATION_SPLIT_PREFLIGHT_2026-05-18.md`.
 
 ## Next Recommended Queue
 
@@ -1813,5 +1826,5 @@ Start with these unless fresh evidence changes the order:
 
 1. `DATA-029`: attempt pytest #14462 source/test materialization and
    validation.
-2. `DATA-030`: preflight validation-split issue/PR rows.
-3. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.
+2. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.
+3. `MODEL-004`: distinguish mapping key and value targets.

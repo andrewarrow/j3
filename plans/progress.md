@@ -3090,3 +3090,34 @@ meaningful work. Do not replace this file with a daily reset.
 - Push: pending.
 - Next: continue non-overlapping coordinator review while both workers run.
 - Blockers: none.
+
+### 2026-05-18 - DATA-030 - Validation-split issue/PR preflight
+
+- Owner: worker Halley (`019e3c81-444a-70a2-ae76-02773780452d`).
+- Files changed: `j3/issue_pr_preflight.py`,
+  `tests/test_issue_pr_preflight.py`,
+  `docs/DATA_030_VALIDATION_SPLIT_PREFLIGHT_2026-05-18.md`,
+  `plans/active.md`, `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `python -m py_compile j3/issue_pr_preflight.py
+  tests/test_issue_pr_preflight.py` -> passed; `pytest
+  tests/test_issue_pr_preflight.py -q` -> 18 passed; live preflight
+  `python -m j3.issue_pr_preflight --replay-id
+  pypa__pip-issue-12018-pr-13886 --replay-id
+  scrapy__scrapy-issue-7293-pr-7351 ...` -> emitted two pre-edit rows;
+  `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check`
+  -> passed.
+- Result: added explicit command classification, pre-edit evidence-gap, and
+  evidence-acquisition status fields to issue/PR preflight artifacts and
+  reports. Pip checkout and setup passed, but baseline validation failed with
+  `ModuleNotFoundError: No module named 'installer'` during
+  `tests/conftest.py` import, so the row is blocked on validation
+  recipe/dependency setup rather than edit quality. Scrapy checkout, setup, and
+  baseline validation passed with `11 passed, 2 skipped`; it is the next
+  validation-split row ready for prompt/spec and local-knowledge acquisition.
+- Commit: pending.
+- Push: pending.
+- Next: acquire Scrapy prompt/spec and local-knowledge evidence, or isolate a
+  pip validation recipe that installs the missing functional-test dependency.
+- Blockers: pip validation recipe is blocked on missing `installer`;
+  candidate materialization/ranking remain deferred for both validation-split
+  rows.

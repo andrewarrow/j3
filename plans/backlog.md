@@ -788,6 +788,26 @@ Long-term target:
   `/tmp/j3-mat-010-click-3422-final/accepted.diff`, and
   `docs/MAT_010_CLICK_3422_TYPED_BUILDER_CANDIDATE_2026-05-18.md`.
 
+### MAT-011: Second held-out typed-builder materialization probe
+
+- Status: active
+- Why: MAT-010 proves one held-out typed-builder row, but MAT-007 had seven
+  `general_typed_builder` rows. The next proof must show whether the typed
+  action layer generalizes beyond Click instance-attribute annotation movement.
+- Write scope: typed-builder materialization extensions/tests/docs only
+  (`j3/heldout_typed_builder_candidate.py`,
+  `tests/test_heldout_typed_builder_candidate.py`, optional `docs/MAT_011_*`,
+  and generated artifacts under `/tmp`). Avoid issue/PR ranking and validation
+  probe modules.
+- Acceptance: attempt another MAT-007 `general_typed_builder` row, preferably
+  `psf/requests#7441`, using the reusable typed action layer from MAT-010
+  rather than adding a PR-named action kind. Record pinned base ref, accepted
+  changed files, mutation scope, candidate-after diff/AST metadata,
+  accepted-diff comparison, validation result or exact blocker, and whether
+  MAT-010 action families generalized or required expansion.
+- Tests: focused typed-builder materializer tests, plan consistency,
+  `git diff --check`, and live validation or a recorded validation blocker.
+
 ### KNOW-001: Local knowledge inventory for the wedge
 
 - Status: done
@@ -2360,6 +2380,28 @@ Long-term target:
   failures while preserving accepted-candidate pass status, runtime, and exact
   leakage risks. If no label-safe validation exists, record that blocker.
 - Tests: focused validation helper tests, plan consistency, `git diff --check`,
+  and live validation recipe runs when feasible.
+
+### VAL-002: Cross-row passing-decoy validation adequacy probe
+
+- Status: active
+- Why: DATA-039 and DATA-040 now prove both validated issue/PR rows have live
+  decoy evidence, but both rows include passing decoys. This attacks the hard
+  validation question directly: can validation stay cheap and trustworthy, or
+  are focused commands too weak for ranking claims?
+- Write scope: focused validation-strength probe module/tests/docs only
+  (`j3/issue_pr_validation_strength_probe.py`,
+  `tests/test_issue_pr_validation_strength_probe.py`, optional
+  `docs/VAL_002_*`, and generated artifacts under `/tmp`). Avoid typed-builder
+  materialization modules.
+- Acceptance: use DATA-039 and DATA-040 artifacts to identify every passing
+  decoy, then run or design at least one stronger, label-safe validation
+  recipe against accepted candidates and passing decoys. Record whether the
+  recipe converts passing decoys into failures while preserving accepted
+  candidate pass status, runtime/cost, and leakage risk. If validation cannot
+  distinguish coverage-gap decoys without accepted-label leakage, record that
+  as a product-gate blocker.
+- Tests: focused validation probe tests, plan consistency, `git diff --check`,
   and live validation recipe runs when feasible.
 
 ## Next Recommended Queue

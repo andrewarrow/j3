@@ -3916,3 +3916,21 @@ meaningful work. Do not replace this file with a daily reset.
   issue/PR decoys and the next typed-builder or repo-convention row.
 - Blockers: none for MAT-010; the typed-builder bucket still needs more rows
   before claiming broad materialization coverage.
+
+### 2026-05-18 - Coordinator Dispatch - VAL-002 / MAT-011
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, and
+  `plans/progress.md`.
+- Tests: `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff
+  --check` -> passed.
+- Result: selected the next hard probes from the DATA-039/DATA-040 and
+  MAT-010 residuals. `VAL-002` attacks validation trustworthiness by testing
+  stronger label-safe recipes against passing decoys from both validated
+  issue/PR rows. `MAT-011` attacks typed-builder generalization by attempting
+  a second held-out `general_typed_builder` row, preferably `psf/requests#7441`,
+  using MAT-010's reusable typed action layer.
+- Commit: pending.
+- Push: pending.
+- Next: spawn one worker for `VAL-002` and one worker for `MAT-011`.
+- Blockers: none.

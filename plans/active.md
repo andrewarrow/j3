@@ -44,6 +44,39 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
+### `VAL-002`: Cross-row passing-decoy validation adequacy probe
+
+- Status: active
+- Owner: pending.
+- Write scope: focused validation-strength probe module/tests/docs only
+  (`j3/issue_pr_validation_strength_probe.py`,
+  `tests/test_issue_pr_validation_strength_probe.py`, optional
+  `docs/VAL_002_*`, and generated artifacts under `/tmp`). Avoid typed-builder
+  materialization modules.
+- Acceptance: use DATA-039 and DATA-040 artifacts to identify every passing
+  decoy, then run or design at least one stronger, label-safe validation
+  recipe against accepted candidates and passing decoys. Record whether the
+  recipe converts passing decoys into failures while preserving accepted
+  candidate pass status, runtime/cost, and leakage risk. If validation cannot
+  distinguish coverage-gap decoys without accepted-label leakage, record that
+  as a product-gate blocker.
+
+### `MAT-011`: Second held-out typed-builder materialization probe
+
+- Status: active
+- Owner: pending.
+- Write scope: typed-builder materialization extensions/tests/docs only
+  (`j3/heldout_typed_builder_candidate.py`,
+  `tests/test_heldout_typed_builder_candidate.py`, optional `docs/MAT_011_*`,
+  and generated artifacts under `/tmp`). Avoid issue/PR ranking and validation
+  probe modules.
+- Acceptance: attempt another MAT-007 `general_typed_builder` row,
+  preferably `psf/requests#7441`, using the reusable typed action layer from
+  MAT-010 rather than adding a PR-named action kind. Record pinned base ref,
+  accepted changed files, mutation scope, candidate-after diff/AST metadata,
+  accepted-diff comparison, validation result or exact blocker, and whether
+  MAT-010 action families generalized or required expansion.
+
 ## Ready Queue
 
 These are good next assignments for the next loop:

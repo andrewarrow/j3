@@ -382,7 +382,7 @@ Long-term target:
 
 ### MAT-002: Constrained source-region materialization probe
 
-- Status: active
+- Status: done
 - Why: `MAT-001` found that the largest normal-PR bucket is bounded local source
   generation, not one-line structured repair or full architectural work.
 - Write scope: `j3/source_region_materializer.py`,

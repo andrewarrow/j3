@@ -16,25 +16,6 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-### `MAT-002`: Constrained source-region materialization probe
-
-- Status: active
-- Owner: worker Sartre (`019e3b50-c9b1-7cc0-9e2e-9230f72ae46e`)
-- Started: 2026-05-18
-- Goal: turn the largest `MAT-001` bucket into an executable probe by adding a
-  bounded source-region materializer contract and focused tests.
-- Write scope: `j3/source_region_materializer.py`,
-  `tests/test_source_region_materializer.py`, optional docs under `docs/`, and
-  plan updates.
-- Acceptance: materialize a small replacement inside one named function or
-  explicitly delimited region with AST parsing, signature preservation, changed
-  line budget, forbidden import changes by default, and candidate-after diff
-  metadata. Include a fixture shaped like the `psf/requests#7427`
-  `should_bypass_proxies` domain-boundary edit so failure or success maps back
-  to the audit.
-- Tests: focused source-region tests, `pytest tests/test_plan_consistency.py -q`,
-  and `git diff --check`.
-
 ## Ready Queue
 
 These are good next assignments for the next loop:
@@ -73,6 +54,12 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `MAT-002`: added `j3/source_region_materializer.py` and focused source-region
+  tests for a structured `replace_function_region` action. The probe replaces a
+  bounded region inside `should_bypass_proxies`, enforces AST parsing, function
+  signature preservation, changed-line budgets, and default no-import-change
+  constraints, and returns candidate-after changed-line, touched-region, diff,
+  and AST-delta metadata.
 - `WEDGE-001`: added `docs/PRODUCT_WEDGE_DECISION.md`, choosing guarded local
   tests-only maintenance for small existing Python libraries as the first
   product path. Conservative one-file source maintenance remains shadow-only

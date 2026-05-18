@@ -674,6 +674,30 @@ meaningful work. Do not replace this file with a daily reset.
   generation.
 - Blockers: none
 
+### 2026-05-18 - MAT-002 - Constrained source-region materialization probe
+
+- Owner: worker Sartre (`019e3b50-c9b1-7cc0-9e2e-9230f72ae46e`)
+- Files changed: `j3/source_region_materializer.py`,
+  `tests/test_source_region_materializer.py`, `plans/active.md`,
+  `plans/backlog.md`, `plans/progress.md`
+- Tests: `pytest tests/test_source_region_materializer.py -q` -> 6 passed;
+  `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check`
+  -> passed.
+- Result: added a standalone source-region materializer contract with
+  `replace_function_region` and explicitly delimited region targets. The
+  materializer applies only a bounded region, parses the resulting file,
+  preserves the target function signature, enforces changed-line budgets and
+  default no-import-change constraints, and emits candidate-after metadata with
+  changed line counts, touched region, import changes, unified diff, diff
+  summary, and AST delta. The focused fixture mirrors the `psf/requests#7427`
+  `should_bypass_proxies` domain-boundary edit.
+- Commit: this task commit
+- Push: pending at commit time; see worker report
+- Next: use the probe as the source-materialization gate for real-repo or
+  issue/PR replay candidates, and handle repo-convention pytest construction as
+  a separate materialization slice.
+- Blockers: none
+
 ### 2026-05-18 - WEDGE-001 - Product wedge decision
 
 - Owner: worker Boyle (`019e3b51-328a-7c62-adc9-ba8cbf1055ba`)

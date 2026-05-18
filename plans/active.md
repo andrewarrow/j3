@@ -24,7 +24,7 @@ This is the live coordinator board. Keep it current and compact.
 ### `GS7-008`: Materialize real-repo pytest cases for iniconfig
 
 - Status: active
-- Owner: pending spawn
+- Owner: worker Ampere (`019e3b88-2a6d-7b12-beff-78d036b82178`)
 - Started: 2026-05-18
 - Goal: close the `GS7-007` `test_case_materialization_gap` for the
   `iniconfig-tests-parse-comments` calibration task without broadening to
@@ -44,7 +44,7 @@ This is the live coordinator board. Keep it current and compact.
 ### `REAL-005`: Extend live baseline preflight toward Gate A
 
 - Status: active
-- Owner: pending spawn
+- Owner: worker Kepler (`019e3b88-6317-7b33-8774-b95ee2f2c0d0`)
 - Started: 2026-05-18
 - Goal: test whether cheap validation is viable beyond the `iniconfig`
   calibration repo by running live baseline preflight on at least two more

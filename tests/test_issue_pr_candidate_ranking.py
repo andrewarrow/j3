@@ -84,6 +84,44 @@ def test_report_exposes_diff_ast_and_candidate_after_feature_availability(tmp_pa
         assert isinstance(inputs["feature_sample"], list)
 
 
+def test_candidate_after_bundle_resolves_accepted_snapshot_blocker(tmp_path: Path) -> None:
+    pytest_path = _write_candidate(tmp_path, "pytest")
+    scrapy_path = _write_candidate(tmp_path, "scrapy")
+    bundle_path = tmp_path / "candidate-after-bundle.json"
+    bundle_path.write_text(
+        json.dumps(
+            {
+                "schema_version": "issue-pr-candidate-after-snapshot-v1",
+                "record_kind": "issue_pr_candidate_after_snapshot_bundle",
+                "candidates": [
+                    _candidate_after_bundle_entry("pytest"),
+                    _candidate_after_bundle_entry("scrapy"),
+                ],
+            },
+            indent=2,
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+
+    report = build_issue_pr_candidate_ranking_report(
+        pytest_candidate_path=pytest_path,
+        scrapy_candidate_path=scrapy_path,
+        candidate_after_bundle_path=bundle_path,
+    )
+
+    for row in report["rows"]:
+        accepted = next(candidate for candidate in row["candidates"] if candidate["expected_accepted"])
+        decoys = [candidate for candidate in row["candidates"] if not candidate["expected_accepted"]]
+        assert accepted["feature_inputs"]["candidate_after_available"] is True
+        assert all(decoy["feature_inputs"]["candidate_after_available"] is False for decoy in decoys)
+        reasons = {blocker["reason"] for blocker in row["scorer_blockers"]}
+        assert "full_candidate_after_unavailable" not in reasons
+        assert "decoy_candidate_after_unavailable" in reasons
+        assert row["pass_at_1"] is None
+        assert row["pass_at_k"] is None
+
+
 def test_write_report_outputs_json_jsonl_and_markdown(tmp_path: Path) -> None:
     report = build_issue_pr_candidate_ranking_report(
         pytest_candidate_path=_write_candidate(tmp_path, "pytest"),
@@ -215,4 +253,44 @@ def _candidate_record(kind: str) -> dict[str, object]:
         },
         "residual_labels": ["candidate_validation_passed"],
         "zero_hosted_usage_confirmed": True,
+    }
+
+
+def _candidate_after_bundle_entry(kind: str) -> dict[str, object]:
+    if kind == "pytest":
+        replay_id = "pytest-dev__pytest-issue-14462-pr-14466"
+        candidate_id = "pytest-timedelta-approx-source-test"
+        path = "src/_pytest/python_api.py"
+    elif kind == "scrapy":
+        replay_id = "scrapy__scrapy-issue-7293-pr-7351"
+        candidate_id = "scrapy-downloader-aware-source-test"
+        path = "scrapy/pqueues.py"
+    else:
+        raise AssertionError(kind)
+    return {
+        "status": "available",
+        "replay_id": replay_id,
+        "candidate_id": candidate_id,
+        "candidate_after": {
+            "available": True,
+            "kind": "full_file_snapshot_bundle",
+            "schema_version": "issue-pr-candidate-after-snapshot-v1",
+            "candidate_id": candidate_id,
+            "replay_id": replay_id,
+            "touched_file_paths": [path],
+            "file_count": 1,
+            "files": {
+                path: {
+                    "path": path,
+                    "sha256_before": "0" * 64,
+                    "sha256_after": "1" * 64,
+                    "after_snapshot_path": f"/tmp/{kind}/after.py",
+                    "diff_summary": {"added_line_count": 1, "removed_line_count": 0},
+                    "ast_delta": {"ast_parse_ok": True, "ast_delta_added_count": 1},
+                    "ast_metadata": {"ast_parse_ok": True, "function_count": 1},
+                }
+            },
+            "embedding_available": False,
+            "embedding": None,
+        },
     }

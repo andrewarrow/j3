@@ -3606,3 +3606,46 @@ meaningful work. Do not replace this file with a daily reset.
 - Push: succeeded.
 - Next: continue non-overlapping coordinator review while both workers run.
 - Blockers: none.
+
+### 2026-05-18 - DATA-038 - Issue/PR candidate-after snapshots
+
+- Owner: worker Kierkegaard (`019e3cc0-e4a0-7893-8bcf-e090084bf843`) with
+  coordinator integration after worker pause.
+- Files changed: `j3/issue_pr_candidate_after_snapshot.py`,
+  `j3/issue_pr_candidate_ranking.py`,
+  `tests/test_issue_pr_candidate_after_snapshot.py`,
+  `tests/test_issue_pr_candidate_ranking.py`,
+  `docs/DATA_038_ISSUE_PR_CANDIDATE_AFTER_SNAPSHOTS_2026-05-18.md`,
+  `plans/active.md`, `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `python -m py_compile j3/issue_pr_candidate_after_snapshot.py
+  j3/issue_pr_candidate_ranking.py
+  tests/test_issue_pr_candidate_after_snapshot.py
+  tests/test_issue_pr_candidate_ranking.py` -> passed; `pytest
+  tests/test_issue_pr_candidate_after_snapshot.py -q` -> 3 passed; `pytest
+  tests/test_issue_pr_candidate_ranking.py -q` -> 7 passed; CLI smoke
+  `python -m j3.issue_pr_candidate_after_snapshot --out-dir
+  /tmp/j3-data-038-issue-pr-candidate-after-snapshots` -> wrote bundle JSON,
+  JSONL, markdown, and four after-file snapshots; CLI smoke `python -m
+  j3.issue_pr_candidate_ranking --candidate-after-bundle
+  /tmp/j3-data-038-issue-pr-candidate-after-snapshots/candidate-after-bundle.json
+  --out-dir /tmp/j3-data-038-ranking-with-snapshots` -> wrote ranking artifacts;
+  combined `pytest tests/test_issue_pr_candidate_after_snapshot.py
+  tests/test_issue_pr_candidate_ranking.py -q` -> 10 passed; `pytest
+  tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check` ->
+  passed.
+- Result: produced full touched-file candidate-after sidecar snapshots for the
+  validated DATA-029 pytest #14462 and DATA-035 Scrapy #7293 candidates. The
+  bundle covers all four touched files, stores after-file snapshots, verifies
+  hashes against candidate records, records diff/AST metadata, and preserves
+  validation/provenance. The DATA-037 rerun now marks accepted candidates as
+  having candidate-after evidence; `full_candidate_after_unavailable` is
+  resolved and replaced with `decoy_candidate_after_unavailable`. Ranking
+  remains shadow-only and blocked on missing decoy after-state/live validation,
+  no guarded issue/PR ranker, and weak issue-specific semantic features.
+- Commit: pending.
+- Push: pending.
+- Next: materialize or live-validate decoys if ranking evidence remains the
+  priority; otherwise continue MAT-008 to test held-out reusable
+  source-region materialization.
+- Blockers: decoy candidate-after/live validation remains missing for honest
+  issue/PR pass@1/pass@k scoring.

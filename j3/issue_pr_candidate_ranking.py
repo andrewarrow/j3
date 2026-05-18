@@ -16,6 +16,7 @@ from typing import Mapping, Sequence
 
 from candidate_ranker.features import _candidate_record_features
 from j3.candidate_observation import candidate_change_observation
+from j3.issue_pr_candidate_after_snapshot import load_candidate_after_bundle_index
 
 
 ISSUE_PR_CANDIDATE_RANKING_SCHEMA_VERSION = "issue-pr-candidate-ranking-v1"
@@ -99,12 +100,24 @@ def build_issue_pr_candidate_ranking_report(
     *,
     pytest_candidate_path: Path = DEFAULT_PYTEST_CANDIDATE_PATH,
     scrapy_candidate_path: Path = DEFAULT_SCRAPY_CANDIDATE_PATH,
+    candidate_after_bundle_path: Path | None = None,
 ) -> dict[str, object]:
     """Build a shadow-only ranking report for the DATA-037 real candidates."""
 
+    candidate_after_index = (
+        load_candidate_after_bundle_index(candidate_after_bundle_path)
+        if candidate_after_bundle_path is not None
+        else {}
+    )
     rows = [
-        _build_pytest_row(pytest_candidate_path.expanduser().resolve()),
-        _build_scrapy_row(scrapy_candidate_path.expanduser().resolve()),
+        _build_pytest_row(
+            pytest_candidate_path.expanduser().resolve(),
+            candidate_after_index=candidate_after_index,
+        ),
+        _build_scrapy_row(
+            scrapy_candidate_path.expanduser().resolve(),
+            candidate_after_index=candidate_after_index,
+        ),
     ]
     rankable_rows = sum(1 for row in rows if row.scorer_status == "ranked")
     zero_hosted_usage_confirmed = all(
@@ -268,10 +281,14 @@ def format_issue_pr_candidate_ranking_markdown(report: Mapping[str, object]) -> 
     return "\n".join(lines)
 
 
-def _build_pytest_row(candidate_path: Path) -> ShadowRankingRow:
+def _build_pytest_row(
+    candidate_path: Path,
+    *,
+    candidate_after_index: Mapping[tuple[str, str], Mapping[str, object]],
+) -> ShadowRankingRow:
     record = _load_candidate_record(candidate_path)
     candidates = [
-        _accepted_candidate(record),
+        _accepted_candidate(record, candidate_after_index=candidate_after_index),
         _decoy_candidate(
             record,
             decoy_id="pytest_rel_timedelta_object_semantics",
@@ -331,10 +348,14 @@ def _build_pytest_row(candidate_path: Path) -> ShadowRankingRow:
     return _blocked_row(record, candidate_path, candidates)
 
 
-def _build_scrapy_row(candidate_path: Path) -> ShadowRankingRow:
+def _build_scrapy_row(
+    candidate_path: Path,
+    *,
+    candidate_after_index: Mapping[tuple[str, str], Mapping[str, object]],
+) -> ShadowRankingRow:
     record = _load_candidate_record(candidate_path)
     candidates = [
-        _accepted_candidate(record),
+        _accepted_candidate(record, candidate_after_index=candidate_after_index),
         _decoy_candidate(
             record,
             decoy_id="scrapy_stale_min_stats_selection",
@@ -390,13 +411,22 @@ def _build_scrapy_row(candidate_path: Path) -> ShadowRankingRow:
     return _blocked_row(record, candidate_path, candidates)
 
 
-def _accepted_candidate(record: Mapping[str, object]) -> ShadowCandidate:
+def _accepted_candidate(
+    record: Mapping[str, object],
+    *,
+    candidate_after_index: Mapping[tuple[str, str], Mapping[str, object]],
+) -> ShadowCandidate:
     normalized = _scorer_record(record)
+    replay_id = str(record.get("replay_id", ""))
+    candidate_id = str(record.get("candidate_id") or "accepted")
+    candidate_after = candidate_after_index.get((replay_id, candidate_id))
+    if candidate_after is not None:
+        normalized["candidate_after"] = _json_copy(candidate_after)
     residual_labels = _string_list(record.get("residual_labels")) or [
         "candidate_validation_passed"
     ]
     return _candidate_from_record(
-        candidate_id=str(record.get("candidate_id") or "accepted"),
+        candidate_id=candidate_id,
         candidate_kind="accepted_validated_candidate",
         expected_accepted=True,
         expected_validation_status=str(_mapping(record.get("validation")).get("status", "passed")),
@@ -519,15 +549,6 @@ def _blocked_row(
             ),
         },
         {
-            "field": "candidate_after",
-            "reason": "full_candidate_after_unavailable",
-            "message": (
-                "The DATA-029/DATA-035 artifacts expose diffs and AST summaries, "
-                "but not complete candidate-after file snapshots for every "
-                "candidate/decoy."
-            ),
-        },
-        {
             "field": "semantic_features",
             "reason": "issue_specific_semantics_not_in_current_features",
             "message": (
@@ -539,6 +560,35 @@ def _blocked_row(
             ),
         },
     ]
+    accepted_after_available = all(
+        candidate.feature_inputs.get("candidate_after_available") is True
+        for candidate in candidates
+        if candidate.expected_accepted
+    )
+    if accepted_after_available:
+        blockers.append(
+            {
+                "field": "candidate_after",
+                "reason": "decoy_candidate_after_unavailable",
+                "message": (
+                    "DATA-038 provides complete candidate-after snapshots for "
+                    "the accepted validated candidates, but the realistic decoys "
+                    "still have no materialized after-file snapshots."
+                ),
+            }
+        )
+    else:
+        blockers.append(
+            {
+                "field": "candidate_after",
+                "reason": "full_candidate_after_unavailable",
+                "message": (
+                    "The DATA-029/DATA-035 artifacts expose diffs and AST summaries, "
+                    "but not complete candidate-after file snapshots for the "
+                    "accepted candidate and decoys."
+                ),
+            }
+        )
     return ShadowRankingRow(
         replay_id=replay_id,
         repo=repo,
@@ -678,11 +728,18 @@ def main(argv: Sequence[str] | None = None) -> int:
         default=DEFAULT_OUT_DIR,
         help="Directory for ranking-report.json, decoy-candidates.jsonl, and markdown.",
     )
+    parser.add_argument(
+        "--candidate-after-bundle",
+        type=Path,
+        default=None,
+        help="Optional DATA-038 candidate-after bundle JSON for accepted candidates.",
+    )
     args = parser.parse_args(argv)
 
     report = build_issue_pr_candidate_ranking_report(
         pytest_candidate_path=args.pytest_candidate,
         scrapy_candidate_path=args.scrapy_candidate,
+        candidate_after_bundle_path=args.candidate_after_bundle,
     )
     artifacts = write_issue_pr_candidate_ranking_report(report, out_dir=args.out_dir)
     print(json.dumps({name: str(path) for name, path in artifacts.items()}, sort_keys=True))

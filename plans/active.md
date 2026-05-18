@@ -44,22 +44,6 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-### `DATA-038`: Issue/PR candidate-after snapshot bundle
-
-- Status: active
-- Owner: worker Kierkegaard (`019e3cc0-e4a0-7893-8bcf-e090084bf843`).
-- Write scope: a focused candidate-after snapshot module and tests, optional
-  integration with the DATA-037 ranking harness, generated artifacts under
-  `/tmp`, optional compact docs/report, and planning updates. Avoid editing
-  MAT-008-owned materialization code.
-- Acceptance: for the validated DATA-029 pytest #14462 and DATA-035 Scrapy
-  #7293 candidates, produce a sidecar candidate-after bundle with touched file
-  paths, before/after hashes, full after-file snapshots or exact paths to
-  stored snapshots, diff/AST metadata, validation status, and provenance. Then
-  rerun or extend the DATA-037 ranking report enough to show the
-  `full_candidate_after_unavailable` blocker is resolved or replaced by the
-  next exact blocker. Do not change production ranking gates.
-
 ### `MAT-008`: Held-out requests source-region candidate
 
 - Status: active
@@ -107,6 +91,20 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `DATA-038`: added sidecar full-file candidate-after snapshots for the
+  validated DATA-029 pytest #14462 and DATA-035 Scrapy #7293 issue/PR
+  candidates, covering all four touched files with before/after hashes, stored
+  after snapshots, diff/AST metadata, validation status, and provenance. The
+  DATA-037 ranking rerun now marks accepted candidates as having
+  candidate-after evidence and replaces `full_candidate_after_unavailable`
+  with `decoy_candidate_after_unavailable`; ranking remains blocked on missing
+  live/materialized decoy evidence, no guarded issue/PR ranker, and weak
+  issue-specific semantic features. Artifacts:
+  `/tmp/j3-data-038-issue-pr-candidate-after-snapshots/candidate-after-bundle.json`,
+  `/tmp/j3-data-038-issue-pr-candidate-after-snapshots/candidate-after-candidates.jsonl`,
+  `/tmp/j3-data-038-issue-pr-candidate-after-snapshots/candidate-after-report.md`,
+  `/tmp/j3-data-038-ranking-with-snapshots/ranking-report.json`, and
+  `docs/DATA_038_ISSUE_PR_CANDIDATE_AFTER_SNAPSHOTS_2026-05-18.md`.
 - `MAT-007`: refreshed real PR materialization coverage after the DATA-029 and
   DATA-035 validated candidate wins. The held-out panel contains 24 accepted
   Python PR diffs, excluding the two validated candidate reference rows.

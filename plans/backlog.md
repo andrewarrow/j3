@@ -2154,7 +2154,7 @@ Long-term target:
 
 ### DATA-038: Issue/PR candidate-after snapshot bundle
 
-- Status: active
+- Status: done
 - Why: DATA-037 blocks ranking on two real issue/PR candidates because complete
   candidate-after snapshots are unavailable and current generic diff/AST
   features are too weak to distinguish accepted candidates from hard decoys.
@@ -2173,6 +2173,21 @@ Long-term target:
   next exact blocker. Do not change production ranking gates.
 - Tests: focused snapshot/ranking tests, plan consistency, `git diff --check`,
   and a CLI/report smoke if a CLI is added.
+- Completion note: added `j3.issue_pr_candidate_after_snapshot` plus
+  DATA-037 ranking-harness bundle support. The sidecar bundle stores full
+  after-file snapshots for all four touched files from the validated DATA-029
+  pytest #14462 and DATA-035 Scrapy #7293 candidates, with before/after
+  hashes, diff/AST metadata, validation status, and provenance. Rerunning
+  DATA-037 with the bundle resolves `full_candidate_after_unavailable` for the
+  accepted candidates and replaces it with `decoy_candidate_after_unavailable`.
+  Ranking remains shadow-only and blocked on missing materialized/live decoy
+  evidence, no guarded issue/PR ranker, and weak issue-specific semantic
+  features. Artifacts:
+  `/tmp/j3-data-038-issue-pr-candidate-after-snapshots/candidate-after-bundle.json`,
+  `/tmp/j3-data-038-issue-pr-candidate-after-snapshots/candidate-after-candidates.jsonl`,
+  `/tmp/j3-data-038-issue-pr-candidate-after-snapshots/candidate-after-report.md`,
+  `/tmp/j3-data-038-ranking-with-snapshots/ranking-report.json`, and
+  `docs/DATA_038_ISSUE_PR_CANDIDATE_AFTER_SNAPSHOTS_2026-05-18.md`.
 
 ## Next Recommended Queue
 

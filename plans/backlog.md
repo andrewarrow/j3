@@ -707,6 +707,26 @@ Long-term target:
   conversion semantics, non-string default handling, empty-string check
   semantics, and third-party `semver.Version` reproduction context.
 
+### KNOW-005: Requests replay local knowledge records
+
+- Status: active
+- Why: `DATA-008` turned the Requests replay blocker from validation setup into
+  candidate readiness. The row still needs local knowledge for body
+  preparation, file-wrapper behavior, redirect rewind semantics, repo tests,
+  and fixture setup before ranking or materialization can be meaningful.
+- Write scope: `j3/local_knowledge.py`, `tests/test_local_knowledge.py`,
+  optional compact report, generated outputs under `/tmp`, and plan updates.
+- Acceptance: emit compact, provenance-bearing local-knowledge records for
+  `psf__requests-issue-7432-pr-7433`: changed-file context for
+  `src/requests/models.py` and `tests/test_requests.py`, the DATA-008 focused
+  validation recipe, request-body preparation and stream-detection semantics,
+  `__getattr__`-based file-wrapper behavior, redirect/rewind body semantics,
+  pytest/httpbin fixture setup, and ranking-relevant changed/test patterns.
+  Add only the smallest schema extension needed, with no raw source blobs and
+  no hosted LLM use.
+- Tests: focused local-knowledge tests, plan consistency, `git diff --check`,
+  and a smoke command or fixture proving records can be emitted.
+
 ### WEDGE-001: Product wedge decision
 
 - Status: done
@@ -1100,11 +1120,44 @@ Long-term target:
   `docs/DATA_008_REQUESTS_VALIDATION_RECIPE_2026-05-18.md`; JSONL:
   `/tmp/j3-data-008-live/attempts.jsonl`.
 
+### DATA-009: Click default_map prompt/spec normalization
+
+- Status: active
+- Why: `DATA-007` shows `pallets__click-issue-2745-pr-3364` is not ready for
+  candidate generation because the replay row is missing the prompt/spec
+  details needed to validate any edit.
+- Write scope: prompt/spec extraction or normalization support for issue/PR
+  replay rows, focused tests, optional compact report, and plan updates.
+- Acceptance: build a structured spec for
+  `pallets__click-issue-2745-pr-3364` that records minimal reproduction,
+  observed behavior, expected behavior, affected API symbol, input shape,
+  acceptance test shape, `default_map` mutation timing, multi-value parameter
+  shape, string-splitting semantics, provenance, and any fields still blocked
+  on unavailable source text. The task must not attempt candidate code edits.
+- Tests: focused prompt/spec or issue/PR preflight tests, plan consistency,
+  and `git diff --check`.
+
+### DATA-010: Issue/PR candidate readiness gate
+
+- Status: ready
+- Why: after `DATA-008`, `DATA-009`, `KNOW-004`, and `KNOW-005`, the replay
+  path needs a binary gate that says which first-batch rows are ready for a
+  candidate attempt and which hard blocker remains.
+- Write scope: issue/PR replay readiness scoring, focused tests, compact
+  report, and plan updates.
+- Acceptance: consume validation recipe, prompt/spec, and local-knowledge
+  evidence for the first DATA-006 rows; emit one readiness row per replay id
+  with missing-evidence labels, allowed write scope, validation command,
+  residual labels, and a clear candidate-attempt recommendation or blocker.
+- Tests: focused issue/PR readiness tests, plan consistency, and
+  `git diff --check`.
+
 ## Next Recommended Queue
 
 Start with these unless fresh evidence changes the order:
 
-1. `KNOW-003`: broaden knowledge-use attribution where scoring shows missing
+1. `DATA-010`: issue/PR candidate readiness gate for the first replay rows.
+2. `KNOW-003`: broaden knowledge-use attribution where scoring shows missing
    local-knowledge evidence.
-2. `MODEL-006`: candidate-after or AST-delta observation for ranking evidence.
-3. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.
+3. `MODEL-006`: candidate-after or AST-delta observation for ranking evidence.
+4. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.

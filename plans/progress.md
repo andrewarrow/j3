@@ -1891,3 +1891,20 @@ meaningful work. Do not replace this file with a daily reset.
   handled.
 - Blockers: none for validation recipe setup; non-validation residuals remain
   `prompt_spec_parsing_gap`, `local_knowledge_gap`, and `ranking_gap`.
+
+### 2026-05-18 - Coordinator Review And Dispatch - DATA-009 / KNOW-005
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, `plans/progress.md`.
+- Tests: `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff
+  --check` -> passed.
+- Result: kept the loop pointed at the issue/PR replay falsification path
+  instead of returning to generic GreenShot progress. `DATA-009` will normalize
+  the Click #2745 `default_map` prompt/spec fields that blocked candidate
+  generation in `DATA-007`. `KNOW-005` will acquire the Requests replay local
+  knowledge now that `DATA-008` proved the validation setup is fixable.
+- Commit: pending.
+- Push: pending.
+- Next: run plan checks, commit this dispatch, then assign one worker to
+  `DATA-009` and one worker to `KNOW-005` with disjoint write scopes.
+- Blockers: none.

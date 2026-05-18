@@ -44,16 +44,59 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
+### `DATA-009`: Click default_map prompt/spec normalization
+
+- Status: active
+- Owner: coordinator dispatch pending.
+- Why: `DATA-007` blocked `pallets__click-issue-2745-pr-3364` before any
+  candidate attempt because the replay row lacks the concrete prompt/spec
+  fields needed to judge edits.
+- Write scope: prompt/spec extraction or normalization support for issue/PR
+  replay rows, focused tests, optional compact report, and plan updates. Do
+  not edit `j3/local_knowledge.py`.
+- Acceptance: build a structured spec for
+  `pallets__click-issue-2745-pr-3364` that records minimal reproduction,
+  observed behavior, expected behavior, affected API symbol, input shape,
+  acceptance test shape, `default_map` mutation timing, multi-value parameter
+  shape, string-splitting semantics, provenance, and any fields still blocked
+  on unavailable source text. No candidate source edits.
+- Tests: focused prompt/spec or issue/PR preflight tests,
+  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+
+### `KNOW-005`: Requests replay local knowledge records
+
+- Status: active
+- Owner: coordinator dispatch pending.
+- Why: `DATA-008` removed the validation setup blocker for
+  `psf__requests-issue-7432-pr-7433`, but candidate generation still needs
+  local knowledge for request body preparation, stream detection, redirects,
+  repo tests, and the hermetic validation recipe.
+- Write scope: `j3/local_knowledge.py`, `tests/test_local_knowledge.py`,
+  optional compact report, generated outputs under `/tmp`, and plan updates.
+  Do not edit prompt/spec or issue/PR preflight modules.
+- Acceptance: emit compact, provenance-bearing local-knowledge records for the
+  Requests row: changed-file context for `src/requests/models.py` and
+  `tests/test_requests.py`, the DATA-008 focused validation recipe,
+  request-body preparation and stream-detection semantics,
+  `__getattr__`-based file-wrapper behavior, redirect/rewind body semantics,
+  pytest/httpbin fixture setup, and ranking-relevant changed/test patterns.
+  Add only the smallest schema extension needed. No hosted LLM use.
+- Tests: focused local-knowledge tests, `pytest
+  tests/test_plan_consistency.py -q`, `git diff --check`, and a smoke command
+  proving the records can be emitted.
+
 ## Ready Queue
 
 These are good next assignments for the next loop:
 
-1. `KNOW-003`: broaden knowledge-use attribution where scoring shows missing
+1. `DATA-010`: issue/PR candidate readiness gate for the first replay rows
+   after prompt/spec, local-knowledge, and validation blockers are resolved.
+2. `KNOW-003`: broaden knowledge-use attribution where scoring shows missing
    local-knowledge evidence.
-2. `MODEL-006`: add candidate-after or AST-delta observation for ranking
+3. `MODEL-006`: add candidate-after or AST-delta observation for ranking
    evidence.
-3. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.
-4. `MODEL-004`: distinguish mapping key and value targets.
+4. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.
+5. `MODEL-004`: distinguish mapping key and value targets.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 

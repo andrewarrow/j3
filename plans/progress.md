@@ -1995,8 +1995,10 @@ meaningful work. Do not replace this file with a daily reset.
   The next loop stays on hard issue/PR proof: `DATA-010` will create the
   candidate-readiness gate, and `DATA-011` will remove the Requests
   prompt/spec blocker left after validation and local-knowledge work.
-- Commit: pending.
-- Push: pending.
-- Next: run plan checks, commit this dispatch, then assign one worker to
-  `DATA-010` and one worker to `DATA-011` with disjoint write scopes.
+- Commit: 1eab099.
+- Push: succeeded.
+- Next: workers dispatched for `DATA-010` and `DATA-011`: Carver
+  (`019e3c11-c70c-71d3-83c9-c2b01e2ad070`) owns the readiness gate, and Curie
+  (`019e3c11-f5b2-7840-87fe-e3a2cba3bfec`) owns the Requests prompt/spec
+  normalization.
 - Blockers: none.

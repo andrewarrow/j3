@@ -47,7 +47,7 @@ This is the live coordinator board. Keep it current and compact.
 ### `DATA-010`: Issue/PR candidate readiness gate
 
 - Status: active
-- Owner: coordinator dispatch pending.
+- Owner: worker Carver (`019e3c11-c70c-71d3-83c9-c2b01e2ad070`).
 - Why: the first replay batch now has targeted validation, prompt/spec, and
   local-knowledge evidence, but there is no binary gate that says which rows
   are actually ready to test materialization and ranking.
@@ -69,7 +69,7 @@ This is the live coordinator board. Keep it current and compact.
 ### `DATA-011`: Requests prepare_body prompt/spec normalization
 
 - Status: active
-- Owner: coordinator dispatch pending.
+- Owner: worker Curie (`019e3c11-f5b2-7840-87fe-e3a2cba3bfec`).
 - Why: `DATA-008` and `KNOW-005` resolved validation and local-knowledge
   blockers for `psf__requests-issue-7432-pr-7433`, but the row still lacks a
   normalized prompt/spec record, so a candidate attempt would still be judged

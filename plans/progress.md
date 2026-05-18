@@ -3934,3 +3934,17 @@ meaningful work. Do not replace this file with a daily reset.
 - Push: pending.
 - Next: spawn one worker for `VAL-002` and one worker for `MAT-011`.
 - Blockers: none.
+
+### 2026-05-18 - Worker IDs - VAL-002 / MAT-011
+
+- Owner: coordinator.
+- Files changed: `plans/active.md` and `plans/progress.md`.
+- Tests: `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff
+  --check` -> passed.
+- Result: recorded worker Locke
+  (`019e3cf2-f35a-7271-b4e1-a88cfd426e2b`) for `VAL-002` and worker
+  Confucius (`019e3cf2-f37e-76a2-89ac-5f106d630add`) for `MAT-011`.
+- Commit: pending.
+- Push: pending.
+- Next: continue non-overlapping coordinator review while both workers run.
+- Blockers: none.

@@ -47,7 +47,7 @@ This is the live coordinator board. Keep it current and compact.
 ### `VAL-002`: Cross-row passing-decoy validation adequacy probe
 
 - Status: active
-- Owner: pending.
+- Owner: worker Locke (`019e3cf2-f35a-7271-b4e1-a88cfd426e2b`).
 - Write scope: focused validation-strength probe module/tests/docs only
   (`j3/issue_pr_validation_strength_probe.py`,
   `tests/test_issue_pr_validation_strength_probe.py`, optional
@@ -64,7 +64,7 @@ This is the live coordinator board. Keep it current and compact.
 ### `MAT-011`: Second held-out typed-builder materialization probe
 
 - Status: active
-- Owner: pending.
+- Owner: worker Confucius (`019e3cf2-f37e-76a2-89ac-5f106d630add`).
 - Write scope: typed-builder materialization extensions/tests/docs only
   (`j3/heldout_typed_builder_candidate.py`,
   `tests/test_heldout_typed_builder_candidate.py`, optional `docs/MAT_011_*`,

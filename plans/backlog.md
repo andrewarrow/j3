@@ -55,7 +55,7 @@ Long-term target:
 
 ### GS7-001: Refresh current GreenShot-7 baseline
 
-- Status: ready
+- Status: active
 - Why: before adding tasks, confirm what the current request-to-repo runner can
   actually solve.
 - Write scope: generated output under `/tmp`, progress notes only unless a small
@@ -141,7 +141,7 @@ Long-term target:
 
 ### TRANS-001: Run full transition shadow matrix
 
-- Status: ready
+- Status: active
 - Why: current evidence is smoke-scale and remains shadow-only.
 - Write scope: generated outputs under `/tmp`, progress notes, small bug fixes
   only if the runner fails.

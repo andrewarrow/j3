@@ -14,16 +14,36 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-No worker tasks are active at this moment.
+### `TRANS-001`: Run full transition shadow matrix
+
+- Owner: worker Parfit (`019e3949-895a-7111-93a4-6218aba860fb`)
+- Status: active
+- Write scope: generated outputs under `/tmp`, `plans/progress.md`,
+  `plans/active.md`; small bug fixes only if the runner fails.
+- Acceptance: matrix summary, residual report, evidence bundle, and
+  guarded-trial decision recorded with exact commands and gate result.
+- Tests: matrix command, residual command, bundle command, guarded decision.
+
+### `GS7-001`: Refresh current GreenShot-7 baseline
+
+- Owner: worker Pasteur (`019e3949-8978-7de0-a0f5-efe2132dd9d3`)
+- Status: active
+- Write scope: generated output under `/tmp`, `plans/progress.md`,
+  `plans/active.md`; small bug fixes only if baseline commands expose a local
+  bug.
+- Acceptance: recorded command output for current GreenShot-7 tasks, including
+  pass/fail, missing action, and ranking or prompt-spec failures.
+- Tests: `pytest tests/test_request_spec.py -q`,
+  `pytest tests/test_greenfield_calculator.py -q`,
+  `pytest tests/test_greenshot_7.py -q`, plus direct CLI smoke if available.
 
 ## Ready Queue
 
-These are good next assignments after `OPS-001` is verified:
+These are good next assignments after the current active tasks complete:
 
-1. `TRANS-001`: run the full transition shadow matrix and record the gate
-   result.
-2. `GS7-001`: refresh current GreenShot-7 baseline.
-3. `DATA-001`: audit expanded prompt corpus quality.
+1. `DATA-001`: audit expanded prompt corpus quality.
+2. `OPS-002`: add a lightweight plan consistency check.
+3. `GS7-002`: add five non-calculator request-to-repo fixtures.
 
 Run at most two of these in parallel at first. `TRANS-001` is mostly generated
 output and progress notes; `GS7-001` or `DATA-001` can run beside it if their

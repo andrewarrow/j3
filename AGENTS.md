@@ -6,108 +6,110 @@ reference them.
 ## Read Order for Fresh Context
 
 1. Read this file.
-2. Read `plans/today.md` for the current 24-hour execution scope.
-3. Read `plans/today.progress.md` for what has already been done, current
-   blockers, and the next concrete step.
+2. Read `plans/active.md` for the current coordinator board.
+3. Read `plans/backlog.md` for the persistent multi-week task queue.
+4. Read the latest entries in `plans/progress.md` for completed work, blockers,
+   and active assumptions.
+5. Read `plans/operating-model.md` before coordinating worker agents or changing
+   the planning system.
 
-Do not reread or edit `plans/strategy.md` for ordinary day-to-day work. It is the broad
-project strategy and can distract from the active slice. Read `plans/strategy.md` only
-when the user asks for big-picture direction, the active plan is unclear, or a
-decision would change the overall roadmap.
+`plans/strategy.md` is the long-term project strategy. Read it when the active
+board is unclear, when making big-picture direction decisions, or when a user
+asks for strategic review. Do not edit it during ordinary implementation unless
+the strategic roadmap has truly changed.
 
-Do not edit `plans/strategy.md` during ordinary day-to-day work unless the user explicitly
-asks or the strategic roadmap has truly changed.
+`plans/today.md` and `plans/today.progress.md` are legacy snapshots from the old
+24-hour loop. Do not use them as the source of truth for new work.
 
-Keep `plans/today.md` stable for routine progress. It may be updated when new
-facts change the 24-hour execution plan itself: a tested assumption is wrong, a
-scope decision changes, a better next-step breakdown is discovered, or a new
-blocker requires replanning. When updating `plans/today.md`, keep edits narrow
-and also record the reason in `plans/today.progress.md`.
+## Planning System
 
-Track ordinary day-to-day progress only in `plans/today.progress.md`.
+The project no longer uses throwaway 24-hour plan files. Use these persistent
+files instead:
 
-## Active Focus
+- `plans/operating-model.md`: how the coordinator and workers run.
+- `plans/active.md`: the live board of tasks currently assigned, queued, paused,
+  or recently completed.
+- `plans/backlog.md`: multi-week workstreams and task IDs.
+- `plans/progress.md`: concise chronological execution log.
+- `plans/strategy.md`: durable long-term direction.
 
-The current active slice is GreenShot-7 request-to-repo work:
+Update `plans/active.md` when task state changes. Update `plans/progress.md`
+after meaningful work: files changed, tests run, assumptions confirmed or
+rejected, blockers found, commits pushed, and next concrete task.
 
-- Parse coding-agent English for a narrow calculator CLI domain.
-- Convert prompts like "make me a simple cli calc" or "make cli takes as params
-  two numbers and operator" into `request-spec-v1`.
-- Generate a working Python CLI calculator repo from structured actions.
-- Validate with focused tests and hidden-like subprocess checks.
-- Record prompt/spec/action/outcome rows that can later train a prompt encoder
-  and JEPA transition model.
+Do not rewrite planning files just to create a fresh daily narrative. Keep them
+stable and append or narrowly edit the parts that changed.
 
-The first version may use deterministic prompt-to-spec rules. Keep outputs and
-records structured so learned models can replace rules later.
+## Coordinator Role
 
-## Progress Log Rules
+The parent agent is the coordinator. It owns direction, task selection, review,
+and integration.
 
-Update `plans/today.progress.md` after meaningful steps:
+Coordinator flow:
 
-- files added or changed
-- tests run and results
-- assumptions confirmed or rejected
-- blockers
-- next concrete step
+1. Read `plans/active.md`, `plans/backlog.md`, and recent `plans/progress.md`.
+2. Pick the next highest-leverage bounded tasks from the backlog.
+3. Keep the active set small: normally one or two workers; at most three when
+   tasks are independent and have disjoint write scopes.
+4. Record the assignment in `plans/active.md` before starting a worker.
+5. Give each worker exactly one bounded task with clear ownership, acceptance
+   criteria, expected tests, and files or modules it may edit.
+6. Continue useful local work while workers run, without duplicating their
+   write scope.
+7. Review every worker result for tests, commit status, pushed commit, generated
+   files, and plan updates.
+8. Update `plans/active.md` and `plans/progress.md`.
+9. After several completed iterations, or after any surprising failure, pause
+   worker dispatch long enough to reassess the next few tasks.
 
-Keep progress concise and chronological. Do not duplicate the full plan.
+Parallelism is allowed, but only when it helps. Do not keep workers busy with
+low-value work. It is better to pause briefly and choose the right next task
+than to create parallel churn.
 
-## Agent Loop Protocol
+## Worker Role
 
-When running repeated worker-agent iterations, keep this parent context as the
-watcher and assign exactly one bounded task to each worker.
-
-Watcher flow:
-
-1. Read `plans/today.progress.md`.
-2. Pick the next unchecked task from the progress file.
-3. If no task is listed there, pick the next step from `plans/today.md` and add
-   it to the progress file before starting a worker.
-4. Spawn one worker for that task.
-5. Review the worker result, commit status, pushed commit, and tests.
-6. Update or confirm `plans/today.progress.md`.
-7. Start the next worker only after the previous worker is closed.
+Workers do exactly the assigned slice.
 
 Worker flow:
 
-1. Read `AGENTS.md`, `plans/today.md`, and `plans/today.progress.md`.
-2. Do exactly the assigned slice.
+1. Read `AGENTS.md`, `plans/operating-model.md`, `plans/active.md`,
+   `plans/backlog.md`, and recent `plans/progress.md`.
+2. Confirm the assigned task ID, write scope, acceptance criteria, and tests.
 3. Prefer implementation plus focused tests over more planning.
-4. Run the focused tests relevant to the slice.
-5. Update `plans/today.progress.md` with files changed, tests, result, commit,
-   push, blockers, and next task.
-6. Stage only relevant files.
-7. Commit with a concise task-specific message.
-8. Push.
-9. Report commit hash, tests run, push result, and any blocker.
+4. Do not edit `plans/strategy.md` unless explicitly assigned.
+5. Do not edit unrelated files or revert changes made by others.
+6. Run the focused tests relevant to the slice.
+7. Update `plans/progress.md` and `plans/active.md` with result, tests, commit,
+   push, blockers, and recommended next task.
+8. Stage only relevant files.
+9. Commit with a concise task-specific message.
+10. Push.
+11. Report commit hash, tests run, push result, changed files, and blockers.
 
-Do not edit `plans/strategy.md` during worker iterations unless the watcher explicitly
-assigns that strategic documentation change. Edit `plans/today.md` only if the
-assigned work discovers information that changes the 24-hour plan; record that
-plan update in `plans/today.progress.md`.
+If tests fail and the fix is local and obvious, fix it in the same iteration. If
+the fix requires broad scope expansion, stop, record the blocker, and report it.
 
-## Worker Definition of Done
+## Definition of Done
 
 A worker iteration is done only when:
 
 - one bounded slice is complete
 - focused tests for that slice pass, or a blocker is recorded
 - generated files are intentional
-- `plans/today.progress.md` is updated
+- `plans/active.md` and `plans/progress.md` are updated
 - relevant files are staged and committed
 - push succeeds
 - `git status --short` is clean except for explicitly deferred work
 
-If tests fail and the fix is obvious, fix it in the same iteration. If the fix
-requires broad scope expansion, stop, record the blocker, and report back.
+Coordinator-only documentation or planning changes do not require a worker, but
+they still need focused verification such as `git diff --check`.
 
 ## Commit Rules
 
 - Use one task per commit.
 - Use concise commit messages such as `Add request spec docs`.
 - Do not include unrelated dirty files.
-- Do not add dependencies without watcher approval.
+- Do not add dependencies without coordinator approval.
 - Do not use destructive git commands.
 - Do not rewrite or clean up unrelated history.
 
@@ -129,26 +131,37 @@ prompt or tool observation
   -> next action or stop
 ```
 
-Existing GreenShot-5/6 repair work remains the regression foundation. The new
-near-term gap is user intent and greenfield editing, starting with the calculator
-CLI request-to-repo path.
+The realistic stepping stone is a serious narrow Python authoring tool:
+request-to-repo tasks, small libraries and CLIs, repo-local feature additions,
+tests, configs, typed actions, retrieval, validation, residual reports, and
+conservative product gates.
 
-Existing `data/` and `runs/` artifacts are useful for Python source transitions,
-repair evaluation, and candidate-ranker training. They do not yet train
-natural-language prompt understanding.
+The long-term target remains general GPT-5.5 xhigh-level Python coding. That
+will require far more than more fixtures: large language/code pretraining,
+broad library and world knowledge, algorithm synthesis, flexible source
+generation, long-horizon planning, and strong validation. j3's plausible
+advantage is a structured stack: tight action spaces, retrieval, explicit repo
+state, outcome data, residual-driven training, and gates that prevent premature
+production use.
+
+## Current Technical Priorities
+
+Keep the work pointed at durable capability:
+
+- GreenShot-7 request-to-repo growth with hidden-like tests.
+- Prompt/spec/action/outcome records suitable for learned prompt and transition
+  models.
+- Repair/ranking regression gates from GreenShot-5/6.
+- Transition shadow matrix evidence before guarded production ranking.
+- Data quality over raw dataset size.
+- Issue/PR and prompt/repo transition mining with provenance and stable splits.
+- Structured greenfield actions before broad free-form generation.
 
 ## Verification Cadence
 
 Default to the smallest focused test that proves the touched behavior.
 
-For the active GreenShot-7 calculator work, create focused tests as the feature
-is built. The expected near-term test files are:
-
-- `tests/test_request_spec.py`
-- `tests/test_greenfield_calculator.py`
-- `tests/test_greenshot_7.py`
-
-Run the relevant new test first, for example:
+For request-to-repo work:
 
 ```bash
 pytest tests/test_request_spec.py -q
@@ -156,7 +169,7 @@ pytest tests/test_greenfield_calculator.py -q
 pytest tests/test_greenshot_7.py -q
 ```
 
-If an implementation CLI is added, also smoke it directly:
+For implementation CLI smoke checks:
 
 ```bash
 python cli.py implement --prompt "make me a simple cli calc" --out /tmp/j3-calc-demo
@@ -164,14 +177,22 @@ python /tmp/j3-calc-demo/calculator.py 2 + 3
 python -m pytest /tmp/j3-calc-demo/tests -q
 ```
 
-Existing repair-focused checks remain useful when touching repair, evaluation,
-or ranking code:
+For repair, evaluation, or ranking changes:
 
 ```bash
 pytest tests/test_candidate_ranking.py -q
 pytest tests/test_evaluation.py -q
 pytest tests/test_patching.py -q
 pytest tests/test_failure_hints.py -q
+```
+
+For transition evidence changes:
+
+```bash
+pytest tests/test_transition_shadow_matrix.py -q
+pytest tests/test_transition_residuals.py -q
+pytest tests/test_transition_evidence_bundle.py -q
+pytest tests/test_transition_guarded_trial.py -q
 ```
 
 Run full `pytest -q` only as an intentional integration gate after broad shared

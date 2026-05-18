@@ -1,0 +1,243 @@
+# j3 Persistent Backlog
+
+This backlog is not a 24-hour plan. It is the durable task inventory for moving
+j3 from a repair prototype toward a serious local Python coding agent.
+
+## Direction
+
+Near-term realistic target:
+
+- serious narrow Python authoring for CLIs, small libraries, tests, configs, and
+  repo-local feature additions
+- structured prompt/spec/action/outcome data
+- hidden-like validation and subprocess checks
+- retrieval, ranking, residual reports, and conservative gates
+
+Long-term target:
+
+- general GPT-5.5 xhigh-level Python coding without asking a hosted LLM to write
+  candidate patches
+- broad language/code pretraining, library familiarity, algorithm synthesis,
+  flexible generation, long-horizon planning, and strong local validation
+
+## Task Status Values
+
+- `ready`: bounded enough for a worker
+- `active`: assigned or in progress
+- `blocked`: waiting on evidence, design, or dependency
+- `done`: completed and recorded in `plans/progress.md`
+- `parked`: intentionally deferred
+
+## Workstream A: Coordination And Evidence Discipline
+
+### OPS-001: Migrate from daily plans to persistent coordination
+
+- Status: done
+- Why: the old `today.md` loop created churn and erased useful continuity.
+- Write scope: `AGENTS.md`, `plans/operating-model.md`, `plans/active.md`,
+  `plans/backlog.md`, `plans/progress.md`, legacy `plans/today*` redirects.
+- Acceptance: fresh agents know to use active/backlog/progress instead of daily
+  plan files.
+- Tests: `git diff --check` passed on 2026-05-18.
+
+### OPS-002: Add a lightweight plan consistency check
+
+- Status: ready
+- Why: stale task IDs and forgotten active entries will accumulate as parallel
+  work grows.
+- Write scope: a small checker command or test around `plans/active.md` and
+  `plans/backlog.md`.
+- Acceptance: focused test catches missing task IDs, invalid statuses, and
+  active tasks not present in backlog.
+- Tests: new focused test plus `git diff --check`.
+
+## Workstream B: GreenShot-7 Request-To-Repo
+
+### GS7-001: Refresh current GreenShot-7 baseline
+
+- Status: ready
+- Why: before adding tasks, confirm what the current request-to-repo runner can
+  actually solve.
+- Write scope: generated output under `/tmp`, progress notes only unless a small
+  bug is found.
+- Acceptance: recorded command output for current GreenShot-7 tasks, including
+  pass/fail, missing action, and ranking or prompt-spec failures.
+- Tests: `pytest tests/test_request_spec.py -q`,
+  `pytest tests/test_greenfield_calculator.py -q`,
+  `pytest tests/test_greenshot_7.py -q`, plus direct CLI smoke if available.
+
+### GS7-002: Add five non-calculator request-to-repo fixtures
+
+- Status: ready
+- Why: calculator-only success is too narrow for product evidence.
+- Write scope: `examples/greenshot_7`, GreenShot-7 tests, focused request-spec
+  fixtures.
+- Acceptance: fixtures cover one small library, one parser, one tests-only task,
+  one existing-repo convention task, and one clarification task.
+- Tests: `pytest tests/test_greenshot_7.py -q`.
+
+### GS7-003: Add structured greenfield library builders
+
+- Status: ready
+- Why: request-to-repo needs typed creation actions beyond calculator CLI files.
+- Write scope: greenfield action planning/building modules and focused tests.
+- Acceptance: can create a small module plus tests from a request spec without
+  pasting arbitrary source blobs.
+- Tests: focused greenfield tests and `pytest tests/test_greenshot_7.py -q`.
+
+### GS7-004: Implement clarification as a first-class outcome
+
+- Status: ready
+- Why: Codex-like behavior requires asking when requirements are under-specified.
+- Write scope: request spec parser/planner, GreenShot-7 clarification fixture,
+  tests.
+- Acceptance: ambiguous prompts produce a structured clarification action
+  instead of editing files.
+- Tests: `pytest tests/test_request_spec.py -q`,
+  `pytest tests/test_greenshot_7.py -q`.
+
+## Workstream C: Prompt Corpus And Intent Data
+
+### DATA-001: Audit expanded prompt corpus quality
+
+- Status: ready
+- Why: the current 320 rows are useful bootstrap data, not generalization proof.
+- Write scope: prompt inspection command/report and progress notes.
+- Acceptance: report counts by source type, split, task type, domain, ambiguity,
+  inferred defaults, and synthetic template family; flag leakage risks.
+- Tests: focused prompt corpus tests or CLI smoke.
+
+### DATA-002: Add prompt/spec schema validation
+
+- Status: ready
+- Why: learned prompt and transition models need stable fields.
+- Write scope: request-spec schema docs, validator, tests.
+- Acceptance: validates seed and expanded prompt rows with clear errors for
+  missing fields, bad splits, and unsupported labels.
+- Tests: focused schema tests.
+
+### DATA-003: Prototype issue/PR mining manifest
+
+- Status: ready
+- Why: serious intent data requires issue/PR text linked to accepted repo
+  changes, not just commit diffs.
+- Write scope: docs and a small mining/manifest prototype; no large generated
+  artifacts committed.
+- Acceptance: one Apache corpus repo can produce candidate issue/PR records with
+  provenance, links, repo-before/repo-after refs, and license/terms notes.
+- Tests: focused unit tests with fixture JSON.
+
+### DATA-004: Normalize first 25 real prompt/repo transition examples
+
+- Status: blocked
+- Blocker: depends on DATA-003 and schema validation.
+- Why: trainable prompt understanding needs real user-like task text.
+- Write scope: versioned local data file or external manifest; docs with
+  provenance.
+- Acceptance: 25 reviewed rows with stable splits and validation commands.
+- Tests: schema validation and summary command.
+
+## Workstream D: Transition Evidence And Guarded Product Gates
+
+### TRANS-001: Run full transition shadow matrix
+
+- Status: ready
+- Why: current evidence is smoke-scale and remains shadow-only.
+- Write scope: generated outputs under `/tmp`, progress notes, small bug fixes
+  only if the runner fails.
+- Acceptance: matrix summary, residual report, evidence bundle, guarded-trial
+  decision recorded with exact commands and gate result.
+- Tests: matrix command, residual command, bundle command, guarded decision.
+
+### TRANS-002: Diagnose matrix gate blockers
+
+- Status: blocked
+- Blocker: depends on TRANS-001.
+- Why: next scorer/action work should follow residual evidence.
+- Write scope: residual analysis docs, targeted tests, small fixes only if
+  directly supported by residuals.
+- Acceptance: grouped blockers labeled as missing generation, bad ranking,
+  weak observation, or insufficient validation.
+- Tests: relevant focused tests from the blocker area.
+
+### TRANS-003: Expand standard matrix manifest cautiously
+
+- Status: blocked
+- Blocker: depends on TRANS-001 runtime and residuals.
+- Why: product gates need broader held-out suites without making local runs
+  impractical.
+- Write scope: `examples/transition_shadow_matrix.json`, tests, docs.
+- Acceptance: manifest balances runtime, suite diversity, and held-out evidence.
+- Tests: `pytest tests/test_transition_shadow_matrix.py -q`.
+
+## Workstream E: Repo State, Actions, And Models
+
+### REPO-001: Summarize repo-state encoder coverage
+
+- Status: ready
+- Why: greenfield and transition planning need explicit repo representation.
+- Write scope: repo encoder docs/tests or a small inspection command.
+- Acceptance: reports files, packages, imports, functions/classes, tests,
+  configs, entrypoints, and docs for a fixture repo.
+- Tests: focused repo-state tests.
+
+### ACT-001: Create action coverage map from residuals
+
+- Status: ready
+- Why: action expansion should be evidence-led.
+- Write scope: docs or command that maps tasks/residuals to supported and
+  missing structured actions.
+- Acceptance: shows which failures need new actions versus better ranking.
+- Tests: focused tests with small residual fixtures.
+
+### MODEL-001: Re-evaluate learned prompt intent baseline
+
+- Status: ready
+- Why: prompt-intent progress needs held-out domain evidence and residuals.
+- Write scope: model/eval commands and focused tests, not broad architecture.
+- Acceptance: report exact-field accuracy, ambiguity accuracy, inferred-default
+  precision/recall, and residual groups on current prompt corpus.
+- Tests: prompt intent eval tests or CLI smoke.
+
+### MODEL-002: Start new scorer/model work only after evidence review
+
+- Status: blocked
+- Blocker: depends on TRANS-001/TRANS-002 and GS7 baseline evidence.
+- Why: new scorer versions should respond to concrete residuals.
+- Write scope: TBD after review.
+- Acceptance: TBD after review.
+- Tests: TBD after review.
+
+## Workstream F: Long-Term Training Scale
+
+### SCALE-001: Draft local pretraining feasibility inventory
+
+- Status: ready
+- Why: the frontier target needs a sober estimate of data, compute, objectives,
+  and model shapes.
+- Write scope: focused doc under `docs/`, with links to current local data
+  sources.
+- Acceptance: separates near-term local encoders from frontier-scale
+  language/code pretraining; lists what data exists and what is missing.
+- Tests: `git diff --check`.
+
+### SCALE-002: Define data provenance and release policy
+
+- Status: ready
+- Why: larger corpora need license, terms, split, and checksum discipline.
+- Write scope: `docs/TRAINING.md` or a focused companion doc.
+- Acceptance: policy covers local scratch corpora, checked-in examples, release
+  archives, synthetic rows, issue/PR mining, and generated artifacts.
+- Tests: `git diff --check`.
+
+## Next Recommended Queue
+
+Start with these unless fresh evidence changes the order:
+
+1. `OPS-001`: finish this migration and verify docs.
+2. `TRANS-001`: run the full transition shadow matrix and record the actual
+   gate result.
+3. `GS7-001`: refresh current GreenShot-7 baseline.
+4. `DATA-001`: audit prompt corpus quality.
+5. Coordinator review: choose between expanding GreenShot-7 fixtures,
+   prompt/schema validation, or matrix blocker diagnosis based on evidence.

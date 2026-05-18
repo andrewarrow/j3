@@ -9,14 +9,16 @@ meaningful work. Do not replace this file with a daily reset.
 
 - Owner: coordinator
 - Files changed: `plans/active.md`, `plans/backlog.md`, `plans/progress.md`
-- Tests: pending coordinator dispatch check
+- Tests: `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check` passed.
 - Result: assigned `REPO-001` and `ACT-001` as the next disjoint loop tasks
   after completing the GS7/DATA worker review and the `implement` CLI
   integration fix.
-- Commit: pending coordinator dispatch commit
-- Push: pending coordinator dispatch push
-- Next: spawn the repo-state coverage and action-coverage workers, then update
-  this entry with their agent ids.
+- Commit: 6c108f24d691dfc3a7bad5bdc0d98612656a3aef9
+- Push: succeeded
+- Next: `REPO-001` is running as Linnaeus
+  (`019e3b29-52be-7301-b5a4-c5fee5b7d870`) and `ACT-001` is running as Dirac
+  (`019e3b29-533f-7ac0-8618-b7f825bb0649`).
 - Blockers: none
 
 ### 2026-05-18 - OPS-001 - Persistent planning migration

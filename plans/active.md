@@ -18,7 +18,7 @@ This is the live coordinator board. Keep it current and compact.
 
 ### `REPO-001`: Summarize repo-state encoder coverage
 
-- Owner: worker pending assignment
+- Owner: worker Linnaeus (`019e3b29-52be-7301-b5a4-c5fee5b7d870`)
 - Status: active
 - Write scope: `j3/repo_state.py`, `tests/test_repo_state.py`,
   `docs/REPO_STATE_COVERAGE.md` if a focused doc is useful, and plan updates.
@@ -31,7 +31,7 @@ This is the live coordinator board. Keep it current and compact.
 
 ### `ACT-001`: Create action coverage map from residuals
 
-- Owner: worker pending assignment
+- Owner: worker Dirac (`019e3b29-533f-7ac0-8618-b7f825bb0649`)
 - Status: active
 - Write scope: `docs/ACTION_COVERAGE_MAP.md`, optional
   `j3/action_coverage.py` and `tests/test_action_coverage.py`, and plan

@@ -1796,8 +1796,8 @@ meaningful work. Do not replace this file with a daily reset.
   usage. Guarded one-file feature opt-in is allowed only for the four
   materialized, validation-passing task ids inside task allowlists with one
   allowlisted production file changed and no hidden-like disagreement.
-- Commit: pending
-- Push: pending
+- Commit: 832f1d1
+- Push: succeeded
 - Next: coordinator can review REAL-012 with DATA-007; the one-file feature
   gate now supports guarded opt-in across all four materialized ladder task
   ids.

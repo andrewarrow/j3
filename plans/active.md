@@ -16,23 +16,8 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-### `GS7-005`: Tests-only existing-repo support for one-file libraries
-
-- Status: active
-- Owner: worker Feynman (`019e3b5c-0165-7cf1-b0c9-cf39fcdfa3b2`)
-- Started: 2026-05-18
-- Goal: implement the first product-wedge action slice: inspect a small
-  existing one-file Python library, add pytest coverage only, avoid production
-  edits, validate, and record a structured request-to-repo outcome.
-- Write scope: existing-repo request planning/building for tests-only library
-  support, GreenShot fixtures/tests, focused request/outcome tests, and plan
-  updates.
-- Acceptance: the existing `slugify_tests_only_existing` GreenShot-7 task
-  should move from `action_coverage` blocked to built/validated or, if blocked,
-  emit a precise residual that identifies the missing repo-state, local
-  knowledge, or materialization layer.
-- Tests: focused existing-repo/GreenShot tests,
-  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+No active worker tasks are recorded after the `GS7-005` completion. The
+coordinator should dispatch the next ready task or record a blocker.
 
 ## Ready Queue
 
@@ -69,6 +54,13 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `GS7-005`: added `j3/existing_repo_tests.py` for a narrow existing-repo
+  tests-only slugify action. The `slugify_tests_only_existing` GreenShot-7
+  task now materializes a one-file existing repo fixture, inspects `slugify.py`,
+  writes only `tests/test_slugify.py`, validates with targeted pytest, records
+  target test files, changed files, production file hashes, and zero
+  production-file modifications, and emits a structured
+  `greenshot_7_existing_repo_tests_attempt` row.
 - `DATA-005`: added `j3/issue_pr_preflight.py` and focused mocked-runner
   tests. The preflight loads a `DATA-004` mini replay row by id, clones and
   checks out `repo_before_ref` through an injectable subprocess runner, verifies

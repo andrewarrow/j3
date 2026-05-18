@@ -200,24 +200,24 @@ def parse_request_to_spec(
         )
 
     if _is_tests_only_slugify_request(normalized):
-        return _clarification_spec(
-            prompt=prompt,
+        return RequestSpec(
+            schema_version=SCHEMA_VERSION,
             task_name=resolved_task_name,
             task_type="add_tests",
+            language="python",
             repo_mode="existing_repo",
             domain="text_slugify",
-            field="repo_state",
-            question=(
-                "Which repository should be inspected and what existing slugify "
-                "behavior is expected before adding tests?"
-            ),
-            unsupported_requirements=[
-                {
-                    "field": "task_type",
-                    "value": "tests_only_existing_repo",
-                    "reason": "action_coverage",
-                }
-            ],
+            prompt=prompt,
+            artifacts=list(SLUGIFY_ARTIFACTS),
+            interfaces=[dict(interface) for interface in SLUGIFY_INTERFACES],
+            features=["slugify_ascii_lowercase"],
+            operation_aliases={},
+            inferred_defaults=[],
+            clarifications_needed=[],
+            validation={
+                "commands": list(SLUGIFY_VALIDATION["commands"]),
+                "hidden_cases": SLUGIFY_VALIDATION["hidden_cases"],
+            },
         )
 
     if _is_existing_repo_convention_request(normalized):

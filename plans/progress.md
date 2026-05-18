@@ -782,3 +782,33 @@ meaningful work. Do not replace this file with a daily reset.
   extraction and use validation/setup failures as non-agent blockers before
   attempting issue/PR edit candidates.
 - Blockers: none
+
+### 2026-05-18 - GS7-005 - Tests-only existing-repo slugify support
+
+- Owner: worker Feynman (`019e3b5c-0165-7cf1-b0c9-cf39fcdfa3b2`)
+- Files changed: `j3/existing_repo_tests.py`, `j3/request_spec.py`,
+  `j3/greenshot_7.py`, `j3/greenfield.py`, `j3/prompt_jepa.py`,
+  `j3/prompt_repo_transitions.py`, `examples/greenshot_7/tasks.json`,
+  `tests/test_existing_repo_tests.py`, `tests/test_request_spec.py`,
+  `tests/test_greenshot_7.py`, `plans/active.md`, `plans/backlog.md`,
+  `plans/progress.md`
+- Tests: `python -m json.tool examples/greenshot_7/tasks.json >/dev/null` ->
+  passed; `pytest tests/test_existing_repo_tests.py -q` -> 3 passed;
+  `pytest tests/test_request_spec.py -q` -> 9 passed;
+  `pytest tests/test_greenshot_7.py -q` -> 1 passed;
+  `pytest tests/test_greenfield_calculator.py -q` -> 8 passed;
+  `pytest tests/test_prompt_jepa.py -q` -> 13 passed;
+  `pytest tests/test_prompt_repo_transitions.py -q` -> 8 passed;
+  `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check` -> passed.
+- Result: the `slugify_tests_only_existing` GreenShot-7 task now builds and
+  validates a tests-only existing-repo change instead of a generic
+  `action_coverage` block. The slice inspects a one-file `slugify.py` repo,
+  writes only `tests/test_slugify.py`, records target test files, changed
+  files, production file hashes, and no production-file modifications, and
+  emits a structured `greenshot_7_existing_repo_tests_attempt` row.
+- Commit: pending
+- Push: pending
+- Next: commit and push. `REAL-003` can use this as the tests-only action
+  slice once the coordinator chooses the next shadow scoring task.
+- Blockers: none

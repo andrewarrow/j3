@@ -75,14 +75,15 @@ def test_run_greenshot_7_tasks_builds_validates_and_records(tmp_path: Path) -> N
     summary = run_greenshot_7_tasks(TASKS_PATH, out_dir, records_path)
 
     assert summary["total"] == 15
-    assert summary["built"] == 10
-    assert summary["blocked"] == 5
-    assert summary["validation_passed"] == 10
+    assert summary["built"] == 11
+    assert summary["existing_repo_tests_built"] == 1
+    assert summary["blocked"] == 4
+    assert summary["validation_passed"] == 11
     assert summary["validation_failed"] == 0
     assert summary["records_written"] == 15
     assert summary["failures"] == []
-    assert len(summary["output_dirs"]) == 10
-    assert len(summary["blocked_output_dirs"]) == 5
+    assert len(summary["output_dirs"]) == 11
+    assert len(summary["blocked_output_dirs"]) == 4
     assert summary["classified_failures"] == [
         {
             "task": "math_tool_unclear",
@@ -95,13 +96,6 @@ def test_run_greenshot_7_tasks_builds_validates_and_records(tmp_path: Path) -> N
             "task": "calculator_scientific_unclear",
             "category": "expected_clarification",
             "domain": "calculator",
-            "plan_status": "blocked",
-            "validation_status": "not_run",
-        },
-        {
-            "task": "slugify_tests_only_existing",
-            "category": "action_coverage",
-            "domain": "text_slugify",
             "plan_status": "blocked",
             "validation_status": "not_run",
         },
@@ -138,26 +132,49 @@ def test_run_greenshot_7_tasks_builds_validates_and_records(tmp_path: Path) -> N
         assert not (blocked_repo / "kv_parser.py").exists()
         assert not (blocked_repo / "tests/test_calculator_cli.py").exists()
 
+    tasks = {str(task["name"]): task for task in json.loads(TASKS_PATH.read_text())}
+    fixture = tasks["slugify_tests_only_existing"]["existing_repo_fixture"]
+    fixture_files = fixture["files"]  # type: ignore[index]
+    fixture_source = fixture_files[0]["content"]  # type: ignore[index]
+    existing_slugify_repo = out_dir / "slugify_tests_only_existing"
+    assert (existing_slugify_repo / "slugify.py").read_text(encoding="utf-8") == (
+        fixture_source
+    )
+    assert (existing_slugify_repo / "tests/test_slugify.py").exists()
+
     rows = _jsonl_rows(records_path)
     assert len(rows) == 15
-    assert {row["schema_version"] for row in rows} == {"request-repo-attempt-v1"}
     assert {row["record_kind"] for row in rows} == {
-        "greenshot_7_request_to_repo_attempt"
+        "greenshot_7_existing_repo_tests_attempt",
+        "greenshot_7_request_to_repo_attempt",
     }
     assert {_nested(row, "metadata")["source"] for row in rows} == {"j3 greenshot-7"}
 
-    built_rows = [
+    request_rows = [
         row
         for row in rows
+        if row["record_kind"] == "greenshot_7_request_to_repo_attempt"
+    ]
+    tests_only_rows = [
+        row
+        for row in rows
+        if row["record_kind"] == "greenshot_7_existing_repo_tests_attempt"
+    ]
+    assert len(request_rows) == 14
+    assert len(tests_only_rows) == 1
+
+    built_rows = [
+        row
+        for row in request_rows
         if _nested(row, "clarification_decision")["status"] == "not_needed"
     ]
     blocked_rows = [
         row
-        for row in rows
+        for row in request_rows
         if _nested(row, "clarification_decision")["status"] == "blocked"
     ]
     assert len(built_rows) == 10
-    assert len(blocked_rows) == 5
+    assert len(blocked_rows) == 4
     assert all(_nested(row, "build_result")["status"] == "built" for row in built_rows)
     assert all(_nested(row, "validation")["status"] == "passed" for row in built_rows)
     assert all(row["passed"] is True for row in built_rows)
@@ -186,6 +203,36 @@ def test_run_greenshot_7_tasks_builds_validates_and_records(tmp_path: Path) -> N
         == _nested(row, "clarification_response")
         for row in blocked_rows
     )
+
+    tests_row = tests_only_rows[0]
+    assert tests_row["schema_version"] == "existing-repo-tests-attempt-v1"
+    assert tests_row["passed"] is True
+    assert tests_row["failure_observation"] is None
+    request_spec = _nested(tests_row, "normalized_request_spec")
+    assert request_spec["task_type"] == "add_tests"
+    assert request_spec["repo_mode"] == "existing_repo"
+    tests_spec = _nested(tests_row, "existing_repo_tests_spec")
+    assert tests_spec["target_test_files"] == ["tests/test_slugify.py"]
+    assert tests_spec["production_files"] == ["slugify.py"]
+    assert tests_spec["change_policy"] == {
+        "mode": "tests_only",
+        "production_files_must_remain_unchanged": True,
+    }
+    assert [action["kind"] for action in tests_row["existing_repo_actions"]] == [
+        "inspect_repo",
+        "inspect_one_file_library",
+        "add_existing_repo_tests",
+        "validate",
+    ]
+    tests_result = _nested(tests_row, "tests_result")
+    assert tests_result["status"] == "validated"
+    assert tests_result["files_changed"] == ["tests/test_slugify.py"]
+    assert tests_result["target_test_files"] == ["tests/test_slugify.py"]
+    assert tests_result["production_files"] == ["slugify.py"]
+    assert tests_result["production_files_changed"] == []
+    assert tests_row["changed_files"] == ["tests/test_slugify.py"]
+    assert tests_row["production_files_changed"] == []
+    assert _nested(tests_row, "validation")["status"] == "passed"
 
     smoke_repo = out_dir / "calculator_short_calc"
     smoke = _run_calculator(smoke_repo, "8", "/", "2")

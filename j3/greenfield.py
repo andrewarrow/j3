@@ -229,6 +229,20 @@ def plan_greenfield_repo(spec: RequestSpec) -> GreenfieldPlan:
 
     if spec.clarifications_needed:
         return _blocked_plan(spec)
+    if spec.repo_mode != "new_repo":
+        return _blocked_plan(
+            spec,
+            blockers=[
+                {
+                    "field": "repo_mode",
+                    "question": (
+                        "Existing-repo requests require an existing-repo planner "
+                        "with repo state."
+                    ),
+                    "reason": "existing_repo_support",
+                }
+            ],
+        )
     if spec.domain == "calculator":
         return plan_calculator_repo(spec)
     if spec.domain == "text_slugify":

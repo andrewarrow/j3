@@ -10,6 +10,7 @@ from typing import Any, Mapping, Sequence
 
 from j3.prompt_jepa import (
     EXISTING_REPO_CHANGE_ATTEMPT_KIND,
+    EXISTING_REPO_TESTS_ATTEMPT_KIND,
     REQUEST_REPO_ATTEMPT_KIND,
     default_prompt_jepa_metadata,
     encode_prompt_context,
@@ -1272,6 +1273,21 @@ def _structured_action(
             "action_kinds": action_kinds,
             "action_count": len(action_kinds),
         }
+    if record_kind == EXISTING_REPO_TESTS_ATTEMPT_KIND:
+        spec = _mapping_field(row, "existing_repo_tests_spec", index=index)
+        actions = _list_field(row, "existing_repo_actions", index=index)
+        action_kinds = _action_kinds(actions)
+        return {
+            "kind": "add_repo_tests",
+            "record_kind": record_kind,
+            "repo_mode": _optional_str(spec.get("repo_mode")),
+            "task_type": _optional_str(spec.get("task_type")),
+            "domain": _optional_str(spec.get("domain")),
+            "features": _string_list(spec.get("features", [])),
+            "target_files": _string_list(spec.get("target_test_files", [])),
+            "action_kinds": action_kinds,
+            "action_count": len(action_kinds),
+        }
     raise ValueError(f"transition row {index} has unsupported record_kind {record_kind!r}")
 
 
@@ -1294,6 +1310,10 @@ def _outcome_summary(
     elif record_kind == EXISTING_REPO_CHANGE_ATTEMPT_KIND:
         change_result = _mapping_field(row, "change_result", index=index)
         changed = bool(_string_list(change_result.get("files_changed", [])))
+        kind = "source_changed" if changed else "source_unchanged"
+    elif record_kind == EXISTING_REPO_TESTS_ATTEMPT_KIND:
+        tests_result = _mapping_field(row, "tests_result", index=index)
+        changed = bool(_string_list(tests_result.get("files_changed", [])))
         kind = "source_changed" if changed else "source_unchanged"
     else:
         raise ValueError(f"transition row {index} has unsupported record_kind {record_kind!r}")
@@ -1395,6 +1415,8 @@ def _outcome_status(
         return _optional_str(_mapping_field(row, "build_result", index=index).get("status"))
     if record_kind == EXISTING_REPO_CHANGE_ATTEMPT_KIND:
         return _optional_str(_mapping_field(row, "change_result", index=index).get("status"))
+    if record_kind == EXISTING_REPO_TESTS_ATTEMPT_KIND:
+        return _optional_str(_mapping_field(row, "tests_result", index=index).get("status"))
     return None
 
 
@@ -1411,6 +1433,10 @@ def _task_type(
     if record_kind == EXISTING_REPO_CHANGE_ATTEMPT_KIND:
         return _optional_str(
             _mapping_field(row, "existing_repo_change_spec", index=index).get("task_type")
+        )
+    if record_kind == EXISTING_REPO_TESTS_ATTEMPT_KIND:
+        return _optional_str(
+            _mapping_field(row, "existing_repo_tests_spec", index=index).get("task_type")
         )
     return None
 

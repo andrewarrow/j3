@@ -114,7 +114,7 @@ Long-term target:
 
 ### GS7-005: Add tests-only existing-repo support for one-file libraries
 
-- Status: active
+- Status: done
 - Why: `ACT-001` classified `slugify_tests_only_existing` as a request-to-repo
   action coverage gap, not a repair ranking problem.
 - Write scope: existing-repo request planning/building for tests-only library
@@ -123,6 +123,10 @@ Long-term target:
   without changing implementation, validate it, and record a structured
   request-to-repo outcome.
 - Tests: focused existing-repo/GreenShot tests and `git diff --check`.
+- Completion note: added a tests-only slugify planner/materializer and
+  structured outcome row. The GreenShot-7 fixture now validates by writing
+  only `tests/test_slugify.py` while keeping `slugify.py` byte-for-byte
+  unchanged.
 
 ### GS7-006: Add repo-state-aware library convention edits
 
@@ -482,8 +486,8 @@ Long-term target:
 
 Start with these unless fresh evidence changes the order:
 
-1. `GS7-005`: tests-only existing-repo support for one-file libraries.
-2. `KNOW-002`: extract first wedge knowledge records.
-3. `GS7-006`: repo-state-aware library convention edits.
-4. `REAL-003`: first tests-only wedge shadow score after blockers clear.
-5. `MODEL-006`: candidate-after or AST-delta observation for ranking evidence.
+1. `KNOW-002`: extract first wedge knowledge records.
+2. `GS7-006`: repo-state-aware library convention edits.
+3. `REAL-003`: first tests-only wedge shadow score after blockers clear.
+4. `MODEL-006`: candidate-after or AST-delta observation for ranking evidence.
+5. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.

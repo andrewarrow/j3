@@ -155,7 +155,7 @@ def test_parser_emits_non_calculator_greenfield_specs() -> None:
     }
 
 
-def test_parser_classifies_non_calculator_existing_repo_gaps() -> None:
+def test_parser_supports_tests_only_existing_slugify_and_blocks_other_gaps() -> None:
     tasks = {str(task["name"]): task for task in _load_tasks()}
 
     tests_only = parse_request_to_spec(
@@ -164,13 +164,17 @@ def test_parser_classifies_non_calculator_existing_repo_gaps() -> None:
     ).to_record()
     assert tests_only["task_type"] == "add_tests"
     assert tests_only["repo_mode"] == "existing_repo"
-    assert tests_only["unsupported_requirements"] == [
-        {
-            "field": "task_type",
-            "value": "tests_only_existing_repo",
-            "reason": "action_coverage",
-        }
+    assert tests_only["domain"] == "text_slugify"
+    assert tests_only["artifacts"] == ["slugify.py", "tests/test_slugify.py"]
+    assert tests_only["interfaces"] == [
+        {"kind": "python_api", "module": "slugify", "callable": "slugify"}
     ]
+    assert tests_only["features"] == ["slugify_ascii_lowercase"]
+    assert tests_only["clarifications_needed"] == []
+    assert tests_only["validation"] == {
+        "commands": ["python -m pytest tests/test_slugify.py -q"],
+        "hidden_cases": True,
+    }
 
     convention = parse_request_to_spec(
         str(tasks["slugify_existing_src_convention"]["prompt"]),

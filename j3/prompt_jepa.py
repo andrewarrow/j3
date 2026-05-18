@@ -41,6 +41,7 @@ PROMPT_JEPA_PROPOSAL_SCHEMA_VERSION = "prompt-jepa-planner-proposal-v1"
 PROMPT_JEPA_PROPOSAL_SCORE_THRESHOLD = 0.08
 REQUEST_REPO_ATTEMPT_KIND = "greenshot_7_request_to_repo_attempt"
 EXISTING_REPO_CHANGE_ATTEMPT_KIND = "greenshot_7_existing_repo_change_attempt"
+EXISTING_REPO_TESTS_ATTEMPT_KIND = "greenshot_7_existing_repo_tests_attempt"
 
 
 @dataclass(frozen=True, slots=True)
@@ -1410,6 +1411,8 @@ def _outcome_record_from_row(
         return _request_repo_outcome_record(row, index=index)
     if record_kind == EXISTING_REPO_CHANGE_ATTEMPT_KIND:
         return _existing_repo_change_outcome_record(row, index=index)
+    if record_kind == EXISTING_REPO_TESTS_ATTEMPT_KIND:
+        return _existing_repo_tests_outcome_record(row, index=index)
     return None
 
 
@@ -1523,6 +1526,65 @@ def _existing_repo_change_outcome_record(
         target=_drop_none_values(target),
         tags=_outcome_tags(
             record_kind=EXISTING_REPO_CHANGE_ATTEMPT_KIND,
+            target=target,
+            passed=passed,
+        ),
+    )
+
+
+def _existing_repo_tests_outcome_record(
+    row: Mapping[str, object],
+    *,
+    index: int,
+) -> PromptJepaOutcomeRecord:
+    spec = _mapping_field(row, "existing_repo_tests_spec", index=index)
+    actions = _list_field(row, "existing_repo_actions", index=index)
+    tests_result = _mapping_field(row, "tests_result", index=index)
+    validation = _mapping_field(row, "validation", index=index)
+    failure = row.get("failure_observation")
+
+    prompt = _outcome_prompt(row, index=index)
+    passed = bool(row.get("passed", False))
+    target = {
+        "schema_version": "prompt-jepa-outcome-target-v1",
+        "record_schema_version": _optional_str(row.get("schema_version")),
+        "record_kind": EXISTING_REPO_TESTS_ATTEMPT_KIND,
+        "repo_mode": _optional_str(spec.get("repo_mode")),
+        "task_type": _optional_str(spec.get("task_type")),
+        "domain": _optional_str(spec.get("domain")),
+        "expected_action": "emit_existing_repo_tests",
+        "requires_clarification": "no",
+        "features": _string_list(spec.get("features", [])),
+        "requested_interfaces": _interface_kinds(spec.get("interfaces", [])),
+        "target_files": _string_list(spec.get("target_test_files", [])),
+        "source_files": _string_list(spec.get("source_files", [])),
+        "production_files": _string_list(spec.get("production_files", [])),
+        "action_kinds": _action_kinds(actions),
+        "files_changed": _string_list(tests_result.get("files_changed", [])),
+        "production_files_changed": _string_list(
+            tests_result.get("production_files_changed", [])
+        ),
+        "validation_status": _optional_str(validation.get("status")),
+        "outcome_status": _optional_str(tests_result.get("status")),
+        "passed": passed,
+        "failure_kind": _failure_kind(failure),
+        "tests_spec": _json_copy(spec),
+        "actions": _json_copy(actions),
+        "outcome": {
+            "tests_result": _json_copy(tests_result),
+            "validation": _json_copy(validation),
+            "failure_observation": _json_copy(failure),
+            "repo_path": _optional_str(row.get("repo_path")),
+        },
+    }
+    return PromptJepaOutcomeRecord(
+        row_id=_outcome_row_id(row, prefix="existing-repo-tests-attempt", index=index),
+        split=_outcome_split(row),
+        source_type=EXISTING_REPO_TESTS_ATTEMPT_KIND,
+        prompt=prompt,
+        target=_drop_none_values(target),
+        tags=_outcome_tags(
+            record_kind=EXISTING_REPO_TESTS_ATTEMPT_KIND,
             target=target,
             passed=passed,
         ),

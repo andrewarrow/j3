@@ -469,9 +469,19 @@
     "split": "test",
     "fixture_category": "tests_only",
     "prompt": "add pytest coverage for an existing slugify.py library without changing implementation",
-    "expected_action": "classify_failure",
-    "expected_failure_category": "action_coverage",
-    "expected_features": [],
+    "expected_action": "emit_existing_repo_tests",
+    "expected_features": ["slugify_ascii_lowercase"],
+    "existing_repo_fixture": {
+      "schema_version": "existing-repo-fixture-v1",
+      "production_files": ["slugify.py"],
+      "files": [
+        {
+          "path": "slugify.py",
+          "role": "production",
+          "content": "\"\"\"Small text slugification helpers for documentation paths.\"\"\"\n\nfrom __future__ import annotations\n\nimport re\n\n\ndef slugify(text: str) -> str:\n    \"\"\"Return a lowercase, hyphen-separated slug for text.\"\"\"\n\n    parts = re.findall(r\"[a-z0-9]+\", text.lower())\n    return \"-\".join(parts)\n"
+        }
+      ]
+    },
     "expected_spec": {
       "schema_version": "request-spec-v1",
       "task_name": "slugify_tests_only_existing",
@@ -480,28 +490,22 @@
       "repo_mode": "existing_repo",
       "domain": "text_slugify",
       "prompt": "add pytest coverage for an existing slugify.py library without changing implementation",
-      "artifacts": [],
-      "interfaces": [],
-      "features": [],
-      "operation_aliases": {},
-      "inferred_defaults": [],
-      "clarifications_needed": [
+      "artifacts": ["slugify.py", "tests/test_slugify.py"],
+      "interfaces": [
         {
-          "field": "repo_state",
-          "question": "Which repository should be inspected and what existing slugify behavior is expected before adding tests?"
+          "kind": "python_api",
+          "module": "slugify",
+          "callable": "slugify"
         }
       ],
+      "features": ["slugify_ascii_lowercase"],
+      "operation_aliases": {},
+      "inferred_defaults": [],
+      "clarifications_needed": [],
       "validation": {
-        "commands": [],
-        "hidden_cases": false
-      },
-      "unsupported_requirements": [
-        {
-          "field": "task_type",
-          "value": "tests_only_existing_repo",
-          "reason": "action_coverage"
-        }
-      ]
+        "commands": ["python -m pytest tests/test_slugify.py -q"],
+        "hidden_cases": true
+      }
     }
   },
   {

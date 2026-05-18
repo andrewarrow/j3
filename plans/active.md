@@ -55,13 +55,6 @@ This is the live coordinator board. Keep it current and compact.
   `testing/test_mark.py`, records candidate diff/actions/mutation scope,
   validates with `pytest testing/test_config.py testing/test_mark.py -q`, and
   preserves auxiliary-path residuals honestly.
-- `MODEL-006`: worker Ohm (`019e3c60-cfc9-7862-b421-9644689de2ce`) to add
-  candidate-after or AST-delta observation for ranking evidence without
-  enabling production ranking. Ownership: focused transition/candidate scoring
-  modules and tests only. Acceptance: scorer inputs expose
-  candidate-after/delta signals for held-out residual families and issue/PR
-  candidate records can feed those signals, with focused tests and no
-  guarded-use decision change.
 
 ## Ready Queue
 
@@ -94,6 +87,13 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `MODEL-006`: added a shadow-only candidate-change observation normalizer and
+  wired nested candidate-after / AST-delta metadata into transition
+  action-choice change context and persisted candidate-ranker record features.
+  Issue/PR candidate records with `candidate_diff` summaries and nested
+  source/test candidate-after AST deltas now expose diff-size,
+  `candidate_after_available`, and AST-delta scorer inputs. Focused tests cover
+  wrapper/behavior residual-style candidates and issue/PR candidate records.
 - `DATA-023`: added a machine-readable materialization coverage audit for the
   accepted `pytest-dev__pytest-issue-14442-pr-14443` diff. All five accepted
   paths were classified before any candidate edit: `AUTHORS` is covered by a

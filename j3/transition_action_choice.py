@@ -14,6 +14,7 @@ from hashlib import sha256
 from pathlib import Path
 from typing import Mapping, Sequence
 
+from j3.candidate_observation import candidate_change_observation
 from j3.features import FEATURE_VERSION as PYTHON_SOURCE_FEATURE_VERSION
 from j3.features import embed_python_source
 
@@ -350,6 +351,7 @@ def _candidate_choice(
 
 
 def _change_context(row: Mapping[str, object]) -> dict[str, object]:
+    observation = candidate_change_observation(row)
     numeric_fields = (
         "diff_added_lines",
         "diff_removed_lines",
@@ -368,18 +370,22 @@ def _change_context(row: Mapping[str, object]) -> dict[str, object]:
         "ast_parse_ok",
     )
     numeric = {
-        field: row.get(field)
+        field: observation.get(field, row.get(field))
         for field in numeric_fields
-        if _number_or_none(row.get(field)) is not None
+        if _number_or_none(observation.get(field, row.get(field))) is not None
     }
     boolean = {
-        field: row.get(field)
+        field: observation.get(field, row.get(field))
         for field in boolean_fields
-        if isinstance(row.get(field), bool)
+        if isinstance(observation.get(field, row.get(field)), bool)
     }
     ast_features = {
-        "added": _numeric_mapping(row.get("ast_delta_added_features")),
-        "removed": _numeric_mapping(row.get("ast_delta_removed_features")),
+        "added": _numeric_mapping(
+            observation.get("ast_delta_added_features", row.get("ast_delta_added_features"))
+        ),
+        "removed": _numeric_mapping(
+            observation.get("ast_delta_removed_features", row.get("ast_delta_removed_features"))
+        ),
     }
     available = bool(
         numeric or boolean or ast_features["added"] or ast_features["removed"]
@@ -487,6 +493,24 @@ def _candidate_after(
     *,
     embedding_dim: int,
 ) -> dict[str, object]:
+    observation = candidate_change_observation(row)
+    candidate_after_record = row.get("candidate_after")
+    if isinstance(candidate_after_record, Mapping) and observation.get(
+        "candidate_after_available"
+    ) is True:
+        return {
+            "available": True,
+            "kind": "candidate_after_record",
+            "field": "candidate_after",
+            "record": _json_copy(candidate_after_record),
+            "source": None,
+            "source_sha256": None,
+            "embedding_available": False,
+            "embedding_kind": None,
+            "embedding_dim": None,
+            "embedding": None,
+        }
+
     repo_after = row.get("repo_after")
     if isinstance(repo_after, Mapping):
         embedding = _embedding_from_repo_record(repo_after)

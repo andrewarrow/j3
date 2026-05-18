@@ -461,7 +461,7 @@ Long-term target:
 
 ### MODEL-006: Add candidate-after or AST-delta observation
 
-- Status: active
+- Status: done
 - Why: identifier, attribute, signature, and wrapper residuals need evidence
   that a candidate changes the failing behavior rather than a nearby name or
   import.
@@ -470,6 +470,13 @@ Long-term target:
 - Acceptance: scorer inputs expose candidate-after or AST-delta signals for
   the residual families without enabling production ranking by default.
 - Tests: focused transition action scoring/ranking tests.
+- Completion note: added `j3.candidate_observation` to normalize nested
+  candidate-after, candidate-diff, and AST-delta metadata into flat shadow
+  scorer inputs. Transition action-choice records now carry nested
+  candidate-after change context without requiring candidate-after embeddings,
+  and persisted candidate-ranker records expose `candidate_after_available`,
+  diff-size, and AST-delta features for issue/PR candidate attempts. No
+  production ranking or guarded-use decision changed.
 
 ## Workstream F: Long-Term Training Scale
 

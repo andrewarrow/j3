@@ -673,6 +673,55 @@ def test_candidate_record_features_include_ast_delta() -> None:
     assert features["ast_delta_net_count:same"] == 1.0
 
 
+def test_issue_pr_candidate_record_features_include_candidate_after_ast_delta() -> None:
+    record = {
+        "record_kind": "issue_pr_candidate_attempt",
+        "file_path": "src/pkg/api.py",
+        "action": "source_region_replace",
+        "symbol": "build_response",
+        "params": {"family": "wrapper_behavior"},
+        "reason": "materialize behavior-changing wrapper",
+        "model_score": 0.0,
+        "failure_hint_score": 0.0,
+        "passed": True,
+        "candidate_diff": {
+            "diff_summary": {"added_line_count": 6, "removed_line_count": 2}
+        },
+        "source_materialization": {
+            "candidate_after": {
+                "diff_summary": {
+                    "added_line_count": 4,
+                    "removed_line_count": 1,
+                    "changed_line_count": 5,
+                },
+                "ast_delta": {
+                    "ast_parse_ok": True,
+                    "ast_delta_added_count": 6,
+                    "ast_delta_removed_count": 1,
+                    "ast_delta_net_count": 5,
+                    "ast_delta_added_features": {
+                        "node:If": 1,
+                        "node:Return": 2,
+                        "call:getattr": 1,
+                    },
+                    "ast_delta_removed_features": {"node:Pass": 1},
+                },
+            },
+        },
+    }
+
+    features = _candidate_record_features(record, [])
+
+    assert features["candidate_after_available"] == 1.0
+    assert features["action_candidate_after_available:source_region_replace"] == 1.0
+    assert features["diff_changed_lines:4_plus"] == 1.0
+    assert features["ast_parse_ok"] == 1.0
+    assert features["ast_delta_added:node:If"] == 1.0
+    assert features["ast_delta_added:node:Return"] == 1.0
+    assert features["ast_delta_added:call:getattr"] == 1.0
+    assert features["ast_delta_removed:node:Pass"] == 1.0
+
+
 def test_candidate_record_features_include_relation_metadata_without_pass_leakage() -> None:
     record = {
         **_candidate_record(to=">=", passed=True),

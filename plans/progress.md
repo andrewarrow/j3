@@ -2778,3 +2778,37 @@ meaningful work. Do not replace this file with a daily reset.
 - Push: succeeded.
 - Next: continue non-overlapping coordinator review while both workers run.
 - Blockers: none.
+
+### 2026-05-18 - MODEL-006 - Candidate-after AST-delta observation
+
+- Owner: worker Ohm (`019e3c60-cfc9-7862-b421-9644689de2ce`).
+- Files changed: `j3/candidate_observation.py`,
+  `j3/transition_action_choice.py`, `candidate_ranker/features.py`,
+  `candidate_ranker/feature_params.py`,
+  `tests/test_transition_action_choice.py`,
+  `tests/test_transition_action_scoring.py`, and
+  `tests/test_candidate_ranking.py`.
+- Tests: `python -m py_compile j3/candidate_observation.py
+  j3/transition_action_choice.py j3/transition_action_scoring.py
+  candidate_ranker/features.py candidate_ranker/feature_params.py
+  tests/test_transition_action_choice.py tests/test_transition_action_scoring.py
+  tests/test_candidate_ranking.py` -> passed; `pytest
+  tests/test_transition_action_choice.py tests/test_transition_action_scoring.py
+  tests/test_candidate_ranking.py -q` -> 55 passed; `pytest
+  tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check` ->
+  passed.
+- Result: added a shadow-only candidate-change observation normalizer that
+  reads nested candidate-after records, issue/PR `candidate_diff` summaries,
+  and AST-delta metadata. Transition action-choice candidates now preserve
+  candidate-after availability and expose nested diff/AST change context to the
+  V3 scorer. Persisted candidate-ranker records now expose
+  `candidate_after_available`, diff-size, and AST-delta features when an
+  issue/PR candidate record includes candidate diff or source/test
+  candidate-after metadata. Focused tests cover wrapper/behavior residual-style
+  candidates and issue/PR candidate records. Production ranking and guarded
+  opt-in decisions remain unchanged.
+- Commit: pending final hash.
+- Push: pending.
+- Next: use these observations in a later held-out scoring run before changing
+  any production ranking or guarded-use gate.
+- Blockers: none.

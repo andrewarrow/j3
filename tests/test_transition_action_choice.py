@@ -97,6 +97,62 @@ def test_explicit_repair_plan_and_sources_are_preserved_with_embeddings() -> Non
     assert len(first["candidate_after"]["embedding"]) == 8
 
 
+def test_nested_candidate_after_feeds_change_context_without_source_embedding() -> None:
+    row = {
+        **_candidate_row(rank_index=1, passed=True),
+        "repair_plan_id": "plan-wrapper-behavior",
+        "task_family": "held_out_wrapper_decoy",
+        "candidate_after": {
+            "available": True,
+            "file_path": "service.py",
+            "diff_summary": {
+                "added_line_count": 5,
+                "removed_line_count": 1,
+                "changed_line_count": 6,
+            },
+            "ast_delta": {
+                "ast_parse_ok": True,
+                "ast_delta_added_count": 7,
+                "ast_delta_removed_count": 2,
+                "ast_delta_net_count": 5,
+                "ast_delta_added_features": {
+                    "node:FunctionDef": 1,
+                    "node:If": 1,
+                    "call:isinstance": 1,
+                },
+                "ast_delta_removed_features": {"node:Pass": 1},
+            },
+        },
+    }
+
+    group = build_transition_action_choice_groups([row], embedding_dim=8)[0]
+    candidate = group["candidates"][0]
+
+    assert candidate["candidate_after"]["available"] is True
+    assert candidate["candidate_after"]["kind"] == "candidate_after_record"
+    assert candidate["candidate_after"]["embedding_available"] is False
+    assert candidate["change_context"] == {
+        "available": True,
+        "numeric": {
+            "diff_added_lines": 5,
+            "diff_removed_lines": 1,
+            "diff_changed_lines": 6,
+            "ast_delta_added_count": 7,
+            "ast_delta_removed_count": 2,
+            "ast_delta_net_count": 5,
+        },
+        "boolean": {"ast_parse_ok": True},
+        "ast_features": {
+            "added": {
+                "call:isinstance": 1,
+                "node:FunctionDef": 1,
+                "node:If": 1,
+            },
+            "removed": {"node:Pass": 1},
+        },
+    }
+
+
 def test_action_choice_writer_loader_are_deterministic(tmp_path: Path) -> None:
     groups = build_transition_action_choice_groups_jsonl(
         FIXTURES / "candidate_outcomes.jsonl",

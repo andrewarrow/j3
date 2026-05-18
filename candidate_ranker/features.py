@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from j3.ast_delta import ast_delta_feature_map, python_ast_delta_metadata
+from j3.candidate_observation import candidate_change_observation
 
 from .feature_hints import (
     _add_hint_token_overlap_features,
@@ -97,11 +98,15 @@ def candidate_features(
 def _candidate_record_features(candidate: dict[str, object], hints: object) -> dict[str, float]:
     action = str(candidate.get("action", ""))
     params = candidate.get("params", {})
+    observation = candidate_change_observation(candidate)
     features: dict[str, float] = {
         "bias": 1.0,
         f"action:{action}": 1.0,
         "failure_hint_score": _float_value(candidate.get("failure_hint_score")) / 100.0,
     }
+    if observation.get("candidate_after_available") is True:
+        features["candidate_after_available"] = 1.0
+        features[f"action_candidate_after_available:{action}"] = 1.0
     if _float_value(candidate.get("failure_hint_score")) > 0:
         features["has_failure_hint_score"] = 1.0
         features[f"action_has_failure_hint_score:{action}"] = 1.0
@@ -123,11 +128,11 @@ def _candidate_record_features(candidate: dict[str, object], hints: object) -> d
             str(candidate.get("file_path", "")),
             params,
         )
-    edit_metadata = _record_edit_metadata(candidate)
+    edit_metadata = _record_edit_metadata(candidate, observation=observation)
     if edit_metadata is not None:
         _add_edit_metadata_features(features, action, **edit_metadata)
     _add_candidate_relation_features(features, action, candidate)
-    features.update(ast_delta_feature_map(candidate))
+    features.update(ast_delta_feature_map({**candidate, **observation}))
 
     if isinstance(hints, list):
         for hint in hints:
@@ -219,24 +224,36 @@ def _live_candidate_edit_metadata(candidate: CandidateLike) -> dict[str, object]
     }
 
 
-def _record_edit_metadata(candidate: dict[str, object]) -> dict[str, object] | None:
-    if "diff_changed_lines" not in candidate and "edit_line_span" not in candidate:
+def _record_edit_metadata(
+    candidate: dict[str, object],
+    *,
+    observation: dict[str, object],
+) -> dict[str, object] | None:
+    has_diff = "diff_changed_lines" in candidate or "diff_changed_lines" in observation
+    has_edit = "edit_line_span" in candidate
+    if not has_diff and not has_edit:
         return None
     return {
-        "diff_changed_lines": _int_value(candidate.get("diff_changed_lines"), default=0),
-        "edit_line_span": _int_value(candidate.get("edit_line_span"), default=0),
+        "diff_changed_lines": _int_value(
+            observation.get("diff_changed_lines", candidate.get("diff_changed_lines")),
+            default=0,
+        ),
+        "edit_line_span": _optional_int_value(candidate.get("edit_line_span")),
         "edit_replacement_lines": _int_value(
             candidate.get("edit_replacement_lines"),
-            default=0,
+            default=-1,
         ),
-        "edit_line_delta": _int_value(candidate.get("edit_line_delta"), default=0),
-        "edit_target_line_distance": _int_value(
-            candidate.get("edit_target_line_distance"),
-            default=0,
-        ),
+        "edit_line_delta": _optional_int_value(candidate.get("edit_line_delta")),
+        "edit_target_line_distance": _optional_int_value(candidate.get("edit_target_line_distance")),
         "edit_within_target_span": _bool_value(candidate.get("edit_within_target_span")),
         "edit_is_single_line": _bool_value(candidate.get("edit_is_single_line")),
     }
+
+
+def _optional_int_value(value: object) -> int | None:
+    if value is None:
+        return None
+    return _int_value(value, default=0)
 
 
 def _diff_line_counts(diff_text: str) -> tuple[int, int]:

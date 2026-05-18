@@ -260,6 +260,53 @@ def test_v3_scorer_features_include_candidate_change_context_deltas() -> None:
     assert features["change_ast_removed:binop:Sub"] == pytest.approx(0.2)
 
 
+def test_v3_scorer_features_include_nested_candidate_after_for_wrapper_decoys() -> None:
+    row = _candidate_row(
+        rank_index=1,
+        passed=True,
+        repair_plan_id="plan-wrapper-decoy",
+        task="held_out_wrapper_behavior",
+        task_family="held_out_wrapper_decoy",
+        params={"name": "Wrapper"},
+        model_score=0.0,
+        ranker_score=0.0,
+        failure_hint_score=0.0,
+        patched_source="def add(left, right):\n    return left + right\n",
+    )
+    row["candidate_after"] = {
+        "available": True,
+        "file_path": "api.py",
+        "diff_summary": {"added_line_count": 8, "removed_line_count": 1},
+        "ast_delta": {
+            "ast_parse_ok": True,
+            "ast_delta_added_count": 9,
+            "ast_delta_removed_count": 1,
+            "ast_delta_net_count": 8,
+            "ast_delta_added_features": {
+                "node:ClassDef": 1,
+                "node:FunctionDef": 2,
+                "call:isinstance": 1,
+            },
+            "ast_delta_removed_features": {"node:Pass": 1},
+        },
+    }
+    groups = build_transition_action_choice_groups([row], embedding_dim=8)
+
+    score = score_transition_action_candidate_v3(
+        groups[0]["candidates"][0],
+        group=groups[0],
+        model={"weights": {}, "allow_production_rank_feature": False},
+    )
+    features = score["features"]
+
+    assert features["candidate_after_available"] == 1.0
+    assert features["change_context_available"] == 1.0
+    assert features["change:diff_changed_lines:scaled"] == pytest.approx(0.45)
+    assert features["change_ast_added:node:ClassDef"] == pytest.approx(0.2)
+    assert features["change_ast_added:node:FunctionDef"] == pytest.approx(0.4)
+    assert features["change_ast_added:call:isinstance"] == pytest.approx(0.2)
+
+
 def test_residual_examples_capture_wrong_top_action_choice() -> None:
     groups = build_transition_action_choice_groups(
         [

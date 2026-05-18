@@ -124,10 +124,10 @@ def _add_edit_metadata_features(
     action: str,
     *,
     diff_changed_lines: int,
-    edit_line_span: int,
-    edit_replacement_lines: int,
-    edit_line_delta: int,
-    edit_target_line_distance: int,
+    edit_line_span: int | None,
+    edit_replacement_lines: int | None,
+    edit_line_delta: int | None,
+    edit_target_line_distance: int | None,
     edit_within_target_span: bool | None,
     edit_is_single_line: bool | None,
 ) -> None:
@@ -140,27 +140,27 @@ def _add_edit_metadata_features(
             "diff_changed_lines_scaled"
         ]
 
-    if edit_line_span > 0:
+    if edit_line_span is not None and edit_line_span > 0:
         bucket = _line_count_bucket(edit_line_span)
         features[f"edit_line_span:{bucket}"] = 1.0
         features[f"action_edit_line_span:{action}:{bucket}"] = 1.0
 
-    if edit_replacement_lines >= 0:
+    if edit_replacement_lines is not None and edit_replacement_lines >= 0:
         bucket = _line_count_bucket(edit_replacement_lines)
         features[f"edit_replacement_lines:{bucket}"] = 1.0
         features[f"action_edit_replacement_lines:{action}:{bucket}"] = 1.0
 
-    if edit_line_delta > 0:
+    if edit_line_delta is not None and edit_line_delta > 0:
         features["edit_line_delta:increase"] = 1.0
         features[f"action_edit_line_delta:{action}:increase"] = 1.0
-    elif edit_line_delta < 0:
+    elif edit_line_delta is not None and edit_line_delta < 0:
         features["edit_line_delta:decrease"] = 1.0
         features[f"action_edit_line_delta:{action}:decrease"] = 1.0
-    else:
+    elif edit_line_delta is not None:
         features["edit_line_delta:same"] = 1.0
         features[f"action_edit_line_delta:{action}:same"] = 1.0
 
-    if edit_target_line_distance >= 0:
+    if edit_target_line_distance is not None and edit_target_line_distance >= 0:
         bucket = _distance_bucket(edit_target_line_distance)
         features[f"edit_target_line_distance:{bucket}"] = 1.0
         features[f"action_edit_target_line_distance:{action}:{bucket}"] = 1.0

@@ -3020,7 +3020,7 @@ meaningful work. Do not replace this file with a daily reset.
   local-knowledge rows. Residual labels remain `materialization_gap` and
   `ranking_gap`; materialization and ranking are the next-stage challenges
   before any candidate attempt.
-- Commit: 4ff073f.
+- Commit: 9ee8493.
 - Push: succeeded.
 - Next: DATA-028 can use the DATA-027 readiness row as candidate-attempt
   precondition evidence while auditing materialization coverage.
@@ -3048,11 +3048,31 @@ meaningful work. Do not replace this file with a daily reset.
   manifest, DATA-018 preflight, DATA-026 prompt/spec and local-knowledge
   provenance, accepted diff stats, validation costs, likely failure modes, and
   smallest next falsifiable materializer tasks.
-- Commit: pending.
-- Push: pending.
+- Commit: 4ff073f; push-record commit `a6160e6`.
+- Push: succeeded.
 - Next: a future candidate task should implement the recorded source-region
   materializer and test-class refiner, then validate with `python -m
   py_compile src/_pytest/python_api.py` and `pytest testing/python/approx.py
   -q` before any ranking or candidate attempt is treated as ready.
 - Blockers: no audit blocker; the accepted diff is not currently expressible by
   existing structured actions.
+
+### 2026-05-18 - Coordinator Review And Dispatch - DATA-029 / DATA-030
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, `plans/progress.md`.
+- Tests: `python -m py_compile j3/issue_pr_materialization_audit.py
+  tests/test_issue_pr_materialization_audit.py` -> passed; `pytest
+  tests/test_issue_pr_materialization_audit.py -q` -> 6 passed; `pytest
+  tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check` ->
+  passed.
+- Result: reviewed DATA-028 and closed worker Heisenberg
+  (`019e3c77-e916-7c71-af0d-4260a6c4030c`). The audit proves the current
+  structured-action surface cannot express the pytest #14462 accepted
+  source/test diff. The next loop therefore assigns `DATA-029` to attempt the
+  constrained source/test materializer directly, and `DATA-030` to pressure the
+  replay pipeline with validation-split issue/PR preflight evidence.
+- Commit: pending.
+- Push: pending.
+- Next: dispatch workers for `DATA-029` and `DATA-030`.
+- Blockers: none.

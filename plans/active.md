@@ -44,16 +44,47 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-- None.
+### `DATA-029`: Pytest #14462 source/test candidate attempt
+
+- Status: active
+- Owner: worker pending assignment.
+- Write scope: `j3/issue_pr_candidate_attempt.py`,
+  `tests/test_issue_pr_candidate_attempt.py`, generated outputs under `/tmp`,
+  optional compact report under `docs/`, and planning updates.
+- Acceptance: attempt exactly `pytest-dev__pytest-issue-14462-pr-14466` in
+  source/test scope, changing only `src/_pytest/python_api.py` and
+  `testing/python/approx.py` in the live pinned checkout. Implement the
+  DATA-028 source-region materializer and `TestApproxDatetime` refiner, record
+  actions, candidate diff, mutation scope, validation command/runtime/pass-fail,
+  residual labels, DATA-018/026/027/028 provenance, and structured-action
+  coverage. Validate with `python -m py_compile src/_pytest/python_api.py` and
+  `pytest testing/python/approx.py -q`, or record the exact materialization or
+  validation blocker.
+
+### `DATA-030`: Validation-split issue/PR preflight
+
+- Status: active
+- Owner: worker pending assignment.
+- Write scope: `j3/issue_pr_preflight.py`,
+  `tests/test_issue_pr_preflight.py`, generated outputs under `/tmp`,
+  optional compact report under `docs/`, and planning updates. Do not attempt
+  candidate source edits.
+- Acceptance: preflight validation-split rows, starting with
+  `pypa__pip-issue-12018-pr-13886` and including
+  `scrapy__scrapy-issue-7293-pr-7351` if the first row does not expose a setup
+  blocker. Record checkout/setup/baseline validation status, runtime,
+  first-failed stage, command classification, prompt/spec and local-knowledge
+  gaps, materialization/ranking residuals, and whether the validation-split row
+  is ready for evidence acquisition or blocked by environment/setup.
 
 ## Ready Queue
 
 These are good next assignments for the next loop:
 
-1. `KNOW-003`: broaden knowledge-use attribution where scoring shows missing
+1. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.
+2. `MODEL-004`: distinguish mapping key and value targets.
+3. `KNOW-003`: broaden knowledge-use attribution where scoring shows missing
    local-knowledge evidence.
-2. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.
-3. `MODEL-004`: distinguish mapping key and value targets.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 

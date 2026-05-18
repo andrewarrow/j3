@@ -1757,10 +1757,61 @@ Long-term target:
   `/tmp/j3-data-028-pytest-14462-materialization-audit/report.md`, and
   `docs/DATA_028_PYTEST_14462_MATERIALIZATION_COVERAGE_AUDIT_2026-05-18.md`.
 
+### DATA-029: Pytest #14462 source/test candidate attempt
+
+- Status: active
+- Why: DATA-027 says pytest #14462 is ready for a candidate attempt and
+  DATA-028 identifies the exact materialization gap. The next hard proof is
+  whether j3 can turn those constrained source/test materializers into an
+  actual validated repo edit rather than stopping at audit labels.
+- Write scope: `j3/issue_pr_candidate_attempt.py`,
+  `tests/test_issue_pr_candidate_attempt.py`, generated outputs under `/tmp`,
+  optional compact report under `docs/`, and plan updates.
+- Acceptance: attempt exactly `pytest-dev__pytest-issue-14462-pr-14466` in
+  source/test scope. Materialize only `src/_pytest/python_api.py` and
+  `testing/python/approx.py`; do not write unrelated docs, changelog, or config
+  paths. The source materializer should cover the bounded
+  `ApproxBase._approx_scalar` datetime/timedelta dispatch branch plus
+  `ApproxTimedelta.__init__` relative-tolerance update. The test materializer
+  should refine/insert only `TestApproxDatetime` coverage for numeric timedelta
+  `rel`, invalid tolerance values, expected-value scaling, and sequence/mapping
+  dispatch. Record actions, candidate diff, mutation scope, validation
+  command/runtime/pass-fail, residual labels, DATA-018/026/027/028 provenance,
+  and structured-action coverage. Run live validation with `python -m
+  py_compile src/_pytest/python_api.py` and `pytest testing/python/approx.py
+  -q` when feasible. If materialization or validation blocks, record the exact
+  blocker instead of broadening scope silently.
+- Tests: focused candidate-attempt tests, plan consistency, `git diff
+  --check`, and live focused validation when feasible.
+
+### DATA-030: Validation-split issue/PR preflight
+
+- Status: active
+- Why: the issue/PR replay work is still mostly train-split evidence. To test
+  generalization outside fixture-shaped rows, the loop needs validation-split
+  setup and baseline evidence before any prompt/spec or candidate work.
+- Write scope: `j3/issue_pr_preflight.py`,
+  `tests/test_issue_pr_preflight.py`, generated outputs under `/tmp`,
+  optional compact report under `docs/`, and plan updates. Do not attempt
+  candidate source edits.
+- Acceptance: run pre-edit replay preflight for validation-split rows, starting
+  with `pypa__pip-issue-12018-pr-13886` and adding
+  `scrapy__scrapy-issue-7293-pr-7351` if the first row does not expose a setup
+  blocker. Record checkout/setup/baseline validation status, runtime,
+  first-failed stage, command classification, prompt/spec gaps,
+  local-knowledge requirements, materialization/ranking residuals, and the next
+  validation-split row that is ready for evidence acquisition. If setup or
+  validation blocks, classify environment/setup/validation separately from edit
+  quality.
+- Tests: focused preflight tests if code changes, plan consistency,
+  `git diff --check`, and live bounded preflight commands or exact blockers if
+  live preflight cannot complete.
+
 ## Next Recommended Queue
 
 Start with these unless fresh evidence changes the order:
 
-1. `KNOW-003`: broaden knowledge-use attribution where scoring shows missing
-   local-knowledge evidence.
-2. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.
+1. `DATA-029`: attempt pytest #14462 source/test materialization and
+   validation.
+2. `DATA-030`: preflight validation-split issue/PR rows.
+3. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.

@@ -3531,8 +3531,8 @@ meaningful work. Do not replace this file with a daily reset.
   `full_candidate_after_unavailable`, and
   `issue_specific_semantics_not_in_current_features`. No production ranking
   gate changed and no hosted LLM source judgment was used.
-- Commit: pending.
-- Push: pending.
+- Commit: c5e4b0b.
+- Push: succeeded.
 - Next: collect full candidate-after snapshots or live-validated decoy
   outcomes before claiming issue/PR ranking gains; ranking remains shadow-only.
 - Blockers: current candidate-record features are insufficient for honest

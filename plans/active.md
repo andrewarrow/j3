@@ -44,14 +44,6 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-- `DATA-016`: worker Euclid (`019e3c34-c990-7f43-b57e-f67c39493e0e`) to
-  attempt the readiness-approved Click #3298 issue/PR candidate
-  (`pallets__click-issue-3298-pr-3299`) with the existing
-  candidate-attempt evidence shape. Ownership: `j3/issue_pr_candidate_attempt.py`,
-  `tests/test_issue_pr_candidate_attempt.py`, generated `/tmp` artifacts, and
-  plan updates. Acceptance: live focused validation with `pytest
-  tests/test_options.py -q` when feasible, exact residual labels, and an
-  honest structured-action coverage or materialization blocker.
 - `DATA-017`: worker Erdos (`019e3c34-c9b5-76f3-beaa-0c4b9000665d`) to audit
   the DATA-014 accepted auxiliary-path gap for `CHANGES.rst`,
   `docs/commands.md`, and `docs/conf.py`. Ownership:
@@ -95,6 +87,22 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `DATA-016`: added a bounded Click semver/non-string default candidate-attempt
+  path for exactly `pallets__click-issue-3298-pr-3299`. The live `/tmp`
+  attempt on repo-before `04ef3a6f473deb2499721a8d11f92a7d2c0912f2`
+  materialized the accepted source guard in `src/click/core.py` with the
+  source-region action and replaced
+  `tests/test_options.py::test_show_default_with_empty_string` with the
+  accepted `_StrictEq` parametrized regression. The candidate changed only
+  `src/click/core.py` and `tests/test_options.py`, stayed inside the
+  DATA-015/DATA-010 allowlist, cited DATA-013 prompt/spec evidence, DATA-015
+  readiness evidence, and eight KNOW-004 local-knowledge records, ran
+  `python -m pip install -e . pytest` plus `pytest tests/test_options.py -q`,
+  and passed with recorded validation runtime `1.296s`. Structured-action
+  coverage marks the accepted source/test edit covered with no materialization
+  gap, limited to this bounded DATA-016 surface. Artifacts:
+  `/tmp/j3-data-016-live/candidate.json` and
+  `/tmp/j3-data-016-live/report.md`.
 - `DATA-014`: added a bounded Click default_map candidate-attempt path for
   exactly `pallets__click-issue-2745-pr-3364`. The live `/tmp` attempt on
   repo-before `8a2b48901a08b3d2ec3a9bbd151948a9765368c6` materialized the

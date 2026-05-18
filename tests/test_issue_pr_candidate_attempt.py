@@ -5,9 +5,11 @@ from pathlib import Path
 
 from j3.issue_pr_candidate_attempt import (
     CLICK_DEFAULT_MAP_REPLAY_ID,
+    CLICK_SEMVER_REPLAY_ID,
     REQUESTS_REPLAY_ID,
     main,
     run_click_default_map_issue_pr_candidate_attempt,
+    run_click_semver_issue_pr_candidate_attempt,
     run_requests_issue_pr_candidate_attempt,
     write_issue_pr_candidate_attempt_report,
 )
@@ -252,6 +254,132 @@ def test_click_default_map_candidate_attempt_cli_writes_json_and_report(
     assert report_path.exists()
 
 
+def test_click_semver_candidate_attempt_materializes_source_and_test(
+    tmp_path: Path,
+) -> None:
+    repo = _write_synthetic_click_semver_checkout(tmp_path / "click")
+
+    attempt = run_click_semver_issue_pr_candidate_attempt(
+        repo,
+        manifest_path=MANIFEST_PATH,
+        write=True,
+        validate=False,
+        readiness_records=[_click_semver_ready_row()],
+        prompt_spec_records=[_click_semver_prompt_spec_row()],
+        validation_records=[_click_semver_validation_row()],
+        local_knowledge_records=[
+            _click_semver_knowledge_row("click_non_string_default_handling"),
+            _click_semver_knowledge_row("click_empty_string_check_semantics"),
+        ],
+    )
+    record = attempt.to_record()
+
+    assert record["replay_id"] == CLICK_SEMVER_REPLAY_ID
+    assert record["status"] == "materialized"
+    assert record["residual_labels"] == ["candidate_validation_deferred"]
+    assert record["mutation_scope"]["allowed_write_path_check_passed"] is True
+    assert record["mutation_scope"]["files_changed"] == [
+        "src/click/core.py",
+        "tests/test_options.py",
+    ]
+    assert record["mutation_scope"]["materialization_gap_paths"] == []
+    assert record["structured_action_coverage"]["accepted_edit_covered"] is True
+    assert record["structured_action_coverage"]["behavior_edit_covered"] is True
+    assert record["structured_action_coverage"]["materialization_gap"] is None
+    assert len(record["evidence"]["local_knowledge"]) == 2
+    assert 'elif isinstance(default_value, str) and default_value == "":' in (
+        repo / "src" / "click" / "core.py"
+    ).read_text(encoding="utf-8")
+    assert "class _StrictEq" in (repo / "tests" / "test_options.py").read_text(
+        encoding="utf-8"
+    )
+    assert "non-string-comparable-object" in record["test_materialization"]["diff"]
+
+
+def test_click_semver_candidate_attempt_plan_only_records_planned_scope(
+    tmp_path: Path,
+) -> None:
+    repo = _write_synthetic_click_semver_checkout(tmp_path / "click")
+
+    attempt = run_click_semver_issue_pr_candidate_attempt(
+        repo,
+        manifest_path=MANIFEST_PATH,
+        write=False,
+        validate=False,
+    )
+    record = attempt.to_record()
+
+    assert record["status"] == "planned"
+    assert record["mutation_scope"]["files_changed"] == [
+        "src/click/core.py",
+        "tests/test_options.py",
+    ]
+    assert 'elif default_value == "":' in (
+        repo / "src" / "click" / "core.py"
+    ).read_text(encoding="utf-8")
+    assert "class _StrictEq" not in (repo / "tests" / "test_options.py").read_text(
+        encoding="utf-8"
+    )
+
+
+def test_click_semver_candidate_attempt_validation_and_report(
+    tmp_path: Path,
+) -> None:
+    repo = _write_synthetic_click_semver_checkout(tmp_path / "click")
+
+    attempt = run_click_semver_issue_pr_candidate_attempt(
+        repo,
+        manifest_path=MANIFEST_PATH,
+        setup_command="python -c 'print(\"setup ok\")'",
+        validation_command="python -c 'print(\"validation ok\")'",
+        write=True,
+        validate=True,
+    )
+    record = attempt.to_record()
+
+    assert record["status"] == "validated"
+    assert record["validation"]["status"] == "passed"
+    assert record["residual_labels"] == ["candidate_validation_passed"]
+    report = write_issue_pr_candidate_attempt_report(attempt, tmp_path / "semver.md")
+    assert "DATA-016 Click semver Issue/PR Candidate Attempt" in report.read_text(
+        encoding="utf-8"
+    )
+
+
+def test_click_semver_candidate_attempt_cli_writes_json_and_report(
+    tmp_path: Path,
+) -> None:
+    repo = _write_synthetic_click_semver_checkout(tmp_path / "click")
+    out_path = tmp_path / "candidate.json"
+    report_path = tmp_path / "candidate.md"
+
+    exit_code = main(
+        [
+            "--manifest",
+            str(MANIFEST_PATH),
+            "--replay-id",
+            CLICK_SEMVER_REPLAY_ID,
+            "--repo-path",
+            str(repo),
+            "--setup-command",
+            "python -c 'print(\"setup ok\")'",
+            "--validation-command",
+            "python -c 'print(\"validation ok\")'",
+            "--validate",
+            "--out",
+            str(out_path),
+            "--report",
+            str(report_path),
+        ]
+    )
+
+    assert exit_code == 0
+    record = json.loads(out_path.read_text(encoding="utf-8"))
+    assert record["replay_id"] == CLICK_SEMVER_REPLAY_ID
+    assert record["status"] == "validated"
+    assert report_path.exists()
+
+
 def _write_synthetic_requests_checkout(repo: Path) -> Path:
     (repo / "src" / "requests").mkdir(parents=True)
     (repo / "tests").mkdir(parents=True)
@@ -380,6 +508,97 @@ def test_unset_in_default_map(runner):
     return repo
 
 
+def _write_synthetic_click_semver_checkout(repo: Path) -> Path:
+    (repo / "src" / "click").mkdir(parents=True)
+    (repo / "tests").mkdir(parents=True)
+    (repo / "src" / "click" / "core.py").write_text(
+        """from __future__ import annotations
+
+import inspect
+
+
+UNSET = object()
+
+
+class Option:
+    is_bool_flag = False
+    secondary_opts = []
+    show_default = True
+    default = ""
+
+    def __init__(self, param_decls, default="", show_default=True):
+        self.param_decls = param_decls
+        self.default = default
+        self.show_default = show_default
+
+    def get_default(self, ctx, call=True):
+        return self.default
+
+    def get_help_record(self, ctx):
+        extra = self.get_help_extra(ctx)
+        return ("--limit", f"[default: {extra['default']}]")
+
+    def get_help_extra(self, ctx):
+        default_value = self.get_default(ctx, call=False)
+
+        extra = {}
+        show_default = bool(self.show_default)
+        show_default_is_str = isinstance(self.show_default, str)
+        if show_default_is_str or (show_default and default_value not in (None, UNSET)):
+            if show_default_is_str:
+                default_string = f"({self.show_default})"
+            elif inspect.isfunction(default_value):
+                default_string = "(dynamic)"
+            elif self.is_bool_flag and not self.secondary_opts and not default_value:
+                default_string = ""
+            elif default_value == "":
+                default_string = '""'
+            else:
+                default_string = str(default_value)
+            extra["default"] = default_string
+
+        return extra
+
+
+class Command:
+    def __init__(self, name):
+        self.name = name
+
+
+class Context:
+    def __init__(self, command):
+        self.command = command
+""",
+        encoding="utf-8",
+    )
+    (repo / "tests" / "test_options.py").write_text(
+        """import click
+import pytest
+
+
+def test_show_default_string(runner):
+    opt = click.Option(["--limit"], show_default="unlimited")
+    ctx = click.Context(click.Command("cli"))
+    message = opt.get_help_record(ctx)[1]
+    assert "[default: (unlimited)]" in message
+
+
+def test_show_default_with_empty_string(runner):
+    \"\"\"When show_default is True and default is set to an empty string.\"\"\"
+    opt = click.Option(["--limit"], default="", show_default=True)
+    ctx = click.Context(click.Command("cli"))
+    message = opt.get_help_record(ctx)[1]
+    assert '[default: ""]' in message
+
+
+def test_do_not_show_no_default(runner):
+    assert True
+""",
+        encoding="utf-8",
+    )
+    return repo
+
+
 def _ready_row() -> dict[str, object]:
     return {
         "record_kind": "issue_pr_candidate_readiness",
@@ -416,6 +635,42 @@ def _click_validation_row() -> dict[str, object]:
         "replay_id": CLICK_DEFAULT_MAP_REPLAY_ID,
         "status": "passed",
         "validation_command": "pytest tests/test_defaults.py -q",
+    }
+
+
+def _click_semver_ready_row() -> dict[str, object]:
+    return {
+        "record_kind": "issue_pr_candidate_readiness",
+        "replay_id": CLICK_SEMVER_REPLAY_ID,
+        "ready_for_candidate_attempt": True,
+        "validation_command": "pytest tests/test_options.py -q",
+    }
+
+
+def _click_semver_prompt_spec_row() -> dict[str, object]:
+    return {
+        "record_kind": "issue_pr_prompt_spec",
+        "replay_id": CLICK_SEMVER_REPLAY_ID,
+        "status": "normalized",
+        "prompt_spec_kind": "click_semver_non_string_default_help",
+    }
+
+
+def _click_semver_validation_row() -> dict[str, object]:
+    return {
+        "record_kind": "issue_pr_replay_preflight_outcome",
+        "replay_id": CLICK_SEMVER_REPLAY_ID,
+        "status": "passed",
+        "validation_command": "pytest tests/test_options.py -q",
+    }
+
+
+def _click_semver_knowledge_row(category: str) -> dict[str, object]:
+    return {
+        "record_type": "library_idiom_record",
+        "id": f"click:{category}",
+        "links": {"task_ids": [CLICK_SEMVER_REPLAY_ID]},
+        "data": {"knowledge_category": category},
     }
 
 

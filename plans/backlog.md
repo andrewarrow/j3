@@ -1326,7 +1326,7 @@ Long-term target:
 
 ### DATA-016: Third issue/PR candidate attempt
 
-- Status: active
+- Status: done
 - Why: after `DATA-014` and `DATA-015`, the loop should either attempt Click
   #3298 if it is readiness-approved or record why the candidate-attempt
   surface cannot yet cover it.
@@ -1339,6 +1339,15 @@ Long-term target:
   structured-action coverage or exact materialization blocker.
 - Tests: focused candidate-attempt tests, plan consistency, `git diff
   --check`, and live focused validation when feasible.
+- Completion note: added a bounded Click semver/non-string default candidate
+  path for `pallets__click-issue-3298-pr-3299`. The live pinned checkout
+  materialized the accepted one-line `Option.get_help_extra` string guard and
+  replaced the empty-string default help test with the accepted `_StrictEq`
+  parametrized regression in `tests/test_options.py`. It changed only
+  `src/click/core.py` and `tests/test_options.py`, stayed inside the
+  DATA-015/DATA-010 allowlist, used DATA-013, DATA-015, and KNOW-004 evidence,
+  and passed `pytest tests/test_options.py -q` with no materialization gap for
+  the accepted source/test edit.
 
 ### DATA-017: Click auxiliary materialization gap audit
 

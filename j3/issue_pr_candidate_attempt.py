@@ -48,6 +48,12 @@ CLICK_DEFAULT_MAP_SOURCE_PATH = "src/click/core.py"
 CLICK_DEFAULT_MAP_TEST_PATH = "tests/test_defaults.py"
 CLICK_DEFAULT_MAP_VALIDATION_COMMAND = "pytest tests/test_defaults.py -q"
 CLICK_DEFAULT_MAP_SETUP_COMMAND = "python -m pip install -e . pytest"
+CLICK_SEMVER_REPLAY_ID = "pallets__click-issue-3298-pr-3299"
+CLICK_SEMVER_ACTION_FAMILY = "click_semver_non_string_default_help_candidate"
+CLICK_SEMVER_SOURCE_PATH = "src/click/core.py"
+CLICK_SEMVER_TEST_PATH = "tests/test_options.py"
+CLICK_SEMVER_VALIDATION_COMMAND = "pytest tests/test_options.py -q"
+CLICK_SEMVER_SETUP_COMMAND = "python -m pip install -e . pytest"
 
 
 class IssuePrCandidateAttemptError(ValueError):
@@ -698,6 +704,280 @@ def run_click_default_map_issue_pr_candidate_attempt(
     )
 
 
+def run_click_semver_issue_pr_candidate_attempt(
+    repo_path: Path,
+    *,
+    manifest_path: Path = Path("examples/issue_pr_mini_replay/manifest.json"),
+    replay_id: str = CLICK_SEMVER_REPLAY_ID,
+    readiness_records: Sequence[Mapping[str, object]] = (),
+    prompt_spec_records: Sequence[Mapping[str, object]] = (),
+    validation_records: Sequence[Mapping[str, object]] = (),
+    local_knowledge_records: Sequence[Mapping[str, object]] = (),
+    setup_command: str | None = None,
+    validation_command: str | None = None,
+    write: bool = True,
+    validate: bool = False,
+    validation_timeout_seconds: int = 120,
+) -> IssuePrCandidateAttempt:
+    """Attempt the bounded Click #3298/#3299 semver default candidate."""
+
+    if replay_id != CLICK_SEMVER_REPLAY_ID:
+        raise IssuePrCandidateAttemptError(
+            f"unsupported replay id: {replay_id}",
+            blocker={
+                "field": "replay_id",
+                "reason": "unsupported_issue_pr_candidate",
+                "message": "DATA-016 may attempt only pallets__click-issue-3298-pr-3299",
+            },
+        )
+    resolved_repo = repo_path.expanduser().resolve()
+    if not resolved_repo.is_dir():
+        raise IssuePrCandidateAttemptError(
+            f"repo does not exist: {resolved_repo}",
+            blocker={
+                "field": "repo_path",
+                "reason": "missing_repo_before_checkout",
+                "message": f"repo does not exist: {resolved_repo}",
+            },
+        )
+
+    manifest_path = manifest_path.expanduser().resolve()
+    manifest = load_issue_pr_replay_manifest(manifest_path)
+    replay_record = select_issue_pr_replay_record(manifest, replay_id)
+    repo = _required_str(replay_record, "repo")
+    prompt = _required_str(replay_record, "prompt_text")
+    repo_before_ref = _mapping(replay_record["repo_before_ref"])
+    expected_sha = _required_str(repo_before_ref, "sha")
+    accepted_change = _mapping(replay_record["accepted_change"])
+    allowed_write_paths = _string_sequence(accepted_change.get("changed_files"))
+    required_paths = [CLICK_SEMVER_SOURCE_PATH, CLICK_SEMVER_TEST_PATH]
+    if allowed_write_paths != required_paths:
+        raise IssuePrCandidateAttemptError(
+            "Click semver candidate allowlist changed unexpectedly",
+            blocker={
+                "field": "accepted_change.changed_files",
+                "reason": "unexpected_allowed_write_scope",
+                "message": "DATA-016 expects only the Click #3299 source and test paths",
+            },
+        )
+
+    blockers: list[dict[str, str]] = []
+    actions: list[dict[str, object]] = [
+        {
+            "kind": "select_replay_row",
+            "target": replay_id,
+            "payload": {
+                "manifest_path": str(manifest_path),
+                "repo": repo,
+                "repo_before_ref": expected_sha,
+            },
+        }
+    ]
+    head = _git_stdout(resolved_repo, ("rev-parse", "HEAD"))
+    if head:
+        actions.append(
+            {
+                "kind": "verify_repo_before_ref",
+                "target": ".",
+                "payload": {"expected": expected_sha, "actual": head},
+            }
+        )
+        if head != expected_sha:
+            blockers.append(
+                {
+                    "field": "repo_before_ref",
+                    "reason": "repo_before_ref_mismatch",
+                    "message": f"expected {expected_sha}, got {head}",
+                }
+            )
+
+    source_action: SourceRegionAction | None = None
+    source_materialization: dict[str, object] = {}
+    if not blockers:
+        try:
+            source_text = _repo_file(resolved_repo, CLICK_SEMVER_SOURCE_PATH).read_text(
+                encoding="utf-8"
+            )
+            source_action = _click_semver_empty_string_guard_action(source_text)
+            actions.append(source_action.to_record())
+            source_result = materialize_source_region(
+                resolved_repo,
+                source_action,
+                write=write,
+            )
+            source_materialization = source_result.to_record()
+        except SourceRegionMaterializationError as error:
+            source_materialization = {
+                "status": "blocked",
+                "file_path": CLICK_SEMVER_SOURCE_PATH,
+                "not_available_reason": error.residual,
+            }
+            blockers.append(
+                {
+                    "field": "source_materialization",
+                    "reason": error.residual,
+                    "message": str(error),
+                }
+            )
+
+    test_materialization: dict[str, object] = {}
+    if not blockers:
+        try:
+            test_materialization = _materialize_click_semver_default_help_test(
+                resolved_repo,
+                write=write,
+            )
+            actions.append(
+                {
+                    "kind": "replace_pytest_function",
+                    "target": CLICK_SEMVER_TEST_PATH,
+                    "payload": {
+                        "function_name": "test_show_default_with_empty_string",
+                        "helper_class": "_StrictEq",
+                    },
+                }
+            )
+        except IssuePrCandidateAttemptError as error:
+            test_materialization = {
+                "status": "blocked",
+                "target_test_file": CLICK_SEMVER_TEST_PATH,
+            }
+            blockers.append(error.blocker)
+
+    candidate_diff = _candidate_diff(resolved_repo, allowed_write_paths)
+    changed_files = _string_sequence(candidate_diff.get("changed_files"))
+    planned_changed_files = _unique(
+        [
+            *_source_planned_changed_files(source_materialization, CLICK_SEMVER_SOURCE_PATH),
+            *_string_sequence(test_materialization.get("planned_changed_files")),
+        ]
+    )
+    files_changed = changed_files or planned_changed_files
+    writes_outside_allowlist = _paths_outside_allowlist(files_changed, allowed_write_paths)
+    if writes_outside_allowlist:
+        blockers.append(
+            {
+                "field": "allowed_write_paths",
+                "reason": "writes_outside_allowlist",
+                "message": "candidate wrote paths outside DATA-015/DATA-010 allowed scope",
+            }
+        )
+    missing_allowed_paths = [
+        path for path in allowed_write_paths if path not in files_changed
+    ]
+    if not blockers and missing_allowed_paths:
+        blockers.append(
+            {
+                "field": "candidate_diff",
+                "reason": "accepted_edit_not_fully_materialized",
+                "message": "candidate did not materialize all accepted change paths: "
+                + ", ".join(missing_allowed_paths),
+            }
+        )
+
+    selected_setup = setup_command or CLICK_SEMVER_SETUP_COMMAND
+    selected_validation = validation_command or _selected_validation_command(
+        validation_records=validation_records,
+        readiness_records=readiness_records,
+        replay_id=CLICK_SEMVER_REPLAY_ID,
+        default_command=CLICK_SEMVER_VALIDATION_COMMAND,
+    )
+    validation = _deferred_validation_record(
+        setup_command=selected_setup,
+        validation_command=selected_validation,
+    )
+    if validate and not blockers:
+        validation = validate_issue_pr_candidate(
+            resolved_repo,
+            setup_command=selected_setup,
+            validation_command=selected_validation,
+            timeout_seconds=validation_timeout_seconds,
+        )
+
+    if validation.get("status") == "failed":
+        blockers.append(
+            {
+                "field": "validation",
+                "reason": "candidate_validation_failed",
+                "message": "focused Click #3298 validation command failed",
+            }
+        )
+    elif validation.get("status") == "timeout":
+        blockers.append(
+            {
+                "field": "validation",
+                "reason": "candidate_validation_timeout",
+                "message": "focused Click #3298 validation command timed out",
+            }
+        )
+
+    structured_action_coverage = _click_semver_structured_action_coverage(
+        blockers=blockers,
+        source_action=source_action,
+        files_changed=files_changed,
+        allowed_write_paths=allowed_write_paths,
+        validation=validation,
+    )
+    residual_labels = [blocker["reason"] for blocker in blockers]
+    if not residual_labels:
+        if validation.get("status") == "passed":
+            residual_labels = ["candidate_validation_passed"]
+        elif validate:
+            residual_labels = [f"candidate_validation_{validation.get('status')}"]
+        else:
+            residual_labels = ["candidate_validation_deferred"]
+
+    status = "blocked" if blockers else "materialized"
+    if not blockers and validation.get("status") == "passed":
+        status = "validated"
+    elif not blockers and not write:
+        status = "planned"
+
+    evidence = _evidence_summary(
+        readiness_records=readiness_records,
+        prompt_spec_records=prompt_spec_records,
+        validation_records=validation_records,
+        local_knowledge_records=local_knowledge_records,
+        replay_id=CLICK_SEMVER_REPLAY_ID,
+    )
+    candidate_id = _candidate_id(
+        replay_id=replay_id,
+        repo_before_ref=expected_sha,
+        candidate_diff=str(candidate_diff.get("diff", "")),
+        validation_status=str(validation.get("status", "")),
+    )
+    mutation_scope = {
+        "mode": "issue_pr_candidate_attempt",
+        "allowed_write_paths": list(allowed_write_paths),
+        "planned_write_files": [CLICK_SEMVER_SOURCE_PATH, CLICK_SEMVER_TEST_PATH],
+        "files_changed": files_changed,
+        "writes_outside_allowlist": writes_outside_allowlist,
+        "allowed_write_path_check_passed": not writes_outside_allowlist,
+        "missing_allowed_write_paths": missing_allowed_paths,
+        "materialization_gap_paths": [],
+    }
+    return IssuePrCandidateAttempt(
+        candidate_id=candidate_id,
+        replay_id=replay_id,
+        repo=repo,
+        repo_before_ref=expected_sha,
+        prompt=prompt,
+        status=status,
+        action_family=CLICK_SEMVER_ACTION_FAMILY,
+        allowed_write_paths=list(allowed_write_paths),
+        evidence=evidence,
+        actions=actions,
+        source_materialization=source_materialization,
+        test_materialization=test_materialization,
+        candidate_diff=candidate_diff,
+        mutation_scope=mutation_scope,
+        validation=validation,
+        structured_action_coverage=structured_action_coverage,
+        blockers=blockers,
+        residual_labels=_unique(residual_labels),
+    )
+
+
 def run_issue_pr_candidate_attempt(
     repo_path: Path,
     *,
@@ -745,12 +1025,30 @@ def run_issue_pr_candidate_attempt(
             validate=validate,
             validation_timeout_seconds=validation_timeout_seconds,
         )
+    if replay_id == CLICK_SEMVER_REPLAY_ID:
+        return run_click_semver_issue_pr_candidate_attempt(
+            repo_path,
+            manifest_path=manifest_path,
+            replay_id=replay_id,
+            readiness_records=readiness_records,
+            prompt_spec_records=prompt_spec_records,
+            validation_records=validation_records,
+            local_knowledge_records=local_knowledge_records,
+            setup_command=setup_command,
+            validation_command=validation_command,
+            write=write,
+            validate=validate,
+            validation_timeout_seconds=validation_timeout_seconds,
+        )
     raise IssuePrCandidateAttemptError(
         f"unsupported replay id: {replay_id}",
         blocker={
             "field": "replay_id",
             "reason": "unsupported_issue_pr_candidate",
-            "message": "supported candidate attempts are DATA-012 Requests and DATA-014 Click default_map",
+            "message": (
+                "supported candidate attempts are DATA-012 Requests, DATA-014 "
+                "Click default_map, and DATA-016 Click semver default"
+            ),
         },
     )
 
@@ -837,6 +1135,8 @@ def write_issue_pr_candidate_attempt_report(
     title = (
         "DATA-014 Click default_map Issue/PR Candidate Attempt"
         if record.get("replay_id") == CLICK_DEFAULT_MAP_REPLAY_ID
+        else "DATA-016 Click semver Issue/PR Candidate Attempt"
+        if record.get("replay_id") == CLICK_SEMVER_REPLAY_ID
         else "DATA-012 Requests Issue/PR Candidate Attempt"
     )
     lines = [
@@ -926,6 +1226,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             setup_command = CLICK_DEFAULT_MAP_SETUP_COMMAND
         if validation_command == REQUESTS_VALIDATION_COMMAND:
             validation_command = CLICK_DEFAULT_MAP_VALIDATION_COMMAND
+    elif args.replay_id == CLICK_SEMVER_REPLAY_ID:
+        if setup_command == REQUESTS_SETUP_COMMAND:
+            setup_command = CLICK_SEMVER_SETUP_COMMAND
+        if validation_command == REQUESTS_VALIDATION_COMMAND:
+            validation_command = CLICK_SEMVER_VALIDATION_COMMAND
 
     attempt = run_issue_pr_candidate_attempt(
         args.repo_path,
@@ -1032,6 +1337,35 @@ def _click_default_map_string_split_action(source: str) -> SourceRegionAction:
         rationale=(
             "string default_map values for multi-value options must follow the "
             "same splitting path as environment variable values before type casting"
+        ),
+    )
+
+
+def _click_semver_empty_string_guard_action(source: str) -> SourceRegionAction:
+    accepted_line = (
+        '            elif isinstance(default_value, str) and default_value == "":'
+    )
+    if accepted_line in source:
+        raise SourceRegionMaterializationError(
+            "Click semver empty-string guard edit is already applied",
+            residual="already_applied",
+        )
+    target_line = '            elif default_value == "":'
+    line_number = _line_number(source, target_line)
+    return SourceRegionAction(
+        kind=SourceRegionActionKind.REPLACE_FUNCTION_REGION,
+        target=SourceRegionTarget(
+            file_path=CLICK_SEMVER_SOURCE_PATH,
+            function_name="get_help_extra",
+            region_name="non_string_default_empty_string_guard",
+            start_line=line_number,
+            end_line=line_number,
+        ),
+        replacement_source=accepted_line,
+        constraints=SourceRegionConstraints(max_changed_source_lines=2),
+        rationale=(
+            "the empty-string display branch must be string-specific so arbitrary "
+            "non-string default objects can fall through to str(default_value)"
         ),
     )
 
@@ -1172,6 +1506,94 @@ def _materialize_click_default_map_nargs_test(
         before_text=before_text,
         after_text=after_text,
         target_test_file=CLICK_DEFAULT_MAP_TEST_PATH,
+        planned_changed_files=planned_changed_files,
+        wrote_file=write and bool(planned_changed_files),
+        status="materialized" if planned_changed_files else "unchanged",
+    )
+
+
+def _materialize_click_semver_default_help_test(
+    repo_path: Path,
+    *,
+    write: bool,
+) -> dict[str, object]:
+    test_path = _repo_file(repo_path, CLICK_SEMVER_TEST_PATH)
+    before_text = test_path.read_text(encoding="utf-8")
+    if "class _StrictEq:" in before_text and "non-string-comparable-object" in before_text:
+        return _test_candidate_after(
+            before_text=before_text,
+            after_text=before_text,
+            target_test_file=CLICK_SEMVER_TEST_PATH,
+            planned_changed_files=[],
+            wrote_file=False,
+            status="already_applied",
+        )
+
+    old_test = "\n".join(
+        [
+            "def test_show_default_with_empty_string(runner):",
+            '    """When show_default is True and default is set to an empty string."""',
+            '    opt = click.Option(["--limit"], default="", show_default=True)',
+            '    ctx = click.Context(click.Command("cli"))',
+            "    message = opt.get_help_record(ctx)[1]",
+            '    assert \'[default: ""]\' in message',
+        ]
+    )
+    if old_test not in before_text:
+        raise IssuePrCandidateAttemptError(
+            "Click semver test replacement anchor not found",
+            blocker={
+                "field": "test_materialization",
+                "reason": "test_anchor_not_found",
+                "message": (
+                    "could not find test_show_default_with_empty_string empty-string "
+                    "test body"
+                ),
+            },
+        )
+
+    new_test = "\n".join(
+        [
+            "class _StrictEq:",
+            '    """Object whose ``__eq__`` raises on string comparison (like semver.Version)."""',
+            "",
+            "    def __eq__(self, other):",
+            "        if isinstance(other, str):",
+            '            raise ValueError("cannot compare to string")',
+            "        return NotImplemented",
+            "",
+            "    def __str__(self):",
+            '        return "strict"',
+            "",
+            "",
+            "@pytest.mark.parametrize(",
+            '    ("default", "expected"),',
+            "    [",
+            '        ("", \'[default: ""]\'),',
+            '        (_StrictEq(), "[default: strict]"),',
+            "    ],",
+            '    ids=["empty-string", "non-string-comparable-object"],',
+            ")",
+            "def test_show_default_with_empty_string(runner, default, expected):",
+            '    """The empty-string check in help rendering must not break on objects',
+            "    whose ``__eq__`` raises for string operands.",
+            "",
+            "    Regression test for https://github.com/pallets/click/issues/3298.",
+            '    """',
+            '    opt = click.Option(["--limit"], default=default, show_default=True)',
+            '    ctx = click.Context(click.Command("cli"))',
+            "    message = opt.get_help_record(ctx)[1]",
+            "    assert expected in message",
+        ]
+    )
+    after_text = before_text.replace(old_test, new_test, 1)
+    planned_changed_files = [CLICK_SEMVER_TEST_PATH] if after_text != before_text else []
+    if write and planned_changed_files:
+        test_path.write_text(after_text, encoding="utf-8")
+    return _test_candidate_after(
+        before_text=before_text,
+        after_text=after_text,
+        target_test_file=CLICK_SEMVER_TEST_PATH,
         planned_changed_files=planned_changed_files,
         wrote_file=write and bool(planned_changed_files),
         status="materialized" if planned_changed_files else "unchanged",
@@ -1366,6 +1788,40 @@ def _click_default_map_structured_action_coverage(
             "insertion. The accepted PR also adds CHANGES/docs/conf updates, "
             "and the current structured-action surface has no changelog/docs/"
             "Sphinx config materializer for those auxiliary paths."
+        ),
+    }
+
+
+def _click_semver_structured_action_coverage(
+    *,
+    blockers: Sequence[Mapping[str, str]],
+    source_action: SourceRegionAction | None,
+    files_changed: Sequence[str],
+    allowed_write_paths: Sequence[str],
+    validation: Mapping[str, object],
+) -> dict[str, object]:
+    covered = (
+        not blockers
+        and set(files_changed) == set(allowed_write_paths)
+        and source_action is not None
+    )
+    labels = []
+    if source_action is not None:
+        labels.append("source_region_replace_covered")
+    if CLICK_SEMVER_TEST_PATH in files_changed:
+        labels.append("repo_convention_pytest_function_replace_covered")
+    if validation.get("status") == "passed":
+        labels.append("focused_validation_covered")
+    return {
+        "accepted_edit_covered": covered,
+        "behavior_edit_covered": covered,
+        "coverage_labels": labels,
+        "materialization_gap": None if covered else "click_semver_candidate_gap",
+        "note": (
+            "The Click #3298 accepted source/test edit is covered only by the "
+            "bounded DATA-016 source-region action plus deterministic pytest "
+            "function replacement. This is local issue/PR replay evidence, not "
+            "a general source generator."
         ),
     }
 

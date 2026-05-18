@@ -226,7 +226,7 @@ Long-term target:
 
 ### GS7-010: Materialize held-out humanize tests-only candidate
 
-- Status: ready
+- Status: active
 - Why: after h11, the tests-only gate still needs another held-out repo before
   guarded opt-in can be considered.
 - Write scope: `j3/real_repo_tests_planner.py`,
@@ -548,6 +548,22 @@ Long-term target:
   hosted usage. Live validation against `/tmp/j3-mat-003-live/h11` passed with
   `7 passed in 0.01s`, changing only `h11/_util.py` among production files.
 
+### MAT-004: Second real one-file feature materialization probe
+
+- Status: ready
+- Why: one h11 source-region success is useful but not enough to prove the
+  materialization thesis across real repos.
+- Write scope: a focused materializer for one remaining one-file feature ladder
+  task, focused tests, optional docs, generated outputs under `/tmp`, and plan
+  updates.
+- Acceptance: attempt one additional pinned real one-file feature task with a
+  bounded source-region or typed-builder action; preserve the production-file
+  constraint; record candidate-after diff/AST metadata, mutation scope,
+  validation result, runtime, zero hosted usage, and the first blocker if the
+  edit cannot be expressed.
+- Tests: focused materializer tests, plan consistency, `git diff --check`, and
+  a live targeted validation command when a candidate is materialized.
+
 ### KNOW-001: Local knowledge inventory for the wedge
 
 - Status: done
@@ -745,6 +761,24 @@ Long-term target:
 - Tests: focused shadow-score tests, plan consistency, `git diff --check`, and
   the score/report smoke command.
 
+### REAL-009: One-file feature shadow score after h11 materializer
+
+- Status: active
+- Why: `MAT-003` proved one live h11 source edit, but product evidence needs the
+  ladder gate view: pass rates, distinct repos passing, mutation scope, and
+  unsupported feature blockers.
+- Write scope: focused one-file feature scorer code, focused tests, one compact
+  report under `docs/` if useful, generated outputs under `/tmp`, and plan
+  updates.
+- Acceptance: score the four one-file feature ladder tasks with the h11
+  candidate counted through `j3.real_repo_feature_materializer`; unsupported
+  feature tasks remain explicit materialization blockers; report pass@1,
+  pass@3, distinct repos passing, production-file constraint, runtime,
+  mutation-scope violations, zero hosted usage, and the one-file feature gate
+  decision.
+- Tests: focused feature-score tests, plan consistency, `git diff --check`, and
+  the score/report smoke command.
+
 ### DATA-005: Issue/PR replay preflight runner
 
 - Status: done
@@ -763,12 +797,11 @@ Long-term target:
 
 Start with these unless fresh evidence changes the order:
 
-1. `GS7-010`: materialize held-out `humanize` tests-only coverage for
-   `naturalsize` negative strings and suffix modes.
-2. `GS7-011`: materialize held-out `boltons` tests-only coverage for
+1. `GS7-011`: materialize held-out `boltons` tests-only coverage for
    `strutils.slugify` delimiter behavior.
-3. `REAL-008`: rerun the tests-only gate after the next held-out
+2. `REAL-008`: rerun the tests-only gate after the next held-out
    materializer batch.
+3. `MAT-004`: attempt a second real one-file feature materialization probe.
 4. `KNOW-003`: broaden knowledge-use attribution where scoring shows missing
    local-knowledge evidence.
 5. `MODEL-006`: candidate-after or AST-delta observation for ranking evidence.

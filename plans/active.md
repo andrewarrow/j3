@@ -21,22 +21,67 @@ This is the live coordinator board. Keep it current and compact.
   held-out h11 candidate at `pass@1 = 2/4` and `pass@3 = 2/4`; calibration
   pass rate is `1/1`, held-out pass rate is `1/3`, and tests-only guarded
   opt-in remains shadow-only. `MAT-003` now materializes and live-validates the
-  first real one-file source feature candidate on held-out `h11`.
+  first real one-file source feature candidate on held-out `h11`; `REAL-009`
+  must score it before source-feature gate claims are made.
 
 ## Active Tasks
 
-No active worker tasks are recorded after the latest completed batch.
+### `GS7-010`: Materialize held-out humanize tests-only candidate
+
+- Status: active
+- Owner: pending worker dispatch.
+- Goal: attack `humanize-tests-naturalsize-negative-strings` as the next
+  held-out tests-only generalization proof after the h11 pass.
+- Write scope: `j3/real_repo_tests_planner.py`,
+  `tests/test_real_repo_tests_planner.py`, optional generated outputs under
+  `/tmp`, and plan updates.
+- Do not touch: feature scorer/materializer files for `REAL-009`.
+- Acceptance: select `tests/test_filesize.py` from repo-state and
+  local-knowledge evidence; materialize pytest coverage for negative numeric
+  strings, GNU suffixes, and binary suffixes; preserve production files; emit
+  candidate-after, mutation-scope, validation-command, residual, and
+  knowledge-use metadata; and live-validate the pinned checkout if setup
+  succeeds. Record precise blockers for API, setup, or validation failures.
+- Tests: focused planner/materializer tests,
+  `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and a live
+  `python -m pytest tests/test_filesize.py -q --benchmark-disable` candidate
+  check when available.
+
+### `REAL-009`: One-file feature shadow score after h11 materializer
+
+- Status: active
+- Owner: pending worker dispatch.
+- Goal: score the `MAT-003` h11 one-file feature candidate against the
+  real-repo ladder instead of treating the live materializer check as product
+  gate evidence by itself.
+- Write scope: a focused feature scorer such as
+  `j3/real_repo_feature_shadow_score.py`,
+  `tests/test_real_repo_feature_shadow_score.py`, one compact
+  `docs/REAL_009_*.md` report if useful, generated outputs under `/tmp`, and
+  plan updates.
+- Do not touch: `j3/real_repo_tests_planner.py` or
+  `tests/test_real_repo_tests_planner.py`; those belong to `GS7-010`.
+- Acceptance: score the four one-file feature ladder tasks with the h11
+  candidate counted through `j3.real_repo_feature_materializer`; leave
+  unsupported feature tasks as explicit materialization blockers; report
+  pass@1/pass@3, distinct repos passing, production-file constraint, runtime,
+  mutation-scope violations, zero hosted usage, and the one-file feature gate
+  decision. Expected gate remains shadow-only unless at least two tasks across
+  two repos pass.
+- Tests: focused feature-score tests,
+  `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and a live
+  score/report smoke using the pinned h11 checkout.
 
 ## Ready Queue
 
 These are good next assignments for the next loop:
 
-1. `GS7-010`: materialize held-out `humanize` tests-only coverage for
-   `naturalsize` negative strings and suffix modes.
-2. `GS7-011`: materialize held-out `boltons` tests-only coverage for
+1. `GS7-011`: materialize held-out `boltons` tests-only coverage for
    `strutils.slugify` delimiter behavior.
-3. `REAL-008`: rerun the tests-only gate after the next held-out
+2. `REAL-008`: rerun the tests-only gate after the next held-out
    materializer batch.
+3. `MAT-004`: attempt a second real one-file feature materializer if
+   `REAL-009` shows the h11 source scorer path is sound.
 4. `KNOW-003`: broaden knowledge-use attribution where scoring shows missing
    local-knowledge evidence.
 5. `MODEL-006`: add candidate-after or AST-delta observation for ranking

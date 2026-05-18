@@ -37,7 +37,7 @@ This is the live coordinator board. Keep it current and compact.
 ### REAL-010: Full Tests-Only Gate After Boltons
 
 - Status: active
-- Owner: worker to be spawned by coordinator.
+- Owner: worker Fermat (`019e3bc5-6168-7a33-bec3-d20f90b538e3`).
 - Write scope: `j3/real_repo_shadow_score.py`,
   `tests/test_real_repo_shadow_score.py`, optional compact report under
   `docs/`, generated live artifacts under `/tmp`, and plan updates.
@@ -54,7 +54,7 @@ This is the live coordinator board. Keep it current and compact.
 ### MAT-004: Second Real One-File Feature Materialization Probe
 
 - Status: active
-- Owner: worker to be spawned by coordinator.
+- Owner: worker Pauli (`019e3bc5-6185-75e1-b6be-838855d032f3`).
 - Write scope: `j3/real_repo_feature_materializer.py`,
   `tests/test_real_repo_feature_materializer.py`, optional compact docs,
   generated live artifacts under `/tmp`, and plan updates.

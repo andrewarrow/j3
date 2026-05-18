@@ -1441,7 +1441,8 @@ meaningful work. Do not replace this file with a daily reset.
 
 - Owner: coordinator.
 - Files changed: `plans/active.md`, `plans/backlog.md`, `plans/progress.md`.
-- Tests: focused verification pending before worker spawn.
+- Tests: `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff
+  --check` -> passed.
 - Result: reviewed `GS7-011` and `REAL-008` worker results. Coordinator checks
   passed for `pytest tests/test_real_repo_tests_planner.py -q`, `pytest
   tests/test_real_repo_shadow_score.py -q`, `pytest
@@ -1450,8 +1451,11 @@ meaningful work. Do not replace this file with a daily reset.
   prove whether the tests-only gate still holds after counting boltons, and
   `MAT-004` must test whether the source-materialization approach generalizes
   beyond the first h11 one-file feature.
-- Commit: pending
-- Push: pending
-- Next: dispatch two workers with disjoint core write scopes for `REAL-010` and
-  `MAT-004`; update the board with worker ids immediately after spawn.
+- Commit: 41fa616
+- Push: succeeded
+- Next: workers dispatched for `REAL-010` and `MAT-004`: Fermat
+  (`019e3bc5-6168-7a33-bec3-d20f90b538e3`) owns the full tests-only gate
+  scorer, and Pauli (`019e3bc5-6185-75e1-b6be-838855d032f3`) owns the
+  iniconfig one-file feature materializer. Review both results, then keep the
+  loop moving to the next falsification task.
 - Blockers: none

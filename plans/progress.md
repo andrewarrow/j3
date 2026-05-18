@@ -2172,3 +2172,28 @@ meaningful work. Do not replace this file with a daily reset.
   attempt, preferably Click #2745 using the same candidate-attempt record shape
   only after reviewing whether its materialization can be expressed honestly.
 - Blockers: none for DATA-012.
+
+### 2026-05-18 - Coordinator Review And Dispatch - DATA-014 / DATA-015
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, `plans/progress.md`.
+- Tests: `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff
+  --check` -> passed.
+- Result: reviewed DATA-012 and DATA-013. Focused checks passed:
+  `python -m py_compile j3/issue_pr_candidate_attempt.py
+  tests/test_issue_pr_candidate_attempt.py`, `pytest
+  tests/test_issue_pr_candidate_attempt.py -q`, combined
+  prompt-spec/candidate-attempt tests, DATA-012 artifact inspection,
+  `python -m py_compile j3/issue_pr_prompt_spec.py
+  tests/test_issue_pr_prompt_spec.py`, `pytest
+  tests/test_issue_pr_prompt_spec.py -q`, DATA-013 CLI smoke,
+  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+  DATA-012 is a real validated issue/PR candidate, but only for a bounded
+  Requests materializer; the next loop tests generalization pressure with
+  Click #2745 and refreshes readiness now that Click #3298 has a normalized
+  spec.
+- Commit: pending.
+- Push: pending.
+- Next: run plan checks, commit this dispatch, then assign one worker to
+  `DATA-014` and one worker to `DATA-015` with disjoint write scopes.
+- Blockers: none.

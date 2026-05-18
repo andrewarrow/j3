@@ -44,16 +44,56 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-No active worker tasks recorded after the latest DATA-012 completion; the
-coordinator should dispatch the next ready bounded task if continuing the loop.
+### `DATA-014`: Click default_map issue/PR candidate attempt
+
+- Status: active
+- Owner: coordinator dispatch pending.
+- Why: `DATA-012` proved one real issue/PR candidate can be materialized and
+  validated for Requests. The next hard proof is whether the same
+  candidate-attempt record shape can cover the other DATA-010 ready row without
+  overfitting to Requests.
+- Write scope: `j3/issue_pr_candidate_attempt.py`,
+  `tests/test_issue_pr_candidate_attempt.py`, optional compact report,
+  generated outputs under `/tmp`, and plan updates. Do not edit
+  `j3/issue_pr_prompt_spec.py`, `j3/issue_pr_readiness.py`, or
+  `j3/local_knowledge.py`.
+- Acceptance: attempt exactly `pallets__click-issue-2745-pr-3364` on a
+  repo-before checkout. Record candidate actions, source/test materialization
+  result, candidate diff or exact blocker, allowed-write-path checks,
+  validation command/runtime, pass/fail, residual labels, and whether the
+  current structured-action surface covers the accepted edit. If Click #2745
+  needs a materialization action not present yet, record that exact gap rather
+  than broadening scope silently. No hosted LLM use.
+- Tests: focused candidate-attempt tests, `pytest
+  tests/test_plan_consistency.py -q`, `git diff --check`, and live
+  `pytest tests/test_defaults.py -q` validation when feasible.
+
+### `DATA-015`: Issue/PR readiness refresh after Click semver spec
+
+- Status: active
+- Owner: coordinator dispatch pending.
+- Why: `DATA-013` removed the prompt/spec blocker for
+  `pallets__click-issue-3298-pr-3299`; the readiness gate must be rerun before
+  any candidate attempt can use that row.
+- Write scope: readiness evidence/report generation, optional focused
+  readiness tests if behavior changes, compact report under `docs/`, generated
+  outputs under `/tmp`, and plan updates. Do not edit
+  `j3/issue_pr_candidate_attempt.py` or prompt/local-knowledge modules.
+- Acceptance: rerun the first-batch readiness gate with DATA-013 prompt/spec
+  evidence included. Record status for all three rows, missing-evidence
+  labels, validation commands, residual labels, and next recommended candidate
+  attempt. If Click #3298 becomes ready, make that explicit; if not, record the
+  exact remaining blocker.
+- Tests: focused readiness tests if code changes, `pytest
+  tests/test_plan_consistency.py -q`, `git diff --check`, and a CLI smoke over
+  the first three replay rows.
 
 ## Ready Queue
 
 These are good next assignments for the next loop:
 
-1. `DATA-014`: second readiness-approved issue/PR candidate attempt,
-   preferably Click #2745 if DATA-012 proves the candidate-attempt runner
-   surface.
+1. `DATA-016`: third issue/PR candidate attempt, preferably Click #3298 if
+   `DATA-015` marks it ready.
 2. `KNOW-003`: broaden knowledge-use attribution where scoring shows missing
    local-knowledge evidence.
 3. `MODEL-006`: add candidate-after or AST-delta observation for ranking

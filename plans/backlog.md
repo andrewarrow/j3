@@ -1270,17 +1270,53 @@ Long-term target:
 
 ### DATA-014: Second issue/PR candidate attempt
 
-- Status: ready
+- Status: active
 - Why: after `DATA-012`, the loop should immediately test whether the
   candidate-attempt surface generalizes to the other DATA-010 ready row instead
   of overfitting Requests.
-- Write scope: to be set after reviewing `DATA-012`; likely the same
-  candidate-attempt runner/materializer, focused tests, compact report,
+- Write scope: `j3/issue_pr_candidate_attempt.py`,
+  `tests/test_issue_pr_candidate_attempt.py`, optional compact report,
   generated outputs under `/tmp`, and plan updates.
-- Acceptance: attempt exactly `pallets__click-issue-2745-pr-3364` or another
-  DATA-010 ready row chosen from fresh evidence; record candidate actions,
-  materialization result, allowed-write-path checks, validation runtime,
-  pass/fail, residual labels, and structured-action coverage.
+- Acceptance: attempt exactly `pallets__click-issue-2745-pr-3364`, the other
+  DATA-010 ready row. Record candidate actions, source/test materialization
+  result, candidate diff or exact blocker, allowed-write-path checks,
+  validation command/runtime, pass/fail, residual labels, and whether the
+  existing structured-action surface covered the accepted edit. If the edit is
+  not expressible, record the exact materialization/action gap.
+- Tests: focused candidate-attempt tests, plan consistency, `git diff
+  --check`, and live focused validation when feasible.
+
+### DATA-015: Issue/PR readiness refresh after Click semver spec
+
+- Status: active
+- Why: `DATA-013` removed the prompt/spec blocker for
+  `pallets__click-issue-3298-pr-3299`; the readiness gate must be rerun with
+  that evidence before assigning a candidate attempt.
+- Write scope: readiness evidence/report generation, optional focused
+  readiness tests if behavior changes, compact report under `docs/`, generated
+  outputs under `/tmp`, and plan updates.
+- Acceptance: rerun readiness over the first three DATA-006 replay rows with
+  DATA-013 prompt/spec evidence included. Record which rows are ready, exact
+  missing-evidence labels, validation commands, residual labels, and the next
+  candidate-attempt recommendation. If Click #3298 is still blocked, preserve
+  the exact blocker; if it is ready, make that explicit.
+- Tests: focused readiness tests if code changes, plan consistency,
+  `git diff --check`, and a CLI smoke over the first three replay rows.
+
+### DATA-016: Third issue/PR candidate attempt
+
+- Status: ready
+- Why: after `DATA-014` and `DATA-015`, the loop should either attempt Click
+  #3298 if it is readiness-approved or record why the candidate-attempt
+  surface cannot yet cover it.
+- Write scope: to be set after reviewing `DATA-014` and `DATA-015`; likely
+  `j3/issue_pr_candidate_attempt.py`, focused tests, compact report, generated
+  outputs under `/tmp`, and plan updates.
+- Acceptance: attempt exactly the next readiness-approved row, preferably
+  `pallets__click-issue-3298-pr-3299`; record candidate actions,
+  materialization result, allowlist checks, validation runtime, pass/fail,
+  residual labels, and structured-action coverage or exact materialization
+  blocker.
 - Tests: focused candidate-attempt tests, plan consistency, `git diff
   --check`, and live focused validation when feasible.
 
@@ -1288,7 +1324,7 @@ Long-term target:
 
 Start with these unless fresh evidence changes the order:
 
-1. `DATA-014`: second readiness-approved issue/PR candidate attempt.
+1. `DATA-016`: third issue/PR candidate attempt if readiness-approved.
 2. `KNOW-003`: broaden knowledge-use attribution where scoring shows missing
    local-knowledge evidence.
 3. `MODEL-006`: candidate-after or AST-delta observation for ranking evidence.

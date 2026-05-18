@@ -47,7 +47,7 @@ This is the live coordinator board. Keep it current and compact.
 ### `DATA-012`: Requests issue/PR candidate attempt
 
 - Status: active
-- Owner: coordinator dispatch pending.
+- Owner: worker Boole (`019e3c1c-ef63-70b1-b284-d94f1b52c4e3`).
 - Why: `DATA-010` says `psf__requests-issue-7432-pr-7433` is ready for a
   candidate attempt. This is the next hard falsification point: can the
   structured stack materialize and validate a real accepted issue/PR edit?
@@ -69,7 +69,7 @@ This is the live coordinator board. Keep it current and compact.
 ### `DATA-013`: Click semver prompt/spec normalization
 
 - Status: active
-- Owner: coordinator dispatch pending.
+- Owner: worker Descartes (`019e3c1d-22be-7102-8ba4-288177d26123`).
 - Why: `DATA-010` blocked `pallets__click-issue-3298-pr-3299` only on missing
   prompt/spec evidence; KNOW-004 already acquired the local knowledge.
 - Write scope: `j3/issue_pr_prompt_spec.py`,

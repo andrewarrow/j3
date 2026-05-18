@@ -2091,8 +2091,10 @@ meaningful work. Do not replace this file with a daily reset.
   has two accepted-change paths and a hermetic DATA-008 validation recipe.
   In parallel, `DATA-013` will remove the Click #3298 prompt/spec blocker
   exposed by the readiness gate.
-- Commit: pending.
-- Push: pending.
-- Next: run plan checks, commit this dispatch, then assign one worker to
-  `DATA-012` and one worker to `DATA-013` with disjoint write scopes.
+- Commit: 999c02a.
+- Push: succeeded.
+- Next: workers dispatched for `DATA-012` and `DATA-013`: Boole
+  (`019e3c1c-ef63-70b1-b284-d94f1b52c4e3`) owns the Requests candidate
+  attempt, and Descartes (`019e3c1d-22be-7102-8ba4-288177d26123`) owns the
+  Click #3298 prompt/spec normalization.
 - Blockers: none.

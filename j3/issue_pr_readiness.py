@@ -12,9 +12,13 @@ from j3.issue_pr_preflight import (
     load_issue_pr_replay_manifest,
     select_issue_pr_replay_records,
 )
-from j3.issue_pr_prompt_spec import build_issue_pr_prompt_specs
+from j3.issue_pr_prompt_spec import (
+    PYTEST_STRICT_ADDOPTS_REPLAY_ID as PROMPT_SPEC_PYTEST_STRICT_ADDOPTS_REPLAY_ID,
+    build_issue_pr_prompt_specs,
+)
 from j3.local_knowledge import (
     CLICK_REPLAY_REQUIRED_KNOWLEDGE_CATEGORIES,
+    PYTEST_STRICT_ADDOPTS_REQUIRED_KNOWLEDGE_CATEGORIES,
     REQUESTS_REPLAY_REQUIRED_KNOWLEDGE_CATEGORIES,
 )
 
@@ -23,10 +27,12 @@ ISSUE_PR_READINESS_SCHEMA_VERSION = "issue-pr-readiness-v1"
 REQUESTS_REPLAY_ID = "psf__requests-issue-7432-pr-7433"
 CLICK_DEFAULT_MAP_REPLAY_ID = "pallets__click-issue-2745-pr-3364"
 CLICK_SEMVER_REPLAY_ID = "pallets__click-issue-3298-pr-3299"
+PYTEST_STRICT_ADDOPTS_REPLAY_ID = PROMPT_SPEC_PYTEST_STRICT_ADDOPTS_REPLAY_ID
 NEXT_STAGE_CHALLENGE_LABELS = ("materialization_gap", "ranking_gap")
 REQUIRED_KNOWLEDGE_BY_REPLAY_ID = {
     REQUESTS_REPLAY_ID: REQUESTS_REPLAY_REQUIRED_KNOWLEDGE_CATEGORIES,
     CLICK_SEMVER_REPLAY_ID: CLICK_REPLAY_REQUIRED_KNOWLEDGE_CATEGORIES,
+    PYTEST_STRICT_ADDOPTS_REPLAY_ID: PYTEST_STRICT_ADDOPTS_REQUIRED_KNOWLEDGE_CATEGORIES,
 }
 
 
@@ -173,6 +179,7 @@ def write_issue_pr_readiness_report(
     path: Path,
     *,
     summary: Mapping[str, object] | None = None,
+    title: str = "Issue/PR Candidate Readiness Gate",
 ) -> Path:
     """Write a compact Markdown readiness report."""
 
@@ -180,7 +187,7 @@ def write_issue_pr_readiness_report(
     resolved.parent.mkdir(parents=True, exist_ok=True)
     report_summary = dict(summary or summarize_issue_pr_readiness_rows(rows))
     lines = [
-        "# DATA-010 Issue/PR Candidate Readiness Gate",
+        f"# {title}",
         "",
         "Readiness scoring only; no candidate source edits were attempted.",
         "",
@@ -219,6 +226,8 @@ def write_issue_pr_readiness_report(
         lines.append(
             f"- Allowed write scope: `{_json_inline(row.get('allowed_write_scope', {}))}`"
         )
+        if row.get("accepted_edit_scope_note"):
+            lines.append(f"- Accepted edit scope note: {row['accepted_edit_scope_note']}")
         lines.append(
             f"- Residual labels: `{_json_inline(row.get('residual_labels', []))}`"
         )
@@ -226,6 +235,13 @@ def write_issue_pr_readiness_report(
             "- Next-stage challenge labels: "
             f"`{_json_inline(row.get('next_stage_challenge_labels', []))}`"
         )
+        for challenge in _mapping_sequence(row.get("next_stage_challenges")):
+            lines.append(
+                "- Next-stage challenge: `{label}` - {detail}".format(
+                    label=challenge.get("label"),
+                    detail=challenge.get("remaining_challenge"),
+                )
+            )
         for evidence in _mapping_sequence(row.get("evidence_sources")):
             lines.append(
                 "- Evidence: `{kind}` `{evidence_id}` from `{source}`".format(
@@ -258,6 +274,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--local-knowledge-evidence", type=Path, action="append", default=[])
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--report", type=Path)
+    parser.add_argument(
+        "--report-title",
+        default="Issue/PR Candidate Readiness Gate",
+    )
     args = parser.parse_args(argv)
 
     rows = build_issue_pr_readiness_rows(
@@ -280,6 +300,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             rows,
             args.report,
             summary=summary,
+            title=args.report_title,
         )
         summary["report_path"] = str(report_path)
     print(json.dumps(summary, sort_keys=True))
@@ -342,6 +363,7 @@ def _build_readiness_row(
 
     ready = not missing_labels
     next_stage = _next_stage_challenge_labels(replay_record, changed_files)
+    allowed_write_scope = _allowed_write_scope(changed_files)
     residual_labels = _residual_labels(
         replay_record=replay_record,
         prompt_ok=prompt_ok,
@@ -368,12 +390,17 @@ def _build_readiness_row(
         "evidence_ids": [str(evidence.get("id")) for evidence in evidence_sources],
         "evidence_sources": evidence_sources,
         "missing_evidence_labels": sorted(missing_labels),
-        "allowed_write_scope": _allowed_write_scope(changed_files),
+        "allowed_write_scope": allowed_write_scope,
+        "accepted_edit_scope_note": _accepted_edit_scope_note(allowed_write_scope),
         "validation_command": validation_command,
         "required_local_knowledge_categories": list(required_knowledge),
         "local_knowledge_categories_present": sorted(knowledge_categories_present),
         "residual_labels": residual_labels,
         "next_stage_challenge_labels": list(next_stage),
+        "next_stage_challenges": _next_stage_challenges(
+            next_stage,
+            allowed_write_scope,
+        ),
         "candidate_code_edits_attempted": False,
         "provenance": {
             "manifest_path": str(manifest_path),
@@ -471,12 +498,15 @@ def _required_knowledge_categories(
             from_preflight.extend(
                 _string_sequence(detail.get("required_knowledge_categories"))
             )
-    if from_preflight:
-        return tuple(dict.fromkeys(from_preflight))
     initial_labels = set(_string_sequence(replay_record.get("initial_residual_labels")))
-    if "local_knowledge_gap" not in initial_labels:
-        return ()
-    return tuple(REQUIRED_KNOWLEDGE_BY_REPLAY_ID.get(replay_id, ()))
+    static_required = (
+        REQUIRED_KNOWLEDGE_BY_REPLAY_ID.get(replay_id, ())
+        if "local_knowledge_gap" in initial_labels
+        else ()
+    )
+    if static_required:
+        return tuple(static_required)
+    return tuple(dict.fromkeys((*from_preflight, *static_required)))
 
 
 def _local_knowledge_status(
@@ -580,11 +610,20 @@ def _knowledge_category(record: Mapping[str, object]) -> str:
 
 def _allowed_write_scope(changed_files: Sequence[str]) -> dict[str, object]:
     source_paths = [path for path in changed_files if not _is_test_file(path)]
+    python_source_paths = [
+        path for path in changed_files if _is_python_source_file(path)
+    ]
     test_paths = [path for path in changed_files if _is_test_file(path)]
+    source_test_paths = [*python_source_paths, *test_paths]
+    auxiliary_paths = [path for path in changed_files if path not in source_test_paths]
     return {
         "paths": list(changed_files),
         "source_paths": source_paths,
+        "python_source_paths": python_source_paths,
         "test_paths": test_paths,
+        "source_test_paths": source_test_paths,
+        "auxiliary_paths": auxiliary_paths,
+        "full_accepted_edit_scope_paths": list(changed_files),
         "policy": "candidate_attempt_must_stay_within_accepted_change_paths",
     }
 
@@ -637,6 +676,69 @@ def _recommendation(
             + ",".join(next_stage_labels)
         )
     return "blocked_until_evidence:" + ",".join(sorted(missing_labels))
+
+
+def _next_stage_challenges(
+    labels: Sequence[str],
+    allowed_write_scope: Mapping[str, object],
+) -> list[dict[str, object]]:
+    source_test_paths = _string_sequence(allowed_write_scope.get("source_test_paths"))
+    auxiliary_paths = _string_sequence(allowed_write_scope.get("auxiliary_paths"))
+    challenges: list[dict[str, object]] = []
+    for label in labels:
+        if label == "materialization_gap":
+            challenges.append(
+                {
+                    "label": label,
+                    "remaining_challenge": (
+                        "materialize the accepted source/test edit paths "
+                        f"{source_test_paths}; full accepted-edit parity also "
+                        "requires either auxiliary materializers or explicit "
+                        f"exclusion for {auxiliary_paths}"
+                    ),
+                    "source_test_paths": source_test_paths,
+                    "auxiliary_paths": auxiliary_paths,
+                }
+            )
+        elif label == "ranking_gap":
+            challenges.append(
+                {
+                    "label": label,
+                    "remaining_challenge": (
+                        "rank the candidate action sequence against decoys using "
+                        "repo-state, prompt/spec, validation, and local-knowledge "
+                        "evidence before any guarded use"
+                    ),
+                }
+            )
+        else:
+            challenges.append(
+                {
+                    "label": label,
+                    "remaining_challenge": "unclassified next-stage challenge",
+                }
+            )
+    return challenges
+
+
+def _accepted_edit_scope_note(allowed_write_scope: Mapping[str, object]) -> str:
+    source_test_paths = _string_sequence(allowed_write_scope.get("source_test_paths"))
+    auxiliary_paths = _string_sequence(allowed_write_scope.get("auxiliary_paths"))
+    if not auxiliary_paths:
+        return (
+            "Source/test candidate scope matches the full accepted edit scope: "
+            f"{source_test_paths}."
+        )
+    return (
+        "Source/test candidate scope covers "
+        f"{source_test_paths}; full accepted-edit scope also includes auxiliary "
+        f"paths {auxiliary_paths}, which require auxiliary materializers or an "
+        "explicit source/test-only scope decision."
+    )
+
+
+def _is_python_source_file(path: str) -> bool:
+    return path.endswith(".py") and not _is_test_file(path)
 
 
 def _is_test_file(path: str) -> bool:

@@ -44,15 +44,6 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-- `DATA-022`: worker Dalton (`019e3c56-c72f-7c13-b4b0-29f9fdc3d2dd`) to
-  rerun candidate-readiness for `pytest-dev__pytest-issue-14442-pr-14443`
-  using DATA-018 preflight plus DATA-021 prompt/spec and local-knowledge
-  evidence. Ownership:
-  `j3/issue_pr_readiness.py`, `tests/test_issue_pr_readiness.py`, generated
-  `/tmp` readiness artifacts, optional compact report under `docs/`, and plan
-  updates. Acceptance: one readiness row for pytest #14442 with exact missing
-  evidence labels, allowed write scope, validation command, residual labels,
-  and recommendation; if not ready, preserve the concrete blocker.
 - `DATA-023`: worker Godel (`019e3c56-c75f-7320-8458-1a6d4fc9c3a9`) to audit
   materialization coverage for the accepted
   `pytest-dev__pytest-issue-14442-pr-14443` diff before any candidate edit.
@@ -96,6 +87,22 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `DATA-022`: refreshed candidate-readiness for exactly
+  `pytest-dev__pytest-issue-14442-pr-14443` using DATA-018 preflight evidence
+  and DATA-021 prompt/spec plus local-knowledge evidence. The row is
+  `ready_for_candidate_attempt` with no missing-evidence labels, validation
+  command `pytest testing/test_config.py testing/test_mark.py -q`, evidence
+  counts `{"prompt_spec":1,"validation":1,"local_knowledge":7}`, and residual
+  labels `materialization_gap` and `ranking_gap`. It explicitly records that
+  source/test candidate scope covers `src/_pytest/config/__init__.py`,
+  `testing/test_config.py`, and `testing/test_mark.py`, while full
+  accepted-edit scope also includes `AUTHORS` and
+  `changelog/14442.bugfix.rst`; the next-stage materialization challenge is
+  auxiliary materializers or an explicit source/test-only scope decision, plus
+  ranking against decoys. Artifacts:
+  `/tmp/j3-data-022-readiness-refresh/readiness.jsonl`,
+  `/tmp/j3-data-022-readiness-refresh/report.md`, and
+  `docs/DATA_022_PYTEST_ISSUE_PR_READINESS_REFRESH_2026-05-18.md`.
 - `DATA-021`: added normalized prompt/spec evidence and pytest local-knowledge
   extraction for exactly `pytest-dev__pytest-issue-14442-pr-14443`. The
   prompt/spec row covers minimal reproduction, observed behavior, expected

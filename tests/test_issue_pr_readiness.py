@@ -6,6 +6,7 @@ from pathlib import Path
 from j3.issue_pr_readiness import (
     CLICK_DEFAULT_MAP_REPLAY_ID,
     CLICK_SEMVER_REPLAY_ID,
+    PYTEST_STRICT_ADDOPTS_REPLAY_ID,
     REQUESTS_REPLAY_ID,
     build_issue_pr_readiness_rows,
     main,
@@ -19,6 +20,7 @@ from j3.issue_pr_prompt_spec import (
 )
 from j3.local_knowledge import (
     CLICK_REPLAY_REQUIRED_KNOWLEDGE_CATEGORIES,
+    PYTEST_STRICT_ADDOPTS_REQUIRED_KNOWLEDGE_CATEGORIES,
     REQUESTS_REPLAY_REQUIRED_KNOWLEDGE_CATEGORIES,
 )
 
@@ -123,6 +125,80 @@ def test_missing_local_knowledge_uses_exact_category_labels() -> None:
     )
 
 
+def test_pytest_strict_addopts_readiness_records_full_scope_note() -> None:
+    rows = build_issue_pr_readiness_rows(
+        manifest_path=MANIFEST_PATH,
+        replay_ids=[PYTEST_STRICT_ADDOPTS_REPLAY_ID],
+        preflight_records=[
+            _passed_preflight(
+                PYTEST_STRICT_ADDOPTS_REPLAY_ID,
+                "pytest testing/test_config.py testing/test_mark.py -q",
+                required_knowledge_categories=(
+                    "repo_changed_file_context",
+                    "repo_test_pattern",
+                    "focused_validation_recipe",
+                ),
+            )
+        ],
+        prompt_specs=[_normalized_prompt_spec(PYTEST_STRICT_ADDOPTS_REPLAY_ID)],
+        local_knowledge_records=_knowledge_records(
+            PYTEST_STRICT_ADDOPTS_REPLAY_ID,
+            PYTEST_STRICT_ADDOPTS_REQUIRED_KNOWLEDGE_CATEGORIES,
+        ),
+    )
+
+    row = rows[0]
+
+    assert row["ready_for_candidate_attempt"] is True
+    assert row["missing_evidence_labels"] == []
+    assert row["validation_command"] == (
+        "pytest testing/test_config.py testing/test_mark.py -q"
+    )
+    assert row["required_local_knowledge_categories"] == list(
+        PYTEST_STRICT_ADDOPTS_REQUIRED_KNOWLEDGE_CATEGORIES
+    )
+    assert row["local_knowledge_categories_present"] == sorted(
+        PYTEST_STRICT_ADDOPTS_REQUIRED_KNOWLEDGE_CATEGORIES
+    )
+    assert row["allowed_write_scope"]["python_source_paths"] == [
+        "src/_pytest/config/__init__.py"
+    ]
+    assert row["allowed_write_scope"]["test_paths"] == [
+        "testing/test_config.py",
+        "testing/test_mark.py",
+    ]
+    assert row["allowed_write_scope"]["auxiliary_paths"] == [
+        "AUTHORS",
+        "changelog/14442.bugfix.rst",
+    ]
+    assert "source/test candidate scope" in row["accepted_edit_scope_note"].lower()
+    assert "auxiliary materializers" in row["accepted_edit_scope_note"]
+    assert row["residual_labels"] == ["materialization_gap", "ranking_gap"]
+    assert row["next_stage_challenge_labels"] == [
+        "materialization_gap",
+        "ranking_gap",
+    ]
+    materialization_challenge = row["next_stage_challenges"][0]
+    assert materialization_challenge["label"] == "materialization_gap"
+    assert materialization_challenge["source_test_paths"] == [
+        "src/_pytest/config/__init__.py",
+        "testing/test_config.py",
+        "testing/test_mark.py",
+    ]
+    assert materialization_challenge["auxiliary_paths"] == [
+        "AUTHORS",
+        "changelog/14442.bugfix.rst",
+    ]
+    knowledge_evidence = [
+        evidence
+        for evidence in row["evidence_sources"]
+        if evidence["evidence_type"] == "local_knowledge"
+    ]
+    assert {
+        evidence["knowledge_category"] for evidence in knowledge_evidence
+    } == set(PYTEST_STRICT_ADDOPTS_REQUIRED_KNOWLEDGE_CATEGORIES)
+
+
 def test_readiness_jsonl_summary_report_and_cli(tmp_path: Path) -> None:
     preflight_path = tmp_path / "preflight.jsonl"
     prompt_path = tmp_path / "prompt.jsonl"
@@ -176,12 +252,17 @@ def test_readiness_jsonl_summary_report_and_cli(tmp_path: Path) -> None:
         summary=summary,
     )
     assert rewritten.exists()
-    assert "DATA-010 Issue/PR Candidate Readiness Gate" in report.read_text(
+    assert "Issue/PR Candidate Readiness Gate" in report.read_text(
         encoding="utf-8"
     )
 
 
-def _passed_preflight(replay_id: str, validation_command: str) -> dict[str, object]:
+def _passed_preflight(
+    replay_id: str,
+    validation_command: str,
+    *,
+    required_knowledge_categories: tuple[str, ...] = (),
+) -> dict[str, object]:
     return {
         "record_kind": "issue_pr_replay_preflight_outcome",
         "replay_id": replay_id,
@@ -198,7 +279,11 @@ def _passed_preflight(replay_id: str, validation_command: str) -> dict[str, obje
         "command_results": [
             {"name": "baseline_validation", "passed": True, "command": validation_command}
         ],
-        "blocker_details": [],
+        "blocker_details": [
+            {"required_knowledge_categories": list(required_knowledge_categories)}
+        ]
+        if required_knowledge_categories
+        else [],
     }
 
 

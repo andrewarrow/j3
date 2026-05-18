@@ -1521,7 +1521,7 @@ Long-term target:
 
 ### DATA-022: Pytest #14442 readiness refresh
 
-- Status: active
+- Status: done
 - Why: DATA-021 supplied the missing prompt/spec and local-knowledge evidence
   for the first DATA-018 pytest row. The next gate must say whether
   `pytest-dev__pytest-issue-14442-pr-14443` is candidate-ready, and if not,
@@ -1538,6 +1538,19 @@ Long-term target:
   concrete evidence gap.
 - Tests: focused readiness tests, plan consistency, `git diff --check`, and a
   CLI smoke for the single pytest row.
+- Completion note: refreshed readiness for exactly
+  `pytest-dev__pytest-issue-14442-pr-14443` using DATA-018 preflight evidence
+  plus DATA-021 prompt/spec and local-knowledge JSONL. The row is
+  `ready_for_candidate_attempt` with no missing-evidence labels, validation
+  command `pytest testing/test_config.py testing/test_mark.py -q`, seven
+  local-knowledge evidence records, and residual labels `materialization_gap`
+  and `ranking_gap`. The row explicitly separates source/test candidate scope
+  (`src/_pytest/config/__init__.py`, `testing/test_config.py`,
+  `testing/test_mark.py`) from full accepted-edit scope, which also includes
+  `AUTHORS` and `changelog/14442.bugfix.rst`. Artifacts:
+  `/tmp/j3-data-022-readiness-refresh/readiness.jsonl`,
+  `/tmp/j3-data-022-readiness-refresh/report.md`, and
+  `docs/DATA_022_PYTEST_ISSUE_PR_READINESS_REFRESH_2026-05-18.md`.
 
 ### DATA-023: Pytest #14442 materialization coverage audit
 

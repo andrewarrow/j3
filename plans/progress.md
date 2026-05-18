@@ -2662,3 +2662,45 @@ meaningful work. Do not replace this file with a daily reset.
 - Push: succeeded.
 - Next: continue non-overlapping coordinator review while both workers run.
 - Blockers: none.
+
+### 2026-05-18 - DATA-022 - Pytest #14442 readiness refresh
+
+- Owner: worker Dalton (`019e3c56-c72f-7c13-b4b0-29f9fdc3d2dd`).
+- Files changed: `j3/issue_pr_readiness.py`,
+  `tests/test_issue_pr_readiness.py`,
+  `docs/DATA_022_PYTEST_ISSUE_PR_READINESS_REFRESH_2026-05-18.md`,
+  `plans/active.md`, `plans/backlog.md`, `plans/progress.md`.
+- Tests: `python -m py_compile j3/issue_pr_readiness.py
+  tests/test_issue_pr_readiness.py` -> passed; `pytest
+  tests/test_issue_pr_readiness.py -q` -> 5 passed; CLI smoke `python -m
+  j3.issue_pr_readiness --manifest examples/issue_pr_mini_replay/manifest.json
+  --replay-id pytest-dev__pytest-issue-14442-pr-14443 --preflight-evidence
+  /tmp/j3-data-018-pytest-preflight/outcomes.jsonl --prompt-spec-evidence
+  /tmp/j3-data-021-pytest-14442-spec.jsonl --local-knowledge-evidence
+  /tmp/j3-data-021-pytest-14442-knowledge.jsonl --out
+  /tmp/j3-data-022-readiness-refresh/readiness.jsonl --report
+  /tmp/j3-data-022-readiness-refresh/report.md --report-title
+  "DATA-022 Pytest #14442 Readiness Refresh"` -> passed with
+  `status_counts = {"ready":1}` and
+  `missing_evidence_label_counts = {}`; `pytest
+  tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check` ->
+  passed.
+- Result: DATA-018 preflight plus DATA-021 prompt/spec and local-knowledge
+  evidence now make exactly `pytest-dev__pytest-issue-14442-pr-14443`
+  `ready_for_candidate_attempt`. The row has no missing-evidence labels,
+  allowed write scope for `AUTHORS`, `changelog/14442.bugfix.rst`,
+  `src/_pytest/config/__init__.py`, `testing/test_config.py`, and
+  `testing/test_mark.py`, validation command `pytest testing/test_config.py
+  testing/test_mark.py -q`, residual labels `materialization_gap` and
+  `ranking_gap`, and nine evidence IDs covering prompt/spec, validation, and
+  seven local-knowledge records. It records that source/test candidate scope
+  covers `src/_pytest/config/__init__.py`, `testing/test_config.py`, and
+  `testing/test_mark.py`; full accepted-edit parity also needs auxiliary
+  materializers or an explicit source/test-only exclusion for `AUTHORS` and
+  `changelog/14442.bugfix.rst`, plus ranking against decoys.
+- Commit: pending.
+- Push: pending.
+- Next: DATA-023 should finish the materialization coverage audit before any
+  candidate source/test edit.
+- Blockers: none for readiness evidence; remaining challenges are
+  materialization scope and ranking, not pre-edit evidence gaps.

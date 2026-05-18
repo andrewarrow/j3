@@ -2115,6 +2115,33 @@ def test_patch_uses_key_error_hints_to_prioritize_subscript_key_fix(tmp_path) ->
     assert result.selected.failure_hint_score > 0
 
 
+def test_patch_solves_http_no_store_subscript_key_with_matrix_cap(tmp_path) -> None:
+    repo = tmp_path / "greenshot_6"
+    shutil.copytree("examples/greenshot_6", repo)
+
+    result = plan_and_maybe_apply_patch(
+        repo=repo,
+        test_command=(
+            "python -m pytest "
+            "tests/test_httpcache.py::test_no_store_request_directive_is_tracked_separately"
+        ),
+        dry_run=True,
+        timeout_seconds=10,
+        max_candidates=8,
+    )
+
+    assert result.selected is not None
+    assert result.candidates_tested <= 8
+    assert result.selected.file_path == "httpcache/policy.py"
+    assert result.selected.action.kind.value == "change_subscript_key"
+    assert result.selected.action.params == {"from": "no-store", "to": "no_store"}
+    assert any(
+        candidate.action.kind.value == "change_subscript_key"
+        and candidate.action.params == {"from": "no-store", "to": "no_store"}
+        for candidate in result.tested_candidates
+    )
+
+
 def test_patch_solves_cross_module_swapped_arguments(tmp_path) -> None:
     repo = tmp_path / "greenshot_5"
     shutil.copytree("examples/greenshot_5", repo)

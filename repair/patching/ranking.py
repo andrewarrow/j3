@@ -175,6 +175,10 @@ def _score_against_hint(candidate: CandidatePatch, hint: PytestFailureHint) -> f
             score += 60.0
         if any(key in replacement for key in hint.missing_keys):
             score += 10.0
+        if replacement in hint.asserted_mapping_keys:
+            score += 45.0
+            if candidate.target_context.get("subscript_write_to_returned_mapping") is True:
+                score += 20.0
         if hint.assertions:
             score += 10.0
 

@@ -7,8 +7,7 @@ This is the live coordinator board. Keep it current and compact.
 - Coordinator mode: persistent multi-week execution.
 - Parallel worker default: 2.
 - Parallel worker maximum: 3, only with disjoint write scopes.
-- Current review state: `TRANS-002` and `DATA-001` follow-up evidence complete;
-  ready to assign schema validation and the subscript-key generation fix.
+- Current review state: `ACT-002` is complete; `DATA-002` remains active.
 - Current product gate stance: transition ranking remains shadow-only; the
   2026-05-18 `TRANS-001` matrix decision was `remain_shadow_only`.
 
@@ -24,18 +23,6 @@ This is the live coordinator board. Keep it current and compact.
   missing fields, bad splits, unsupported labels, list-typed expected fields,
   synthetic provenance, and cross-split near-duplicate review.
 - Tests: focused schema/profile tests plus `git diff --check`.
-
-### `ACT-002`: Fix subscript-key generation gap from matrix residuals
-
-- Owner: worker Noether (`019e395a-ddca-7a23-9907-647fcd5a5154`)
-- Status: active
-- Write scope: repair patching candidate generation/ranking around subscript
-  keys, focused tests, `plans/progress.md`, `plans/active.md`.
-- Acceptance: `greenshot_6_subset/http_no_store_directive_subscript_key`
-  produces and validates a passing `change_subscript_key` candidate within the
-  configured candidate cap without regressing candidate ranking.
-- Tests: focused patching/candidate ranking tests plus single GreenShot-6 task
-  smoke and `git diff --check`.
 
 ## Ready Queue
 
@@ -69,6 +56,11 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `ACT-002`: fixed the subscript-key candidate cap gap for
+  `greenshot_6_subset/http_no_store_directive_subscript_key`. The passing
+  `change_subscript_key` candidate from `"no-store"` to `"no_store"` now ranks
+  first and validates under `--max-candidates 8`; focused candidate ranking and
+  patching tests passed.
 - `DATA-001`: expanded `inspect-prompt-corpus` into a repeatable prompt corpus
   quality audit. Current 320-row corpus has no exact normalized duplicates,
   no unsupported scalar labels, and no family split leakage, but it has 2

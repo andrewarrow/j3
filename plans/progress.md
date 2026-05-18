@@ -170,3 +170,33 @@ meaningful work. Do not replace this file with a daily reset.
   explicit expected actions, list-typed expected fields, synthetic provenance,
   supported source types, and cross-split near-duplicate review.
 - Blockers: none
+
+### 2026-05-18 - ACT-002 - Subscript-key candidate cap fix
+
+- Owner: worker ACT-002
+- Files changed: `repair/patching/ranking.py`,
+  `tests/test_candidate_ranking.py`, `tests/test_patching.py`,
+  `plans/active.md`, `plans/progress.md`
+- Tests: `pytest
+  tests/test_candidate_ranking.py::test_prioritize_subscript_key_matching_asserted_mapping_key
+  -q` -> 1 passed; `pytest
+  tests/test_patching.py::test_patch_solves_http_no_store_subscript_key_with_matrix_cap
+  -q` -> 1 passed; `pytest tests/test_candidate_ranking.py -q` -> 36
+  passed; `pytest
+  tests/test_patching.py::test_patch_uses_key_error_hints_to_prioritize_subscript_key_fix
+  tests/test_patching.py::test_patch_solves_http_no_store_subscript_key_with_matrix_cap
+  -q` -> 2 passed; `python cli.py patch --repo
+  /tmp/j3-act002-smoke-*/greenshot_6 --test "python -m pytest
+  tests/test_httpcache.py::test_no_store_request_directive_is_tracked_separately"
+  --dry-run --max-candidates 8` -> passing `change_subscript_key` selected
+  as candidate 1.
+- Result: `change_subscript_key` candidates now get explicit failure-hint
+  priority when their replacement matches an asserted mapping key, with an
+  extra boost for returned-mapping writes. The focused
+  `http_no_store_directive_subscript_key` task now produces, tests, and
+  validates the `"no-store"` -> `"no_store"` candidate inside the matrix cap.
+- Commit: pending
+- Push: pending
+- Next: rerun the relevant transition matrix subset when coordinator wants
+  refreshed residual counts.
+- Blockers: none

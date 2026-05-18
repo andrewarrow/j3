@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 
 from j3.actions import PatchAction, PatchActionKind, PatchTarget
 from j3.ast_delta import python_ast_delta_metadata
@@ -436,6 +437,54 @@ def test_hint_first_ordering_is_preserved_without_ranker() -> None:
     )
 
     assert ranked[0].action.params["to"] == "<"
+    assert ranked[0].failure_hint_score > ranked[1].failure_hint_score
+
+
+def test_prioritize_subscript_key_matching_asserted_mapping_key() -> None:
+    subscript_candidate = replace(
+        _subscript_key_candidate(),
+        target_context={"subscript_write_to_returned_mapping": True},
+    )
+    source = "def customer_display_name(order):\n    return {'customer_name': False}\n"
+    dict_value_candidate = CandidatePatch(
+        file_path="orders.py",
+        action=PatchAction(
+            kind=PatchActionKind.CHANGE_DICT_VALUE,
+            target=PatchTarget(
+                file_path="orders.py",
+                start_line=2,
+                end_line=2,
+                symbol="customer_display_name",
+                node_kind="Dict",
+            ),
+            params={"key": "customer_name", "from": False, "to": True},
+        ),
+        edit=SourceEdit(
+            start_line=2,
+            start_col=12,
+            end_line=2,
+            end_col=34,
+            replacement="{'customer_name': True}",
+        ),
+        original_source=source,
+        patched_source=source.replace("False", "True"),
+        reason="try dictionary value 'customer_name'=True",
+        model_score=0.5,
+    )
+
+    ranked = prioritize_candidate_patches(
+        [dict_value_candidate, subscript_candidate],
+        hints=[
+            PytestFailureHint(
+                function_names={"customer_display_name"},
+                asserted_mapping_keys={"customer_name"},
+                assertions=[AssertionComparison(actual=False, operator="is", expected=True)],
+            )
+        ],
+    )
+
+    assert ranked[0].action.kind == PatchActionKind.CHANGE_SUBSCRIPT_KEY
+    assert ranked[0].action.params == {"from": "name", "to": "customer_name"}
     assert ranked[0].failure_hint_score > ranked[1].failure_hint_score
 
 

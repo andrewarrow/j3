@@ -3220,8 +3220,8 @@ meaningful work. Do not replace this file with a daily reset.
   `validation`, command classification is `dependency_fixture_setup_failure`,
   and evidence acquisition status is `blocked_on_validation_recipe`. The row
   remains blocked and is not ready for prompt/spec/local-knowledge acquisition.
-- Commit: 8741911.
-- Push: succeeded.
+- Commit: pending.
+- Push: pending.
 - Next: either define a bounded pip functional-test fixture setup recipe that
   includes `scripttest` and any subsequent explicit imports, or keep the row
   blocked while prioritizing Scrapy evidence acquisition.
@@ -3256,8 +3256,8 @@ meaningful work. Do not replace this file with a daily reset.
   the DATA-030 validation recipe, Scrapy downloader-aware queue behavior, slot
   active-download accounting, pqueue test patterns, provenance, validation
   split labels, and remaining readiness blockers.
-- Commit: pending.
-- Push: pending.
+- Commit: 917935c; push-record commit will contain this progress correction.
+- Push: succeeded.
 - Next: a future readiness or materialization task can consume
   `/tmp/j3-data-031-scrapy-7293-evidence/spec.jsonl` and
   `/tmp/j3-data-031-scrapy-7293-evidence/knowledge.jsonl`; candidate

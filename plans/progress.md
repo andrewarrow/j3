@@ -3793,8 +3793,8 @@ meaningful work. Do not replace this file with a daily reset.
   `decoy_validation_outcomes_include_passing_candidates`. This is negative
   evidence for the current validation signal: pass@1/pass@k remain blocked
   because two hard decoys pass focused validation.
-- Commit: pending.
-- Push: pending.
+- Commit: 2aa1a36.
+- Push: succeeded.
 - Next: dispatch the next hard probes: live pytest #14462 decoys or stronger
   Scrapy validation for passing decoys, plus the first typed-builder
   materialization row from MAT-007.

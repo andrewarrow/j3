@@ -398,7 +398,7 @@ Long-term target:
 
 ### KNOW-001: Local knowledge inventory for the wedge
 
-- Status: active
+- Status: done
 - Why: j3 needs pytest, packaging, small-library, and convention knowledge as
   local data rather than frontier-LLM runtime intuition.
 - Write scope: focused doc under `docs/`, optional small source inventory

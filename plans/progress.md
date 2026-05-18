@@ -652,3 +652,24 @@ meaningful work. Do not replace this file with a daily reset.
   (`019e3b50-fe48-7980-8df3-2a2575e815da`), and Boyle
   (`019e3b51-328a-7c62-adc9-ba8cbf1055ba`).
 - Blockers: none
+
+### 2026-05-18 - KNOW-001 - Local knowledge inventory
+
+- Owner: worker Beauvoir (`019e3b50-fe48-7980-8df3-2a2575e815da`)
+- Files changed: `docs/LOCAL_KNOWLEDGE_INVENTORY.md`,
+  `plans/active.md`, `plans/backlog.md`, `plans/progress.md`
+- Tests: `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check` -> passed.
+- Result: chose the first local-knowledge wedge as pytest authoring and
+  validation, Python packaging and import layout, and small-library
+  maintenance conventions. The inventory lists required concepts, maps them to
+  official docs snapshots, repo files, READMEs, tests, accepted diffs,
+  issue/PR replay rows, validation outcomes, and residual labels, and defines
+  JSONL record families with provenance, stable splits, leakage rules,
+  extraction rules, evaluation hooks, and first acquisition commands.
+- Commit: this task commit
+- Push: pending at commit time; see worker report
+- Next: build the real-repo preflight records, pytest pattern extractor, and
+  issue/PR replay preflight rows before wiring this knowledge into candidate
+  generation.
+- Blockers: none

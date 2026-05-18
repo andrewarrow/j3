@@ -35,21 +35,6 @@ This is the live coordinator board. Keep it current and compact.
 - Tests: focused source-region tests, `pytest tests/test_plan_consistency.py -q`,
   and `git diff --check`.
 
-### `KNOW-001`: Local knowledge inventory for the wedge
-
-- Status: active
-- Owner: worker Beauvoir (`019e3b50-fe48-7980-8df3-2a2575e815da`)
-- Started: 2026-05-18
-- Goal: define exactly what local pytest, packaging, and small-library
-  knowledge j3 needs for the wedge and how it becomes data rather than
-  hardcoded intuition.
-- Write scope: a focused doc under `docs/`, optional compact source manifest
-  under `examples/`, and plan updates.
-- Acceptance: list required concepts, candidate sources, extraction shapes,
-  provenance/split rules, evaluation hooks, and the first datasets or commands
-  needed to acquire the knowledge locally.
-- Tests: `pytest tests/test_plan_consistency.py -q` and `git diff --check`.
-
 ### `WEDGE-001`: Product wedge decision
 
 - Status: active
@@ -94,6 +79,13 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `KNOW-001`: added `docs/LOCAL_KNOWLEDGE_INVENTORY.md`, choosing the first
+  local-knowledge wedge as pytest authoring and validation, Python packaging
+  and import layout, and small-library maintenance conventions. The inventory
+  maps required concepts to local sources, JSONL record families, provenance
+  and split rules, extraction rules, evaluation hooks, and the first three
+  acquisition commands for real-repo preflight records, pytest pattern
+  extraction, and issue/PR replay knowledge residual rows.
 - `DATA-004`: added `docs/ISSUE_PR_MINI_REPLAY.md`,
   `examples/issue_pr_mini_replay/manifest.json`, and a schema test for 10
   curated issue/PR replay rows from Requests, Click, pytest, Poetry, pip, and

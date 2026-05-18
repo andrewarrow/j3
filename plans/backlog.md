@@ -587,6 +587,25 @@ Long-term target:
   metadata, protects production hashes, and live-validates the pinned checkout
   under `/tmp/j3-mat-004-live/iniconfig` with `51 passed in 0.03s`.
 
+### MAT-005: Held-out humanize one-file feature materialization probe
+
+- Status: active
+- Why: h11 plus calibration iniconfig are not enough to prove source
+  materialization on held-out library edits; humanize tests whether the
+  source-region approach handles a different API shape and optional-argument
+  semantics.
+- Write scope: a focused materializer for
+  `humanize-feature-naturalsize-zero-format`, focused tests, optional docs,
+  generated outputs under `/tmp`, and plan updates.
+- Acceptance: attempt the pinned humanize one-file feature task with a bounded
+  source-region or typed-builder action; preserve the production-file
+  constraint for `src/humanize/filesize.py`; add focused tests in
+  `tests/test_filesize.py`; record candidate-after diff/AST metadata,
+  mutation scope, validation result, runtime, zero hosted usage, and the first
+  blocker if the edit cannot be expressed.
+- Tests: focused materializer tests, plan consistency, `git diff --check`, and
+  live targeted validation when a candidate is materialized.
+
 ### KNOW-001: Local knowledge inventory for the wedge
 
 - Status: done
@@ -854,6 +873,24 @@ Long-term target:
   `iniconfig`, `humanize`, and `boltons` feature tasks remain explicit
   `one_file_materialization_gap` blockers.
 
+### REAL-011: One-file feature gate after iniconfig materializer
+
+- Status: active
+- Why: `MAT-004` added a second real source materializer, so the feature gate
+  needs immediate scoring rather than assuming the materialization thesis is
+  improving.
+- Write scope: focused one-file feature scorer code, focused tests, one compact
+  report under `docs/` if useful, generated outputs under `/tmp`, and plan
+  updates.
+- Acceptance: score the four one-file feature ladder tasks with both h11 and
+  iniconfig candidates counted through `j3.real_repo_feature_materializer`;
+  unsupported feature tasks remain explicit materialization blockers; report
+  calibration versus held-out rates, pass@1, pass@3, distinct repos passing,
+  production-file constraint, runtime, mutation-scope violations, hidden-like
+  agreement, zero hosted usage, and the one-file feature gate decision.
+- Tests: focused feature-score tests, plan consistency, `git diff --check`, and
+  the live score/report smoke command.
+
 ### DATA-005: Issue/PR replay preflight runner
 
 - Status: done
@@ -872,9 +909,9 @@ Long-term target:
 
 Start with these unless fresh evidence changes the order:
 
-1. `REAL-010`: rerun the full tests-only gate after the boltons materializer
-   result is integrated.
-2. `MAT-004`: attempt a second real one-file feature materialization probe.
+1. `REAL-011`: rerun the one-file feature gate after the iniconfig
+   materializer.
+2. `MAT-005`: attempt the held-out humanize one-file feature materializer.
 3. `KNOW-003`: broaden knowledge-use attribution where scoring shows missing
    local-knowledge evidence.
 4. `MODEL-006`: candidate-after or AST-delta observation for ranking evidence.

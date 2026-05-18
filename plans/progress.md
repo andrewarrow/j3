@@ -1520,10 +1520,28 @@ meaningful work. Do not replace this file with a daily reset.
   hashes before/after, mutation scope, validation runtime 0.248 seconds, zero
   writes outside the task allowlist, residual label
   `candidate_validation_passed`, and zero hosted usage.
-- Commit: pending before worker commit
-- Push: pending
+- Commit: 6b2258c
+- Push: succeeded
 - Next: rerun or extend the one-file feature shadow scorer so it counts both
   `h11-feature-bytesify-object-message` and
   `iniconfig-feature-section-default` before reconsidering the one-file feature
   gate.
+- Blockers: none
+
+### 2026-05-18 - Coordinator Review And Dispatch - REAL-011 / MAT-005
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, `plans/progress.md`.
+- Tests: focused verification pending before worker spawn.
+- Result: reviewed `REAL-010` and `MAT-004` worker results. `REAL-010`
+  answered the tests-only question with a full `4/4` materialized score, while
+  `MAT-004` added a second source-feature materializer but left the
+  one-file feature gate unrescored. The next batch keeps pressure on the hard
+  source-materialization question: `REAL-011` must prove or falsify the gate
+  impact of h11 plus iniconfig, and `MAT-005` attacks the next held-out
+  source-feature task in `humanize`.
+- Commit: pending
+- Push: pending
+- Next: dispatch two workers with disjoint core write scopes for `REAL-011` and
+  `MAT-005`; update the board with worker ids immediately after spawn.
 - Blockers: none

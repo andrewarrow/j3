@@ -34,8 +34,43 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-No active worker tasks are recorded after `MAT-004`; the coordinator should
-dispatch the next bounded task or record a concrete blocker.
+### REAL-011: One-File Feature Gate After Iniconfig
+
+- Status: active
+- Owner: worker to be spawned by coordinator.
+- Write scope: `j3/real_repo_feature_shadow_score.py`,
+  `tests/test_real_repo_feature_shadow_score.py`, optional compact report
+  under `docs/`, generated live artifacts under `/tmp`, and plan updates.
+- Acceptance: score the one-file feature ladder after `MAT-004`, counting both
+  `h11-feature-bytesify-object-message` and
+  `iniconfig-feature-section-default` through
+  `j3.real_repo_feature_materializer`; report calibration versus held-out
+  pass rates, total pass@1/pass@3, distinct repos passing, first passing
+  ranks, candidate validation statuses, production-file constraint,
+  mutation-scope violations, hidden-like agreement, zero hosted usage, and the
+  guarded one-file feature gate decision.
+- Required checks: focused feature-score tests, `pytest
+  tests/test_plan_consistency.py -q`, `git diff --check`, and a live
+  score/report smoke command with pinned `iniconfig` and `h11` checkouts when
+  feasible.
+
+### MAT-005: Held-Out Humanize One-File Feature Materializer
+
+- Status: active
+- Owner: worker to be spawned by coordinator.
+- Write scope: `j3/real_repo_feature_materializer.py`,
+  `tests/test_real_repo_feature_materializer.py`, optional compact docs,
+  generated live artifacts under `/tmp`, and plan updates.
+- Target task: `humanize-feature-naturalsize-zero-format`.
+- Acceptance: attempt the pinned `humanize` one-file feature task with a
+  bounded source-region or typed-builder action; preserve the one-production-
+  file constraint for `src/humanize/filesize.py`; add focused validation
+  coverage in `tests/test_filesize.py`; record candidate-after diff/AST
+  metadata, mutation scope, validation result, runtime, zero hosted usage, and
+  a machine-readable blocker if the edit cannot be expressed.
+- Required checks: focused feature materializer tests, `pytest
+  tests/test_plan_consistency.py -q`, `git diff --check`, and live targeted
+  validation when a candidate is materialized.
 
 ## Ready Queue
 

@@ -114,7 +114,7 @@ Long-term target:
 
 ### GS7-005: Add tests-only existing-repo support for one-file libraries
 
-- Status: active
+- Status: ready
 - Why: `ACT-001` classified `slugify_tests_only_existing` as a request-to-repo
   action coverage gap, not a repair ranking problem.
 - Write scope: existing-repo request planning/building for tests-only library
@@ -169,13 +169,14 @@ Long-term target:
 
 ### DATA-004: Normalize first 25 real prompt/repo transition examples
 
-- Status: blocked
-- Blocker: depends on reviewed real issue/PR export rows; DATA-003 provides the
-  manifest prototype and DATA-002 provides schema validation.
+- Status: active
 - Why: trainable prompt understanding needs real user-like task text.
 - Write scope: versioned local data file or external manifest; docs with
   provenance.
-- Acceptance: 25 reviewed rows with stable splits and validation commands.
+- Acceptance: mini replay of 10 real issue/PR examples with prompt text,
+  repo_before ref, accepted diff or PR ref, validation command when available,
+  provenance/license notes, stable split, and initial residual labels. The goal
+  is to see what breaks first, not to solve all 10.
 - Tests: schema validation and summary command.
 
 ## Workstream D: Transition Evidence And Guarded Product Gates
@@ -330,7 +331,7 @@ Long-term target:
 
 ### SCALE-001: Draft local pretraining feasibility inventory
 
-- Status: active
+- Status: ready
 - Why: the frontier target needs a sober estimate of data, compute, objectives,
   and model shapes.
 - Write scope: focused doc under `docs/`, with links to current local data
@@ -348,11 +349,66 @@ Long-term target:
   archives, synthetic rows, issue/PR mining, and generated artifacts.
 - Tests: `git diff --check`.
 
+## Workstream G: Hard Feasibility Proofs
+
+### REAL-001: Real repo eval ladder spike
+
+- Status: active
+- Why: the project must prove it generalizes outside j3-owned fixtures before
+  optimizing more GreenShot progress.
+- Write scope: `docs/REAL_REPO_EVAL_LADDER.md`, a small real-repo eval
+  manifest under `examples/` if useful, optional checker/tests, and plan
+  updates.
+- Acceptance: pick 3 to 5 small permissively licensed Python repos with stable
+  tests; define tests-only and one-file feature tasks; record checkout refs,
+  validation commands, task split rules, runtime limits, pass/fail metrics, and
+  first expected failure modes. No implementation heroics.
+- Tests: plan consistency, focused manifest/checker tests if code is added, and
+  `git diff --check`.
+
+### MAT-001: Code materialization audit
+
+- Status: active
+- Why: the biggest technical gap is turning predicted repo-after intent into
+  actual source when current structured actions are insufficient.
+- Write scope: `docs/CODE_MATERIALIZATION_GAP.md`, optional small
+  materialization classification fixture/checker, and plan updates.
+- Acceptance: classify 25 real accepted Python PR diffs as expressible by
+  current structured actions, a general typed builder, a repo-convention
+  builder, a constrained local generator, or not currently expressible; include
+  counts and the smallest executable probe that would reduce the biggest gap.
+- Tests: plan consistency, focused checker tests if code is added, and
+  `git diff --check`.
+
+### KNOW-001: Local knowledge inventory for the wedge
+
+- Status: ready
+- Why: j3 needs pytest, packaging, small-library, and convention knowledge as
+  local data rather than frontier-LLM runtime intuition.
+- Write scope: focused doc under `docs/`, optional small source inventory
+  manifest, and plan updates.
+- Acceptance: choose the wedge knowledge scope, list required concepts, map
+  each to candidate sources such as docs, READMEs, issue/PRs, tests, and
+  outcomes, and define how each becomes data instead of hardcoded rules.
+- Tests: plan consistency and `git diff --check`.
+
+### WEDGE-001: Product wedge decision
+
+- Status: ready
+- Why: the first usable product must be narrower than "Codex replacement" and
+  must force the hard repo understanding, validation, and materialization work.
+- Write scope: focused product decision doc and plan updates.
+- Acceptance: choose the first product path, likely tests-only edits plus
+  conservative small-library maintenance; define user promise, non-goals,
+  guarded rollout gates, and failure criteria for pivoting.
+- Tests: plan consistency and `git diff --check`.
+
 ## Next Recommended Queue
 
 Start with these unless fresh evidence changes the order:
 
-1. `SCALE-001`: draft local pretraining feasibility inventory.
-2. `GS7-005`: add tests-only existing-repo support for one-file libraries.
-3. `GS7-006`: add repo-state-aware library convention edits.
-4. `MODEL-003`: scorer residual slice for add-keyword decoys.
+1. `REAL-001`: real repo eval ladder spike.
+2. `MAT-001`: code materialization audit.
+3. `DATA-004`: issue/PR mini replay.
+4. `KNOW-001`: local knowledge inventory for the wedge.
+5. `WEDGE-001`: product wedge decision.

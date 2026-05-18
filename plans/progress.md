@@ -541,12 +541,13 @@ meaningful work. Do not replace this file with a daily reset.
 - Owner: coordinator
 - Files changed: `plans/active.md`, `plans/backlog.md`, `plans/progress.md`
 - Tests: pending coordinator dispatch check
-- Result: reviewed `MODEL-001` and `GS7-004`, then assigned `SCALE-001` and
-  `GS7-005` as the next parallel loop slice. The pair keeps one strategic
-  training-scale doc task running alongside one concrete request-to-repo action
-  coverage implementation task.
+- Result: reviewed `plans/strategy.md` after the north-star update and replaced
+  the comfort-zone queue with hard falsification spikes. The next active batch
+  is `REAL-001`, `MAT-001`, and `DATA-004`: real-repo harness, materialization
+  audit over real PR diffs, and issue/PR mini replay. `KNOW-001` and
+  `WEDGE-001` are queued next.
 - Commit: pending coordinator dispatch commit
 - Push: pending coordinator dispatch push
-- Next: spawn the `SCALE-001` and `GS7-005` workers after plan consistency
-  passes.
+- Next: spawn `REAL-001`, `MAT-001`, and `DATA-004` workers after plan
+  consistency passes.
 - Blockers: none

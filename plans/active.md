@@ -16,38 +16,58 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-### `SCALE-001`: Draft local pretraining feasibility inventory
+### `REAL-001`: Real repo eval ladder spike
 
 - Owner: worker pending assignment
 - Status: active
-- Write scope: focused doc under `docs/`, plus minimal plan updates. Do not
-  touch GreenShot implementation files or prompt-intent model code.
-- Acceptance: separates near-term local encoders from frontier-scale
-  language/code pretraining; lists current local data sources, missing data,
-  objective/model-shape options, compute assumptions, and go/no-go gates.
-- Tests: `pytest tests/test_plan_consistency.py -q` and `git diff --check`.
+- Write scope: `docs/REAL_REPO_EVAL_LADDER.md`, a small real-repo eval manifest
+  under `examples/` if useful, optional checker/tests, and plan updates. Do not
+  touch GreenShot implementation files.
+- Acceptance: pick 3 to 5 small permissively licensed Python repos with stable
+  tests, define tests-only and one-file feature tasks, specify checkout refs and
+  validation commands, and classify the first expected failure modes. No
+  implementation heroics; the output is the harness and falsifiable gates.
+- Tests: `pytest tests/test_plan_consistency.py -q`, any focused tests for a
+  manifest/checker if added, and `git diff --check`.
 
-### `GS7-005`: Add tests-only existing-repo support for one-file libraries
+### `MAT-001`: Probe the code materialization gap
 
 - Owner: worker pending assignment
 - Status: active
-- Write scope: existing-repo request planning/building for tests-only one-file
-  library support, fixtures, focused tests, CLI behavior if needed, and plan
-  updates. Do not touch pretraining docs or prompt-intent model code.
-- Acceptance: can inspect an existing one-file library, create a pytest file
-  without changing implementation, validate it, and record a structured
-  request-to-repo outcome for the `slugify_tests_only_existing` gap.
-- Tests: focused existing-repo/GreenShot tests,
+- Write scope: `docs/CODE_MATERIALIZATION_GAP.md`, optional small
+  materialization gap fixtures/checker under `examples/` or `j3/`, focused
+  tests if code is added, and plan updates. Do not touch prompt-intent model
+  code.
+- Acceptance: inventories how current structured actions become source files,
+  identifies representative repo-after targets that current builders cannot
+  materialize, classifies each as AST/config transform, typed builder,
+  repo-convention builder, or constrained local generation need, and defines
+  the smallest executable probe that would prove progress.
+- Tests: `pytest tests/test_plan_consistency.py -q`, any focused tests for a
+  checker if added, and `git diff --check`.
+
+### `DATA-004`: Issue/PR mini replay
+
+- Owner: worker pending assignment
+- Status: active
+- Write scope: issue/PR mini-replay manifest/docs/fixture data, small checker
+  or schema tests if useful, and plan updates. Do not edit GreenShot
+  implementation files.
+- Acceptance: normalize 10 real issue/PR examples into prompt text,
+  repo_before ref, accepted diff or PR ref, validation command when available,
+  provenance/license notes, stable split, and initial residual labels. The goal
+  is to see what breaks first, not to solve all 10.
+- Tests: schema/checker tests if code is added,
   `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
 
 ## Ready Queue
 
 These are good next assignments for the next loop:
 
-1. `GS7-006`: add repo-state-aware library convention edits.
-2. `MODEL-003`: scorer residual slice for add-keyword decoys.
-3. `MODEL-004`: scorer residual slice for mapping key/value targets.
-4. `SCALE-002`: define data provenance and release policy.
+1. `KNOW-001`: local knowledge inventory for the chosen wedge.
+2. `WEDGE-001`: choose and gate the six-month product wedge.
+3. `GS7-005`: add tests-only existing-repo support for one-file libraries.
+4. `GS7-006`: add repo-state-aware library convention edits.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
@@ -56,9 +76,6 @@ Run at most two tasks in parallel unless write scopes are plainly disjoint.
 - `TRANS-003`: blocked until the `TRANS-002` generation and ranking residuals
   have focused fixes or regression evidence; do not expand the full matrix
   until targeted `TRANS-004` evidence is recorded.
-- `DATA-004`: blocked until reviewed real issue/PR export rows are available;
-  the `DATA-003` manifest prototype exists and documents the remaining manual
-  review requirements.
 - `MODEL-002`: superseded by bounded scorer subtasks in the backlog, beginning
   with `MODEL-003` through `MODEL-006`.
 

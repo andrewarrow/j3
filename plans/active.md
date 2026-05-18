@@ -18,30 +18,12 @@ This is the live coordinator board. Keep it current and compact.
   now rerun the full tests-only shadow score through that candidate surface.
   `REAL-005` extends live baseline preflight to `h11` and `humanize`, so Gate A
   now has three baseline-passing repositories when combined with `REAL-004`
-  `iniconfig`; `GS7-009` materialized and live-validated the first held-out
-  tests-only h11 candidate, giving `REAL-007` the next scoring input after
-  `REAL-006` finishes calibration scoring.
+  `iniconfig`; `REAL-006` scored the materialized calibration candidate at
+  `pass@1 = 1/4` and `pass@3 = 1/4`, so tests-only guarded opt-in remains
+  shadow-only. `GS7-009` materialized and live-validated the first held-out
+  tests-only h11 candidate, giving `REAL-007` the next scoring input.
 
 ## Active Tasks
-
-### `REAL-006`: Rerun tests-only shadow score with candidate materialization
-
-- Status: active
-- Owner: worker Averroes (`019e3b97-5b97-7831-9de0-3f20aa198824`).
-- Goal: update the tests-only shadow scorer so `GS7-008`'s real-repo
-  candidate surface is actually scored for `iniconfig`, while held-out repos
-  remain explicit blockers until materializers exist.
-- Write scope: `j3/real_repo_shadow_score.py`,
-  `tests/test_real_repo_shadow_score.py`, one compact `docs/REAL_006_*.md`
-  report if useful, generated outputs under `/tmp`, and plan updates.
-- Do not touch: `j3/real_repo_tests_planner.py`; that belongs to `GS7-009`.
-- Acceptance: record pass@1/pass@3, first passing rank, candidate validation
-  status, runtime, mutation scope, hidden-like agreement, residual labels, zero
-  hosted usage, and a gate decision. Expected result is still
-  `remain_shadow_only` unless at least three of four tests-only tasks pass.
-- Tests: `pytest tests/test_real_repo_shadow_score.py -q`,
-  `pytest tests/test_plan_consistency.py -q`, `git diff --check`, plus the
-  shadow-score command/report smoke.
 
 ## Ready Queue
 
@@ -80,6 +62,15 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `REAL-006`: reran the tests-only shadow score through the GS7-008
+  materialized candidate surface. The live `/tmp` run scored
+  `iniconfig-tests-parse-comments` as a rank-1 passing candidate with
+  candidate validation `54 passed in 0.03s`, changed only
+  `testing/test_iniconfig.py`, changed zero production files, wrote nothing
+  outside the allowlist, recorded hidden-like agreement, and confirmed zero
+  hosted usage. Held-out `h11`, `humanize`, and `boltons` rows remained
+  explicit `test_case_materialization_gap` blockers for this scorer run, so
+  the gate stayed `remain_shadow_only` at `pass@1 = 1/4` and `pass@3 = 1/4`.
 - `GS7-009`: materialized the first held-out tests-only candidate for
   `h11-tests-bytesify-memoryview`. The planner selects
   `h11/tests/test_util.py` from repo-state plus manifest/local-knowledge

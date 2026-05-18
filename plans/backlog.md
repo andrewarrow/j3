@@ -630,7 +630,7 @@ Long-term target:
 
 ### REAL-006: Rerun tests-only shadow score with candidate materialization
 
-- Status: active
+- Status: done
 - Why: `REAL-003` scored `pass@3 = 0/4` before `GS7-008` could materialize a
   real-repo candidate. The next gate decision must measure the candidate
   surface directly, not infer progress from a standalone live check.
@@ -645,6 +645,15 @@ Long-term target:
 - Tests: `pytest tests/test_real_repo_shadow_score.py -q`,
   `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and the
   shadow-score command/report smoke.
+- Completion note: the scorer now accepts checkout paths, materializes the
+  `iniconfig-tests-parse-comments` calibration candidate through the GS7-008
+  planner surface, and optionally validates materialized candidates. The live
+  `/tmp/j3-real-006-shadow-score` run scored `pass@1 = 1/4` and
+  `pass@3 = 1/4`; `iniconfig` passed at rank 1 with `54 passed in 0.03s`,
+  zero production-file changes, zero writes outside the allowlist, hidden-like
+  agreement, and zero hosted usage. Held-out rows remained explicit
+  `test_case_materialization_gap` blockers, so the gate stayed
+  `remain_shadow_only`.
 
 ### REAL-007: Held-out tests-only score after first h11 materializer
 

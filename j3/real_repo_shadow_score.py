@@ -4,19 +4,31 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from time import perf_counter
-from typing import Mapping, Sequence
+from typing import Callable, Mapping, Sequence
 
 from j3.existing_repo_tests import (
     SLUGIFY_SOURCE,
     SLUGIFY_TESTS,
     SLUGIFY_FEATURES,
 )
+from j3.local_knowledge import extract_local_knowledge_records
 from j3.real_repo_preflight import (
     DEFAULT_MANIFEST_PATH,
     load_real_repo_ladder_manifest,
+)
+from j3.real_repo_tests_planner import (
+    CANDIDATE_VALIDATION_DEFERRED,
+    INICONFIG_PARSE_COMMENTS_TASK_ID,
+    REAL_REPO_TESTS_ACTION_FAMILY,
+    TEST_CASE_MATERIALIZATION_BLOCKER,
+    RealRepoTestsPlannerError,
+    blocker_from_error,
+    plan_real_repo_tests_only_candidate,
 )
 from j3.request_spec import parse_request_to_spec
 
@@ -30,27 +42,70 @@ SUPPORTED_TARGET_TEST_FILES = (SLUGIFY_TESTS,)
 SUPPORTED_FEATURES = tuple(SLUGIFY_FEATURES)
 DEFAULT_REPORT_PATH = Path("/tmp/j3-real-003-tests-only-shadow-score/report.md")
 DEFAULT_SCORE_PATH = Path("/tmp/j3-real-003-tests-only-shadow-score/score.json")
+DEFAULT_VALIDATION_TIMEOUT_SECONDS = 120
+
+ValidationRunner = Callable[[str, Path, int], "CandidateValidationResult"]
+
+
+@dataclass(frozen=True, slots=True)
+class CandidateValidationResult:
+    """Serializable result for one materialized candidate validation command."""
+
+    command: str
+    cwd: str
+    timeout_seconds: int
+    returncode: int | None
+    stdout: str = ""
+    stderr: str = ""
+    status: str = "passed"
+
+    def to_record(self) -> dict[str, object]:
+        return {
+            "command": self.command,
+            "cwd": self.cwd,
+            "timeout_seconds": self.timeout_seconds,
+            "returncode": self.returncode,
+            "stdout": self.stdout,
+            "stderr": self.stderr,
+            "status": self.status,
+        }
 
 
 def run_real_repo_tests_only_shadow_score(
     manifest_path: Path = DEFAULT_MANIFEST_PATH,
     *,
     created_at: str | None = None,
+    repo_paths: Mapping[str, Path] | None = None,
+    validate_candidates: bool = False,
+    validation_timeout_seconds: int = DEFAULT_VALIDATION_TIMEOUT_SECONDS,
+    validation_runner: ValidationRunner | None = None,
 ) -> dict[str, object]:
     """Score current tests-only wedge coverage against REAL-001 tasks.
 
-    This first wedge score is intentionally honest about the current action
-    surface: the GS7-005 builder can author tests for a root ``slugify.py``
-    fixture only. When a real-repo task cannot be targeted, the row records a
-    no-candidate residual instead of manufacturing a synthetic pass.
+    The calibration ``iniconfig`` row is scored through the GS7-008
+    repo-state-aware planner when a checkout path is supplied. Held-out repos
+    stay as explicit machine-readable blockers until their materializers exist.
     """
 
     started = perf_counter()
     manifest = load_real_repo_ladder_manifest(manifest_path)
     defaults = _mapping(manifest.get("defaults"), field="defaults")
     tests_only_tasks = _tests_only_tasks(manifest)
+    resolved_repo_paths = {
+        repo_id: path.expanduser().resolve()
+        for repo_id, path in (repo_paths or {}).items()
+    }
+    runner = validation_runner or run_candidate_validation_command
     rows = [
-        _score_tests_only_task(repo=repo, task=task, defaults=defaults)
+        _score_tests_only_task(
+            repo=repo,
+            task=task,
+            defaults=defaults,
+            repo_path=resolved_repo_paths.get(_required_str(repo, "id")),
+            validate_candidates=validate_candidates,
+            validation_timeout_seconds=validation_timeout_seconds,
+            validation_runner=runner,
+        )
         for repo, task in tests_only_tasks
     ]
     elapsed = perf_counter() - started
@@ -62,6 +117,7 @@ def run_real_repo_tests_only_shadow_score(
         1 for row in rows if row["selected_correct_test_location"] is True
     )
     candidate_count = sum(int(row["candidate_count"]) for row in rows)
+    candidates_tested = sum(int(row["candidates_tested"]) for row in rows)
     runtime_not_run_reasons = sorted(
         {
             str(_mapping(row["runtime"], field="runtime").get("not_run_reason"))
@@ -98,19 +154,24 @@ def run_real_repo_tests_only_shadow_score(
         "max_candidates": int(defaults.get("max_candidates", 3)),
         "zero_hosted_usage_confirmed": True,
         "supported_action_surface": {
-            "action_family": SUPPORTED_ACTION_FAMILY,
-            "domain": SUPPORTED_DOMAIN,
-            "source_files": list(SUPPORTED_SOURCE_FILES),
-            "target_test_files": list(SUPPORTED_TARGET_TEST_FILES),
-            "features": list(SUPPORTED_FEATURES),
+            "legacy_action_family": SUPPORTED_ACTION_FAMILY,
+            "real_repo_action_family": REAL_REPO_TESTS_ACTION_FAMILY,
+            "calibration_materializer": INICONFIG_PARSE_COMMENTS_TASK_ID,
+            "heldout_materializers": [],
+            "legacy_domain": SUPPORTED_DOMAIN,
+            "legacy_source_files": list(SUPPORTED_SOURCE_FILES),
+            "legacy_target_test_files": list(SUPPORTED_TARGET_TEST_FILES),
+            "legacy_features": list(SUPPORTED_FEATURES),
             "scope_note": (
-                "GS7-005 supports a one-file root slugify.py fixture only; "
-                "it does not yet inspect arbitrary real-repo package/test layouts."
+                "GS7-008 materializes the iniconfig calibration tests-only "
+                "candidate; held-out tests-only materializers are not counted "
+                "until implemented and live validated."
             ),
         },
         "metrics": {
             "tasks_scored": total,
             "candidate_count": candidate_count,
+            "candidates_tested": candidates_tested,
             "pass@1": f"{pass_at_1_count}/{total}",
             "pass@3": f"{pass_at_3_count}/{total}",
             "pass_at_1_count": pass_at_1_count,
@@ -123,10 +184,21 @@ def run_real_repo_tests_only_shadow_score(
             "production_file_modifications": production_file_modifications,
             "writes_outside_allowlist": writes_outside_allowlist,
             "hidden_like_agreement": {
-                "agreeing": 0,
-                "disagreeing": 0,
-                "not_run": total,
-                "reason": "no public-validating candidates reached hidden-like checks",
+                "agreeing": sum(
+                    1 for row in rows if row["hidden_like_agreement"] == "agrees"
+                ),
+                "disagreeing": sum(
+                    1
+                    for row in rows
+                    if row["hidden_like_agreement"] == "disagrees"
+                ),
+                "not_run": sum(
+                    1 for row in rows if row["hidden_like_agreement"] == "not_run"
+                ),
+                "reason": (
+                    "hidden-like agreement is evaluated only for public-validating "
+                    "materialized candidates with explicit local signals"
+                ),
             },
             "runtime_seconds": round(elapsed, 6),
             "runtime_not_run_reasons": runtime_not_run_reasons,
@@ -139,13 +211,14 @@ def run_real_repo_tests_only_shadow_score(
             "guarded_opt_in_allowed": False,
             "reason": (
                 f"pass@3 is {pass_at_3_count}/{total}, below the "
-                f"{minimum_pass_at_3}/{total} tests-only gate, because the "
-                "current tests-only builder cannot target these real repos."
+                f"{minimum_pass_at_3}/{total} tests-only gate. The iniconfig "
+                "calibration candidate is scored, but held-out tests-only "
+                "materializers are still blockers."
             ),
             "failed_checks": [
                 "pass@3 below tests-only gate",
-                "no hidden-like agreement can be measured without a passing public validation",
-                "correct test location selected for fewer than 3/4 tasks",
+                "fewer than 3/4 tests-only tasks have passing materialized candidates",
+                "held-out tests-only materializers are not yet available",
             ],
         },
         "task_results": rows,
@@ -172,35 +245,53 @@ def format_real_repo_tests_only_shadow_score(score: Mapping[str, object]) -> str
     gate = _mapping(score.get("gate_decision"), field="gate_decision")
     rows = _sequence(score.get("task_results"), field="task_results")
     lines = [
-        "# REAL-003 Tests-Only Shadow Score",
+        "# REAL-006 Tests-Only Shadow Score",
         "",
         f"- Schema: `{score.get('schema_version')}`",
         f"- Manifest: `{score.get('manifest_path')}`",
         f"- Max candidates: `{score.get('max_candidates')}`",
         f"- Zero hosted usage: `{str(score.get('zero_hosted_usage_confirmed')).lower()}`",
         f"- Candidate count: `{metrics.get('candidate_count')}`",
+        f"- Candidates tested: `{metrics.get('candidates_tested')}`",
         f"- pass@1: `{metrics.get('pass@1')}`",
         f"- pass@3: `{metrics.get('pass@3')}`",
         f"- Correct test location: `{metrics.get('correct_test_location')}`",
-        f"- Runtime: `{metrics.get('runtime_seconds')}s` for the shadow scorer; candidate validation was not run.",
+        f"- Runtime: `{metrics.get('runtime_seconds')}s`",
         f"- Gate decision: `{gate.get('decision')}`",
         "",
         "## Task Results",
         "",
-        "| Task | Split | pass@1 | pass@3 | First passing rank | Hidden-like | Residual labels |",
-        "| --- | --- | --- | --- | --- | --- | --- |",
+        "| Task | Split | Candidate validation | pass@1 | pass@3 | First passing rank | Mutation scope | Hidden-like | Residual labels |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
     for row_value in rows:
         row = _mapping(row_value, field="task_result")
         labels = ", ".join(str(label) for label in _sequence(row.get("residual_labels"), field="residual_labels"))
         first_rank = row.get("first_passing_rank")
+        validation = _mapping(row.get("candidate_validation"), field="candidate_validation")
+        mutation_scope = _mapping(row.get("mutation_scope"), field="mutation_scope")
+        changed = len(_sequence(mutation_scope.get("files_changed"), field="files_changed"))
+        production = len(
+            _sequence(
+                mutation_scope.get("production_files_changed"),
+                field="production_files_changed",
+            )
+        )
+        outside = len(
+            _sequence(
+                mutation_scope.get("writes_outside_allowlist"),
+                field="writes_outside_allowlist",
+            )
+        )
         lines.append(
             "| "
             f"`{row.get('task_id')}` | "
             f"{row.get('repo_split')} | "
+            f"{validation.get('status')} | "
             f"{row.get('pass@1')} | "
             f"{row.get('pass@3')} | "
             f"{first_rank if first_rank is not None else 'none'} | "
+            f"{changed} changed, {production} production, {outside} outside allowlist | "
             f"{row.get('hidden_like_agreement')} | "
             f"{labels} |"
         )
@@ -229,7 +320,7 @@ def write_real_repo_tests_only_shadow_report(
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Run the REAL-003 tests-only wedge shadow score."
+        description="Run the REAL-006 tests-only wedge shadow score."
     )
     parser.add_argument(
         "--manifest",
@@ -249,9 +340,31 @@ def main(argv: Sequence[str] | None = None) -> int:
         default=DEFAULT_REPORT_PATH,
         help="Markdown report output path",
     )
+    parser.add_argument(
+        "--repo-path",
+        action="append",
+        default=[],
+        metavar="REPO_ID=PATH",
+        help="Existing checkout path for a repo id. May be repeated.",
+    )
+    parser.add_argument(
+        "--validate-candidates",
+        action="store_true",
+        help="Run public validation commands for materialized candidates.",
+    )
+    parser.add_argument(
+        "--validation-timeout-seconds",
+        type=int,
+        default=DEFAULT_VALIDATION_TIMEOUT_SECONDS,
+    )
     args = parser.parse_args(argv)
 
-    score = run_real_repo_tests_only_shadow_score(args.manifest)
+    score = run_real_repo_tests_only_shadow_score(
+        args.manifest,
+        repo_paths=_parse_repo_path_args(args.repo_path),
+        validate_candidates=args.validate_candidates,
+        validation_timeout_seconds=args.validation_timeout_seconds,
+    )
     score_path = write_real_repo_tests_only_shadow_score(score, args.out)
     report_path = write_real_repo_tests_only_shadow_report(score, args.report)
     metrics = _mapping(score["metrics"], field="metrics")
@@ -262,6 +375,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     print(f"pass@1: {metrics['pass@1']}")
     print(f"pass@3: {metrics['pass@3']}")
     print(f"candidate count: {metrics['candidate_count']}")
+    print(f"candidates tested: {metrics['candidates_tested']}")
     print(f"gate decision: {gate['decision']}")
     print(f"score: {score_path}")
     print(f"report: {report_path}")
@@ -273,7 +387,541 @@ def _score_tests_only_task(
     repo: Mapping[str, object],
     task: Mapping[str, object],
     defaults: Mapping[str, object],
+    repo_path: Path | None,
+    validate_candidates: bool,
+    validation_timeout_seconds: int,
+    validation_runner: ValidationRunner,
 ) -> dict[str, object]:
+    task_id = _required_str(task, "id")
+    repo_id = _required_str(repo, "id")
+    prompt = _required_str(task, "prompt")
+    allowed_write_paths = _string_sequence(
+        task.get("allowed_write_paths"),
+        field="allowed_write_paths",
+    )
+    public_validation_commands = _string_sequence(
+        task.get("public_validation_commands"),
+        field="public_validation_commands",
+    )
+    hidden_like_checks = _string_sequence(
+        task.get("hidden_like_checks"),
+        field="hidden_like_checks",
+    )
+    expected_failure_modes = list(
+        _string_sequence(task.get("expected_failure_modes"), field="expected_failure_modes")
+    )
+
+    if task_id == INICONFIG_PARSE_COMMENTS_TASK_ID:
+        return _score_materialized_iniconfig_task(
+            repo=repo,
+            task=task,
+            defaults=defaults,
+            repo_path=repo_path,
+            validate_candidates=validate_candidates,
+            validation_timeout_seconds=validation_timeout_seconds,
+            validation_runner=validation_runner,
+        )
+
+    spec = parse_request_to_spec(prompt, task_name=task_id)
+    residual_labels = _unique(
+        [
+            "heldout_materializer_missing",
+            TEST_CASE_MATERIALIZATION_BLOCKER,
+            *expected_failure_modes,
+        ]
+    )
+    blocker = {
+        "field": "test_case_materialization",
+        "reason": TEST_CASE_MATERIALIZATION_BLOCKER,
+        "message": (
+            "held-out tests-only candidate materialization is not implemented "
+            f"for {task_id}"
+        ),
+    }
+    return {
+        "repo_id": repo_id,
+        "repo_split": str(repo.get("split", "unknown")),
+        "checkout_ref": _required_str(repo, "checkout_ref"),
+        "task_id": task_id,
+        "task_type": "tests_only",
+        "prompt": prompt,
+        "allowed_write_paths": list(allowed_write_paths),
+        "public_validation_commands": list(public_validation_commands),
+        "hidden_like_checks": list(hidden_like_checks),
+        "max_candidates": int(defaults.get("max_candidates", 3)),
+        "candidate_count": 0,
+        "candidates_tested": 0,
+        "pass@1": False,
+        "pass@3": False,
+        "first_passing_rank": None,
+        "runtime": {
+            "status": "not_run",
+            "runtime_seconds": None,
+            "not_run_reason": TEST_CASE_MATERIALIZATION_BLOCKER,
+        },
+        "candidate_validation": {
+            "status": "blocked",
+            "commands": list(public_validation_commands),
+            "selected_command": public_validation_commands[0] if public_validation_commands else None,
+            "not_run_reason": TEST_CASE_MATERIALIZATION_BLOCKER,
+            "result": None,
+        },
+        "mutation_scope": {
+            "files_changed": [],
+            "production_files_changed": [],
+            "writes_outside_allowlist": [],
+            "candidate_target_paths_considered": [],
+            "candidate_target_path_violations": [],
+        },
+        "hidden_like_agreement": "not_run",
+        "hidden_like_evidence": {
+            "status": "not_run",
+            "reason": "candidate materializer missing",
+        },
+        "selected_correct_test_location": False,
+        "residual_labels": residual_labels,
+        "support_observations": [
+            "held-out repo left as an explicit blocker until a materializer exists"
+        ],
+        "blockers": [blocker],
+        "candidate_record": None,
+        "parsed_request_spec": spec.to_record(),
+        "zero_hosted_usage_confirmed": True,
+    }
+
+
+def _score_materialized_iniconfig_task(
+    *,
+    repo: Mapping[str, object],
+    task: Mapping[str, object],
+    defaults: Mapping[str, object],
+    repo_path: Path | None,
+    validate_candidates: bool,
+    validation_timeout_seconds: int,
+    validation_runner: ValidationRunner,
+) -> dict[str, object]:
+    started = perf_counter()
+    repo_id = _required_str(repo, "id")
+    task_id = _required_str(task, "id")
+    prompt = _required_str(task, "prompt")
+    allowed_write_paths = _string_sequence(
+        task.get("allowed_write_paths"),
+        field="allowed_write_paths",
+    )
+    public_validation_commands = _string_sequence(
+        task.get("public_validation_commands"),
+        field="public_validation_commands",
+    )
+    hidden_like_checks = _string_sequence(
+        task.get("hidden_like_checks"),
+        field="hidden_like_checks",
+    )
+    expected_failure_modes = list(
+        _string_sequence(task.get("expected_failure_modes"), field="expected_failure_modes")
+    )
+    spec = parse_request_to_spec(prompt, task_name=task_id)
+
+    if repo_path is None:
+        blocker = {
+            "field": "repo_path",
+            "reason": "candidate_checkout_missing",
+            "message": "iniconfig candidate scoring requires a checkout path",
+        }
+        return _blocked_materialized_row(
+            repo=repo,
+            task=task,
+            defaults=defaults,
+            spec_record=spec.to_record(),
+            blocker=blocker,
+            residual_labels=["candidate_checkout_missing", *expected_failure_modes],
+            runtime_seconds=perf_counter() - started,
+        )
+
+    try:
+        knowledge_records = extract_local_knowledge_records(
+            repo_path,
+            repo_id=repo_id,
+            repo_ref=_required_str(repo, "checkout_ref"),
+            split=str(repo.get("split", "unknown")),
+            repo_url=_required_str(repo, "upstream"),
+            license=_required_str(repo, "license"),
+            retrieved_at="2026-05-18T00:00:00Z",
+            setup_commands=_string_sequence(repo.get("setup_commands"), field="setup_commands"),
+            baseline_validation_commands=_string_sequence(
+                repo.get("baseline_validation_commands"),
+                field="baseline_validation_commands",
+            ),
+            tasks=[task],
+        )
+        candidate = plan_real_repo_tests_only_candidate(
+            repo_path,
+            repo=repo,
+            task=task,
+            local_knowledge_records=knowledge_records,
+            write=True,
+        )
+        candidate_record = candidate.to_record()
+    except RealRepoTestsPlannerError as error:
+        blocker = blocker_from_error(error)
+        return _blocked_materialized_row(
+            repo=repo,
+            task=task,
+            defaults=defaults,
+            spec_record=spec.to_record(),
+            blocker=blocker,
+            residual_labels=[
+                str(blocker.get("reason", "candidate_planning_failed")),
+                *expected_failure_modes,
+            ],
+            runtime_seconds=perf_counter() - started,
+        )
+
+    candidate_status = str(candidate_record["status"])
+    candidate_count = 1 if candidate_status in {"materialized", "already_applied"} else 0
+    candidate_validation = _candidate_validation_record(
+        repo_path=repo_path,
+        candidate_record=candidate_record,
+        validate_candidates=validate_candidates,
+        timeout_seconds=validation_timeout_seconds,
+        runner=validation_runner,
+    )
+    validation_status = str(candidate_validation["status"])
+    passing = validation_status == "passed"
+    mutation_scope = _mapping(candidate_record["mutation_scope"], field="mutation_scope")
+    target_test_file = str(candidate_record["target_test_file"])
+    target_violations = _paths_outside_allowlist([target_test_file], allowed_write_paths)
+    hidden_like = _hidden_like_agreement(
+        task=task,
+        candidate_record=candidate_record,
+        candidate_validation=candidate_validation,
+    )
+    blockers = [
+        dict(_mapping(blocker, field="candidate.blocker"))
+        for blocker in _sequence(candidate_record.get("blockers"), field="blockers")
+    ]
+    residual_labels = _unique(
+        [
+            *(
+                []
+                if passing
+                else [
+                    label
+                    for label in _string_sequence(
+                        candidate_record.get("residual_labels", []),
+                        field="candidate.residual_labels",
+                    )
+                    if label != CANDIDATE_VALIDATION_DEFERRED
+                ]
+            ),
+            *([] if passing else [validation_status]),
+            *([] if passing else expected_failure_modes),
+        ]
+    )
+    if not residual_labels and not passing:
+        residual_labels.append("candidate_validation_not_passing")
+
+    runtime_status = "passed" if passing else validation_status
+    runtime_not_run_reason = None
+    if validation_status in {"deferred", "blocked"}:
+        runtime_status = "not_run"
+        runtime_not_run_reason = str(candidate_validation.get("not_run_reason"))
+
+    return {
+        "repo_id": repo_id,
+        "repo_split": str(repo.get("split", "unknown")),
+        "checkout_ref": _required_str(repo, "checkout_ref"),
+        "task_id": task_id,
+        "task_type": "tests_only",
+        "prompt": prompt,
+        "allowed_write_paths": list(allowed_write_paths),
+        "public_validation_commands": list(public_validation_commands),
+        "hidden_like_checks": list(hidden_like_checks),
+        "max_candidates": int(defaults.get("max_candidates", 3)),
+        "candidate_count": candidate_count,
+        "candidates_tested": 1 if validation_status in {"passed", "failed"} else 0,
+        "pass@1": passing,
+        "pass@3": passing,
+        "first_passing_rank": 1 if passing else None,
+        "runtime": {
+            "status": runtime_status,
+            "runtime_seconds": round(perf_counter() - started, 6),
+            "not_run_reason": runtime_not_run_reason,
+        },
+        "candidate_validation": candidate_validation,
+        "mutation_scope": {
+            "files_changed": list(
+                _sequence(mutation_scope.get("files_changed"), field="files_changed")
+            ),
+            "production_files_changed": list(
+                _sequence(
+                    mutation_scope.get("production_files_changed"),
+                    field="production_files_changed",
+                )
+            ),
+            "writes_outside_allowlist": list(
+                _sequence(
+                    mutation_scope.get("writes_outside_allowlist"),
+                    field="writes_outside_allowlist",
+                )
+            ),
+            "candidate_target_paths_considered": [target_test_file],
+            "candidate_target_path_violations": list(target_violations),
+            "candidate_after": _json_copy(candidate_record.get("candidate_after", {})),
+        },
+        "hidden_like_agreement": hidden_like["status"],
+        "hidden_like_evidence": hidden_like,
+        "selected_correct_test_location": not target_violations,
+        "residual_labels": residual_labels,
+        "support_observations": [
+            "scored through the real-repo tests-only planner candidate surface"
+        ],
+        "blockers": blockers,
+        "candidate_record": candidate_record,
+        "parsed_request_spec": spec.to_record(),
+        "zero_hosted_usage_confirmed": True,
+    }
+
+
+def _blocked_materialized_row(
+    *,
+    repo: Mapping[str, object],
+    task: Mapping[str, object],
+    defaults: Mapping[str, object],
+    spec_record: Mapping[str, object],
+    blocker: Mapping[str, str],
+    residual_labels: Sequence[str],
+    runtime_seconds: float,
+) -> dict[str, object]:
+    task_id = _required_str(task, "id")
+    allowed_write_paths = _string_sequence(
+        task.get("allowed_write_paths"),
+        field="allowed_write_paths",
+    )
+    public_validation_commands = _string_sequence(
+        task.get("public_validation_commands"),
+        field="public_validation_commands",
+    )
+    hidden_like_checks = _string_sequence(
+        task.get("hidden_like_checks"),
+        field="hidden_like_checks",
+    )
+    return {
+        "repo_id": _required_str(repo, "id"),
+        "repo_split": str(repo.get("split", "unknown")),
+        "checkout_ref": _required_str(repo, "checkout_ref"),
+        "task_id": task_id,
+        "task_type": "tests_only",
+        "prompt": _required_str(task, "prompt"),
+        "allowed_write_paths": list(allowed_write_paths),
+        "public_validation_commands": list(public_validation_commands),
+        "hidden_like_checks": list(hidden_like_checks),
+        "max_candidates": int(defaults.get("max_candidates", 3)),
+        "candidate_count": 0,
+        "candidates_tested": 0,
+        "pass@1": False,
+        "pass@3": False,
+        "first_passing_rank": None,
+        "runtime": {
+            "status": "not_run",
+            "runtime_seconds": round(runtime_seconds, 6),
+            "not_run_reason": blocker["reason"],
+        },
+        "candidate_validation": {
+            "status": "blocked",
+            "commands": list(public_validation_commands),
+            "selected_command": public_validation_commands[0] if public_validation_commands else None,
+            "not_run_reason": blocker["reason"],
+            "result": None,
+        },
+        "mutation_scope": {
+            "files_changed": [],
+            "production_files_changed": [],
+            "writes_outside_allowlist": [],
+            "candidate_target_paths_considered": [],
+            "candidate_target_path_violations": [],
+        },
+        "hidden_like_agreement": "not_run",
+        "hidden_like_evidence": {
+            "status": "not_run",
+            "reason": "candidate did not reach public validation",
+        },
+        "selected_correct_test_location": False,
+        "residual_labels": _unique(list(residual_labels)),
+        "support_observations": ["candidate planning blocked before validation"],
+        "blockers": [dict(blocker)],
+        "candidate_record": None,
+        "parsed_request_spec": dict(spec_record),
+        "zero_hosted_usage_confirmed": True,
+    }
+
+
+def _candidate_validation_record(
+    *,
+    repo_path: Path,
+    candidate_record: Mapping[str, object],
+    validate_candidates: bool,
+    timeout_seconds: int,
+    runner: ValidationRunner,
+) -> dict[str, object]:
+    validation = _mapping(candidate_record.get("validation"), field="candidate.validation")
+    selected_command = validation.get("selected_command")
+    commands = _sequence(validation.get("commands"), field="candidate.validation.commands")
+    blockers = _sequence(candidate_record.get("blockers"), field="candidate.blockers")
+    if blockers:
+        reason = str(_mapping(blockers[0], field="candidate.blocker").get("reason"))
+        return {
+            "status": "blocked",
+            "commands": list(commands),
+            "selected_command": selected_command,
+            "not_run_reason": reason,
+            "result": None,
+        }
+    if not isinstance(selected_command, str) or not selected_command:
+        return {
+            "status": "blocked",
+            "commands": list(commands),
+            "selected_command": None,
+            "not_run_reason": "validation_selection_gap",
+            "result": None,
+        }
+    if not validate_candidates:
+        return {
+            "status": "deferred",
+            "commands": list(commands),
+            "selected_command": selected_command,
+            "not_run_reason": CANDIDATE_VALIDATION_DEFERRED,
+            "result": None,
+        }
+
+    result = runner(selected_command, repo_path, timeout_seconds)
+    return {
+        "status": "passed" if result.status == "passed" else "failed",
+        "commands": list(commands),
+        "selected_command": selected_command,
+        "not_run_reason": None,
+        "result": result.to_record(),
+    }
+
+
+def run_candidate_validation_command(
+    command: str,
+    cwd: Path,
+    timeout_seconds: int,
+) -> CandidateValidationResult:
+    """Run one candidate validation command in a checkout."""
+
+    try:
+        completed = subprocess.run(
+            command,
+            cwd=cwd,
+            shell=True,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=timeout_seconds,
+            check=False,
+        )
+    except subprocess.TimeoutExpired as error:
+        return CandidateValidationResult(
+            command=command,
+            cwd=str(cwd),
+            timeout_seconds=timeout_seconds,
+            returncode=None,
+            stdout=error.stdout or "",
+            stderr=error.stderr or "",
+            status="timeout",
+        )
+    return CandidateValidationResult(
+        command=command,
+        cwd=str(cwd),
+        timeout_seconds=timeout_seconds,
+        returncode=completed.returncode,
+        stdout=completed.stdout,
+        stderr=completed.stderr,
+        status="passed" if completed.returncode == 0 else "failed",
+    )
+
+
+def _hidden_like_agreement(
+    *,
+    task: Mapping[str, object],
+    candidate_record: Mapping[str, object],
+    candidate_validation: Mapping[str, object],
+) -> dict[str, object]:
+    if candidate_validation.get("status") != "passed":
+        return {
+            "status": "not_run",
+            "reason": "public candidate validation did not pass",
+        }
+
+    mutation_scope = _mapping(candidate_record["mutation_scope"], field="mutation_scope")
+    production_changed = _sequence(
+        mutation_scope.get("production_files_changed"),
+        field="production_files_changed",
+    )
+    writes_outside = _sequence(
+        mutation_scope.get("writes_outside_allowlist"),
+        field="writes_outside_allowlist",
+    )
+    candidate_after = _mapping(
+        candidate_record.get("candidate_after"),
+        field="candidate_after",
+    )
+    test_case_ids = set(
+        _string_sequence(candidate_after.get("test_case_ids", []), field="test_case_ids")
+    )
+    task_id = _required_str(task, "id")
+    required_case_ids = {
+        "iniconfig_comment_only_lines",
+        "iniconfig_inline_section_comments",
+        "iniconfig_duplicate_key_reports_name",
+    }
+    if task_id == INICONFIG_PARSE_COMMENTS_TASK_ID:
+        agrees = (
+            not production_changed
+            and not writes_outside
+            and required_case_ids <= test_case_ids
+        )
+        return {
+            "status": "agrees" if agrees else "disagrees",
+            "production_files_unchanged": not production_changed,
+            "writes_inside_allowlist": not writes_outside,
+            "required_case_ids_present": sorted(required_case_ids & test_case_ids),
+            "missing_case_ids": sorted(required_case_ids - test_case_ids),
+            "checks": list(
+                _string_sequence(
+                    task.get("hidden_like_checks"),
+                    field="hidden_like_checks",
+                )
+            ),
+        }
+
+    return {
+        "status": "not_run",
+        "reason": "no hidden-like evaluator for this task",
+    }
+
+
+def _parse_repo_path_args(values: Sequence[str]) -> dict[str, Path]:
+    repo_paths = {}
+    for value in values:
+        if "=" not in value:
+            raise ValueError("--repo-path must be formatted as REPO_ID=PATH")
+        repo_id, path = value.split("=", 1)
+        if not repo_id or not path:
+            raise ValueError("--repo-path must include a non-empty repo id and path")
+        repo_paths[repo_id] = Path(path)
+    return repo_paths
+
+
+def _legacy_score_tests_only_task(
+    *,
+    repo: Mapping[str, object],
+    task: Mapping[str, object],
+    defaults: Mapping[str, object],
+) -> dict[str, object]:
+    """Return the REAL-003 slugify-only score row for historical comparison."""
+
     task_id = _required_str(task, "id")
     prompt = _required_str(task, "prompt")
     allowed_write_paths = _string_sequence(
@@ -447,6 +1095,10 @@ def _mapping(value: object, *, field: str) -> Mapping[str, object]:
     if not isinstance(value, Mapping):
         raise ValueError(f"{field} must be an object")
     return value
+
+
+def _json_copy(value: object) -> object:
+    return json.loads(json.dumps(value, sort_keys=True))
 
 
 def _unique(values: Sequence[str]) -> list[str]:

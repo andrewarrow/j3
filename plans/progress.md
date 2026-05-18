@@ -988,8 +988,8 @@ meaningful work. Do not replace this file with a daily reset.
   targeted validation command, cites pytest layout/public API/validation/pytest
   pattern knowledge, and blocks on `test_case_materialization_gap` instead of
   pretending the task passes.
-- Commit: pending
-- Push: pending
+- Commit: this commit
+- Push: succeeded
 - Next: implement behavior-specific pytest case materialization for this
   candidate surface, then rerun the REAL-003 tests-only shadow score with
   generated candidates.
@@ -1134,3 +1134,35 @@ meaningful work. Do not replace this file with a daily reset.
 - Next: run `REAL-007` after `REAL-006` finishes, separating calibration
   `iniconfig` scoring from the held-out h11 materializer result.
 - Blockers: none
+
+### 2026-05-18 - REAL-006 - Tests-only shadow score with materialized candidate
+
+- Owner: worker Averroes (`019e3b97-5b97-7831-9de0-3f20aa198824`)
+- Files changed: `j3/real_repo_shadow_score.py`,
+  `tests/test_real_repo_shadow_score.py`,
+  `docs/REAL_006_TESTS_ONLY_SHADOW_SCORE_2026-05-18.md`,
+  `plans/active.md`, `plans/backlog.md`, `plans/progress.md`
+- Tests: `pytest tests/test_real_repo_shadow_score.py -q` -> 3 passed;
+  `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check`
+  -> passed; live preflight
+  `PATH=/tmp/j3-real-006-shadow-score/.venv/bin:$PATH python -m j3.real_repo_preflight --manifest examples/real_repo_eval_ladder.json --repo iniconfig --work-root /tmp/j3-real-006-shadow-score/repos --outcome /tmp/j3-real-006-shadow-score/preflight.jsonl`
+  -> passed with 2 rows, runtime 3.398 seconds, `blocker_labels = ["none"]`;
+  live shadow score
+  `PATH=/tmp/j3-real-006-shadow-score/.venv/bin:$PATH python -m j3.real_repo_shadow_score --manifest examples/real_repo_eval_ladder.json --repo-path iniconfig=/tmp/j3-real-006-shadow-score/repos/iniconfig --validate-candidates --out /tmp/j3-real-006-shadow-score/score.json --report /tmp/j3-real-006-shadow-score/report.md`
+  -> passed with `pass@1 = 1/4`, `pass@3 = 1/4`, and
+  `gate_decision = remain_shadow_only`.
+- Result: updated the scorer to use the GS7-008 real-repo tests planner
+  surface for the materialized `iniconfig-tests-parse-comments` calibration
+  candidate. The live score records candidate validation `54 passed in 0.03s`,
+  first passing rank 1, one allowed test-file mutation, zero production-file
+  changes, zero writes outside the allowlist, hidden-like agreement, zero
+  hosted usage, and explicit held-out `test_case_materialization_gap` blockers
+  for `h11`, `humanize`, and `boltons`. The gate remains shadow-only because
+  the tests-only threshold is at least 3/4 passing tasks.
+- Commit: pending
+- Push: pending
+- Next: run `REAL-007` after integrating `GS7-009`, separating the calibration
+  `iniconfig` pass from held-out h11 scoring.
+- Blockers: held-out `humanize` and `boltons` tests-only materializers are
+  still missing for this gate; `h11` requires the follow-up `REAL-007` scorer
+  run after the concurrent `GS7-009` planner changes are integrated.

@@ -1215,8 +1215,8 @@ meaningful work. Do not replace this file with a daily reset.
   zero candidate target path violations, hidden-like agreement for both passing
   candidates, and zero hosted usage. `humanize` and `boltons` remain explicit
   `test_case_materialization_gap` blockers.
-- Commit: this commit
-- Push: pending
+- Commit: 657d34b
+- Push: succeeded
 - Next: materialize the next held-out tests-only candidate (`GS7-010`
   `humanize` or `GS7-011` `boltons`) before rerunning `REAL-008`.
 - Blockers: tests-only guarded opt-in remains blocked at `pass@3 = 2/4`;

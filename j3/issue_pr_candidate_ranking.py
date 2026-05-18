@@ -16,6 +16,7 @@ from typing import Mapping, Sequence
 
 from candidate_ranker.features import _candidate_record_features
 from j3.candidate_observation import candidate_change_observation
+from j3.issue_pr_decoy_validation import load_issue_pr_decoy_validation_bundle_index
 from j3.issue_pr_candidate_after_snapshot import load_candidate_after_bundle_index
 
 
@@ -101,6 +102,7 @@ def build_issue_pr_candidate_ranking_report(
     pytest_candidate_path: Path = DEFAULT_PYTEST_CANDIDATE_PATH,
     scrapy_candidate_path: Path = DEFAULT_SCRAPY_CANDIDATE_PATH,
     candidate_after_bundle_path: Path | None = None,
+    decoy_validation_bundle_path: Path | None = None,
 ) -> dict[str, object]:
     """Build a shadow-only ranking report for the DATA-037 real candidates."""
 
@@ -109,14 +111,21 @@ def build_issue_pr_candidate_ranking_report(
         if candidate_after_bundle_path is not None
         else {}
     )
+    decoy_validation_index = (
+        load_issue_pr_decoy_validation_bundle_index(decoy_validation_bundle_path)
+        if decoy_validation_bundle_path is not None
+        else {}
+    )
     rows = [
         _build_pytest_row(
             pytest_candidate_path.expanduser().resolve(),
             candidate_after_index=candidate_after_index,
+            decoy_validation_index=decoy_validation_index,
         ),
         _build_scrapy_row(
             scrapy_candidate_path.expanduser().resolve(),
             candidate_after_index=candidate_after_index,
+            decoy_validation_index=decoy_validation_index,
         ),
     ]
     rankable_rows = sum(1 for row in rows if row.scorer_status == "ranked")
@@ -285,6 +294,7 @@ def _build_pytest_row(
     candidate_path: Path,
     *,
     candidate_after_index: Mapping[tuple[str, str], Mapping[str, object]],
+    decoy_validation_index: Mapping[str, Mapping[str, object]],
 ) -> ShadowRankingRow:
     record = _load_candidate_record(candidate_path)
     candidates = [
@@ -301,6 +311,7 @@ def _build_pytest_row(
                 "Implements timedelta support but preserves stale rel=timedelta "
                 "semantics instead of numeric rel * abs(expected)."
             ),
+            decoy_validation_index=decoy_validation_index,
         ),
         _decoy_candidate(
             record,
@@ -315,6 +326,7 @@ def _build_pytest_row(
                 "needed for timedelta values inside sequences and mappings."
             ),
             omit_source_metadata_keys=("ast_delta",),
+            decoy_validation_index=decoy_validation_index,
         ),
         _decoy_candidate(
             record,
@@ -329,6 +341,7 @@ def _build_pytest_row(
                 "NaN rel, negative abs, and rel/abs max behavior."
             ),
             omit_test_materialization=True,
+            decoy_validation_index=decoy_validation_index,
         ),
         _decoy_candidate(
             record,
@@ -343,6 +356,7 @@ def _build_pytest_row(
                 "relative tolerance scaling."
             ),
             omit_source_materialization=True,
+            decoy_validation_index=decoy_validation_index,
         ),
     ]
     return _blocked_row(record, candidate_path, candidates)
@@ -352,6 +366,7 @@ def _build_scrapy_row(
     candidate_path: Path,
     *,
     candidate_after_index: Mapping[tuple[str, str], Mapping[str, object]],
+    decoy_validation_index: Mapping[str, Mapping[str, object]],
 ) -> ShadowRankingRow:
     record = _load_candidate_record(candidate_path)
     candidates = [
@@ -369,6 +384,7 @@ def _build_scrapy_row(
                 "slots still starve later slots."
             ),
             omit_source_metadata_keys=("ast_delta",),
+            decoy_validation_index=decoy_validation_index,
         ),
         _decoy_candidate(
             record,
@@ -382,6 +398,7 @@ def _build_scrapy_row(
                 "Calls the slot selector from peek with state updates, so observing "
                 "the queue changes later pop behavior."
             ),
+            decoy_validation_index=decoy_validation_index,
         ),
         _decoy_candidate(
             record,
@@ -395,6 +412,7 @@ def _build_scrapy_row(
                 "Adds a helper but omits the persistent _last_selected_slot state "
                 "needed to continue rotation after a slot is deleted."
             ),
+            decoy_validation_index=decoy_validation_index,
         ),
         _decoy_candidate(
             record,
@@ -406,6 +424,7 @@ def _build_scrapy_row(
                 "tie-breaking regression tests."
             ),
             omit_test_materialization=True,
+            decoy_validation_index=decoy_validation_index,
         ),
     ]
     return _blocked_row(record, candidate_path, candidates)
@@ -443,13 +462,15 @@ def _decoy_candidate(
     targeted_mistakes: list[str],
     residual_labels: list[str],
     description: str,
+    decoy_validation_index: Mapping[str, Mapping[str, object]],
     omit_source_materialization: bool = False,
     omit_test_materialization: bool = False,
     omit_source_metadata_keys: Sequence[str] = (),
 ) -> ShadowCandidate:
     decoy = _scorer_record(record)
     replay_id = str(record.get("replay_id", "unknown"))
-    decoy["candidate_id"] = f"{replay_id}:{decoy_id}"
+    candidate_id = f"{replay_id}:{decoy_id}"
+    decoy["candidate_id"] = candidate_id
     decoy["status"] = "decoy_unvalidated"
     decoy["validation"] = {
         "status": "not_run",
@@ -471,11 +492,24 @@ def _decoy_candidate(
         for key in omit_source_metadata_keys:
             source.pop(key, None)
         decoy["source_materialization"] = source
+    validation_status = "not_run"
+    outcome = decoy_validation_index.get(candidate_id)
+    if outcome is not None:
+        decoy.update(_scorer_record(outcome))
+        decoy["candidate_id"] = candidate_id
+        decoy["status"] = "decoy_live_validated"
+        validation_status = str(_mapping(outcome.get("validation")).get("status", ""))
+        if not validation_status:
+            validation_status = "not_run"
+        residual_labels = _string_list(outcome.get("residual_labels")) or residual_labels
+        targeted_mistakes = _string_list(
+            _mapping(outcome.get("decoy_evidence")).get("targeted_mistakes")
+        ) or targeted_mistakes
     return _candidate_from_record(
-        candidate_id=str(decoy["candidate_id"]),
+        candidate_id=candidate_id,
         candidate_kind="realistic_decoy",
         expected_accepted=False,
-        expected_validation_status="not_run",
+        expected_validation_status=validation_status,
         targeted_mistakes=targeted_mistakes,
         residual_labels=residual_labels,
         record=decoy,
@@ -540,15 +574,6 @@ def _blocked_row(
             ),
         },
         {
-            "field": "decoy_validation",
-            "reason": "decoys_not_live_validated",
-            "message": (
-                "The decoys are realistic hard negatives for shadow evidence, but "
-                "they have no live validation outcomes and should not be scored as "
-                "known failing candidates by a production ranker."
-            ),
-        },
-        {
             "field": "semantic_features",
             "reason": "issue_specific_semantics_not_in_current_features",
             "message": (
@@ -560,12 +585,45 @@ def _blocked_row(
             ),
         },
     ]
+    decoys = [candidate for candidate in candidates if not candidate.expected_accepted]
+    decoys_live_validated = bool(decoys) and all(
+        candidate.expected_validation_status in {"passed", "failed", "timeout"}
+        for candidate in decoys
+    )
+    if not decoys_live_validated:
+        blockers.append(
+            {
+                "field": "decoy_validation",
+                "reason": "decoys_not_live_validated",
+                "message": (
+                    "The decoys are realistic hard negatives for shadow evidence, but "
+                    "they have no complete live validation outcomes and should not be "
+                    "scored as known failing candidates by a production ranker."
+                ),
+            }
+        )
+    elif any(candidate.expected_validation_status == "passed" for candidate in decoys):
+        blockers.append(
+            {
+                "field": "decoy_validation",
+                "reason": "decoy_validation_outcomes_include_passing_candidates",
+                "message": (
+                    "The decoys are live-validated, but at least one passes the "
+                    "focused command. The row is evidence for a coverage gap, not "
+                    "a clean accepted-versus-failing-decoys ranking set."
+                ),
+            }
+        )
     accepted_after_available = all(
         candidate.feature_inputs.get("candidate_after_available") is True
         for candidate in candidates
         if candidate.expected_accepted
     )
-    if accepted_after_available:
+    decoy_after_available = bool(decoys) and all(
+        candidate.feature_inputs.get("candidate_after_available") is True
+        for candidate in decoys
+    )
+    if accepted_after_available and not decoy_after_available:
         blockers.append(
             {
                 "field": "candidate_after",
@@ -577,7 +635,7 @@ def _blocked_row(
                 ),
             }
         )
-    else:
+    elif not accepted_after_available:
         blockers.append(
             {
                 "field": "candidate_after",
@@ -734,12 +792,19 @@ def main(argv: Sequence[str] | None = None) -> int:
         default=None,
         help="Optional DATA-038 candidate-after bundle JSON for accepted candidates.",
     )
+    parser.add_argument(
+        "--decoy-validation-bundle",
+        type=Path,
+        default=None,
+        help="Optional DATA-039 decoy validation bundle JSON for materialized decoys.",
+    )
     args = parser.parse_args(argv)
 
     report = build_issue_pr_candidate_ranking_report(
         pytest_candidate_path=args.pytest_candidate,
         scrapy_candidate_path=args.scrapy_candidate,
         candidate_after_bundle_path=args.candidate_after_bundle,
+        decoy_validation_bundle_path=args.decoy_validation_bundle,
     )
     artifacts = write_issue_pr_candidate_ranking_report(report, out_dir=args.out_dir)
     print(json.dumps({name: str(path) for name, path in artifacts.items()}, sort_keys=True))

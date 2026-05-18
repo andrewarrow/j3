@@ -44,23 +44,6 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-### `DATA-039`: Live issue/PR decoy validation slice
-
-- Status: active
-- Owner: worker Galileo (`019e3cd0-c73c-7351-b670-d7722c384d04`).
-- Write scope: focused issue/PR decoy validation or ranking-evidence module
-  and tests, optional DATA-039 docs/report, generated artifacts under `/tmp`,
-  and planning updates. Avoid editing MAT-009-owned held-out source-region
-  materializers.
-- Acceptance: replace at least one DATA-037/DATA-038 ranking blocker with real
-  evidence by materializing and validating realistic decoy candidates for at
-  least one validated issue/PR row. Prefer the Scrapy #7293 row because
-  DATA-035 already provides a compact source/test materializer. Record each
-  decoy's touched files, candidate-after snapshots or paths, validation
-  command/runtime/status, residual labels, and whether the accepted candidate
-  can now be ranked against live failing decoys without leaking labels. If
-  decoy materialization or validation is too broad, record the exact blocker.
-
 ## Ready Queue
 
 These are good next assignments for the next loop:
@@ -92,6 +75,20 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `DATA-039`: materialized and live-validated four realistic decoys for the
+  validated `scrapy/scrapy#7293/#7351` issue/PR replay. The Scrapy row now has
+  live decoy validation outcomes and candidate-after snapshots for all four
+  decoys, so `decoys_not_live_validated` and
+  `decoy_candidate_after_unavailable` are removed for that row. Two decoys
+  failed and two passed, creating the honest blocker
+  `decoy_validation_outcomes_include_passing_candidates`; pass@1/pass@k remain
+  blocked and the ranking harness remains shadow-only. Artifacts:
+  `/tmp/j3-data-039-scrapy-decoy-validation/decoy-validation-bundle.json`,
+  `/tmp/j3-data-039-scrapy-decoy-validation/decoy-validation-candidates.jsonl`,
+  `/tmp/j3-data-039-scrapy-decoy-validation/decoy-validation-report.md`,
+  `/tmp/j3-data-039-ranking-with-live-decoys/ranking-report.json`,
+  `/tmp/j3-data-039-ranking-with-live-decoys/ranking-report.md`, and
+  `docs/DATA_039_LIVE_ISSUE_PR_DECOY_VALIDATION_2026-05-18.md`.
 - `MAT-009`: materialized and live-validated the held-out
   `pytest-dev/pytest#14475` mark-expression scanner source/test candidate
   using reusable `replace_function_region` and

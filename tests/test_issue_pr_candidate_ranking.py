@@ -122,6 +122,76 @@ def test_candidate_after_bundle_resolves_accepted_snapshot_blocker(tmp_path: Pat
         assert row["pass_at_k"] is None
 
 
+def test_decoy_validation_bundle_moves_scrapy_decoy_blockers(tmp_path: Path) -> None:
+    pytest_path = _write_candidate(tmp_path, "pytest")
+    scrapy_path = _write_candidate(tmp_path, "scrapy")
+    candidate_after_bundle_path = tmp_path / "candidate-after-bundle.json"
+    candidate_after_bundle_path.write_text(
+        json.dumps(
+            {
+                "schema_version": "issue-pr-candidate-after-snapshot-v1",
+                "record_kind": "issue_pr_candidate_after_snapshot_bundle",
+                "candidates": [
+                    _candidate_after_bundle_entry("pytest"),
+                    _candidate_after_bundle_entry("scrapy"),
+                ],
+            },
+            indent=2,
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+    decoy_validation_bundle_path = tmp_path / "decoy-validation-bundle.json"
+    decoy_validation_bundle_path.write_text(
+        json.dumps(
+            {
+                "schema_version": "issue-pr-decoy-validation-v1",
+                "record_kind": "issue_pr_decoy_validation_bundle",
+                "candidates": [
+                    _scrapy_decoy_validation_entry(
+                        "scrapy_stale_min_stats_selection",
+                        "failed",
+                    ),
+                    _scrapy_decoy_validation_entry("scrapy_mutating_peek", "passed"),
+                    _scrapy_decoy_validation_entry(
+                        "scrapy_missing_last_selected_slot",
+                        "failed",
+                    ),
+                    _scrapy_decoy_validation_entry("scrapy_missing_tests", "passed"),
+                ],
+            },
+            indent=2,
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+
+    report = build_issue_pr_candidate_ranking_report(
+        pytest_candidate_path=pytest_path,
+        scrapy_candidate_path=scrapy_path,
+        candidate_after_bundle_path=candidate_after_bundle_path,
+        decoy_validation_bundle_path=decoy_validation_bundle_path,
+    )
+
+    rows = {row["replay_id"]: row for row in report["rows"]}
+    scrapy_row = rows["scrapy__scrapy-issue-7293-pr-7351"]
+    scrapy_reasons = {blocker["reason"] for blocker in scrapy_row["scorer_blockers"]}
+    assert "decoys_not_live_validated" not in scrapy_reasons
+    assert "decoy_candidate_after_unavailable" not in scrapy_reasons
+    assert "decoy_validation_outcomes_include_passing_candidates" in scrapy_reasons
+    assert "no_guarded_issue_pr_ranker" in scrapy_reasons
+    assert "issue_specific_semantics_not_in_current_features" in scrapy_reasons
+    assert all(
+        candidate["feature_inputs"]["candidate_after_available"] is True
+        for candidate in scrapy_row["candidates"]
+    )
+    assert {
+        candidate["expected_validation_status"]
+        for candidate in scrapy_row["candidates"]
+        if not candidate["expected_accepted"]
+    } == {"failed", "passed"}
+
+
 def test_write_report_outputs_json_jsonl_and_markdown(tmp_path: Path) -> None:
     report = build_issue_pr_candidate_ranking_report(
         pytest_candidate_path=_write_candidate(tmp_path, "pytest"),
@@ -293,4 +363,74 @@ def _candidate_after_bundle_entry(kind: str) -> dict[str, object]:
             "embedding_available": False,
             "embedding": None,
         },
+    }
+
+
+def _scrapy_decoy_validation_entry(decoy_id: str, validation_status: str) -> dict[str, object]:
+    replay_id = "scrapy__scrapy-issue-7293-pr-7351"
+    candidate_id = f"{replay_id}:{decoy_id}"
+    path = (
+        "tests/test_pqueues.py"
+        if decoy_id == "scrapy_stale_min_stats_selection"
+        else "scrapy/pqueues.py"
+    )
+    return {
+        "schema_version": "issue-pr-decoy-validation-v1",
+        "record_kind": "issue_pr_decoy_validation_candidate",
+        "candidate_id": candidate_id,
+        "candidate_kind": "realistic_decoy",
+        "decoy_id": decoy_id,
+        "replay_id": replay_id,
+        "repo": "scrapy/scrapy",
+        "status": "validated",
+        "action_family": "scrapy_downloader_aware_slot_rotation_source_test_candidate",
+        "allowed_write_paths": ["scrapy/pqueues.py", "tests/test_pqueues.py"],
+        "touched_file_paths": [path],
+        "candidate_diff": {
+            "changed_files": [path],
+            "diff_summary": {"added_line_count": 1, "removed_line_count": 1},
+        },
+        "source_materialization": {
+            "target_source_file": "scrapy/pqueues.py",
+            "planned_changed_files": ["scrapy/pqueues.py"] if path.endswith("pqueues.py") else [],
+            "diff_summary": {"added_line_count": 1, "removed_line_count": 1},
+            "ast_delta": {"ast_parse_ok": True, "ast_delta_added_count": 1},
+        },
+        "test_materialization": {
+            "target_test_file": "tests/test_pqueues.py",
+            "planned_changed_files": ["tests/test_pqueues.py"] if path.startswith("tests/") else [],
+            "diff_summary": {"added_line_count": 1, "removed_line_count": 1},
+        },
+        "validation": {
+            "status": validation_status,
+            "validation_command": "python -m py_compile scrapy/pqueues.py && pytest tests/test_pqueues.py -q",
+            "runtime_seconds": 0.1,
+        },
+        "candidate_after": {
+            "available": True,
+            "kind": "full_file_snapshot_bundle",
+            "schema_version": "issue-pr-decoy-validation-v1",
+            "candidate_id": candidate_id,
+            "replay_id": replay_id,
+            "touched_file_paths": [path],
+            "file_count": 1,
+            "files": {
+                path: {
+                    "path": path,
+                    "sha256_before": "0" * 64,
+                    "sha256_after": "2" * 64,
+                    "after_snapshot_path": f"/tmp/{decoy_id}/after.py",
+                    "diff_summary": {"added_line_count": 1, "removed_line_count": 1},
+                    "ast_delta": {"ast_parse_ok": True, "ast_delta_added_count": 1},
+                }
+            },
+            "embedding_available": False,
+            "embedding": None,
+        },
+        "decoy_evidence": {
+            "targeted_mistakes": [decoy_id],
+            "description": "live decoy validation fixture",
+        },
+        "residual_labels": [f"decoy_validation_{validation_status}"],
+        "zero_hosted_usage_confirmed": True,
     }

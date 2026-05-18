@@ -3758,3 +3758,45 @@ meaningful work. Do not replace this file with a daily reset.
   slice based on whether live decoys are cleanly rankable.
 - Blockers: none for MAT-009; broader materialization still needs typed-builder
   and repo-convention rows beyond constrained source/test edits.
+
+### 2026-05-18 - DATA-039 - Live issue/PR decoy validation slice
+
+- Owner: worker Galileo (`019e3cd0-c73c-7351-b670-d7722c384d04`) with
+  coordinator integration after worker pause.
+- Files changed: `j3/issue_pr_decoy_validation.py`,
+  `j3/issue_pr_candidate_ranking.py`,
+  `tests/test_issue_pr_decoy_validation.py`,
+  `tests/test_issue_pr_candidate_ranking.py`,
+  `docs/DATA_039_LIVE_ISSUE_PR_DECOY_VALIDATION_2026-05-18.md`,
+  `plans/active.md`, `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `python -m py_compile j3/issue_pr_decoy_validation.py
+  j3/issue_pr_candidate_ranking.py tests/test_issue_pr_decoy_validation.py
+  tests/test_issue_pr_candidate_ranking.py` -> passed; `pytest
+  tests/test_issue_pr_decoy_validation.py -q` -> 2 passed; `pytest
+  tests/test_issue_pr_candidate_ranking.py -q` -> 8 passed; live CLI
+  `python -m j3.issue_pr_decoy_validation --repo-path
+  /private/tmp/j3-data-039-scrapy-live/scrapy --manifest
+  examples/issue_pr_mini_replay/manifest.json --out-dir
+  /tmp/j3-data-039-scrapy-decoy-validation --validate --timeout-seconds 120`
+  -> wrote the decoy bundle; ranking rerun `python -m
+  j3.issue_pr_candidate_ranking --candidate-after-bundle
+  /tmp/j3-data-038-issue-pr-candidate-after-snapshots/candidate-after-bundle.json
+  --decoy-validation-bundle
+  /tmp/j3-data-039-scrapy-decoy-validation/decoy-validation-bundle.json
+  --out-dir /tmp/j3-data-039-ranking-with-live-decoys` -> wrote the ranking
+  report.
+- Result: materialized and live-validated four realistic decoys for the
+  validated `scrapy/scrapy#7293/#7351` row. All four have candidate-after
+  snapshots; validation outcomes are `failed = 2` and `passed = 2`. The Scrapy
+  ranking row no longer blocks on `decoys_not_live_validated` or
+  `decoy_candidate_after_unavailable`, but it now honestly blocks on
+  `decoy_validation_outcomes_include_passing_candidates`. This is negative
+  evidence for the current validation signal: pass@1/pass@k remain blocked
+  because two hard decoys pass focused validation.
+- Commit: pending.
+- Push: pending.
+- Next: dispatch the next hard probes: live pytest #14462 decoys or stronger
+  Scrapy validation for passing decoys, plus the first typed-builder
+  materialization row from MAT-007.
+- Blockers: issue/PR ranking remains shadow-only because at least one row still
+  has unvalidated decoys and the Scrapy row has passing decoys.

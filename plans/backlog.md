@@ -2238,7 +2238,7 @@ Long-term target:
 
 ### DATA-039: Live issue/PR decoy validation slice
 
-- Status: active
+- Status: done
 - Why: DATA-038 resolved accepted-candidate after-state snapshots, but DATA-037
   still blocks on unmaterialized/unvalidated decoys. Ranking gains on real
   issue/PR rows cannot be claimed until hard decoys have local after-state and
@@ -2257,6 +2257,21 @@ Long-term target:
   decoy materialization or validation is too broad, record the exact blocker.
 - Tests: focused decoy validation/ranking tests, plan consistency,
   `git diff --check`, and live focused validation when decoys are materialized.
+- Result: materialized and live-validated four Scrapy #7293 decoys. All four
+  now have candidate-after snapshots; validation status counts are `failed =
+  2` and `passed = 2`. The Scrapy ranking row no longer has
+  `decoys_not_live_validated` or `decoy_candidate_after_unavailable`, but it
+  remains blocked by `decoy_validation_outcomes_include_passing_candidates`,
+  `no_guarded_issue_pr_ranker`, and
+  `issue_specific_semantics_not_in_current_features`. The passing decoys are
+  hard negative evidence against claiming pass@1/pass@k from the current
+  focused validation signal.
+- Artifacts: `/tmp/j3-data-039-scrapy-decoy-validation/decoy-validation-bundle.json`,
+  `/tmp/j3-data-039-scrapy-decoy-validation/decoy-validation-candidates.jsonl`,
+  `/tmp/j3-data-039-scrapy-decoy-validation/decoy-validation-report.md`,
+  `/tmp/j3-data-039-ranking-with-live-decoys/ranking-report.json`,
+  `/tmp/j3-data-039-ranking-with-live-decoys/ranking-report.md`, and
+  `docs/DATA_039_LIVE_ISSUE_PR_DECOY_VALIDATION_2026-05-18.md`.
 
 ## Next Recommended Queue
 

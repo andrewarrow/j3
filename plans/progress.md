@@ -573,8 +573,8 @@ meaningful work. Do not replace this file with a daily reset.
   commands, repo-level split/leakage rules, runtime limits, pass/fail metrics,
   first expected failure modes, and explicit results that would falsify
   real-repo generalization or cheap validation.
-- Commit: pending worker commit
-- Push: pending worker push
+- Commit: ee36aaeb26b8057488d1daeb57c73728ce4bd399
+- Push: succeeded
 - Next: add a small runner that clones pinned refs to `/tmp`, verifies baseline
   validation, applies one candidate within the allowed write paths, and emits
   JSONL outcome rows.

@@ -7,22 +7,14 @@ This is the live coordinator board. Keep it current and compact.
 - Coordinator mode: persistent multi-week execution.
 - Parallel worker default: 2.
 - Parallel worker maximum: 3, only with disjoint write scopes.
-- Current review state: `ACT-002` is complete; `DATA-002` remains active.
+- Current review state: `ACT-002` and `DATA-002` are complete; ready for the
+  next bounded assignment.
 - Current product gate stance: transition ranking remains shadow-only; the
   2026-05-18 `TRANS-001` matrix decision was `remain_shadow_only`.
 
 ## Active Tasks
 
-### `DATA-002`: Add prompt/spec schema validation
-
-- Owner: worker Lorentz (`019e395a-dda5-7662-a474-16d7e9945ce7`)
-- Status: active
-- Write scope: request-spec/prompt corpus schema validator, focused tests,
-  concise docs if needed, `plans/progress.md`, `plans/active.md`.
-- Acceptance: validates seed and expanded prompt rows with clear errors for
-  missing fields, bad splits, unsupported labels, list-typed expected fields,
-  synthetic provenance, and cross-split near-duplicate review.
-- Tests: focused schema/profile tests plus `git diff --check`.
+No active worker tasks.
 
 ## Ready Queue
 
@@ -56,6 +48,11 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `DATA-002`: added repeatable prompt/spec corpus schema validation on top of
+  the `inspect-prompt-corpus` profile path. The validator accepts the seed,
+  expanded, and GreenShot-7 intent corpora with zero errors while reporting
+  legacy seed expected-action gaps and cross-split near-duplicates as review
+  warnings.
 - `ACT-002`: fixed the subscript-key candidate cap gap for
   `greenshot_6_subset/http_no_store_directive_subscript_key`. The passing
   `change_subscript_key` candidate from `"no-store"` to `"no_store"` now ranks

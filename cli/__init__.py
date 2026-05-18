@@ -29,6 +29,7 @@ from cli.handlers import (
     handle_train,
     handle_train_prompt_intents,
     handle_train_ranker,
+    handle_validate_prompt_corpus,
 )
 from cli.main import main
 from cli.parser import build_parser
@@ -61,5 +62,6 @@ __all__ = [
     "handle_train",
     "handle_train_prompt_intents",
     "handle_train_ranker",
+    "handle_validate_prompt_corpus",
     "main",
 ]

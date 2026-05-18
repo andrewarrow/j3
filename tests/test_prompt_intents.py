@@ -14,6 +14,8 @@ from j3.prompt_intents import (
     profile_prompt_corpus_rows,
     profile_prompt_intents,
     train_prompt_intent_token_baseline,
+    validate_prompt_corpus,
+    validate_prompt_corpus_rows,
 )
 
 
@@ -251,6 +253,133 @@ def test_prompt_corpus_profile_reports_quality_issues() -> None:
     assert {"expected.action", "expected.features", "prompt_family"}.issubset(
         validate_fields
     )
+
+
+def test_prompt_corpus_validation_reports_schema_errors() -> None:
+    rows = [
+        {
+            "id": "train-create",
+            "split": "holdout",
+            "source_type": "synthetic_template_v0",
+            "task_type": "create_app",
+            "repo_mode": "new_repo",
+            "domain": "calculator",
+            "prompt": "Make me a simple CLI calc",
+            "expected": {
+                "action": "write_patch",
+                "features": "calculator",
+                "artifacts": ["cli"],
+                "interfaces": ["cli"],
+                "inferred": [],
+                "clarify": False,
+                "clarification_fields": [],
+                "unsupported_requirements": [],
+            },
+            "tags": ["synthetic"],
+        },
+        {
+            "id": "train-create",
+            "split": "train",
+            "source_type": "human_seed",
+            "task_type": "create_app",
+            "repo_mode": "new_repo",
+            "domain": "calculator",
+            "prompt": "make another calc",
+            "expected": {
+                "features": ["add"],
+                "artifacts": ["cli"],
+                "interfaces": ["cli"],
+                "clarify": False,
+            },
+        },
+    ]
+
+    report = validate_prompt_corpus_rows(rows)
+
+    assert report["status"] == "invalid"
+    issue_names = {
+        issue["issue"]
+        for issue in report["issues"]  # type: ignore[union-attr]
+    }
+    assert {
+        "unsupported_scalar_label",
+        "invalid_type",
+        "synthetic_generation_metadata_missing",
+        "prompt_family_missing",
+        "missing_required_field",
+        "duplicate_id",
+    }.issubset(issue_names)
+
+
+def test_prompt_corpus_validation_warns_for_review_duplicates() -> None:
+    rows = [
+        {
+            "id": "train-create",
+            "split": "train",
+            "source_type": "human_seed",
+            "task_type": "create_app",
+            "repo_mode": "new_repo",
+            "domain": "calculator",
+            "prompt": "Make me a simple CLI calc",
+            "expected": {
+                "features": ["add"],
+                "artifacts": ["cli"],
+                "interfaces": ["cli"],
+                "clarify": False,
+            },
+            "tags": ["greenfield"],
+        },
+        {
+            "id": "test-create",
+            "split": "test",
+            "source_type": "human_seed",
+            "task_type": "create_app",
+            "repo_mode": "new_repo",
+            "domain": "calculator",
+            "prompt": "make me a simple cli calculator",
+            "expected": {
+                "features": ["add"],
+                "artifacts": ["cli"],
+                "interfaces": ["cli"],
+                "clarify": False,
+            },
+            "tags": ["greenfield"],
+        },
+    ]
+
+    report = validate_prompt_corpus_rows(rows)
+
+    assert report["status"] == "valid_with_warnings"
+    assert report["error_count"] == 0
+    warnings = [
+        issue
+        for issue in report["issues"]  # type: ignore[union-attr]
+        if issue["severity"] == "warning"
+    ]
+    assert {issue["issue"] for issue in warnings} == {
+        "legacy_expected_action_missing",
+        "near_duplicate_prompt_cross_split_review",
+    }
+
+    strict_report = validate_prompt_corpus_rows(rows, fail_on_review=True)
+    assert strict_report["status"] == "invalid"
+    assert strict_report["error_count"] == 1
+
+
+def test_prompt_corpus_validation_accepts_current_label_files() -> None:
+    paths = [GREENSHOT_7_INTENTS]
+    if SEED_CORPUS.exists():
+        paths.append(SEED_CORPUS)
+    if EXPANDED_CORPUS.exists():
+        paths.append(EXPANDED_CORPUS)
+
+    reports = {path: validate_prompt_corpus(path) for path in paths}
+
+    assert {
+        str(path): report["error_count"]
+        for path, report in reports.items()
+    } == {str(path): 0 for path in paths}
+    assert reports[GREENSHOT_7_INTENTS]["status"] == "valid_with_warnings"
 
 
 def test_prompt_intent_eval_scores_future_predictors() -> None:

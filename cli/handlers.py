@@ -44,6 +44,7 @@ from j3.prompt_intents import (
     load_prompt_intent_records,
     predict_prompt_intent,
     train_prompt_intent_token_baseline,
+    validate_prompt_corpus,
 )
 from j3.prompt_jepa_demo import run_prompt_jepa_demo
 from j3.prompt_jepa import (
@@ -563,6 +564,45 @@ def handle_inspect_prompt_corpus(args: argparse.Namespace) -> int:
     print(f"unsupported scalar labels: {profile['unsupported_scalar_label_count']}")
     print(f"schema consistency issues: {profile['schema_consistency_issue_count']}")
     return 0
+
+
+def handle_validate_prompt_corpus(args: argparse.Namespace) -> int:
+    report = validate_prompt_corpus(
+        args.labels,
+        fail_on_review=args.fail_on_review,
+    )
+
+    if args.json:
+        print(json.dumps(report, indent=2, sort_keys=True))
+        return 0 if report["valid"] else 1
+
+    print("j3 validate-prompt-corpus complete")
+    print(f"labels: {args.labels.expanduser().resolve()}")
+    print(f"rows: {report['total_rows']}")
+    print(f"status: {report['status']}")
+    print(f"errors: {report['error_count']}")
+    print(f"warnings: {report['warning_count']}")
+    issues = report["issues"]
+    if isinstance(issues, list) and issues:
+        print("issues:")
+        for issue in issues[: args.issue_limit]:
+            if not isinstance(issue, dict):
+                continue
+            location = (
+                f"line {issue['line']}: "
+                if issue.get("line") is not None
+                else ""
+            )
+            print(
+                "  "
+                f"{issue.get('severity')} {location}"
+                f"{issue.get('field')} {issue.get('issue')}: "
+                f"{issue.get('message')}"
+            )
+        omitted = len(issues) - args.issue_limit
+        if omitted > 0:
+            print(f"  ... {omitted} more")
+    return 0 if report["valid"] else 1
 
 
 def handle_inspect_transition_assets(args: argparse.Namespace) -> int:

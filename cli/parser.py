@@ -36,6 +36,7 @@ from cli.handlers import (
     handle_train,
     handle_train_prompt_intents,
     handle_train_ranker,
+    handle_validate_prompt_corpus,
 )
 
 DESCRIPTION = (
@@ -442,6 +443,39 @@ def build_parser() -> argparse.ArgumentParser:
         help="print the full corpus profile as JSON",
     )
     inspect_prompt_corpus_parser.set_defaults(handler=handle_inspect_prompt_corpus)
+
+    validate_prompt_corpus_parser = subparsers.add_parser(
+        "validate-prompt-corpus",
+        help="validate prompt-intent corpus schema and split hygiene",
+        description=(
+            "Validate prompt-intent JSONL labels for stable schema fields, "
+            "supported scalar labels, expected action/list fields, synthetic "
+            "provenance, and cross-split duplicate review."
+        ),
+    )
+    validate_prompt_corpus_parser.add_argument(
+        "--labels",
+        type=Path,
+        default=Path("../prompts/coding_agent_prompts_expanded_v0.jsonl"),
+        help="prompt-intent JSONL labels to validate",
+    )
+    validate_prompt_corpus_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print the full validation report as JSON",
+    )
+    validate_prompt_corpus_parser.add_argument(
+        "--fail-on-review",
+        action="store_true",
+        help="treat cross-split review warnings as validation errors",
+    )
+    validate_prompt_corpus_parser.add_argument(
+        "--issue-limit",
+        type=int,
+        default=20,
+        help="maximum issues to print in text mode (default: 20)",
+    )
+    validate_prompt_corpus_parser.set_defaults(handler=handle_validate_prompt_corpus)
 
     inspect_transition_assets_parser = subparsers.add_parser(
         "inspect-transition-assets",

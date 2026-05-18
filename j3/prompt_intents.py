@@ -22,6 +22,7 @@ EVAL_SCHEMA_VERSION = "prompt-intent-eval-v1"
 LEARNED_BASELINE_SCHEMA_VERSION = "prompt-intent-token-perceptron-v1"
 PROMPT_FEATURE_SCHEMA_VERSION = "prompt-token-bigram-char-skipgram-v2"
 PROMPT_CORPUS_PROFILE_SCHEMA_VERSION = "prompt-corpus-profile-v1"
+PROMPT_CORPUS_VALIDATION_SCHEMA_VERSION = "prompt-corpus-validation-v1"
 DEFAULT_PROMPT_INTENTS_PATH = Path("examples/prompt_intents/greenshot_7_intents.jsonl")
 PROMPT_CORPUS_REQUIRED_FIELDS = (
     "id",
@@ -66,6 +67,7 @@ PROMPT_CORPUS_EXPECTED_LIST_FIELDS = {
 PROMPT_CORPUS_SCALAR_LABELS = {
     "split": ("test", "train", "validation"),
     "source_type": (
+        "greenshot_7_intent_fixture",
         "human_seed",
         "manual_reviewed_synthetic",
         "synthetic_template_v0",
@@ -92,6 +94,11 @@ PROMPT_CORPUS_SCALAR_LABELS = {
 PROMPT_CORPUS_NEAR_DUPLICATE_RATIO = 0.88
 PROMPT_CORPUS_NEAR_DUPLICATE_TOKEN_OVERLAP = 0.45
 PROMPT_CORPUS_NEAR_DUPLICATE_LIMIT = 50
+PROMPT_CORPUS_SYNTHETIC_TEMPLATE_VERSIONS = ("prompt-corpus-template-v0",)
+PROMPT_CORPUS_SYNTHETIC_REVIEW_STATUSES = (
+    "manual_reviewed",
+    "unreviewed_synthetic",
+)
 TARGET_FIELDS = [
     "repo_mode",
     "task_type",
@@ -461,6 +468,70 @@ def inspect_prompt_corpus(path: Path) -> dict[str, object]:
         _load_json_rows(path),
         labels_path=path.expanduser().resolve(),
     )
+
+
+def validate_prompt_corpus(
+    path: Path,
+    *,
+    fail_on_review: bool = False,
+) -> dict[str, object]:
+    """Validate raw prompt-intent corpus rows against the DATA-002 policy."""
+
+    return validate_prompt_corpus_rows(
+        _load_json_rows(path),
+        labels_path=path.expanduser().resolve(),
+        fail_on_review=fail_on_review,
+    )
+
+
+def validate_prompt_corpus_rows(
+    rows: Sequence[dict[str, object]],
+    *,
+    labels_path: Path | None = None,
+    fail_on_review: bool = False,
+) -> dict[str, object]:
+    """Return a structured validation report for prompt/spec corpus rows.
+
+    The validator intentionally builds on ``profile_prompt_corpus_rows`` so the
+    audit counts and schema gate stay aligned. Fatal errors cover malformed
+    rows, unsupported labels, expected-field typing, duplicate ids, and missing
+    synthetic provenance. Cross-split near-duplicates are review warnings by
+    default because current corpora intentionally keep those examples visible
+    until a split cleanup task is assigned.
+    """
+
+    profile = profile_prompt_corpus_rows(rows, labels_path=labels_path)
+    issues: list[dict[str, object]] = []
+    issues.extend(_profile_validation_issues(profile, fail_on_review=fail_on_review))
+    issues.extend(_row_validation_issues(rows))
+
+    severity_counts = Counter(str(issue["severity"]) for issue in issues)
+    error_count = severity_counts.get("error", 0)
+    warning_count = severity_counts.get("warning", 0)
+    status = (
+        "invalid"
+        if error_count
+        else "valid_with_warnings"
+        if warning_count
+        else "valid"
+    )
+    report: dict[str, object] = {
+        "schema_version": PROMPT_CORPUS_VALIDATION_SCHEMA_VERSION,
+        "status": status,
+        "valid": error_count == 0,
+        "total_rows": len(rows),
+        "error_count": error_count,
+        "warning_count": warning_count,
+        "issues": sorted(
+            issues,
+            key=_validation_issue_sort_key,
+        ),
+        "policy": _prompt_corpus_validation_policy(),
+        "profile": profile,
+    }
+    if labels_path is not None:
+        report["labels"] = str(labels_path)
+    return report
 
 
 def profile_prompt_corpus_rows(
@@ -1126,6 +1197,428 @@ def _target_from_prediction(
         ),
         target_files=_tuple_prediction(prediction.get("target_files", expected.target_files)),
     )
+
+
+def _profile_validation_issues(
+    profile: dict[str, object],
+    *,
+    fail_on_review: bool,
+) -> list[dict[str, object]]:
+    issues: list[dict[str, object]] = []
+    for item in _dict_list(profile.get("missing_required_fields")):
+        issues.append(
+            _validation_issue(
+                "error",
+                "missing_required_field"
+                if item.get("issue") == "missing"
+                else "invalid_required_field",
+                field=str(item.get("field", "__row__")),
+                message=(
+                    f"row is missing required field {item.get('field')!r}"
+                    if item.get("issue") == "missing"
+                    else f"required field {item.get('field')!r} has invalid value"
+                ),
+                item=item,
+            )
+        )
+    for item in _dict_list(profile.get("unsupported_scalar_labels")):
+        issues.append(
+            _validation_issue(
+                "error",
+                "unsupported_scalar_label",
+                field=str(item.get("field", "__row__")),
+                message=(
+                    f"unsupported {item.get('field')} label {item.get('value')!r}; "
+                    f"allowed={item.get('allowed')}"
+                ),
+                item=item,
+                value=item.get("value"),
+                allowed=item.get("allowed"),
+            )
+        )
+    for item in _dict_list(profile.get("expected_field_type_issues")):
+        issue_name = str(item.get("issue", "expected_field_type_issue"))
+        issues.append(
+            _validation_issue(
+                "error",
+                issue_name,
+                field=str(item.get("field", "expected")),
+                message=_expected_field_type_message(item),
+                item=item,
+            )
+        )
+    for item in _dict_list(profile.get("duplicate_cross_split_prompts")):
+        issues.append(
+            _validation_issue(
+                "error",
+                "duplicate_prompt_cross_split_leakage",
+                field="prompt",
+                message="normalized prompt appears in more than one split",
+                item=item,
+            )
+        )
+    for item in _dict_list(profile.get("near_duplicate_cross_split_prompts")):
+        severity = "error" if fail_on_review else "warning"
+        issues.append(
+            _validation_issue(
+                severity,
+                "near_duplicate_prompt_cross_split_review",
+                field="prompt",
+                message="near-duplicate prompt pair crosses splits and needs review",
+                item=item,
+            )
+        )
+    for item in _dict_list(profile.get("near_duplicate_family_leakage")):
+        severity = "error" if fail_on_review else "warning"
+        issues.append(
+            _validation_issue(
+                severity,
+                "prompt_family_cross_split_review",
+                field="prompt_family",
+                message="prompt family spans multiple splits and needs review",
+                item=item,
+            )
+        )
+    return issues
+
+
+def _row_validation_issues(
+    rows: Sequence[dict[str, object]],
+) -> list[dict[str, object]]:
+    issues: list[dict[str, object]] = []
+    seen_ids: dict[str, dict[str, object]] = {}
+    for index, row in enumerate(rows):
+        row_ref = _row_reference(row, index)
+        row_id = row.get("id")
+        if isinstance(row_id, str) and row_id:
+            previous = seen_ids.get(row_id)
+            if previous is not None:
+                issues.append(
+                    _validation_issue(
+                        "error",
+                        "duplicate_id",
+                        field="id",
+                        message=f"row id {row_id!r} appears more than once",
+                        item=row_ref,
+                        first_line=previous["line"],
+                    )
+                )
+            else:
+                seen_ids[row_id] = row_ref
+
+        tags = row.get("tags")
+        if isinstance(tags, list) and not all(
+            isinstance(tag, str) and tag for tag in tags
+        ):
+            issues.append(
+                _validation_issue(
+                    "error",
+                    "invalid_list_items",
+                    field="tags",
+                    message="tags must contain non-empty strings",
+                    item=row_ref,
+                )
+            )
+
+        expected = row.get("expected")
+        if not isinstance(expected, dict):
+            continue
+        source_type = _optional_scalar(row.get("source_type"))
+        expected_action = _expected_action(row, expected)
+        issues.extend(
+            _expected_schema_policy_issues(
+                row=row,
+                expected=expected,
+                index=index,
+                source_type=source_type,
+                expected_action=expected_action,
+            )
+        )
+        issues.extend(
+            _synthetic_provenance_issues(
+                row,
+                index=index,
+                source_type=source_type,
+            )
+        )
+    return issues
+
+
+def _expected_schema_policy_issues(
+    *,
+    row: dict[str, object],
+    expected: dict[str, object],
+    index: int,
+    source_type: str,
+    expected_action: str,
+) -> list[dict[str, object]]:
+    issues: list[dict[str, object]] = []
+    row_ref = _row_reference(row, index)
+    explicit_action = expected.get("action", row.get("expected_action"))
+    if not isinstance(explicit_action, str) or not explicit_action:
+        if source_type == "human_seed":
+            issues.append(
+                _validation_issue(
+                    "warning",
+                    "legacy_expected_action_missing",
+                    field="expected.action",
+                    message=(
+                        "human_seed row omits expected.action; validator is "
+                        f"using derived action {expected_action!r}"
+                    ),
+                    item=row_ref,
+                    derived_action=expected_action,
+                )
+            )
+        else:
+            issues.append(
+                _validation_issue(
+                    "error",
+                    "expected_action_missing",
+                    field="expected.action",
+                    message="expected.action is required for non-legacy rows",
+                    item=row_ref,
+                )
+            )
+
+    for field_name in _required_expected_fields(
+        source_type=source_type,
+        expected_action=expected_action,
+    ):
+        if field_name not in expected:
+            issues.append(
+                _validation_issue(
+                    "error",
+                    "expected_required_field_missing",
+                    field=f"expected.{field_name}",
+                    message=f"expected.{field_name} is required by source policy",
+                    item=row_ref,
+                    source_type=source_type,
+                )
+            )
+    return issues
+
+
+def _required_expected_fields(
+    *,
+    source_type: str,
+    expected_action: str,
+) -> tuple[str, ...]:
+    if source_type.startswith("synthetic_template"):
+        return (
+            "action",
+            "artifacts",
+            "clarification_fields",
+            "clarify",
+            "features",
+            "inferred",
+            "interfaces",
+            "unsupported_requirements",
+        )
+    if source_type == "greenshot_7_intent_fixture":
+        return (
+            "action",
+            "clarification_fields",
+            "features",
+            "unsupported_requirements",
+        )
+    required = ["artifacts", "clarify", "features", "interfaces"]
+    if expected_action == "ask_clarification":
+        required.append("clarification_fields")
+    return tuple(required)
+
+
+def _synthetic_provenance_issues(
+    row: dict[str, object],
+    *,
+    index: int,
+    source_type: str,
+) -> list[dict[str, object]]:
+    issues: list[dict[str, object]] = []
+    if not _is_synthetic_template_row(row, source_type=source_type):
+        generation = row.get("generation")
+        if generation is not None and not isinstance(generation, dict):
+            issues.append(
+                _validation_issue(
+                    "error",
+                    "generation_invalid_type",
+                    field="generation",
+                    message="generation must be an object when present",
+                    item=_row_reference(row, index),
+                )
+            )
+        return issues
+
+    row_ref = _row_reference(row, index)
+    family = _prompt_family(row)
+    if not family:
+        issues.append(
+            _validation_issue(
+                "error",
+                "prompt_family_missing",
+                field="prompt_family",
+                message="synthetic template row must include prompt_family",
+                item=row_ref,
+            )
+        )
+
+    generation = row.get("generation")
+    if not isinstance(generation, dict):
+        issues.append(
+            _validation_issue(
+                "error",
+                "synthetic_generation_metadata_missing",
+                field="generation",
+                message="synthetic template row must include generation metadata",
+                item=row_ref,
+            )
+        )
+        return issues
+
+    template_version = generation.get("template_version")
+    if not isinstance(template_version, str) or not template_version:
+        issues.append(
+            _validation_issue(
+                "error",
+                "synthetic_template_version_missing",
+                field="generation.template_version",
+                message="synthetic template row must include generation.template_version",
+                item=row_ref,
+            )
+        )
+    elif template_version not in PROMPT_CORPUS_SYNTHETIC_TEMPLATE_VERSIONS:
+        issues.append(
+            _validation_issue(
+                "error",
+                "unsupported_synthetic_template_version",
+                field="generation.template_version",
+                message=(
+                    f"unsupported synthetic template version {template_version!r}; "
+                    f"allowed={list(PROMPT_CORPUS_SYNTHETIC_TEMPLATE_VERSIONS)}"
+                ),
+                item=row_ref,
+                value=template_version,
+                allowed=list(PROMPT_CORPUS_SYNTHETIC_TEMPLATE_VERSIONS),
+            )
+        )
+
+    review_status = generation.get("review_status")
+    if not isinstance(review_status, str) or not review_status:
+        issues.append(
+            _validation_issue(
+                "error",
+                "synthetic_review_status_missing",
+                field="generation.review_status",
+                message="synthetic template row must include generation.review_status",
+                item=row_ref,
+            )
+        )
+    elif review_status not in PROMPT_CORPUS_SYNTHETIC_REVIEW_STATUSES:
+        issues.append(
+            _validation_issue(
+                "error",
+                "unsupported_synthetic_review_status",
+                field="generation.review_status",
+                message=(
+                    f"unsupported synthetic review status {review_status!r}; "
+                    f"allowed={list(PROMPT_CORPUS_SYNTHETIC_REVIEW_STATUSES)}"
+                ),
+                item=row_ref,
+                value=review_status,
+                allowed=list(PROMPT_CORPUS_SYNTHETIC_REVIEW_STATUSES),
+            )
+        )
+    return issues
+
+
+def _validation_issue(
+    severity: str,
+    issue: str,
+    *,
+    field: str,
+    message: str,
+    item: dict[str, object],
+    **extra: object,
+) -> dict[str, object]:
+    row_ref = {
+        key: item[key]
+        for key in ("row_index", "line", "id")
+        if key in item
+    }
+    return {
+        **row_ref,
+        "severity": severity,
+        "issue": issue,
+        "field": field,
+        "message": message,
+        **extra,
+    }
+
+
+def _validation_issue_sort_key(issue: dict[str, object]) -> tuple[object, ...]:
+    line = issue.get("line")
+    return (
+        0 if issue["severity"] == "error" else 1,
+        line if isinstance(line, int) else 10**9,
+        str(issue.get("issue", "")),
+        str(issue.get("field", "")),
+    )
+
+
+def _dict_list(value: object) -> list[dict[str, object]]:
+    if not isinstance(value, list):
+        return []
+    return [item for item in value if isinstance(item, dict)]
+
+
+def _expected_field_type_message(item: dict[str, object]) -> str:
+    issue = item.get("issue")
+    field = item.get("field")
+    if issue == "invalid_type":
+        return (
+            f"{field} must be {item.get('expected_type')}; "
+            f"got {item.get('actual_type')}"
+        )
+    if issue == "invalid_list_items":
+        return f"{field} must contain non-empty strings"
+    if issue == "unknown_expected_field":
+        return f"{field} is not a supported expected field"
+    return f"{field} has invalid expected-field schema"
+
+
+def _prompt_corpus_validation_policy() -> dict[str, object]:
+    return {
+        "fatal": [
+            "missing or invalid required top-level fields",
+            "duplicate row ids",
+            "unsupported split/source_type/task_type/repo_mode labels",
+            "unsupported expected.action labels",
+            "invalid expected-field types or list items",
+            "missing synthetic prompt_family or generation metadata",
+            "exact normalized prompt duplicates across splits",
+        ],
+        "review": [
+            "near-duplicate prompts across splits",
+            "prompt families that span multiple splits",
+            "legacy human_seed rows that omit explicit expected.action",
+        ],
+        "source_policies": {
+            "human_seed": (
+                "legacy seed rows may omit expected.action and "
+                "expected.unsupported_requirements when the action is derivable"
+            ),
+            "synthetic_template_v0": (
+                "requires expected.action, stable expected list fields, "
+                "prompt_family, generation.template_version, and "
+                "generation.review_status"
+            ),
+            "greenshot_7_intent_fixture": (
+                "request-spec fixture rows require explicit expected.action, "
+                "features, unsupported_requirements, and clarification_fields; "
+                "prompt_family/generation are not required"
+            ),
+        },
+    }
 
 
 def _row_reference(row: dict[str, object], index: int) -> dict[str, object]:

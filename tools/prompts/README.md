@@ -55,3 +55,20 @@ The JSON profile includes source/split/task/domain counts, clarification and
 ambiguity counts, inferred defaults, synthetic template families, cross-split
 duplicate and near-duplicate risks, schema variants, unsupported scalar labels,
 and fields the next schema validator should enforce.
+
+## Schema Validation
+
+Validate the current prompt/spec row schema before using a corpus for learned
+prompt or transition-model work:
+
+```bash
+python cli.py validate-prompt-corpus --labels ../prompts/coding_agent_prompts_seed.jsonl
+python cli.py validate-prompt-corpus --labels ../prompts/coding_agent_prompts_expanded_v0.jsonl
+python cli.py validate-prompt-corpus --labels examples/prompt_intents/greenshot_7_intents.jsonl
+```
+
+The validator fails on missing required fields, unsupported scalar labels,
+invalid expected-field types, unsupported expected actions, duplicate ids, exact
+cross-split prompt duplicates, and missing synthetic provenance. Cross-split
+near-duplicates are reported as review warnings by default; use
+`--fail-on-review` when a cleanup gate should treat them as fatal.

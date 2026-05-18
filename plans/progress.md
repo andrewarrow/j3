@@ -195,8 +195,38 @@ meaningful work. Do not replace this file with a daily reset.
   extra boost for returned-mapping writes. The focused
   `http_no_store_directive_subscript_key` task now produces, tests, and
   validates the `"no-store"` -> `"no_store"` candidate inside the matrix cap.
-- Commit: pending
-- Push: pending
+- Commit: 49d995069a89a95f1f73cd0a1161fc63e6b33f14
+- Push: succeeded
 - Next: rerun the relevant transition matrix subset when coordinator wants
   refreshed residual counts.
+- Blockers: none
+
+### 2026-05-18 - DATA-002 - Prompt corpus schema validation
+
+- Owner: worker DATA-002
+- Files changed: `j3/prompt_intents.py`, `cli/handlers.py`,
+  `cli/parser.py`, `cli/__init__.py`, `tests/test_prompt_intents.py`,
+  `tools/prompts/README.md`, `plans/active.md`, `plans/progress.md`
+- Tests: `pytest tests/test_prompt_intents.py -q` -> 16 passed;
+  `python cli.py validate-prompt-corpus --labels
+  ../prompts/coding_agent_prompts_seed.jsonl` -> 80 rows, 0 errors, 80
+  warnings; `python cli.py validate-prompt-corpus --labels
+  ../prompts/coding_agent_prompts_expanded_v0.jsonl` -> 320 rows, 0 errors,
+  82 warnings; `python cli.py validate-prompt-corpus --labels
+  examples/prompt_intents/greenshot_7_intents.jsonl` -> 87 rows, 0 errors, 12
+  warnings; `git diff --check` passed.
+- Result: added `validate_prompt_corpus` / `validate_prompt_corpus_rows` on top
+  of the existing prompt corpus profile, plus `validate-prompt-corpus` CLI
+  wiring. Fatal errors cover missing/invalid required fields, duplicate ids,
+  unsupported split/source/task/repo labels, unsupported expected actions,
+  expected-field type/list issues, exact cross-split duplicates, and missing
+  synthetic provenance. Current corpus-specific policy treats legacy
+  `human_seed` rows without explicit `expected.action` and cross-split
+  near-duplicates as review warnings; GreenShot-7 intent fixtures are now a
+  supported `source_type` and do not require synthetic `generation` metadata.
+- Commit: pending final hash reported by worker
+- Push: pending
+- Next: assign split cleanup or schema normalization only if the coordinator
+  wants warnings converted to a hard gate; otherwise `DATA-003` can build on
+  this validator.
 - Blockers: none

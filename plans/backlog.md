@@ -203,7 +203,7 @@ Long-term target:
 
 ### REPO-001: Summarize repo-state encoder coverage
 
-- Status: active
+- Status: done
 - Why: greenfield and transition planning need explicit repo representation.
 - Write scope: repo encoder docs/tests or a small inspection command.
 - Acceptance: reports files, packages, imports, functions/classes, tests,

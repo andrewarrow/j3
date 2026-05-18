@@ -441,3 +441,23 @@ meaningful work. Do not replace this file with a daily reset.
   mapping key/value targets, boundary/literal ranking, and AST-delta
   observation.
 - Blockers: none
+
+### 2026-05-18 - REPO-001 - Repo-state coverage summary
+
+- Owner: worker REPO-001
+- Files changed: `j3/repo_state.py`, `tests/test_repo_state.py`,
+  `plans/active.md`, `plans/backlog.md`, `plans/progress.md`
+- Tests: `pytest tests/test_repo_state.py -q` -> 7 passed;
+  `python -m py_compile j3/repo_state.py` -> passed;
+  `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check` -> passed.
+- Result: added a deterministic `coverage` section to repo-state records and a
+  standalone `encode_repo_state_coverage` helper. The fixture report covers all
+  discovered files with roles, Python packages, imports, functions/classes,
+  pytest files, config files, pyproject/script and main-guard entrypoints,
+  docs, and parse errors while preserving the existing embedding record fields.
+- Commit: pending
+- Push: pending
+- Next: use the coverage report as repo context for existing-repo and
+  repo-state-aware GreenShot action slices.
+- Blockers: none

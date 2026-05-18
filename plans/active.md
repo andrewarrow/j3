@@ -16,18 +16,8 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-### `REPO-001`: Summarize repo-state encoder coverage
-
-- Owner: worker Linnaeus (`019e3b29-52be-7301-b5a4-c5fee5b7d870`)
-- Status: active
-- Write scope: `j3/repo_state.py`, `tests/test_repo_state.py`,
-  `docs/REPO_STATE_COVERAGE.md` if a focused doc is useful, and plan updates.
-  Do not touch GreenShot request-spec/greenfield files or action coverage files.
-- Acceptance: fixture repo coverage reports files, packages, imports,
-  functions/classes, tests, configs, entrypoints, and docs while preserving the
-  existing deterministic embedding record.
-- Tests: `pytest tests/test_repo_state.py -q`,
-  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+No active tasks are currently recorded. The coordinator should dispatch the
+next ready bounded task unless a review blocker is found.
 
 ## Ready Queue
 
@@ -64,6 +54,11 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `REPO-001`: added an inspectable repo-state coverage section alongside the
+  deterministic embedding record. Fixture coverage now reports all discovered
+  files with roles, Python packages, imports, top-level functions and classes,
+  pytest files, config files, likely entrypoints, docs, and parse errors while
+  keeping the existing embedding metadata and aggregate fields stable.
 - `ACT-001`: added `docs/ACTION_COVERAGE_MAP.md`, separating current
   transition residuals and GreenShot-7 classified gaps into supported repair
   actions, new request-to-repo action needs, ranking/scorer gaps, and

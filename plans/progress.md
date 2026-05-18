@@ -3464,8 +3464,8 @@ meaningful work. Do not replace this file with a daily reset.
   `/tmp/j3-data-035-scrapy-7293-source-test-final/candidate.diff`,
   `/tmp/j3-data-035-scrapy-7293-source-test-final/accepted.diff`, and
   `/tmp/j3-data-035-scrapy-7293-source-test-final/parity.diff`.
-- Commit: pending.
-- Push: pending.
+- Commit: caf7c53.
+- Push: succeeded.
 - Next: use the validated pytest #14462 and Scrapy #7293 issue/PR candidates
   for ranking/decoy evidence on real held-out repos; continue materialization
   coverage audits on real accepted PRs instead of returning to fixture-only

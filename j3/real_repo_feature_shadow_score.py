@@ -9,9 +9,11 @@ from pathlib import Path
 from time import perf_counter
 from typing import Mapping, Sequence
 
+from j3 import real_repo_feature_materializer as feature_materializer
 from j3.real_repo_feature_materializer import (
     CANDIDATE_VALIDATION_DEFERRED,
     H11_BYTESIFY_OBJECT_MESSAGE_TASK_ID,
+    INICONFIG_SECTION_DEFAULT_TASK_ID,
     REAL_REPO_FEATURE_ACTION_FAMILY,
     RealRepoFeatureMaterializerError,
     materialize_real_repo_feature_candidate,
@@ -25,10 +27,11 @@ from j3.request_spec import parse_request_to_spec
 
 REAL_REPO_FEATURE_SHADOW_SCORE_SCHEMA_VERSION = "real-repo-feature-shadow-score-v1"
 REAL_REPO_FEATURE_SHADOW_SCORE_KIND = "real_repo_one_file_feature_shadow_score"
-DEFAULT_REPORT_PATH = Path("/tmp/j3-real-009-feature-shadow-score/report.md")
-DEFAULT_SCORE_PATH = Path("/tmp/j3-real-009-feature-shadow-score/score.json")
+DEFAULT_REPORT_PATH = Path("/tmp/j3-real-011-feature-shadow-score/report.md")
+DEFAULT_SCORE_PATH = Path("/tmp/j3-real-011-feature-shadow-score/score.json")
 DEFAULT_VALIDATION_TIMEOUT_SECONDS = 120
 FEATURE_MATERIALIZATION_BLOCKER = "one_file_materialization_gap"
+HUMANIZE_NATURALSIZE_ZERO_FORMAT_TASK_ID = "humanize-feature-naturalsize-zero-format"
 
 
 def run_real_repo_feature_shadow_score(
@@ -74,6 +77,8 @@ def run_real_repo_feature_shadow_score(
     )
     candidate_count = sum(int(row["candidate_count"]) for row in rows)
     candidates_tested = sum(int(row["candidates_tested"]) for row in rows)
+    calibration_metrics = _split_pass_metrics(rows, split="calibration")
+    heldout_metrics = _split_pass_metrics(rows, split="heldout")
     production_files_changed = 0
     writes_outside_allowlist = 0
     production_constraint_violations = 0
@@ -92,6 +97,9 @@ def run_real_repo_feature_shadow_score(
         if not bool(mutation_scope.get("one_production_file_constraint_preserved", True)):
             production_constraint_violations += 1
 
+    hidden_like_disagreeing = sum(
+        1 for row in rows if row["hidden_like_agreement"] == "disagrees"
+    )
     gates = _mapping(manifest.get("gates"), field="gates")
     feature_gate = _mapping(gates.get("one_file_feature"), field="one_file_feature")
     minimum_pass_at_3 = int(feature_gate.get("minimum_pass_at_3", 2))
@@ -101,7 +109,14 @@ def run_real_repo_feature_shadow_score(
         and len(passing_repos) >= minimum_distinct_repos
         and production_constraint_violations == 0
         and writes_outside_allowlist == 0
+        and hidden_like_disagreeing == 0
     )
+    blocked_rows = [
+        str(row["task_id"])
+        for row in rows
+        if row["pass@3"] is not True
+    ]
+    supported_surface = _supported_action_surface()
 
     score: dict[str, object] = {
         "schema_version": REAL_REPO_FEATURE_SHADOW_SCORE_SCHEMA_VERSION,
@@ -113,17 +128,14 @@ def run_real_repo_feature_shadow_score(
         "zero_hosted_usage_confirmed": True,
         "supported_action_surface": {
             "real_repo_action_family": REAL_REPO_FEATURE_ACTION_FAMILY,
-            "heldout_materializers": [H11_BYTESIFY_OBJECT_MESSAGE_TASK_ID],
-            "scope_note": (
-                "MAT-003 materializes only the h11 bytesify object-message "
-                "one-file feature candidate. Other feature ladder tasks remain "
-                "explicit blockers until implemented and live validated."
-            ),
+            **supported_surface,
         },
         "metrics": {
             "tasks_scored": total,
             "candidate_count": candidate_count,
             "candidates_tested": candidates_tested,
+            "calibration": calibration_metrics,
+            "heldout": heldout_metrics,
             "pass@1": f"{pass_at_1_count}/{total}",
             "pass@3": f"{pass_at_3_count}/{total}",
             "pass_at_1_count": pass_at_1_count,
@@ -162,11 +174,7 @@ def run_real_repo_feature_shadow_score(
                 "agreeing": sum(
                     1 for row in rows if row["hidden_like_agreement"] == "agrees"
                 ),
-                "disagreeing": sum(
-                    1
-                    for row in rows
-                    if row["hidden_like_agreement"] == "disagrees"
-                ),
+                "disagreeing": hidden_like_disagreeing,
                 "not_run": sum(
                     1 for row in rows if row["hidden_like_agreement"] == "not_run"
                 ),
@@ -184,18 +192,54 @@ def run_real_repo_feature_shadow_score(
             "passed": gate_passed,
             "guarded_opt_in_allowed": gate_passed,
             "reason": (
-                "one-file feature gate requires at least "
-                f"{minimum_pass_at_3}/{total} pass@3 across at least "
-                f"{minimum_distinct_repos} distinct repos. Current score is "
-                f"{pass_at_3_count}/{total} across {len(passing_repos)} repo(s), "
-                "with unsupported feature tasks left as blockers."
+                f"pass@3 is {pass_at_3_count}/{total} across "
+                f"{len(passing_repos)} distinct repo(s), against the "
+                f"{minimum_pass_at_3}/{total} one-file feature gate and "
+                f"{minimum_distinct_repos} distinct-repo requirement. "
+                "Guarded one-file feature opt-in is allowed only for "
+                "materialized, validation-passing candidates that write within "
+                "the task allowlist, change at most the task's single "
+                "production file, and have no hidden-like disagreement."
+                if gate_passed
+                else (
+                    f"pass@3 is {pass_at_3_count}/{total} across "
+                    f"{len(passing_repos)} distinct repo(s), below the "
+                    "one-file feature gate or blocked by mutation/hidden-like "
+                    "violations."
+                )
             ),
+            "guarded_opt_in_scope": {
+                "allowed": gate_passed,
+                "mode": "guarded_one_file_feature_opt_in" if gate_passed else None,
+                "task_type": "one_file_feature",
+                "action_family": REAL_REPO_FEATURE_ACTION_FAMILY,
+                "allowed_repo_ids": [
+                    str(row["repo_id"]) for row in rows if row["pass@3"] is True
+                ],
+                "allowed_task_ids": [
+                    str(row["task_id"]) for row in rows if row["pass@3"] is True
+                ],
+                "path_scope": "task allowlisted source and test files only",
+                "production_file_constraint": (
+                    "at most one production file may change, and it must be "
+                    "the task's allowlisted production file"
+                ),
+                "requires": [
+                    "candidate validation passes before applying",
+                    "writes stay inside the task allowlist",
+                    "only the task's single production file changes among production files",
+                    "hidden-like checks do not disagree with public validation",
+                    "planned action, changed paths, validation command, and rollback path are shown before applying",
+                ],
+            },
+            "blocked_rows": blocked_rows,
             "failed_checks": []
             if gate_passed
             else [
                 "pass@3 below one-file feature gate",
                 "fewer than 2 distinct repositories have passing feature candidates",
-                "unsupported feature tasks still have materialization blockers",
+                "mutation-scope violations must be zero",
+                "hidden-like disagreements must be zero",
             ],
         },
         "task_results": rows,
@@ -225,7 +269,7 @@ def format_real_repo_feature_shadow_score(score: Mapping[str, object]) -> str:
     gate = _mapping(score.get("gate_decision"), field="gate_decision")
     rows = _sequence(score.get("task_results"), field="task_results")
     lines = [
-        "# REAL-009 One-File Feature Shadow Score",
+        "# REAL-011 One-File Feature Shadow Score",
         "",
         f"- Schema: `{score.get('schema_version')}`",
         f"- Manifest: `{score.get('manifest_path')}`",
@@ -233,6 +277,14 @@ def format_real_repo_feature_shadow_score(score: Mapping[str, object]) -> str:
         f"- Zero hosted usage: `{str(score.get('zero_hosted_usage_confirmed')).lower()}`",
         f"- Candidate count: `{metrics.get('candidate_count')}`",
         f"- Candidates tested: `{metrics.get('candidates_tested')}`",
+        (
+            "- Calibration pass@3: "
+            f"`{_mapping(metrics.get('calibration'), field='calibration').get('pass@3')}`"
+        ),
+        (
+            "- Held-out pass@3: "
+            f"`{_mapping(metrics.get('heldout'), field='heldout').get('pass@3')}`"
+        ),
         f"- pass@1: `{metrics.get('pass@1')}`",
         f"- pass@3: `{metrics.get('pass@3')}`",
         (
@@ -245,6 +297,14 @@ def format_real_repo_feature_shadow_score(score: Mapping[str, object]) -> str:
         ),
         f"- Runtime: `{metrics.get('runtime_seconds')}s`",
         f"- Gate decision: `{gate.get('decision')}`",
+        (
+            "- Guarded opt-in allowed: "
+            f"`{str(gate.get('guarded_opt_in_allowed') is True).lower()}`"
+        ),
+        (
+            "- Blocked rows: "
+            f"`{', '.join(str(row) for row in _sequence(gate.get('blocked_rows'), field='blocked_rows')) or 'none'}`"
+        ),
         "",
         "## Task Results",
         "",
@@ -303,7 +363,7 @@ def write_real_repo_feature_shadow_report(
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Run the REAL-009 one-file feature shadow score."
+        description="Run the REAL-011 one-file feature shadow score."
     )
     parser.add_argument(
         "--manifest",
@@ -376,7 +436,7 @@ def _score_one_file_feature_task(
     validation_timeout_seconds: int,
 ) -> dict[str, object]:
     task_id = _required_str(task, "id")
-    if task_id == H11_BYTESIFY_OBJECT_MESSAGE_TASK_ID:
+    if task_id in _materialized_feature_task_ids():
         return _score_materialized_feature_task(
             repo=repo,
             task=task,
@@ -386,6 +446,41 @@ def _score_one_file_feature_task(
             validation_timeout_seconds=validation_timeout_seconds,
         )
     return _unsupported_feature_task_row(repo=repo, task=task, defaults=defaults)
+
+
+def _materialized_feature_task_ids() -> frozenset[str]:
+    task_ids = {
+        H11_BYTESIFY_OBJECT_MESSAGE_TASK_ID,
+        INICONFIG_SECTION_DEFAULT_TASK_ID,
+    }
+    if hasattr(feature_materializer, "HUMANIZE_NATURALSIZE_ZERO_FORMAT_TASK_ID"):
+        task_ids.add(HUMANIZE_NATURALSIZE_ZERO_FORMAT_TASK_ID)
+    return frozenset(task_ids)
+
+
+def _supported_action_surface() -> dict[str, object]:
+    heldout_materializers = [H11_BYTESIFY_OBJECT_MESSAGE_TASK_ID]
+    scope_note = (
+        "MAT-003 materializes the held-out h11 bytesify object-message "
+        "one-file feature candidate. MAT-004 materializes the iniconfig "
+        "section-default calibration one-file feature candidate. Humanize and "
+        "boltons remain explicit blockers until implemented and live validated."
+    )
+    if HUMANIZE_NATURALSIZE_ZERO_FORMAT_TASK_ID in _materialized_feature_task_ids():
+        heldout_materializers.append(HUMANIZE_NATURALSIZE_ZERO_FORMAT_TASK_ID)
+        scope_note = (
+            "MAT-003 materializes the held-out h11 bytesify object-message "
+            "one-file feature candidate. MAT-004 materializes the iniconfig "
+            "section-default calibration one-file feature candidate. MAT-005 "
+            "materializes the held-out humanize zero-format one-file feature "
+            "candidate. Boltons remains an explicit blocker until implemented "
+            "and live validated."
+        )
+    return {
+        "calibration_materializers": [INICONFIG_SECTION_DEFAULT_TASK_ID],
+        "heldout_materializers": heldout_materializers,
+        "scope_note": scope_note,
+    }
 
 
 def _score_materialized_feature_task(
@@ -815,16 +910,55 @@ def _feature_hidden_like_agreement(
         field="source_file.candidate_after",
     )
     test_after = _mapping(candidate_after.get("test_file"), field="test_file")
+    test_diff = str(test_after.get("diff", ""))
     test_case_ids = set(
         _string_sequence(test_after.get("test_case_ids", []), field="test_case_ids")
     )
-    required_case_ids = {"h11_bytesify_unsupported_object_type_name"}
+    task_id = _required_str(task, "id")
     source_diff = str(source_candidate_after.get("diff", ""))
+    if task_id == H11_BYTESIFY_OBJECT_MESSAGE_TASK_ID:
+        required_production_files = ["h11/_util.py"]
+        required_case_ids = {"h11_bytesify_unsupported_object_type_name"}
+        source_signals = {"mentions_type_name": "type(s).__name__" in source_diff}
+    elif task_id == INICONFIG_SECTION_DEFAULT_TASK_ID:
+        required_production_files = ["src/iniconfig/__init__.py"]
+        required_case_ids = {
+            "iniconfig_get_section_missing_default",
+            "iniconfig_get_section_existing_order",
+        }
+        source_signals = {
+            "adds_get_section": "def get_section(" in source_diff,
+            "returns_default": "return default" in source_diff,
+            "tests_getitem_keyerror": (
+                'config["missing"]' in test_diff and "KeyError" in test_diff
+            ),
+        }
+    elif task_id == HUMANIZE_NATURALSIZE_ZERO_FORMAT_TASK_ID:
+        required_production_files = ["src/humanize/filesize.py"]
+        required_case_ids = {
+            "humanize_naturalsize_zero_format_zero_values",
+            "humanize_naturalsize_zero_format_default_unchanged",
+            "humanize_naturalsize_zero_format_nonzero_ignored",
+        }
+        source_signals = {
+            "adds_zero_format_argument": "zero_format: str | None = None" in source_diff,
+            "returns_zero_format": "return zero_format" in source_diff,
+            "tests_zero_and_negative_zero": (
+                "naturalsize(0, zero_format=" in test_diff
+                and "naturalsize(-0.0, zero_format=" in test_diff
+            ),
+        }
+    else:
+        return {
+            "status": "not_run",
+            "reason": "no hidden-like evaluator for this task",
+        }
+    source_signals_agree = all(source_signals.values())
     agrees = (
-        list(production_changed) == ["h11/_util.py"]
+        list(production_changed) == required_production_files
         and not writes_outside
         and bool(mutation_scope.get("one_production_file_constraint_preserved"))
-        and "type(s).__name__" in source_diff
+        and source_signals_agree
         and required_case_ids <= test_case_ids
     )
     return {
@@ -834,7 +968,7 @@ def _feature_hidden_like_agreement(
         "one_production_file_constraint_preserved": bool(
             mutation_scope.get("one_production_file_constraint_preserved")
         ),
-        "source_diff_mentions_type_name": "type(s).__name__" in source_diff,
+        "source_signals": source_signals,
         "required_case_ids_present": sorted(required_case_ids & test_case_ids),
         "missing_case_ids": sorted(required_case_ids - test_case_ids),
         "checks": list(
@@ -896,6 +1030,28 @@ def _mapping(value: object, *, field: str) -> Mapping[str, object]:
     if not isinstance(value, Mapping):
         raise ValueError(f"{field} must be an object")
     return value
+
+
+def _split_pass_metrics(
+    rows: Sequence[Mapping[str, object]],
+    *,
+    split: str,
+) -> dict[str, object]:
+    split_rows = [row for row in rows if row.get("repo_split") == split]
+    total = len(split_rows)
+    pass_at_1_count = sum(1 for row in split_rows if row["pass@1"] is True)
+    pass_at_3_count = sum(1 for row in split_rows if row["pass@3"] is True)
+    return {
+        "split": split,
+        "tasks_scored": total,
+        "candidate_count": sum(int(row["candidate_count"]) for row in split_rows),
+        "candidates_tested": sum(int(row["candidates_tested"]) for row in split_rows),
+        "pass@1": f"{pass_at_1_count}/{total}",
+        "pass@3": f"{pass_at_3_count}/{total}",
+        "pass_at_1_count": pass_at_1_count,
+        "pass_at_3_count": pass_at_3_count,
+        "first_passing_ranks": [row["first_passing_rank"] for row in split_rows],
+    }
 
 
 def _json_copy(value: object) -> object:

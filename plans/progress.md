@@ -1580,3 +1580,38 @@ meaningful work. Do not replace this file with a daily reset.
 - Next: rerun or extend the one-file feature shadow scorer so it can count
   `humanize-feature-naturalsize-zero-format` alongside h11 and iniconfig.
 - Blockers: none
+
+### 2026-05-18 - REAL-011 - One-file feature gate after iniconfig
+
+- Owner: worker Avicenna (`019e3bcf-0b29-7413-9ecd-a95ef581759b`)
+- Files changed: `j3/real_repo_feature_shadow_score.py`,
+  `tests/test_real_repo_feature_shadow_score.py`,
+  `docs/REAL_011_ONE_FILE_FEATURE_SHADOW_SCORE_2026-05-18.md`,
+  `plans/active.md`, `plans/backlog.md`, `plans/progress.md`
+- Tests: `pytest tests/test_real_repo_feature_shadow_score.py -q` -> 3
+  passed; live preflight
+  `python -m j3.real_repo_preflight --manifest examples/real_repo_eval_ladder.json --repo iniconfig --repo h11 --repo humanize --work-root /tmp/j3-real-011-feature-shadow-score-live-v2/repos --outcome /tmp/j3-real-011-feature-shadow-score-live-v2/preflight.jsonl`
+  -> passed with 6 rows, `blocker_labels = ["none"]`, runtime 7.749 seconds;
+  live shadow score
+  `python -m j3.real_repo_feature_shadow_score --manifest examples/real_repo_eval_ladder.json --repo-path iniconfig=/tmp/j3-real-011-feature-shadow-score-live-v2/repos/iniconfig --repo-path h11=/tmp/j3-real-011-feature-shadow-score-live-v2/repos/h11 --repo-path humanize=/tmp/j3-real-011-feature-shadow-score-live-v2/repos/humanize --validate-candidates --out /tmp/j3-real-011-feature-shadow-score-live-v2/score.json --report /tmp/j3-real-011-feature-shadow-score-live-v2/report.md`
+  -> passed with `pass@1 = 3/4`, `pass@3 = 3/4`, and
+  `gate_decision = allow_guarded_one_file_feature_opt_in`; `pytest
+  tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check` ->
+  passed.
+- Result: counted `iniconfig-feature-section-default`,
+  `h11-feature-bytesify-object-message`, and the concurrent
+  `MAT-005` `humanize-feature-naturalsize-zero-format` through
+  `j3.real_repo_feature_materializer`. Calibration pass@3 is `1/1`; held-out
+  pass@3 is `2/3`; first passing ranks are `[1, 1, 1, null]`. Candidate
+  validation passed for iniconfig, h11, and humanize, with zero writes outside
+  allowlists, zero production-file constraint violations, hidden-like
+  agreement for all three passing rows, and zero hosted usage. Guarded
+  one-file feature opt-in is allowed only for the three materialized,
+  validation-passing task ids inside task allowlists with one allowlisted
+  production file changed and no hidden-like disagreement.
+- Commit: pending
+- Push: pending
+- Next: coordinator can review REAL-011 with MAT-005; boltons remains the only
+  unmaterialized one-file feature ladder row.
+- Blockers: `boltons-feature-slugify-max-length` remains an explicit
+  `one_file_materialization_gap` blocker.

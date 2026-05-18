@@ -884,7 +884,7 @@ Long-term target:
 
 ### REAL-011: One-file feature gate after iniconfig materializer
 
-- Status: active
+- Status: done
 - Why: `MAT-004` added a second real source materializer, so the feature gate
   needs immediate scoring rather than assuming the materialization thesis is
   improving.
@@ -899,6 +899,20 @@ Long-term target:
   agreement, zero hosted usage, and the one-file feature gate decision.
 - Tests: focused feature-score tests, plan consistency, `git diff --check`, and
   the live score/report smoke command.
+- Completion note: reran the one-file feature gate after `MAT-004` and counted
+  the concurrent `MAT-005` humanize materializer at integration time. The live
+  score against pinned `iniconfig`, `h11`, and `humanize` checkouts passed at
+  `pass@1 = 3/4` and `pass@3 = 3/4`; calibration pass@3 is `1/1`, held-out
+  pass@3 is `2/3`, first passing ranks are `[1, 1, 1, null]`, candidate
+  validation is `passed = 3` and `blocked = 1`, three distinct repos pass,
+  mutation-scope violations are zero, hidden-like agreement is `3/3`, and zero
+  hosted usage is confirmed. Guarded one-file feature opt-in is allowed only
+  for `iniconfig-feature-section-default`,
+  `h11-feature-bytesify-object-message`, and
+  `humanize-feature-naturalsize-zero-format` inside task allowlists with one
+  allowlisted production file changed, passing validation, and no hidden-like
+  disagreement. `boltons-feature-slugify-max-length` remains an explicit
+  `one_file_materialization_gap` blocker.
 
 ### DATA-005: Issue/PR replay preflight runner
 

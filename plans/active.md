@@ -29,32 +29,22 @@ This is the live coordinator board. Keep it current and compact.
   `h11`; `MAT-004` now materializes and live-validates the second one-file
   source feature candidate for calibration `iniconfig`. `MAT-005` now
   materializes and live-validates the next held-out one-file source feature
-  candidate for `humanize`. `REAL-009` last scored only the h11 materializer at
-  `pass@1 = 1/4` and `pass@3 = 1/4`, so the one-file feature gate remains
-  shadow-only until the feature scorer counts the newer iniconfig and humanize
-  candidates.
+  candidate for `humanize`. `REAL-011` scores the iniconfig, h11, and
+  humanize one-file feature candidates at `pass@1 = 3/4` and
+  `pass@3 = 3/4`; calibration pass@3 is `1/1`, held-out pass@3 is `2/3`,
+  three distinct repos pass, and guarded one-file feature opt-in is allowed
+  only for `iniconfig-feature-section-default`,
+  `h11-feature-bytesify-object-message`, and
+  `humanize-feature-naturalsize-zero-format` when candidate validation passes,
+  writes stay inside task allowlists, only the task's single allowlisted
+  production file changes, and hidden-like checks do not disagree. Boltons
+  remains an explicit source-feature materialization blocker.
 
 ## Active Tasks
 
-### REAL-011: One-File Feature Gate After Iniconfig
-
-- Status: active
-- Owner: worker Avicenna (`019e3bcf-0b29-7413-9ecd-a95ef581759b`).
-- Write scope: `j3/real_repo_feature_shadow_score.py`,
-  `tests/test_real_repo_feature_shadow_score.py`, optional compact report
-  under `docs/`, generated live artifacts under `/tmp`, and plan updates.
-- Acceptance: score the one-file feature ladder after `MAT-004`, counting both
-  `h11-feature-bytesify-object-message` and
-  `iniconfig-feature-section-default` through
-  `j3.real_repo_feature_materializer`; report calibration versus held-out
-  pass rates, total pass@1/pass@3, distinct repos passing, first passing
-  ranks, candidate validation statuses, production-file constraint,
-  mutation-scope violations, hidden-like agreement, zero hosted usage, and the
-  guarded one-file feature gate decision.
-- Required checks: focused feature-score tests, `pytest
-  tests/test_plan_consistency.py -q`, `git diff --check`, and a live
-  score/report smoke command with pinned `iniconfig` and `h11` checkouts when
-  feasible.
+No active worker tasks are currently recorded. The coordinator should review
+recent results and dispatch the next bounded ready task unless a blocker is
+recorded.
 
 ## Ready Queue
 
@@ -89,6 +79,20 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `REAL-011`: reran the one-file feature shadow score after `MAT-004` and
+  integrated the concurrent `MAT-005` humanize materializer. The live `/tmp`
+  run against pinned iniconfig, h11, and humanize checkouts scored
+  `pass@1 = 3/4`, `pass@3 = 3/4`, calibration pass@3 `1/1`, held-out pass@3
+  `2/3`, first passing ranks `[1, 1, 1, null]`, candidate validation
+  `passed = 3` and `blocked = 1`, three distinct repos passing, zero writes
+  outside allowlists, zero production-file constraint violations, hidden-like
+  agreement for all three passing rows, and zero hosted usage. The manifest
+  gate decision is `allow_guarded_one_file_feature_opt_in` only for
+  `iniconfig-feature-section-default`, `h11-feature-bytesify-object-message`,
+  and `humanize-feature-naturalsize-zero-format` under task allowlists,
+  one-production-file scope, passing validation, and no hidden-like
+  disagreement. Boltons remains an explicit `one_file_materialization_gap`
+  blocker.
 - `MAT-005`: materialized the next held-out one-file source feature candidate
   for `humanize-feature-naturalsize-zero-format`. The feature materializer now
   supports a bounded `naturalsize` source-region edit in

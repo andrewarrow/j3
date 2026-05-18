@@ -2034,3 +2034,43 @@ meaningful work. Do not replace this file with a daily reset.
   together with DATA-008 validation and KNOW-005 local knowledge when choosing
   a candidate attempt.
 - Blockers: none for Requests prompt/spec normalization.
+
+### 2026-05-18 - DATA-010 - Issue/PR candidate readiness gate
+
+- Owner: worker Carver (`019e3c11-c70c-71d3-83c9-c2b01e2ad070`).
+- Files changed: `j3/issue_pr_readiness.py`,
+  `tests/test_issue_pr_readiness.py`,
+  `docs/DATA_010_ISSUE_PR_READINESS_GATE_2026-05-18.md`,
+  `plans/active.md`, `plans/backlog.md`, `plans/progress.md`.
+- Tests: `python -m py_compile j3/issue_pr_readiness.py
+  tests/test_issue_pr_readiness.py` -> passed; `pytest
+  tests/test_issue_pr_readiness.py -q` -> 4 passed; CLI smoke `python -m
+  j3.issue_pr_readiness --manifest examples/issue_pr_mini_replay/manifest.json
+  --limit 3 --preflight-evidence
+  /tmp/j3-data-007-blocker-drilldown/outcomes.jsonl --validation-evidence
+  /tmp/j3-data-008-live/attempts.jsonl --prompt-spec-evidence
+  /tmp/j3-data-009-click-default-map-spec.jsonl --local-knowledge-evidence
+  /tmp/j3-know-004-click-records.jsonl --local-knowledge-evidence
+  /tmp/j3-know-005-requests-records.jsonl --out
+  /tmp/j3-data-010-readiness.jsonl --report
+  docs/DATA_010_ISSUE_PR_READINESS_GATE_2026-05-18.md` -> passed with
+  `status_counts = {"blocked": 1, "ready": 2}`; `pytest
+  tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check` ->
+  passed.
+- Result: added an issue/PR readiness gate that emits one row per replay id
+  with evidence ids/sources, exact missing-evidence labels, allowed write
+  scope, validation command, residual labels, next-stage challenge labels, and
+  a `ready_for_candidate_attempt` recommendation or blocker. The first-batch
+  smoke marks `psf__requests-issue-7432-pr-7433` and
+  `pallets__click-issue-2745-pr-3364` ready for candidate attempts.
+  `pallets__click-issue-3298-pr-3299` remains blocked on
+  `missing_prompt_spec` plus the exact missing prompt-field labels.
+  Materialization and ranking gaps remain explicit next-stage challenges for
+  all three rows and are not readiness blockers.
+- Commit: pending.
+- Push: pending.
+- Next: coordinator can assign `DATA-012` against the safer ready row; the
+  readiness report exposes both Requests and Click #2745 as candidates, with
+  Click #3298 deferred until prompt/spec normalization exists.
+- Blockers: none for DATA-010; Click #3298 candidate attempt remains blocked
+  by missing prompt/spec evidence.

@@ -44,27 +44,8 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-### `DATA-010`: Issue/PR candidate readiness gate
-
-- Status: active
-- Owner: worker Carver (`019e3c11-c70c-71d3-83c9-c2b01e2ad070`).
-- Why: the first replay batch now has targeted validation, prompt/spec, and
-  local-knowledge evidence, but there is no binary gate that says which rows
-  are actually ready to test materialization and ranking.
-- Write scope: issue/PR replay readiness scoring in a new or narrowly scoped
-  module, focused tests, compact report, and plan updates. Do not edit
-  `j3/issue_pr_prompt_spec.py` or `j3/local_knowledge.py`; consume them as
-  evidence instead.
-- Acceptance: consume DATA-008 validation evidence, DATA-009 prompt/spec
-  evidence, KNOW-004 Click knowledge, and KNOW-005 Requests knowledge for the
-  first DATA-006 replay rows; emit one readiness row per replay id with
-  evidence ids, missing-evidence labels, allowed write scope, validation
-  command, residual labels, and a clear `ready_for_candidate_attempt` or
-  blocker recommendation. Materialization/ranking gaps should be recorded as
-  the hard next-stage challenge, not hidden.
-- Tests: focused issue/PR readiness tests, `pytest
-  tests/test_plan_consistency.py -q`, `git diff --check`, and a CLI smoke or
-  fixture report over the first three replay rows.
+No active worker tasks are recorded. The coordinator should dispatch the next
+ready task unless it is intentionally pausing for review.
 
 ## Ready Queue
 
@@ -101,6 +82,17 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `DATA-010`: added an issue/PR candidate-readiness gate that consumes
+  DATA-007 preflight evidence, DATA-008 validation, DATA-009/DATA-011
+  prompt/spec records, and KNOW-004/KNOW-005 local-knowledge JSONL. The first
+  three replay rows now emit one readiness row each with evidence ids/sources,
+  missing-evidence labels, allowed write scope, validation command, residual
+  labels, and a recommendation. Current smoke result: Requests #7432/#7433 and
+  Click #2745/#3364 are `ready_for_candidate_attempt`; Click #3298/#3299
+  remains blocked on missing prompt/spec fields. Materialization and ranking
+  remain explicit next-stage challenges for all three rows. Report:
+  `docs/DATA_010_ISSUE_PR_READINESS_GATE_2026-05-18.md`; JSONL:
+  `/tmp/j3-data-010-readiness.jsonl`.
 - `DATA-011`: added machine-readable prompt/spec normalization for
   `psf__requests-issue-7432-pr-7433` without candidate source edits. The
   `issue_pr_prompt_spec` record captures the minimal reproduction, observed

@@ -1154,7 +1154,7 @@ Long-term target:
 
 ### DATA-010: Issue/PR candidate readiness gate
 
-- Status: active
+- Status: done
 - Why: after `DATA-008`, `DATA-009`, `KNOW-004`, and `KNOW-005`, the replay
   path needs a binary gate that says which first-batch rows are ready for a
   candidate attempt and which hard blocker remains.
@@ -1166,6 +1166,16 @@ Long-term target:
   residual labels, and a clear candidate-attempt recommendation or blocker.
 - Tests: focused issue/PR readiness tests, plan consistency, and
   `git diff --check`.
+- Completion note: added `j3.issue_pr_readiness` with JSONL evidence loaders,
+  readiness row/report output, and a CLI. The DATA-010 smoke over the first
+  three DATA-006 rows consumed DATA-007 preflight evidence, DATA-008 Requests
+  validation, DATA-009/DATA-011 prompt/spec records, and KNOW-004/KNOW-005
+  local-knowledge JSONL. Requests #7432/#7433 and Click #2745/#3364 are ready
+  for candidate attempts; Click #3298/#3299 remains blocked on exact
+  `missing_prompt_spec` and missing prompt-field labels. Materialization and
+  ranking gaps are recorded as next-stage challenges, not readiness blockers.
+  Report: `docs/DATA_010_ISSUE_PR_READINESS_GATE_2026-05-18.md`; JSONL:
+  `/tmp/j3-data-010-readiness.jsonl`.
 
 ### DATA-011: Requests prepare_body prompt/spec normalization
 

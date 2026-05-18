@@ -596,8 +596,8 @@ meaningful work. Do not replace this file with a daily reset.
   local generators. The smallest proposed executable probe is a
   `psf/requests#7427` constrained function-region materializer plus a
   repo-convention pytest builder.
-- Commit: pending worker commit
-- Push: pending worker push
+- Commit: 5678877f2f0bf1b55e92844b4d2a6de045f1486c
+- Push: succeeded
 - Next: implement the `requests#7427` materialization probe or split the
   middle-layer work into typed annotation/config builders,
   repo-convention-aware pytest builders, and constrained source-region
@@ -622,10 +622,30 @@ meaningful work. Do not replace this file with a daily reset.
   deterministic splits, and initial residual labels. The mini replay exposes
   immediate blockers in local package knowledge, source materialization,
   validation setup, candidate ranking, and prompt/spec parsing.
-- Commit: pending worker commit
-- Push: pending worker push
+- Commit: 795e202b82adda3ab16bd1719fe49db5f9d1218c
+- Push: succeeded
 - Next: build a replay preflight runner that checks out one `repo_before_ref`,
   verifies dependency setup and baseline validation, and emits blocker labels
   before attempting edits.
 - Blockers: no large artifacts committed; full issue/PR bodies and diffs still
   need a reviewed storage/release policy before they can become training data.
+
+### 2026-05-18 - COORD - Hard proof follow-up dispatch
+
+- Owner: coordinator
+- Files changed: `plans/active.md`, `plans/backlog.md`, `plans/progress.md`
+- Tests: `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check` -> passed.
+- Result: reviewed the first hard-proof batch and kept the loop pointed at
+  falsifiable risks. `REAL-001` established a real-repo eval ladder;
+  `MAT-001` found that only 4/25 audited real PRs fit current structured
+  actions and that bounded local source generation is the largest gap; and
+  `DATA-004` exposed validation/setup, local knowledge, ranking, and
+  materialization blockers in 10 issue/PR replay rows. The next active batch is
+  `MAT-002`, `KNOW-001`, and `WEDGE-001`.
+- Commit: pending coordinator commit
+- Push: pending coordinator push
+- Next: `MAT-002` will probe constrained source-region materialization,
+  `KNOW-001` will define local knowledge as data, and `WEDGE-001` will lock the
+  six-month wedge and failure criteria.
+- Blockers: none

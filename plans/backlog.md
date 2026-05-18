@@ -368,7 +368,7 @@ Long-term target:
 
 ### MAT-001: Code materialization audit
 
-- Status: active
+- Status: done
 - Why: the biggest technical gap is turning predicted repo-after intent into
   actual source when current structured actions are insufficient.
 - Write scope: `docs/CODE_MATERIALIZATION_GAP.md`, optional small
@@ -380,9 +380,25 @@ Long-term target:
 - Tests: plan consistency, focused checker tests if code is added, and
   `git diff --check`.
 
+### MAT-002: Constrained source-region materialization probe
+
+- Status: active
+- Why: `MAT-001` found that the largest normal-PR bucket is bounded local source
+  generation, not one-line structured repair or full architectural work.
+- Write scope: `j3/source_region_materializer.py`,
+  `tests/test_source_region_materializer.py`, optional docs under `docs/`, and
+  plan updates.
+- Acceptance: add an executable materialization probe that replaces a bounded
+  region inside one named function while enforcing AST parsing, signature
+  preservation, changed-line budget, default no-import-change constraints, and
+  candidate-after diff metadata. Include a fixture shaped like the
+  `psf/requests#7427` `should_bypass_proxies` domain-boundary edit so the probe
+  directly tests the biggest `MAT-001` gap.
+- Tests: focused source-region tests, plan consistency, and `git diff --check`.
+
 ### KNOW-001: Local knowledge inventory for the wedge
 
-- Status: ready
+- Status: active
 - Why: j3 needs pytest, packaging, small-library, and convention knowledge as
   local data rather than frontier-LLM runtime intuition.
 - Write scope: focused doc under `docs/`, optional small source inventory
@@ -394,7 +410,7 @@ Long-term target:
 
 ### WEDGE-001: Product wedge decision
 
-- Status: ready
+- Status: active
 - Why: the first usable product must be narrower than "Codex replacement" and
   must force the hard repo understanding, validation, and materialization work.
 - Write scope: focused product decision doc and plan updates.
@@ -403,12 +419,40 @@ Long-term target:
   guarded rollout gates, and failure criteria for pivoting.
 - Tests: plan consistency and `git diff --check`.
 
+### REAL-002: Real repo eval ladder preflight runner
+
+- Status: ready
+- Why: `REAL-001` is only a contract until a runner proves pinned repos can be
+  checked out and validated cheaply.
+- Write scope: real-repo ladder runner code, focused tests, docs if needed, and
+  plan updates.
+- Acceptance: clone or materialize one pinned repo to `/tmp`, run setup and
+  baseline validation with timeouts, enforce allowed write paths for a dummy
+  candidate, and emit JSONL outcome rows with environment versus agent failure
+  labels.
+- Tests: focused runner tests with mocked subprocess or a tiny local fixture,
+  plan consistency, and `git diff --check`.
+
+### DATA-005: Issue/PR replay preflight runner
+
+- Status: ready
+- Why: `DATA-004` records compact real rows, but validation and setup may break
+  before edit quality can be measured.
+- Write scope: replay preflight runner code, focused tests, docs if needed, and
+  plan updates.
+- Acceptance: check out or simulate one `repo_before_ref`, run dependency/setup
+  and focused validation preflight without edits, and classify failures as
+  environment, validation, prompt/spec, ranking, materialization, or local
+  knowledge blockers.
+- Tests: focused preflight tests with mocked subprocess or tiny fixtures, plan
+  consistency, and `git diff --check`.
+
 ## Next Recommended Queue
 
 Start with these unless fresh evidence changes the order:
 
-1. `REAL-001`: real repo eval ladder spike.
-2. `MAT-001`: code materialization audit.
-3. `DATA-004`: issue/PR mini replay.
-4. `KNOW-001`: local knowledge inventory for the wedge.
-5. `WEDGE-001`: product wedge decision.
+1. `MAT-002`: constrained source-region materialization probe.
+2. `KNOW-001`: local knowledge inventory for the wedge.
+3. `WEDGE-001`: product wedge decision.
+4. `REAL-002`: real-repo ladder preflight runner.
+5. `DATA-005`: issue/PR replay preflight runner.

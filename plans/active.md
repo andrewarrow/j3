@@ -16,12 +16,59 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
+### `MAT-002`: Constrained source-region materialization probe
+
+- Status: active
+- Owner: pending spawn
+- Started: 2026-05-18
+- Goal: turn the largest `MAT-001` bucket into an executable probe by adding a
+  bounded source-region materializer contract and focused tests.
+- Write scope: `j3/source_region_materializer.py`,
+  `tests/test_source_region_materializer.py`, optional docs under `docs/`, and
+  plan updates.
+- Acceptance: materialize a small replacement inside one named function or
+  explicitly delimited region with AST parsing, signature preservation, changed
+  line budget, forbidden import changes by default, and candidate-after diff
+  metadata. Include a fixture shaped like the `psf/requests#7427`
+  `should_bypass_proxies` domain-boundary edit so failure or success maps back
+  to the audit.
+- Tests: focused source-region tests, `pytest tests/test_plan_consistency.py -q`,
+  and `git diff --check`.
+
+### `KNOW-001`: Local knowledge inventory for the wedge
+
+- Status: active
+- Owner: pending spawn
+- Started: 2026-05-18
+- Goal: define exactly what local pytest, packaging, and small-library
+  knowledge j3 needs for the wedge and how it becomes data rather than
+  hardcoded intuition.
+- Write scope: a focused doc under `docs/`, optional compact source manifest
+  under `examples/`, and plan updates.
+- Acceptance: list required concepts, candidate sources, extraction shapes,
+  provenance/split rules, evaluation hooks, and the first datasets or commands
+  needed to acquire the knowledge locally.
+- Tests: `pytest tests/test_plan_consistency.py -q` and `git diff --check`.
+
+### `WEDGE-001`: Product wedge decision
+
+- Status: active
+- Owner: pending spawn
+- Started: 2026-05-18
+- Goal: choose the first usable product path and make its gates/failure
+  criteria concrete enough to stop vague Codex-replacement drift.
+- Write scope: a focused product decision doc under `docs/` and plan updates.
+- Acceptance: choose the wedge, define the user promise, non-goals, guarded
+  rollout gates, evaluation links to `REAL-001`, `MAT-001`, `DATA-004`, and
+  `KNOW-001`, and concrete pivot/failure criteria.
+- Tests: `pytest tests/test_plan_consistency.py -q` and `git diff --check`.
+
 ## Ready Queue
 
 These are good next assignments for the next loop:
 
-1. `KNOW-001`: local knowledge inventory for the chosen wedge.
-2. `WEDGE-001`: choose and gate the six-month product wedge.
+1. `REAL-002`: add a preflight runner for the real-repo eval ladder.
+2. `DATA-005`: add a replay preflight runner for one issue/PR row.
 3. `GS7-005`: add tests-only existing-repo support for one-file libraries.
 4. `GS7-006`: add repo-state-aware library convention edits.
 

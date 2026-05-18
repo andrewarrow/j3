@@ -34,22 +34,6 @@ This is the live coordinator board. Keep it current and compact.
 - Tests: shadow-score command or report smoke,
   `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
 
-### `KNOW-002`: Extract first wedge knowledge records
-
-- Status: active
-- Owner: worker Hegel (`019e3b6c-9764-7082-a180-4704cc0ce894`)
-- Started: 2026-05-18
-- Goal: turn `KNOW-001` from an inventory into compact local knowledge records
-  that tests-only planning can cite.
-- Write scope: a small extractor or manifest for calibration repo knowledge
-  records, focused tests, docs if needed, and plan updates.
-- Acceptance: emit compact JSONL records for test layout, package layout,
-  public imports, validation recipe, and at least one pytest pattern from a
-  calibration repo, with provenance hashes, split labels, and an example
-  knowledge-use link suitable for tests-only planning.
-- Tests: focused extractor/schema tests,
-  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
-
 ### `GS7-006`: Repo-state-aware library convention edits
 
 - Status: active
@@ -99,6 +83,13 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `KNOW-002`: added `j3/local_knowledge.py` and focused tests for compact
+  local knowledge records. The extractor emits JSONL-ready pytest layout,
+  packaging layout, public API/import, validation recipe, and AST-backed pytest
+  pattern records from a calibration checkout or fixture, including provenance
+  hashes, split labels, source references, extractor/version fields, task and
+  outcome links where available, and an example `knowledge_use_record` for
+  tests-only planning citations.
 - `GS7-005`: added `j3/existing_repo_tests.py` for a narrow existing-repo
   tests-only slugify action. The `slugify_tests_only_existing` GreenShot-7
   task now materializes a one-file existing repo fixture, inspects `slugify.py`,

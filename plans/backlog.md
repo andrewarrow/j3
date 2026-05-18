@@ -414,7 +414,7 @@ Long-term target:
 
 ### KNOW-002: Extract first wedge knowledge records
 
-- Status: active
+- Status: done
 - Why: `KNOW-001` defined the local knowledge shape, but the product wedge
   needs pytest, packaging, import, and validation records that builders can
   cite instead of hardcoded assumptions.

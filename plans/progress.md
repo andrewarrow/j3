@@ -832,3 +832,27 @@ meaningful work. Do not replace this file with a daily reset.
   (`019e3b6c-9764-7082-a180-4704cc0ce894`), and Nietzsche
   (`019e3b6c-ce65-79f2-abd3-755b259ed56e`).
 - Blockers: none
+
+### 2026-05-18 - KNOW-002 - First wedge knowledge records
+
+- Owner: worker Hegel (`019e3b6c-9764-7082-a180-4704cc0ce894`)
+- Files changed: `j3/local_knowledge.py`, `tests/test_local_knowledge.py`,
+  `plans/active.md`, `plans/backlog.md`, `plans/progress.md`
+- Tests: `pytest tests/test_local_knowledge.py -q` -> 3 passed;
+  `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check`
+  -> passed.
+- Result: added a deterministic local-knowledge extractor for the tests-only
+  wedge. It emits compact JSONL-ready `pytest_layout_record`,
+  `packaging_layout_record`, `public_api_record`, `validation_recipe_record`,
+  and AST-backed `pytest_pattern_record` rows from a calibration checkout or
+  fixture, with provenance hashes, split labels, source references,
+  extractor/version fields, and task/outcome links where available. It also
+  adds a `knowledge_use_record` builder so tests-only planning can cite local
+  records by purpose and validation result without checking in raw source
+  blobs.
+- Commit: pending
+- Push: pending
+- Next: wire these records into tests-only planning attribution and mark
+  `knowledge_not_used` when a wedge candidate lacks layout, import, or
+  validation citations.
+- Blockers: none

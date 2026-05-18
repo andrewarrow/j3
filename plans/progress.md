@@ -942,3 +942,30 @@ meaningful work. Do not replace this file with a daily reset.
   visible. Workers: Mendel (`019e3b7c-e583-77a0-94b5-7f8e017aabc2`) and
   Lagrange (`019e3b7d-1fb3-7741-bce8-3617790203ce`).
 - Blockers: none
+
+### 2026-05-18 - REAL-004 - Live real-repo baseline preflight
+
+- Owner: worker Mendel (`019e3b7c-e583-77a0-94b5-7f8e017aabc2`)
+- Files changed: `j3/real_repo_preflight.py`,
+  `tests/test_real_repo_preflight.py`,
+  `docs/REAL_004_LIVE_PREFLIGHT_2026-05-18.md`, `plans/active.md`,
+  `plans/backlog.md`, `plans/progress.md`
+- Tests: `pytest tests/test_real_repo_preflight.py -q` -> 7 passed;
+  live command
+  `PATH=/tmp/j3-real-004-live-preflight/.venv/bin:$PATH python -m j3.real_repo_preflight --manifest examples/real_repo_eval_ladder.json --repo iniconfig --work-root /tmp/j3-real-004-live-preflight/repos --outcome /tmp/j3-real-004-live-preflight/outcomes.jsonl`
+  -> passed with 2 rows, runtime 3.119 seconds, `blocker_labels = ["none"]`;
+  `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check`
+  -> passed.
+- Result: added minimal repo subset support and a module CLI for
+  `j3.real_repo_preflight`, then ran the mocked `REAL-002` runner against the
+  real pinned `pytest-dev/iniconfig` checkout. Checkout, setup
+  (`python -m pip install -e . pytest`), and baseline validation
+  (`python -m pytest testing -q`, `49 passed in 0.03s`) all passed. JSONL
+  evidence is under `/tmp/j3-real-004-live-preflight/outcomes.jsonl`; the
+  compact report is `docs/REAL_004_LIVE_PREFLIGHT_2026-05-18.md`.
+- Commit: pending
+- Push: pending
+- Next: keep `GS7-007` focused on real-repo tests-only planning; separately
+  extend live baseline preflight to at least two more ladder repos before Gate A
+  is claimed.
+- Blockers: none

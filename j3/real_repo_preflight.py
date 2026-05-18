@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 import shlex
 import shutil
 import subprocess
+import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
@@ -86,6 +88,7 @@ class RealRepoPreflightOptions:
     setup_timeout_seconds: int = 600
     baseline_timeout_seconds: int = 600
     clean_worktree: bool = True
+    repo_ids: Sequence[str] = ()
     candidate_paths_by_task: Mapping[str, Sequence[str]] = field(default_factory=dict)
 
 
@@ -120,7 +123,10 @@ def run_real_repo_preflight(
     defaults = _mapping(manifest.get("defaults"), field="defaults")
     rows: list[dict[str, object]] = []
 
-    for repo in _sequence(manifest["repositories"], field="repositories"):
+    for repo in _filter_repositories(
+        _sequence(manifest["repositories"], field="repositories"),
+        repo_ids=resolved_options.repo_ids,
+    ):
         repo_record = _mapping(repo, field="repository")
         repo_result = preflight_repository(
             repo_record,
@@ -149,6 +155,51 @@ def run_real_repo_preflight(
     if resolved_options.outcome_path is not None:
         write_real_repo_preflight_jsonl(rows, resolved_options.outcome_path)
     return tuple(rows)
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    """CLI entrypoint for live preflight runs."""
+
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--manifest", type=Path, default=DEFAULT_MANIFEST_PATH)
+    parser.add_argument("--work-root", type=Path, default=DEFAULT_WORK_ROOT)
+    parser.add_argument("--outcome", type=Path, required=True)
+    parser.add_argument(
+        "--repo",
+        action="append",
+        default=[],
+        help="Repository id to run. May be repeated. Defaults to all repos.",
+    )
+    parser.add_argument("--checkout-timeout-seconds", type=int, default=120)
+    parser.add_argument("--setup-timeout-seconds", type=int, default=600)
+    parser.add_argument("--baseline-timeout-seconds", type=int, default=600)
+    parser.add_argument("--no-clean-worktree", action="store_true")
+    args = parser.parse_args(argv)
+
+    started = time.monotonic()
+    rows = run_real_repo_preflight(
+        RealRepoPreflightOptions(
+            manifest_path=args.manifest,
+            work_root=args.work_root,
+            outcome_path=args.outcome,
+            checkout_timeout_seconds=args.checkout_timeout_seconds,
+            setup_timeout_seconds=args.setup_timeout_seconds,
+            baseline_timeout_seconds=args.baseline_timeout_seconds,
+            clean_worktree=not args.no_clean_worktree,
+            repo_ids=tuple(args.repo),
+        )
+    )
+    runtime_seconds = time.monotonic() - started
+    summary = {
+        "outcome_path": str(args.outcome.expanduser().resolve()),
+        "repo_ids": sorted({str(row["repo_id"]) for row in rows}),
+        "row_count": len(rows),
+        "runtime_seconds": round(runtime_seconds, 3),
+        "preflight_statuses": sorted({str(row["preflight_status"]) for row in rows}),
+        "blocker_labels": sorted({str(row["blocker_label"]) for row in rows}),
+    }
+    print(json.dumps(summary, sort_keys=True))
+    return 1 if any(row["preflight_status"] != "passed" for row in rows) else 0
 
 
 def preflight_repository(
@@ -407,6 +458,26 @@ def validate_real_repo_preflight_row(row: Mapping[str, object]) -> None:
         raise ValueError("preflight row has unsupported blocker_label")
 
 
+def _filter_repositories(
+    repositories: Sequence[object],
+    *,
+    repo_ids: Sequence[str],
+) -> tuple[object, ...]:
+    if not repo_ids:
+        return tuple(repositories)
+    wanted = set(repo_ids)
+    selected = tuple(
+        repo
+        for repo in repositories
+        if isinstance(repo, Mapping) and repo.get("id") in wanted
+    )
+    found = {str(_mapping(repo, field="repository").get("id")) for repo in selected}
+    missing = sorted(wanted - found)
+    if missing:
+        raise ValueError(f"unknown repo id(s): {', '.join(missing)}")
+    return selected
+
+
 def _run_commands(
     commands: Sequence[str],
     *,
@@ -494,3 +565,7 @@ def _optional_int(value: object) -> int | None:
     if not isinstance(value, int):
         raise ValueError("timeout policy values must be integers")
     return value
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

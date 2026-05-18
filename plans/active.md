@@ -14,27 +14,10 @@ This is the live coordinator board. Keep it current and compact.
   2026-05-18 `TRANS-001` full matrix and `TRANS-004` targeted subset decisions
   were `remain_shadow_only`. Tests-only wedge guarded opt-in also remains
   blocked after `REAL-003` scored `pass@3 = 0/4` with no real-repo candidates.
+  `REAL-004` proved one live calibration preflight for `iniconfig`, but Gate A
+  still needs at least three repositories passing baseline validation.
 
 ## Active Tasks
-
-### `REAL-004`: Live real-repo baseline preflight
-
-- Status: active
-- Owner: worker Mendel (`019e3b7c-e583-77a0-94b5-7f8e017aabc2`)
-- Started: 2026-05-18
-- Goal: prove the mocked `REAL-002` runner can survive a real pinned checkout
-  and baseline validation for at least the calibration repo before more scoring
-  claims depend on it.
-- Write scope: real-repo preflight CLI/subset support if needed, a compact
-  report under `docs/`, generated output under `/tmp`, focused tests, and plan
-  updates.
-- Acceptance: run the preflight against `iniconfig` from
-  `examples/real_repo_eval_ladder.json`, record checkout/setup/baseline
-  command results, runtime, network policy, and blocker label. If live
-  validation fails, classify it as environment, setup, or validation instead of
-  an agent failure.
-- Tests: focused preflight tests, `pytest tests/test_plan_consistency.py -q`,
-  and `git diff --check`.
 
 ### `GS7-007`: Generic real-repo tests-only planner
 
@@ -87,6 +70,15 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `REAL-004`: added minimal `iniconfig` subset/CLI support for
+  `j3.real_repo_preflight`, ran the live preflight against the pinned
+  `pytest-dev/iniconfig` checkout, and recorded
+  `docs/REAL_004_LIVE_PREFLIGHT_2026-05-18.md`. Result: 2 task rows, checkout,
+  setup, and baseline validation all passed, runtime 3.119 seconds,
+  `blocker_label = none`, JSONL at
+  `/tmp/j3-real-004-live-preflight/outcomes.jsonl`. The evidence proves the
+  live path for one calibration repo but not the full Gate A requirement of at
+  least three baseline-passing repos.
 - `GS7-006`: added `j3/existing_repo_conventions.py` for the narrow shadow
   source-convention slice. The `slugify_existing_src_convention` GreenShot-7
   task now materializes a tiny `src/acme_slug` fixture, uses repo-state

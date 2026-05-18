@@ -509,7 +509,7 @@ Long-term target:
 
 ### REAL-004: Live real-repo baseline preflight
 
-- Status: active
+- Status: done
 - Why: `REAL-002` proved orchestration with mocked command runners, but cheap
   validation is not trustworthy until at least one pinned repo is checked out
   and baseline-validated for real.
@@ -522,6 +522,12 @@ Long-term target:
   fails, classify it as environment, setup, or validation instead of an agent
   failure.
 - Tests: focused preflight tests, plan consistency, and `git diff --check`.
+- Completion note: live `iniconfig` preflight passed from a pinned checkout at
+  `77db208ab4ae0cd2061d909fe222a1db72867850`. The run emitted 2 task rows to
+  `/tmp/j3-real-004-live-preflight/outcomes.jsonl`, recorded checkout, setup,
+  baseline validation, network policy, runtime 3.119 seconds, and
+  `blocker_label = none`. Full Gate A still requires at least three baseline
+  repositories to pass.
 
 ### DATA-005: Issue/PR replay preflight runner
 
@@ -541,8 +547,9 @@ Long-term target:
 
 Start with these unless fresh evidence changes the order:
 
-1. `REAL-004`: live baseline preflight for `iniconfig`.
-2. `GS7-007`: generic real-repo tests-only planner for the calibration task.
-3. `KNOW-003`: wire knowledge-use attribution into tests-only planning.
+1. `GS7-007`: generic real-repo tests-only planner for the calibration task.
+2. `KNOW-003`: wire knowledge-use attribution into tests-only planning.
+3. Extend live baseline preflight to at least two more ladder repositories so
+   Gate A can be assessed.
 4. `MODEL-006`: candidate-after or AST-delta observation for ranking evidence.
 5. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.

@@ -3,11 +3,13 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import j3.real_repo_preflight as real_repo_preflight
 from j3.real_repo_preflight import (
     PreflightCommandResult,
     RealRepoPreflightOptions,
     check_allowed_write_paths,
     load_real_repo_ladder_manifest,
+    main,
     run_real_repo_preflight,
 )
 
@@ -104,6 +106,67 @@ def test_preflight_uses_injected_runner_and_emits_task_rows(tmp_path: Path) -> N
     written = _jsonl_rows(outcome_path)
     assert len(written) == len(rows)
     assert written[0]["allowed_write_path_check"] == first["allowed_write_path_check"]
+
+
+def test_preflight_can_filter_to_one_repo(tmp_path: Path) -> None:
+    runner = RecordingRunner()
+
+    rows = run_real_repo_preflight(
+        RealRepoPreflightOptions(
+            manifest_path=MANIFEST_PATH,
+            work_root=tmp_path / "repos",
+            repo_ids=("iniconfig",),
+        ),
+        command_runner=runner,
+    )
+
+    assert [row["repo_id"] for row in rows] == ["iniconfig", "iniconfig"]
+    assert {row["task_id"] for row in rows} == {
+        "iniconfig-tests-parse-comments",
+        "iniconfig-feature-section-default",
+    }
+    assert len(runner.calls) == 4
+
+
+def test_cli_repo_filter_writes_only_selected_repo(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+) -> None:
+    def fake_runner(
+        command: str,
+        cwd: Path,
+        timeout_seconds: int,
+    ) -> PreflightCommandResult:
+        return PreflightCommandResult(
+            command=command,
+            cwd=str(cwd),
+            timeout_seconds=timeout_seconds,
+            returncode=0,
+            status="passed",
+        )
+
+    outcome_path = tmp_path / "outcomes.jsonl"
+    monkeypatch.setattr(real_repo_preflight, "run_subprocess_command", fake_runner)
+
+    exit_code = main(
+        [
+            "--manifest",
+            str(MANIFEST_PATH),
+            "--work-root",
+            str(tmp_path / "repos"),
+            "--outcome",
+            str(outcome_path),
+            "--repo",
+            "iniconfig",
+        ]
+    )
+
+    assert exit_code == 0
+    summary = json.loads(capsys.readouterr().out)
+    assert summary["repo_ids"] == ["iniconfig"]
+    assert summary["row_count"] == 2
+    assert _jsonl_rows(outcome_path)[0]["repo_id"] == "iniconfig"
 
 
 def test_allowed_write_path_violation_is_labeled_separately(tmp_path: Path) -> None:

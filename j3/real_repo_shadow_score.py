@@ -24,6 +24,7 @@ from j3.real_repo_preflight import (
 from j3.real_repo_tests_planner import (
     CANDIDATE_VALIDATION_DEFERRED,
     H11_BYTESIFY_MEMORYVIEW_TASK_ID,
+    HUMANIZE_NATURALSIZE_NEGATIVE_STRINGS_TASK_ID,
     INICONFIG_PARSE_COMMENTS_TASK_ID,
     REAL_REPO_TESTS_ACTION_FAMILY,
     TEST_CASE_MATERIALIZATION_BLOCKER,
@@ -41,13 +42,14 @@ SUPPORTED_DOMAIN = "text_slugify"
 SUPPORTED_SOURCE_FILES = (SLUGIFY_SOURCE,)
 SUPPORTED_TARGET_TEST_FILES = (SLUGIFY_TESTS,)
 SUPPORTED_FEATURES = tuple(SLUGIFY_FEATURES)
-DEFAULT_REPORT_PATH = Path("/tmp/j3-real-007-tests-only-shadow-score/report.md")
-DEFAULT_SCORE_PATH = Path("/tmp/j3-real-007-tests-only-shadow-score/score.json")
+DEFAULT_SCORE_PATH = Path("/tmp/j3-real-008-tests-only-shadow-score/score.json")
+DEFAULT_REPORT_PATH = Path("/tmp/j3-real-008-tests-only-shadow-score/report.md")
 DEFAULT_VALIDATION_TIMEOUT_SECONDS = 120
 MATERIALIZED_TESTS_ONLY_TASK_IDS = frozenset(
     {
         INICONFIG_PARSE_COMMENTS_TASK_ID,
         H11_BYTESIFY_MEMORYVIEW_TASK_ID,
+        HUMANIZE_NATURALSIZE_NEGATIVE_STRINGS_TASK_ID,
     }
 )
 
@@ -139,6 +141,7 @@ def run_real_repo_tests_only_shadow_score(
     minimum_pass_at_3 = int(tests_gate.get("minimum_pass_at_3", 3))
     production_file_modifications = 0
     writes_outside_allowlist = 0
+    candidate_target_path_violations = 0
     for row in rows:
         mutation_scope = _mapping(row["mutation_scope"], field="mutation_scope")
         production_file_modifications += len(
@@ -153,6 +156,27 @@ def run_real_repo_tests_only_shadow_score(
                 field="writes_outside_allowlist",
             )
         )
+        candidate_target_path_violations += len(
+            _sequence(
+                mutation_scope.get("candidate_target_path_violations"),
+                field="candidate_target_path_violations",
+            )
+        )
+    hidden_like_disagreeing = sum(
+        1 for row in rows if row["hidden_like_agreement"] == "disagrees"
+    )
+    gate_passed = (
+        pass_at_3_count >= minimum_pass_at_3
+        and production_file_modifications == 0
+        and writes_outside_allowlist == 0
+        and candidate_target_path_violations == 0
+        and hidden_like_disagreeing == 0
+    )
+    blocked_rows = [
+        str(row["task_id"])
+        for row in rows
+        if row["pass@3"] is not True
+    ]
 
     score: dict[str, object] = {
         "schema_version": REAL_REPO_TESTS_SHADOW_SCORE_SCHEMA_VERSION,
@@ -166,7 +190,10 @@ def run_real_repo_tests_only_shadow_score(
             "legacy_action_family": SUPPORTED_ACTION_FAMILY,
             "real_repo_action_family": REAL_REPO_TESTS_ACTION_FAMILY,
             "calibration_materializers": [INICONFIG_PARSE_COMMENTS_TASK_ID],
-            "heldout_materializers": [H11_BYTESIFY_MEMORYVIEW_TASK_ID],
+            "heldout_materializers": [
+                H11_BYTESIFY_MEMORYVIEW_TASK_ID,
+                HUMANIZE_NATURALSIZE_NEGATIVE_STRINGS_TASK_ID,
+            ],
             "legacy_domain": SUPPORTED_DOMAIN,
             "legacy_source_files": list(SUPPORTED_SOURCE_FILES),
             "legacy_target_test_files": list(SUPPORTED_TARGET_TEST_FILES),
@@ -174,8 +201,10 @@ def run_real_repo_tests_only_shadow_score(
             "scope_note": (
                 "GS7-008 materializes the iniconfig calibration tests-only "
                 "candidate and GS7-009 materializes the first held-out h11 "
-                "tests-only candidate. Other held-out tasks remain explicit "
-                "materialization blockers until implemented and live validated."
+                "tests-only candidate. GS7-010 materializes the held-out "
+                "humanize tests-only candidate. Other held-out tasks remain "
+                "explicit materialization blockers until implemented and live "
+                "validated."
             ),
         },
         "metrics": {
@@ -226,11 +255,7 @@ def run_real_repo_tests_only_shadow_score(
                 "agreeing": sum(
                     1 for row in rows if row["hidden_like_agreement"] == "agrees"
                 ),
-                "disagreeing": sum(
-                    1
-                    for row in rows
-                    if row["hidden_like_agreement"] == "disagrees"
-                ),
+                "disagreeing": hidden_like_disagreeing,
                 "not_run": sum(
                     1 for row in rows if row["hidden_like_agreement"] == "not_run"
                 ),
@@ -245,20 +270,55 @@ def run_real_repo_tests_only_shadow_score(
         "gate_decision": {
             "gate": "Gate 2: Shadow Tests-Only Generalization",
             "source": "docs/PRODUCT_WEDGE_DECISION.md",
-            "decision": "remain_shadow_only",
-            "passed": False,
-            "guarded_opt_in_allowed": False,
-            "reason": (
-                f"pass@3 is {pass_at_3_count}/{total}, below the "
-                f"{minimum_pass_at_3}/{total} tests-only gate. The iniconfig "
-                "calibration candidate and first held-out h11 candidate are "
-                "scored, but humanize and boltons tests-only materializers "
-                "are still blockers."
+            "decision": (
+                "allow_guarded_tests_only_opt_in"
+                if gate_passed
+                else "remain_shadow_only"
             ),
-            "failed_checks": [
+            "passed": gate_passed,
+            "guarded_opt_in_allowed": gate_passed,
+            "reason": (
+                f"pass@3 is {pass_at_3_count}/{total} against the "
+                f"{minimum_pass_at_3}/{total} tests-only gate. "
+                "Guarded tests-only opt-in is allowed for materialized, "
+                "validation-passing tests-only candidates that write only "
+                "task-allowlisted test files, preserve production files, have "
+                "no writes outside the allowlist, and have no hidden-like "
+                "disagreement."
+                if gate_passed
+                else (
+                    f"pass@3 is {pass_at_3_count}/{total}, below the "
+                    f"{minimum_pass_at_3}/{total} tests-only gate or blocked "
+                    "by mutation/hidden-like violations."
+                )
+            ),
+            "guarded_opt_in_scope": {
+                "allowed": gate_passed,
+                "mode": "guarded_tests_only_opt_in" if gate_passed else None,
+                "task_type": "tests_only",
+                "action_family": REAL_REPO_TESTS_ACTION_FAMILY,
+                "allowed_repo_ids": [
+                    str(row["repo_id"]) for row in rows if row["pass@3"] is True
+                ],
+                "allowed_task_ids": [
+                    str(row["task_id"]) for row in rows if row["pass@3"] is True
+                ],
+                "path_scope": "task allowlisted test files only",
+                "requires": [
+                    "candidate validation passes before applying",
+                    "production files remain byte-for-byte unchanged",
+                    "writes stay inside task allowlists",
+                    "hidden-like checks do not disagree with public validation",
+                    "planned action, changed paths, validation command, and rollback path are shown before applying",
+                ],
+            },
+            "blocked_rows": blocked_rows,
+            "failed_checks": []
+            if gate_passed
+            else [
                 "pass@3 below tests-only gate",
-                "fewer than 3/4 tests-only tasks have passing materialized candidates",
-                "humanize and boltons tests-only materializers are not yet available",
+                "mutation-scope violations must be zero",
+                "hidden-like disagreements must be zero",
             ],
         },
         "task_results": rows,
@@ -285,7 +345,7 @@ def format_real_repo_tests_only_shadow_score(score: Mapping[str, object]) -> str
     gate = _mapping(score.get("gate_decision"), field="gate_decision")
     rows = _sequence(score.get("task_results"), field="task_results")
     lines = [
-        "# REAL-007 Tests-Only Shadow Score",
+        "# REAL-008 Tests-Only Shadow Score",
         "",
         f"- Schema: `{score.get('schema_version')}`",
         f"- Manifest: `{score.get('manifest_path')}`",
@@ -306,6 +366,14 @@ def format_real_repo_tests_only_shadow_score(score: Mapping[str, object]) -> str
         f"- Correct test location: `{metrics.get('correct_test_location')}`",
         f"- Runtime: `{metrics.get('runtime_seconds')}s`",
         f"- Gate decision: `{gate.get('decision')}`",
+        (
+            "- Guarded opt-in allowed: "
+            f"`{str(gate.get('guarded_opt_in_allowed') is True).lower()}`"
+        ),
+        (
+            "- Blocked rows: "
+            f"`{', '.join(str(row) for row in _sequence(gate.get('blocked_rows'), field='blocked_rows')) or 'none'}`"
+        ),
         "",
         "## Task Results",
         "",
@@ -368,7 +436,7 @@ def write_real_repo_tests_only_shadow_report(
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Run the REAL-007 tests-only wedge shadow score."
+        description="Run the REAL-008 tests-only wedge shadow score."
     )
     parser.add_argument(
         "--manifest",
@@ -950,6 +1018,30 @@ def _hidden_like_agreement(
             "h11_bytesify_ascii_str",
             "h11_bytesify_non_ascii_str",
             "h11_bytesify_int_type_error",
+        }
+        agrees = (
+            not production_changed
+            and not writes_outside
+            and required_case_ids <= test_case_ids
+        )
+        return {
+            "status": "agrees" if agrees else "disagrees",
+            "production_files_unchanged": not production_changed,
+            "writes_inside_allowlist": not writes_outside,
+            "required_case_ids_present": sorted(required_case_ids & test_case_ids),
+            "missing_case_ids": sorted(required_case_ids - test_case_ids),
+            "checks": list(
+                _string_sequence(
+                    task.get("hidden_like_checks"),
+                    field="hidden_like_checks",
+                )
+            ),
+        }
+    if task_id == HUMANIZE_NATURALSIZE_NEGATIVE_STRINGS_TASK_ID:
+        required_case_ids = {
+            "humanize_naturalsize_negative_numeric_strings",
+            "humanize_naturalsize_negative_gnu_suffixes",
+            "humanize_naturalsize_negative_binary_suffixes",
         }
         agrees = (
             not production_changed

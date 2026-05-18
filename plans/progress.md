@@ -1399,3 +1399,40 @@ meaningful work. Do not replace this file with a daily reset.
 - Next: run `REAL-010` after integrating `GS7-011` so the full four-row
   tests-only gate can count boltons alongside iniconfig, h11, and humanize.
 - Blockers: none
+
+### 2026-05-18 - REAL-008 - Tests-only gate after humanize materializer
+
+- Owner: worker Kant (`019e3bb9-7038-7ee1-a876-1fa0b475f3cd`)
+- Files changed: `j3/real_repo_shadow_score.py`,
+  `tests/test_real_repo_shadow_score.py`,
+  `docs/REAL_008_TESTS_ONLY_SHADOW_SCORE_2026-05-18.md`,
+  `plans/backlog.md`, `plans/progress.md`
+- Tests: `python -m py_compile j3/real_repo_shadow_score.py
+  tests/test_real_repo_shadow_score.py` -> passed;
+  `pytest tests/test_real_repo_shadow_score.py -q` -> 3 passed;
+  `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check`
+  -> passed; live preflight
+  `python -m j3.real_repo_preflight --manifest examples/real_repo_eval_ladder.json --repo iniconfig --repo h11 --repo humanize --work-root /tmp/j3-real-008-shadow-score-live/repos --outcome /tmp/j3-real-008-shadow-score-live/preflight.jsonl`
+  -> passed with 6 rows, `blocker_labels = ["none"]`, runtime 7.774 seconds;
+  live shadow score
+  `python -m j3.real_repo_shadow_score --manifest examples/real_repo_eval_ladder.json --repo-path iniconfig=/tmp/j3-real-008-shadow-score-live/repos/iniconfig --repo-path h11=/tmp/j3-real-008-shadow-score-live/repos/h11 --repo-path humanize=/tmp/j3-real-008-shadow-score-live/repos/humanize --validate-candidates --out /tmp/j3-real-008-shadow-score-live/score.json --report /tmp/j3-real-008-shadow-score-live/report.md`
+  -> passed with `pass@1 = 3/4`, `pass@3 = 3/4`, and
+  `gate_decision = allow_guarded_tests_only_opt_in`.
+- Result: counted `iniconfig-tests-parse-comments`,
+  `h11-tests-bytesify-memoryview`, and
+  `humanize-tests-naturalsize-negative-strings` through the real-repo tests
+  planner surface. Calibration pass@3 is `1/1`; held-out pass@3 is `2/3`;
+  first passing ranks are `[1, 1, 1, null]`. Candidate validation passed for
+  iniconfig, h11, and humanize, with zero production-file modifications, zero
+  writes outside allowlists, zero candidate target path violations, hidden-like
+  agreement for all three passing rows, and zero hosted usage. The manifest
+  threshold is met, so guarded tests-only opt-in is allowed only for
+  materialized, validation-passing tests-only candidates inside task
+  allowlists. `boltons-tests-slugify-delimiter` remains an explicit
+  `test_case_materialization_gap` blocker in this score.
+- Commit: pending
+- Push: pending
+- Next: run `REAL-010` to count the `GS7-011` boltons materializer through the
+  full tests-only gate.
+- Blockers: boltons remains blocked in `REAL-008`; guarded opt-in scope excludes
+  boltons until `REAL-010` scores its materialized candidate.

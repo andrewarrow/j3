@@ -764,7 +764,7 @@ Long-term target:
 
 ### REAL-008: Tests-only gate after next held-out materializer batch
 
-- Status: active
+- Status: done
 - Why: `REAL-007` can count h11, but the guarded tests-only gate requires at
   least three passing tasks. The gate should be rerun after the next held-out
   materializer batch instead of inferred from standalone live checks.
@@ -778,6 +778,20 @@ Long-term target:
   materializer is already available.
 - Tests: focused shadow-score tests, plan consistency, `git diff --check`, and
   the score/report smoke command.
+- Completion note: reran the tests-only shadow score with the `GS7-008`
+  `iniconfig` calibration materializer, the `GS7-009` held-out `h11`
+  materializer, and the `GS7-010` held-out `humanize` materializer counted
+  through the real-repo tests planner surface. The live
+  `/tmp/j3-real-008-shadow-score-live` run against pinned checkouts scored
+  `pass@1 = 3/4`, `pass@3 = 3/4`, calibration pass@3 `1/1`, held-out pass@3
+  `2/3`, and first passing ranks `[1, 1, 1, null]`; iniconfig, h11, and
+  humanize passed candidate validation with zero production-file changes, zero
+  writes outside allowlists, zero target path violations, hidden-like
+  agreement, and zero hosted usage. The manifest threshold is met, so guarded
+  tests-only opt-in is allowed for materialized, validation-passing
+  tests-only candidates within task allowlists. `boltons` remains an explicit
+  `test_case_materialization_gap` blocker in this score and should be counted
+  by `REAL-010` now that `GS7-011` has materialized it.
 
 ### REAL-010: Full tests-only gate after boltons materializer
 

@@ -24,19 +24,6 @@ This is the live coordinator board. Keep it current and compact.
   guarded-trial decision recorded with exact commands and gate result.
 - Tests: matrix command, residual command, bundle command, guarded decision.
 
-### `GS7-001`: Refresh current GreenShot-7 baseline
-
-- Owner: worker Pasteur (`019e3949-8978-7de0-a0f5-efe2132dd9d3`)
-- Status: active
-- Write scope: generated output under `/tmp`, `plans/progress.md`,
-  `plans/active.md`; small bug fixes only if baseline commands expose a local
-  bug.
-- Acceptance: recorded command output for current GreenShot-7 tasks, including
-  pass/fail, missing action, and ranking or prompt-spec failures.
-- Tests: `pytest tests/test_request_spec.py -q`,
-  `pytest tests/test_greenfield_calculator.py -q`,
-  `pytest tests/test_greenshot_7.py -q`, plus direct CLI smoke if available.
-
 ## Ready Queue
 
 These are good next assignments after the current active tasks complete:
@@ -68,6 +55,11 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `GS7-001`: refreshed the current GreenShot-7 baseline. Result: 10 fixture
+  tasks, 8 built and validation-passed, 2 intentionally blocked for
+  clarification, no prompt-spec failures, missing-action failures, ranking
+  failures, or generated pytest failures observed. Verification: focused
+  GreenShot-7 tests plus direct `implement` CLI smoke passed.
 - `OPS-001`: migrated from the daily `today*` loop to persistent coordination
   files. Verification: `git diff --check` passed.
 - Previous daily loop completed transition shadow suite, residual reports,

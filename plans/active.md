@@ -17,16 +17,53 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-No active worker tasks are currently recorded.
+### `REAL-004`: Live real-repo baseline preflight
+
+- Status: active
+- Owner: pending spawn
+- Started: 2026-05-18
+- Goal: prove the mocked `REAL-002` runner can survive a real pinned checkout
+  and baseline validation for at least the calibration repo before more scoring
+  claims depend on it.
+- Write scope: real-repo preflight CLI/subset support if needed, a compact
+  report under `docs/`, generated output under `/tmp`, focused tests, and plan
+  updates.
+- Acceptance: run the preflight against `iniconfig` from
+  `examples/real_repo_eval_ladder.json`, record checkout/setup/baseline
+  command results, runtime, network policy, and blocker label. If live
+  validation fails, classify it as environment, setup, or validation instead of
+  an agent failure.
+- Tests: focused preflight tests, `pytest tests/test_plan_consistency.py -q`,
+  and `git diff --check`.
+
+### `GS7-007`: Generic real-repo tests-only planner
+
+- Status: active
+- Owner: pending spawn
+- Started: 2026-05-18
+- Goal: attack the `REAL-003` `pass@3 = 0/4` residual by building the first
+  generic repo-state-aware tests-only planner for a real ladder task.
+- Write scope: a focused real-repo tests-only planner module/tests, optional
+  integration with local knowledge records, and plan updates.
+- Acceptance: for the `iniconfig-tests-parse-comments` calibration task,
+  inspect repo-state and local knowledge to select `testing/test_iniconfig.py`,
+  preserve production files, emit a structured tests-only candidate/action
+  record with target test file, import style evidence, validation command,
+  mutation scope, residual labels, and knowledge citations where available. If
+  behavior-specific pytest case materialization is not ready, emit that exact
+  blocker instead of pretending the task passes.
+- Tests: focused planner tests, `pytest tests/test_plan_consistency.py -q`, and
+  `git diff --check`.
 
 ## Ready Queue
 
 These are good next assignments for the next loop:
 
-1. `MODEL-006`: add candidate-after or AST-delta observation for ranking
+1. `KNOW-003`: wire knowledge-use attribution into tests-only planning.
+2. `MODEL-006`: add candidate-after or AST-delta observation for ranking
    evidence.
-2. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.
-3. `MODEL-004`: distinguish mapping key and value targets.
+3. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.
+4. `MODEL-004`: distinguish mapping key and value targets.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 

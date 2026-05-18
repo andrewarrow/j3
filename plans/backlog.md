@@ -145,6 +145,23 @@ Long-term target:
   `src/acme_slug/text.py`, runs targeted pytest, and records the repo-state
   evidence and source-edit scope in a structured outcome row.
 
+### GS7-007: Generic real-repo tests-only planner
+
+- Status: active
+- Why: `REAL-003` scored `pass@3 = 0/4` because the current tests-only builder
+  only supports a root `slugify.py` fixture and cannot target real package/test
+  layouts.
+- Write scope: a focused real-repo tests-only planner module/tests, optional
+  integration with local knowledge records, and plan updates.
+- Acceptance: for the `iniconfig-tests-parse-comments` calibration task, inspect
+  repo-state and local knowledge to select `testing/test_iniconfig.py`,
+  preserve production files, emit a structured tests-only candidate/action
+  record with target test file, import style evidence, validation command,
+  mutation scope, residual labels, and knowledge citations where available. If
+  behavior-specific pytest case materialization is not ready, emit that exact
+  blocker instead of pretending the task passes.
+- Tests: focused planner tests, plan consistency, and `git diff --check`.
+
 ## Workstream C: Prompt Corpus And Intent Data
 
 ### DATA-001: Audit expanded prompt corpus quality
@@ -432,6 +449,19 @@ Long-term target:
 - Tests: focused extractor or schema tests, plan consistency, and
   `git diff --check`.
 
+### KNOW-003: Wire knowledge-use attribution into tests-only planning
+
+- Status: ready
+- Why: `KNOW-002` created citeable records, but wedge candidates must record
+  whether they actually used layout, import, and validation knowledge.
+- Write scope: tests-only planning/outcome attribution, focused tests, and plan
+  updates.
+- Acceptance: tests-only candidate/outcome rows cite retrieved knowledge record
+  ids by purpose, and missing citations produce a machine-readable
+  `knowledge_not_used` or `missing_knowledge` residual rather than prose only.
+- Tests: focused existing-repo/local-knowledge tests, plan consistency, and
+  `git diff --check`.
+
 ### WEDGE-001: Product wedge decision
 
 - Status: done
@@ -477,6 +507,22 @@ Long-term target:
   `slugify.py` fixture shape, so generic repo-state test placement and pytest
   authoring is the next repair target.
 
+### REAL-004: Live real-repo baseline preflight
+
+- Status: active
+- Why: `REAL-002` proved orchestration with mocked command runners, but cheap
+  validation is not trustworthy until at least one pinned repo is checked out
+  and baseline-validated for real.
+- Write scope: real-repo preflight CLI/subset support if needed, a compact
+  report under `docs/`, generated output under `/tmp`, focused tests, and plan
+  updates.
+- Acceptance: run the preflight against `iniconfig` from
+  `examples/real_repo_eval_ladder.json`, record checkout/setup/baseline command
+  results, runtime, network policy, and blocker label. If live validation
+  fails, classify it as environment, setup, or validation instead of an agent
+  failure.
+- Tests: focused preflight tests, plan consistency, and `git diff --check`.
+
 ### DATA-005: Issue/PR replay preflight runner
 
 - Status: done
@@ -495,8 +541,8 @@ Long-term target:
 
 Start with these unless fresh evidence changes the order:
 
-1. `KNOW-002`: extract first wedge knowledge records.
-2. `GS7-006`: repo-state-aware library convention edits.
-3. `REAL-003`: first tests-only wedge shadow score after blockers clear.
+1. `REAL-004`: live baseline preflight for `iniconfig`.
+2. `GS7-007`: generic real-repo tests-only planner for the calibration task.
+3. `KNOW-003`: wire knowledge-use attribution into tests-only planning.
 4. `MODEL-006`: candidate-after or AST-delta observation for ranking evidence.
 5. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.

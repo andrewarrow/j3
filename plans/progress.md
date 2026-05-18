@@ -922,3 +922,22 @@ meaningful work. Do not replace this file with a daily reset.
   while keeping real-repo source edits gated behind the one-file feature and
   materialization evidence.
 - Blockers: none
+
+### 2026-05-18 - COORD - Real-repo residual dispatch
+
+- Owner: coordinator
+- Files changed: `plans/active.md`, `plans/backlog.md`, `plans/progress.md`
+- Tests: `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check` -> passed.
+- Result: reviewed `REAL-003`, `KNOW-002`, and `GS7-006`. The important result
+  is still the hard failure: `REAL-003` scored `pass@3 = 0/4` because the
+  tests-only builder cannot target real-repo layouts. The next active tasks
+  are therefore `REAL-004`, to prove the real preflight works against an actual
+  pinned checkout, and `GS7-007`, to build the first generic real-repo
+  tests-only planner for the calibration task.
+- Commit: pending coordinator commit
+- Push: pending coordinator push
+- Next: dispatch `REAL-004` and `GS7-007`; keep `KNOW-003` ready to wire
+  knowledge-use attribution into planner outcomes after the planner surface is
+  visible.
+- Blockers: none

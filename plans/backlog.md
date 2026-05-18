@@ -224,6 +224,46 @@ Long-term target:
   knowledge-use metadata. Live validation against the pinned h11 checkout
   passed with `11 passed in 0.02s`, changing only `h11/tests/test_util.py`.
 
+### GS7-010: Materialize held-out humanize tests-only candidate
+
+- Status: ready
+- Why: after h11, the tests-only gate still needs another held-out repo before
+  guarded opt-in can be considered.
+- Write scope: `j3/real_repo_tests_planner.py`,
+  `tests/test_real_repo_tests_planner.py`, optional generated outputs under
+  `/tmp`, and plan updates.
+- Acceptance: for `humanize-tests-naturalsize-negative-strings`, select
+  `tests/test_filesize.py` from repo-state and local-knowledge evidence;
+  materialize pytest coverage for negative numeric strings, GNU suffixes, and
+  binary suffixes; preserve production files; emit candidate-after,
+  mutation-scope, validation-command, residual, and knowledge-use metadata; and
+  live-validate the pinned checkout if setup succeeds. If the repo exposes a
+  materialization, API, or validation blocker, record it precisely.
+- Tests: focused planner/materializer tests,
+  `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and a live
+  `python -m pytest tests/test_filesize.py -q --benchmark-disable` candidate
+  check when available.
+
+### GS7-011: Materialize held-out boltons tests-only candidate
+
+- Status: ready
+- Why: the tests-only gate needs broad held-out evidence and boltons is the
+  remaining ladder repo whose baseline has not yet been exercised by candidate
+  scoring.
+- Write scope: `j3/real_repo_tests_planner.py`,
+  `tests/test_real_repo_tests_planner.py`, optional generated outputs under
+  `/tmp`, and plan updates.
+- Acceptance: for `boltons-tests-slugify-delimiter`, select
+  `tests/test_strutils.py` from repo-state and local-knowledge evidence;
+  materialize pytest coverage for custom delimiters, empty strings, ascii
+  output, and `lower=False`; preserve production files; emit candidate-after,
+  mutation-scope, validation-command, residual, and knowledge-use metadata; and
+  live-validate the pinned checkout if setup succeeds. If setup or validation
+  fails, classify environment versus agent failure.
+- Tests: focused planner/materializer tests,
+  `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and a live
+  `python -m pytest tests/test_strutils.py -q` candidate check when available.
+
 ## Workstream C: Prompt Corpus And Intent Data
 
 ### DATA-001: Audit expanded prompt corpus quality
@@ -486,16 +526,18 @@ Long-term target:
 
 ### MAT-003: Real one-file feature materialization probe
 
-- Status: ready
+- Status: active
 - Why: tests-only wins do not answer the biggest `MAT-001` gap: turning a
   predicted repo-after behavior into bounded source edits for a real Python
   library.
-- Write scope: a focused source materialization probe for one real
-  one-file-feature ladder task, focused tests, optional docs, and plan updates.
-- Acceptance: attempt one pinned real-repo one-file feature task with a bounded
-  source-region or typed-builder action; preserve the maximum-production-file
-  constraint; record candidate-after diff/AST metadata, validation result,
-  runtime, and the first blocker if the edit cannot be expressed.
+- Write scope: a focused source materialization probe for
+  `h11-feature-bytesify-object-message`, focused tests, optional docs, and
+  plan updates.
+- Acceptance: attempt the pinned h11 one-file feature task with a bounded
+  source-region or typed-builder action; preserve the one-production-file
+  constraint; record candidate-after diff/AST metadata, mutation scope,
+  validation result, runtime, and the first blocker if the edit cannot be
+  expressed.
 - Tests: focused materializer tests, plan consistency, `git diff --check`, and
   a live targeted validation command when the candidate is materialized.
 
@@ -657,15 +699,32 @@ Long-term target:
 
 ### REAL-007: Held-out tests-only score after first h11 materializer
 
-- Status: ready
+- Status: active
 - Why: once `GS7-009` either passes or fails, the evidence needs a score that
   separates calibration progress from held-out generalization.
 - Write scope: shadow-score command/report updates, generated outputs under
   `/tmp`, compact docs if useful, and plan updates.
 - Acceptance: rerun or extend the tests-only score after the h11 result,
-  reporting calibration pass rate, held-out pass rate, runtime, mutation-scope
-  violations, hidden-like agreement, and whether the product wedge remains
-  shadow-only.
+  counting both `iniconfig-tests-parse-comments` and
+  `h11-tests-bytesify-memoryview` through materialized candidates, reporting
+  calibration pass rate, held-out pass rate, total pass@1/pass@3, runtime,
+  mutation-scope violations, hidden-like agreement, and whether the product
+  wedge remains shadow-only.
+- Tests: focused shadow-score tests, plan consistency, `git diff --check`, and
+  the score/report smoke command.
+
+### REAL-008: Tests-only gate after next held-out materializer batch
+
+- Status: ready
+- Why: `REAL-007` can count h11, but the guarded tests-only gate requires at
+  least three passing tasks. The gate should be rerun after the next held-out
+  materializer batch instead of inferred from standalone live checks.
+- Write scope: shadow-score command/report updates, generated outputs under
+  `/tmp`, compact docs if useful, and plan updates.
+- Acceptance: rerun the tests-only gate with all available materialized
+  candidates, report calibration versus held-out pass rates, pass@1/pass@3,
+  first passing ranks, runtime, mutation-scope violations, hidden-like
+  agreement, zero hosted usage, and the guarded-use decision.
 - Tests: focused shadow-score tests, plan consistency, `git diff --check`, and
   the score/report smoke command.
 
@@ -687,10 +746,13 @@ Long-term target:
 
 Start with these unless fresh evidence changes the order:
 
-1. `REAL-007`: rerun/extend shadow scoring after the first held-out
-   materializer result, separating calibration from held-out evidence.
-2. `MAT-003`: attempt one bounded real one-file feature materialization probe.
-3. `KNOW-003`: broaden knowledge-use attribution where scoring shows missing
+1. `GS7-010`: materialize held-out `humanize` tests-only coverage for
+   `naturalsize` negative strings and suffix modes.
+2. `GS7-011`: materialize held-out `boltons` tests-only coverage for
+   `strutils.slugify` delimiter behavior.
+3. `REAL-008`: rerun the tests-only gate after the next held-out
+   materializer batch.
+4. `KNOW-003`: broaden knowledge-use attribution where scoring shows missing
    local-knowledge evidence.
-4. `MODEL-006`: candidate-after or AST-delta observation for ranking evidence.
-5. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.
+5. `MODEL-006`: candidate-after or AST-delta observation for ranking evidence.
+6. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.

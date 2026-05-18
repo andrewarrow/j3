@@ -14,31 +14,79 @@ This is the live coordinator board. Keep it current and compact.
   2026-05-18 `TRANS-001` full matrix and `TRANS-004` targeted subset decisions
   were `remain_shadow_only`. Tests-only wedge guarded opt-in also remains
   blocked after `REAL-003` scored `pass@3 = 0/4`; `GS7-008` now materializes
-  and live-validates the `iniconfig` calibration candidate. `REAL-006` must
-  now rerun the full tests-only shadow score through that candidate surface.
-  `REAL-005` extends live baseline preflight to `h11` and `humanize`, so Gate A
-  now has three baseline-passing repositories when combined with `REAL-004`
-  `iniconfig`; `REAL-006` scored the materialized calibration candidate at
+  and live-validates the `iniconfig` calibration candidate. `REAL-005` extends
+  live baseline preflight to `h11` and `humanize`, so Gate A now has three
+  baseline-passing repositories when combined with `REAL-004` `iniconfig`.
+  `REAL-006` scored the materialized calibration candidate at
   `pass@1 = 1/4` and `pass@3 = 1/4`, so tests-only guarded opt-in remains
   shadow-only. `GS7-009` materialized and live-validated the first held-out
-  tests-only h11 candidate, giving `REAL-007` the next scoring input.
+  tests-only h11 candidate. `REAL-007` is now active to count that held-out
+  candidate separately from calibration, while `MAT-003` attacks the real
+  one-file source materialization gap.
 
 ## Active Tasks
+
+### `REAL-007`: Held-out tests-only score after first h11 materializer
+
+- Status: active
+- Owner: pending worker dispatch.
+- Goal: rerun or extend the tests-only shadow score after `GS7-009`, counting
+  the held-out h11 materialized candidate while separating calibration and
+  held-out pass rates.
+- Write scope: `j3/real_repo_shadow_score.py`,
+  `tests/test_real_repo_shadow_score.py`, one compact `docs/REAL_007_*.md`
+  report if useful, generated outputs under `/tmp`, and plan updates.
+- Do not touch: source feature materialization modules for `MAT-003`.
+- Acceptance: score both `iniconfig-tests-parse-comments` and
+  `h11-tests-bytesify-memoryview` through the planner surface; report
+  calibration pass rate, held-out pass rate, total pass@1/pass@3, first
+  passing ranks, runtime, mutation-scope violations, hidden-like agreement,
+  zero hosted usage, and the gate decision. `humanize` and `boltons` should
+  remain explicit materialization blockers unless the scorer can honestly count
+  them.
+- Tests: `pytest tests/test_real_repo_shadow_score.py -q`,
+  `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and a live
+  score/report smoke with pinned `iniconfig` and `h11` checkout paths.
+
+### `MAT-003`: Real one-file feature materialization probe
+
+- Status: active
+- Owner: pending worker dispatch.
+- Goal: attempt the first real one-file source feature materialization against
+  the ladder task `h11-feature-bytesify-object-message`.
+- Write scope: a focused source feature materializer module such as
+  `j3/real_repo_feature_materializer.py`,
+  `tests/test_real_repo_feature_materializer.py`, one compact `docs/MAT_003_*.md`
+  report if useful, generated outputs under `/tmp`, and plan updates. Reuse
+  `j3/source_region_materializer.py` if helpful, but keep edits narrow.
+- Do not touch: `j3/real_repo_shadow_score.py` or
+  `tests/test_real_repo_shadow_score.py`; those belong to `REAL-007`.
+- Acceptance: for `h11-feature-bytesify-object-message`, materialize a bounded
+  one-file edit to `h11/_util.py` so unsupported object `TypeError` messages
+  include the object's concrete type name; update/add focused tests in
+  `h11/tests/test_util.py`; preserve the one-production-file constraint;
+  record candidate-after diff/AST metadata, mutation scope, validation result,
+  runtime, and exact blocker if the edit cannot be expressed.
+- Tests: focused materializer tests,
+  `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and a live
+  `python -m pytest h11/tests/test_util.py -q` candidate check when available.
 
 ## Ready Queue
 
 These are good next assignments for the next loop:
 
-1. `REAL-007`: rerun/extend shadow scoring after the first held-out
-   materializer result, with held-out pass/fail separated from calibration.
-2. `MAT-003`: turn the `MAT-001` audit into the next bounded source
-   materialization probe for a real one-file feature task.
-3. `KNOW-003`: broaden knowledge-use attribution beyond the iniconfig planner
-   if `REAL-006` shows missing knowledge residuals outside calibration.
-4. `MODEL-006`: add candidate-after or AST-delta observation for ranking
+1. `GS7-010`: materialize held-out `humanize` tests-only coverage for
+   `naturalsize` negative strings and suffix modes.
+2. `GS7-011`: materialize held-out `boltons` tests-only coverage for
+   `strutils.slugify` delimiter behavior.
+3. `REAL-008`: rerun the tests-only gate after the next held-out
+   materializer batch.
+4. `KNOW-003`: broaden knowledge-use attribution where scoring shows missing
+   local-knowledge evidence.
+5. `MODEL-006`: add candidate-after or AST-delta observation for ranking
    evidence.
-5. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.
-6. `MODEL-004`: distinguish mapping key and value targets.
+6. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.
+7. `MODEL-004`: distinguish mapping key and value targets.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 

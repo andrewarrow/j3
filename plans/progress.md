@@ -1166,3 +1166,24 @@ meaningful work. Do not replace this file with a daily reset.
 - Blockers: held-out `humanize` and `boltons` tests-only materializers are
   still missing for this gate; `h11` requires the follow-up `REAL-007` scorer
   run after the concurrent `GS7-009` planner changes are integrated.
+
+### 2026-05-18 - COORD - Held-out scoring and source materialization dispatch
+
+- Owner: coordinator
+- Files changed: `plans/active.md`, `plans/backlog.md`, `plans/progress.md`
+- Tests: `pytest tests/test_real_repo_shadow_score.py -q` -> 3 passed;
+  `pytest tests/test_real_repo_tests_planner.py -q` -> 3 passed;
+  `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check` -> passed.
+- Result: reviewed the combined `REAL-006` and `GS7-009` head. The tests-only
+  scorer now proves the calibration `iniconfig` candidate at rank 1 but still
+  gates the wedge at `pass@3 = 1/4`; the h11 planner now has the first held-out
+  materialized candidate. The next active batch therefore assigns `REAL-007`
+  to count h11 in the score with calibration versus held-out metrics, and
+  `MAT-003` to attempt the first real one-file source feature materialization
+  on `h11-feature-bytesify-object-message`.
+- Commit: pending
+- Push: pending
+- Next: dispatch workers for `REAL-007` and `MAT-003`; keep `GS7-010` and
+  `GS7-011` ready for the following held-out tests-only materializers.
+- Blockers: none

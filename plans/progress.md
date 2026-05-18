@@ -1910,3 +1910,35 @@ meaningful work. Do not replace this file with a daily reset.
   normalization, and Gibbs (`019e3c08-c0ad-7141-900f-ae92ca2b8620`) owns the
   Requests replay local-knowledge records.
 - Blockers: none.
+
+### 2026-05-18 - DATA-009 - Click default_map prompt/spec normalization
+
+- Owner: worker Darwin (`019e3c08-9145-77c1-bc42-1d6a10f868c5`).
+- Files changed: `j3/issue_pr_prompt_spec.py`,
+  `tests/test_issue_pr_prompt_spec.py`,
+  `docs/DATA_009_CLICK_DEFAULT_MAP_PROMPT_SPEC_2026-05-18.md`,
+  `plans/active.md`, `plans/backlog.md`, `plans/progress.md`.
+- Tests: `python -m py_compile j3/issue_pr_prompt_spec.py
+  tests/test_issue_pr_prompt_spec.py` -> passed; `pytest
+  tests/test_issue_pr_prompt_spec.py -q` -> 4 passed; CLI smoke `python -m
+  j3.issue_pr_prompt_spec --manifest
+  examples/issue_pr_mini_replay/manifest.json --replay-id
+  pallets__click-issue-2745-pr-3364 --out
+  /tmp/j3-data-009-click-default-map-spec.jsonl --report
+  /tmp/j3-data-009-click-default-map-spec.md` -> passed with status
+  `normalized`; `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check` -> passed.
+- Result: added machine-readable prompt/spec normalization for
+  `pallets__click-issue-2745-pr-3364` without candidate source edits. The
+  record captures minimal reproduction, observed behavior, expected behavior,
+  affected API symbol, input shape, acceptance test shape,
+  `default_map` mutation timing, multi-value parameter shape,
+  string-splitting semantics, and provenance back to issue #2745, PR #3364,
+  and the PR diff. Required prompt fields are complete and
+  `source_text_blockers` is empty.
+- Commit: pending.
+- Push: pending.
+- Next: `DATA-010` can consume this prompt/spec record with DATA-008,
+  KNOW-004, and KNOW-005 evidence to decide which first-batch replay rows are
+  ready for candidate generation.
+- Blockers: none for Click #2745 prompt/spec normalization.

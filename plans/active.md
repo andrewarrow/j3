@@ -44,25 +44,6 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-### `DATA-009`: Click default_map prompt/spec normalization
-
-- Status: active
-- Owner: worker Darwin (`019e3c08-9145-77c1-bc42-1d6a10f868c5`).
-- Why: `DATA-007` blocked `pallets__click-issue-2745-pr-3364` before any
-  candidate attempt because the replay row lacks the concrete prompt/spec
-  fields needed to judge edits.
-- Write scope: prompt/spec extraction or normalization support for issue/PR
-  replay rows, focused tests, optional compact report, and plan updates. Do
-  not edit `j3/local_knowledge.py`.
-- Acceptance: build a structured spec for
-  `pallets__click-issue-2745-pr-3364` that records minimal reproduction,
-  observed behavior, expected behavior, affected API symbol, input shape,
-  acceptance test shape, `default_map` mutation timing, multi-value parameter
-  shape, string-splitting semantics, provenance, and any fields still blocked
-  on unavailable source text. No candidate source edits.
-- Tests: focused prompt/spec or issue/PR preflight tests,
-  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
-
 ### `KNOW-005`: Requests replay local knowledge records
 
 - Status: active
@@ -120,6 +101,16 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `DATA-009`: added machine-readable prompt/spec normalization for
+  `pallets__click-issue-2745-pr-3364` without candidate source edits. The
+  `issue_pr_prompt_spec` record captures the minimal reproduction, observed
+  Click 8 error, expected environment-variable-style splitting behavior,
+  affected `click.Context.default_map` / `click.core.Option.consume_value`
+  surface, input shape, acceptance test shape, callback-time `default_map`
+  mutation, multi-value parameter forms, string-splitting semantics, and
+  provenance back to issue #2745, PR #3364, and the PR diff. JSONL:
+  `/private/tmp/j3-data-009-click-default-map-spec.jsonl`; report:
+  `docs/DATA_009_CLICK_DEFAULT_MAP_PROMPT_SPEC_2026-05-18.md`.
 - `DATA-008`: isolated a hermetic Requests validation recipe for
   `psf__requests-issue-7432-pr-7433` without candidate code edits. The
   recursive `httpbin` failure came from the DATA-006 setup command missing

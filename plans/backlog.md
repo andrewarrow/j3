@@ -1122,7 +1122,7 @@ Long-term target:
 
 ### DATA-009: Click default_map prompt/spec normalization
 
-- Status: active
+- Status: done
 - Why: `DATA-007` shows `pallets__click-issue-2745-pr-3364` is not ready for
   candidate generation because the replay row is missing the prompt/spec
   details needed to validate any edit.
@@ -1136,6 +1136,14 @@ Long-term target:
   on unavailable source text. The task must not attempt candidate code edits.
 - Tests: focused prompt/spec or issue/PR preflight tests, plan consistency,
   and `git diff --check`.
+- Completion note: added `j3.issue_pr_prompt_spec` and focused tests for the
+  Click #2745 default-map row. The emitted JSONL spec is normalized, has no
+  missing required prompt fields, records no source blockers, and captures the
+  minimal reproduction, observed and expected behavior, affected API, input
+  and acceptance-test shape, callback-time `default_map` mutation, multi-value
+  parameter shape, string-splitting semantics, and provenance. Candidate
+  source edits were not attempted. Report:
+  `docs/DATA_009_CLICK_DEFAULT_MAP_PROMPT_SPEC_2026-05-18.md`.
 
 ### DATA-010: Issue/PR candidate readiness gate
 

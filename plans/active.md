@@ -17,15 +17,14 @@ This is the live coordinator board. Keep it current and compact.
   and live-validates the `iniconfig` calibration candidate. `REAL-005` extends
   live baseline preflight to `h11` and `humanize`, so Gate A now has three
   baseline-passing repositories when combined with `REAL-004` `iniconfig`.
-  `REAL-008` scored the materialized calibration candidate plus held-out
-  `h11` and `humanize` candidates at `pass@1 = 3/4` and `pass@3 = 3/4`;
-  calibration pass rate is `1/1`, held-out pass rate is `2/3`, and guarded
-  tests-only opt-in is allowed only for materialized, validation-passing
-  tests-only candidates that write task-allowlisted test files with zero
-  production-file changes, zero writes outside allowlists, and no hidden-like
-  disagreement. `boltons-tests-slugify-delimiter` remains blocked in the
-  `REAL-008` score and should be counted by `REAL-010` now that `GS7-011`
-  has materialized and live-validated it. `MAT-003` now materializes and
+  `REAL-010` scores all four materialized tests-only ladder candidates at
+  `pass@1 = 4/4` and `pass@3 = 4/4`; calibration pass rate is `1/1`,
+  held-out pass rate is `3/3`, and guarded tests-only opt-in is allowed only
+  for `iniconfig-tests-parse-comments`, `h11-tests-bytesify-memoryview`,
+  `humanize-tests-naturalsize-negative-strings`, and
+  `boltons-tests-slugify-delimiter` when candidate validation passes, writes
+  stay inside task-allowlisted test files, production files remain unchanged,
+  and hidden-like checks do not disagree. `MAT-003` now materializes and
   live-validates the
   first real one-file source feature candidate on held-out `h11`; `REAL-009`
   scores it at
@@ -33,23 +32,6 @@ This is the live coordinator board. Keep it current and compact.
   one-file feature gate remains shadow-only.
 
 ## Active Tasks
-
-### REAL-010: Full Tests-Only Gate After Boltons
-
-- Status: active
-- Owner: worker Fermat (`019e3bc5-6168-7a33-bec3-d20f90b538e3`).
-- Write scope: `j3/real_repo_shadow_score.py`,
-  `tests/test_real_repo_shadow_score.py`, optional compact report under
-  `docs/`, generated live artifacts under `/tmp`, and plan updates.
-- Acceptance: count every materialized tests-only ladder candidate, including
-  `boltons-tests-slugify-delimiter`, through the real-repo tests planner and
-  live validation path; report calibration versus held-out pass rates,
-  total pass@1/pass@3, first passing ranks, runtime, mutation-scope
-  violations, hidden-like agreement, zero hosted usage, and guarded opt-in
-  decision.
-- Required checks: focused shadow-score tests, `pytest
-  tests/test_plan_consistency.py -q`, `git diff --check`, and a live
-  score/report smoke command with all four pinned repos when feasible.
 
 ### MAT-004: Second Real One-File Feature Materialization Probe
 
@@ -102,6 +84,18 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `REAL-010`: reran the tests-only shadow score after `GS7-011`, counting
+  `iniconfig-tests-parse-comments`, `h11-tests-bytesify-memoryview`,
+  `humanize-tests-naturalsize-negative-strings`, and
+  `boltons-tests-slugify-delimiter` through the real-repo tests planner
+  surface. The live `/tmp` run against pinned checkouts scored
+  `pass@1 = 4/4`, `pass@3 = 4/4`, calibration pass@3 `1/1`, held-out pass@3
+  `3/3`, first passing ranks `[1, 1, 1, 1]`, candidate validation
+  `passed = 4`, zero production-file modifications, zero writes outside
+  allowlists, zero candidate target path violations, hidden-like agreement for
+  all four passing rows, and zero hosted usage. The gate decision remains
+  `allow_guarded_tests_only_opt_in` for the four materialized,
+  validation-passing tests-only task ids inside task allowlists.
 - `REAL-008`: reran the tests-only shadow score after `GS7-010`, counting
   `iniconfig-tests-parse-comments`, `h11-tests-bytesify-memoryview`, and
   `humanize-tests-naturalsize-negative-strings` through the real-repo tests

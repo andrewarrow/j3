@@ -252,6 +252,78 @@ def test_naturalsize(test_args: list[object], expected: str) -> None:
     )
 
 
+def _write_synthetic_boltons_checkout(repo: Path) -> None:
+    (repo / "boltons").mkdir(parents=True)
+    (repo / "tests").mkdir()
+    (repo / "pyproject.toml").write_text(
+        """[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "boltons"
+version = "23.1.0"
+requires-python = ">=3.8"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+""",
+        encoding="utf-8",
+    )
+    (repo / "boltons" / "__init__.py").write_text(
+        """from __future__ import annotations
+""",
+        encoding="utf-8",
+    )
+    (repo / "boltons" / "strutils.py").write_text(
+        """from __future__ import annotations
+
+import re
+import unicodedata
+
+_punct_re = re.compile(r"[\\W_]+")
+
+
+def asciify(text: str) -> bytes:
+    normalized = unicodedata.normalize("NFKD", text)
+    return normalized.encode("ascii", "ignore")
+
+
+def split_punct_ws(text: str) -> list[str]:
+    return [word for word in _punct_re.split(text) if word]
+
+
+def slugify(
+    text: str, delim: str = "_", lower: bool = True, ascii: bool = False
+) -> str | bytes:
+    ret = delim.join(split_punct_ws(text)) or delim if text else ""
+    if ascii:
+        ret = asciify(ret)
+    if lower:
+        ret = ret.lower()
+    return ret
+""",
+        encoding="utf-8",
+    )
+    (repo / "tests" / "test_strutils.py").write_text(
+        """from __future__ import annotations
+
+import pytest
+
+from boltons import strutils
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [("First post! Hi!!!!~1    ", "first_post_hi_1")],
+)
+def test_slugify_default_delimiter(text: str, expected: str) -> None:
+    assert strutils.slugify(text) == expected
+""",
+        encoding="utf-8",
+    )
+
+
 def _passing_validation_runner(
     command: str,
     cwd: Path,
@@ -261,6 +333,8 @@ def _passing_validation_runner(
         stdout = "11 passed in 0.02s\n"
     elif "tests/test_filesize.py" in command:
         stdout = "79 passed in 0.03s\n"
+    elif "tests/test_strutils.py" in command:
+        stdout = "20 passed in 0.03s\n"
     else:
         stdout = "54 passed in 0.03s\n"
     return CandidateValidationResult(
@@ -279,9 +353,11 @@ def test_real_repo_tests_only_shadow_score_scores_iniconfig_candidate(
     iniconfig_path = tmp_path / "iniconfig"
     h11_path = tmp_path / "h11"
     humanize_path = tmp_path / "humanize"
+    boltons_path = tmp_path / "boltons"
     _write_synthetic_iniconfig_checkout(iniconfig_path)
     _write_synthetic_h11_checkout(h11_path)
     _write_synthetic_humanize_checkout(humanize_path)
+    _write_synthetic_boltons_checkout(boltons_path)
 
     score = run_real_repo_tests_only_shadow_score(
         MANIFEST_PATH,
@@ -290,6 +366,7 @@ def test_real_repo_tests_only_shadow_score_scores_iniconfig_candidate(
             "iniconfig": iniconfig_path,
             "h11": h11_path,
             "humanize": humanize_path,
+            "boltons": boltons_path,
         },
         validate_candidates=True,
         validation_runner=_passing_validation_runner,
@@ -303,14 +380,14 @@ def test_real_repo_tests_only_shadow_score_scores_iniconfig_candidate(
     metrics = score["metrics"]
     assert isinstance(metrics, dict)
     assert metrics["tasks_scored"] == 4
-    assert metrics["candidate_count"] == 3
-    assert metrics["candidates_tested"] == 3
-    assert metrics["pass@1"] == "3/4"
-    assert metrics["pass@3"] == "3/4"
-    assert metrics["first_passing_ranks"] == [1, 1, 1, None]
+    assert metrics["candidate_count"] == 4
+    assert metrics["candidates_tested"] == 4
+    assert metrics["pass@1"] == "4/4"
+    assert metrics["pass@3"] == "4/4"
+    assert metrics["first_passing_ranks"] == [1, 1, 1, 1]
     assert metrics["calibration"]["pass@3"] == "1/1"
-    assert metrics["heldout"]["pass@3"] == "2/3"
-    assert metrics["correct_test_location"] == "3/4"
+    assert metrics["heldout"]["pass@3"] == "3/3"
+    assert metrics["correct_test_location"] == "4/4"
     assert metrics["production_file_modifications"] == 0
     assert metrics["writes_outside_allowlist"] == 0
     assert metrics["mutation_scope_violations"] == {
@@ -318,22 +395,23 @@ def test_real_repo_tests_only_shadow_score_scores_iniconfig_candidate(
         "writes_outside_allowlist": 0,
         "candidate_target_path_violations": 0,
     }
-    assert metrics["candidate_validation_statuses"]["passed"] == 3
-    assert metrics["candidate_validation_statuses"]["blocked"] == 1
-    assert metrics["hidden_like_agreement"]["agreeing"] == 3
-    assert metrics["hidden_like_agreement"]["not_run"] == 1
+    assert metrics["candidate_validation_statuses"]["passed"] == 4
+    assert metrics["candidate_validation_statuses"]["blocked"] == 0
+    assert metrics["hidden_like_agreement"]["agreeing"] == 4
+    assert metrics["hidden_like_agreement"]["not_run"] == 0
 
     gate = score["gate_decision"]
     assert isinstance(gate, dict)
     assert gate["decision"] == "allow_guarded_tests_only_opt_in"
     assert gate["passed"] is True
     assert gate["guarded_opt_in_allowed"] is True
-    assert gate["blocked_rows"] == ["boltons-tests-slugify-delimiter"]
+    assert gate["blocked_rows"] == []
     assert gate["failed_checks"] == []
     assert gate["guarded_opt_in_scope"]["allowed_task_ids"] == [
         "iniconfig-tests-parse-comments",
         "h11-tests-bytesify-memoryview",
         "humanize-tests-naturalsize-negative-strings",
+        "boltons-tests-slugify-delimiter",
     ]
 
     rows = score["task_results"]
@@ -418,22 +496,32 @@ def test_real_repo_tests_only_shadow_score_scores_iniconfig_candidate(
         "humanize_naturalsize_negative_binary_suffixes",
     ]
 
-    blocked_heldout_rows = [row for row in rows if row["repo_id"] == "boltons"]
-    assert all(row["pass@1"] is False for row in blocked_heldout_rows)
-    assert all(row["pass@3"] is False for row in blocked_heldout_rows)
-    assert all(row["first_passing_rank"] is None for row in blocked_heldout_rows)
-    assert all(row["hidden_like_agreement"] == "not_run" for row in blocked_heldout_rows)
-    assert all(
-        row["candidate_validation"]["status"] == "blocked"
-        for row in blocked_heldout_rows
+    boltons = next(row for row in rows if row["repo_id"] == "boltons")
+    assert boltons["candidate_count"] == 1
+    assert boltons["candidates_tested"] == 1
+    assert boltons["pass@1"] is True
+    assert boltons["pass@3"] is True
+    assert boltons["first_passing_rank"] == 1
+    assert boltons["candidate_validation"]["status"] == "passed"
+    assert boltons["candidate_validation"]["result"]["stdout"] == (
+        "20 passed in 0.03s\n"
     )
-    assert all(
-        "test_case_materialization_gap" in row["residual_labels"]
-        for row in blocked_heldout_rows
-    )
+    assert boltons["hidden_like_agreement"] == "agrees"
+    assert boltons["residual_labels"] == []
+    assert boltons["blockers"] == []
+    assert boltons["candidate_record"]["status"] == "materialized"
+    assert boltons["mutation_scope"]["files_changed"] == ["tests/test_strutils.py"]
+    assert boltons["mutation_scope"]["production_files_changed"] == []
+    assert boltons["mutation_scope"]["writes_outside_allowlist"] == []
+    assert boltons["mutation_scope"]["candidate_after"]["test_case_ids"] == [
+        "boltons_slugify_custom_delimiters",
+        "boltons_slugify_empty_string",
+        "boltons_slugify_ascii_output",
+        "boltons_slugify_lower_false",
+    ]
 
 
-def test_shadow_score_keeps_boltons_materializer_blocker(
+def test_shadow_score_blocks_materialized_rows_without_checkout(
     tmp_path: Path,
 ) -> None:
     repo_path = tmp_path / "iniconfig"
@@ -458,32 +546,32 @@ def test_shadow_score_keeps_boltons_materializer_blocker(
 
     boltons = next(item for item in rows if item["repo_id"] == "boltons")
     assert boltons["candidate_count"] == 0
-    assert boltons["candidates_tested"] == 0
     assert boltons["candidate_validation"]["status"] == "blocked"
     assert boltons["candidate_validation"]["not_run_reason"] == (
-        "test_case_materialization_gap"
+        "candidate_checkout_missing"
     )
     assert boltons["blockers"] == [
         {
-            "field": "test_case_materialization",
-            "reason": "test_case_materialization_gap",
+            "field": "repo_path",
+            "reason": "candidate_checkout_missing",
             "message": (
-                "held-out tests-only candidate materialization is not "
-                f"implemented for {boltons['task_id']}"
+                "boltons-tests-slugify-delimiter candidate scoring requires "
+                "a checkout path"
             ),
         }
     ]
-    assert "heldout_materializer_missing" in boltons["residual_labels"]
-    assert "test_case_materialization_gap" in boltons["residual_labels"]
+    assert "candidate_checkout_missing" in boltons["residual_labels"]
 
 
 def test_shadow_score_writes_json_and_markdown_reports(tmp_path: Path) -> None:
     iniconfig_path = tmp_path / "iniconfig"
     h11_path = tmp_path / "h11"
     humanize_path = tmp_path / "humanize"
+    boltons_path = tmp_path / "boltons"
     _write_synthetic_iniconfig_checkout(iniconfig_path)
     _write_synthetic_h11_checkout(h11_path)
     _write_synthetic_humanize_checkout(humanize_path)
+    _write_synthetic_boltons_checkout(boltons_path)
     score = run_real_repo_tests_only_shadow_score(
         MANIFEST_PATH,
         created_at="2026-05-18T00:00:00+00:00",
@@ -491,6 +579,7 @@ def test_shadow_score_writes_json_and_markdown_reports(tmp_path: Path) -> None:
             "iniconfig": iniconfig_path,
             "h11": h11_path,
             "humanize": humanize_path,
+            "boltons": boltons_path,
         },
         validate_candidates=True,
         validation_runner=_passing_validation_runner,
@@ -505,15 +594,16 @@ def test_shadow_score_writes_json_and_markdown_reports(tmp_path: Path) -> None:
         tmp_path / "report.md",
     )
 
-    assert json.loads(score_path.read_text(encoding="utf-8"))["metrics"]["pass@3"] == "3/4"
+    assert json.loads(score_path.read_text(encoding="utf-8"))["metrics"]["pass@3"] == "4/4"
     report = report_path.read_text(encoding="utf-8")
-    assert "REAL-008 Tests-Only Shadow Score" in report
+    assert "REAL-010 Tests-Only Shadow Score" in report
     assert "Calibration pass@3: `1/1`" in report
-    assert "Held-out pass@3: `2/3`" in report
-    assert "pass@3: `3/4`" in report
+    assert "Held-out pass@3: `3/3`" in report
+    assert "pass@3: `4/4`" in report
     assert "| `iniconfig-tests-parse-comments` | calibration | passed | True | True | 1 |" in report
     assert "| `h11-tests-bytesify-memoryview` | heldout | passed | True | True | 1 |" in report
     assert "| `humanize-tests-naturalsize-negative-strings` | heldout | passed | True | True | 1 |" in report
+    assert "| `boltons-tests-slugify-delimiter` | heldout | passed | True | True | 1 |" in report
     assert "allow_guarded_tests_only_opt_in" in report
-    assert "boltons-tests-slugify-delimiter" in report
+    assert "Blocked rows: `none`" in report
     assert format_real_repo_tests_only_shadow_score(score) == report

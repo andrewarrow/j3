@@ -795,7 +795,7 @@ Long-term target:
 
 ### REAL-010: Full tests-only gate after boltons materializer
 
-- Status: active
+- Status: done
 - Why: `REAL-008` can decide whether the three-candidate threshold is reached,
   but boltons should be counted after `GS7-011` to prove or falsify full ladder
   coverage.
@@ -808,6 +808,15 @@ Long-term target:
   opt-in is allowed.
 - Tests: focused shadow-score tests, plan consistency, `git diff --check`, and
   the score/report smoke command.
+- Completion note: reran the tests-only gate with all four materialized
+  tests-only candidates, including `boltons-tests-slugify-delimiter`. The live
+  score against pinned `iniconfig`, `h11`, `humanize`, and `boltons` checkouts
+  passed at `pass@1 = 4/4` and `pass@3 = 4/4`; calibration pass@3 is `1/1`,
+  held-out pass@3 is `3/3`, first passing ranks are `[1, 1, 1, 1]`, candidate
+  validation is `passed = 4`, mutation-scope violations are zero, hidden-like
+  agreement is `4/4`, and zero hosted usage is confirmed. Guarded tests-only
+  opt-in remains allowed for the four materialized, validation-passing
+  tests-only task ids inside task allowlists.
 
 ### REAL-009: One-file feature shadow score after h11 materializer
 

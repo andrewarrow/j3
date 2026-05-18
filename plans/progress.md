@@ -1459,3 +1459,37 @@ meaningful work. Do not replace this file with a daily reset.
   iniconfig one-file feature materializer. Review both results, then keep the
   loop moving to the next falsification task.
 - Blockers: none
+
+### 2026-05-18 - REAL-010 - Full tests-only gate after boltons
+
+- Owner: worker Fermat (`019e3bc5-6168-7a33-bec3-d20f90b538e3`)
+- Files changed: `j3/real_repo_shadow_score.py`,
+  `tests/test_real_repo_shadow_score.py`,
+  `docs/REAL_010_TESTS_ONLY_SHADOW_SCORE_2026-05-18.md`,
+  `plans/active.md`, `plans/backlog.md`, `plans/progress.md`
+- Tests: `pytest tests/test_real_repo_shadow_score.py -q` -> 3 passed; live
+  preflight
+  `python -m j3.real_repo_preflight --manifest examples/real_repo_eval_ladder.json --repo iniconfig --repo h11 --repo humanize --repo boltons --work-root /tmp/j3-real-010-shadow-score-live/repos --outcome /tmp/j3-real-010-shadow-score-live/preflight.jsonl`
+  -> passed with 8 rows, `blocker_labels = ["none"]`, runtime 10.84 seconds;
+  live shadow score
+  `python -m j3.real_repo_shadow_score --manifest examples/real_repo_eval_ladder.json --repo-path iniconfig=/tmp/j3-real-010-shadow-score-live/repos/iniconfig --repo-path h11=/tmp/j3-real-010-shadow-score-live/repos/h11 --repo-path humanize=/tmp/j3-real-010-shadow-score-live/repos/humanize --repo-path boltons=/tmp/j3-real-010-shadow-score-live/repos/boltons --validate-candidates --out /tmp/j3-real-010-shadow-score-live/score.json --report /tmp/j3-real-010-shadow-score-live/report.md`
+  -> passed with `pass@1 = 4/4`, `pass@3 = 4/4`, and
+  `gate_decision = allow_guarded_tests_only_opt_in`; `pytest
+  tests/test_plan_consistency.py -q`, `git diff --check`, commit, and push
+  pending.
+- Result: counted all four materialized tests-only ladder candidates through
+  the real-repo tests planner surface. Calibration pass@3 is `1/1`; held-out
+  pass@3 is `3/3`; first passing ranks are `[1, 1, 1, 1]`. Candidate
+  validation passed for iniconfig, h11, humanize, and boltons, with zero
+  production-file modifications, zero writes outside allowlists, zero
+  candidate target path violations, hidden-like agreement for all four rows,
+  and zero hosted usage. Guarded tests-only opt-in remains allowed only for
+  `iniconfig-tests-parse-comments`, `h11-tests-bytesify-memoryview`,
+  `humanize-tests-naturalsize-negative-strings`, and
+  `boltons-tests-slugify-delimiter` when validation passes inside task
+  allowlists.
+- Commit: pending
+- Push: pending
+- Next: coordinator can review `REAL-010` with `MAT-004`; tests-only guarded
+  opt-in scope is now the full four-row materialized tests-only ladder.
+- Blockers: none

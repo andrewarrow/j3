@@ -16,20 +16,6 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-### `REAL-001`: Real repo eval ladder spike
-
-- Owner: worker Dewey (`019e3b45-2fe1-7083-9203-c310474a3fd0`)
-- Status: active
-- Write scope: `docs/REAL_REPO_EVAL_LADDER.md`, a small real-repo eval manifest
-  under `examples/` if useful, optional checker/tests, and plan updates. Do not
-  touch GreenShot implementation files.
-- Acceptance: pick 3 to 5 small permissively licensed Python repos with stable
-  tests, define tests-only and one-file feature tasks, specify checkout refs and
-  validation commands, and classify the first expected failure modes. No
-  implementation heroics; the output is the harness and falsifiable gates.
-- Tests: `pytest tests/test_plan_consistency.py -q`, any focused tests for a
-  manifest/checker if added, and `git diff --check`.
-
 ### `MAT-001`: Probe the code materialization gap
 
 - Owner: worker Meitner (`019e3b45-2fff-73d3-890d-a02d8262237b`)
@@ -91,6 +77,12 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `REAL-001`: added `docs/REAL_REPO_EVAL_LADDER.md`,
+  `examples/real_repo_eval_ladder.json`, and a manifest schema test. The ladder
+  pins four permissively licensed Python repos, defines tests-only and one-file
+  feature tasks, records validation commands, split/leakage rules, runtime
+  limits, pass/fail gates, and explicit falsifiers for real-repo
+  generalization.
 - `MODEL-001`: added a compact learned prompt-intent baseline report helper and
   recorded the 2026-05-18 current-corpus metrics in
   `docs/MODEL_001_PROMPT_INTENT_BASELINE_2026-05-18.md`. Current expanded

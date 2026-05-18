@@ -353,7 +353,7 @@ Long-term target:
 
 ### REAL-001: Real repo eval ladder spike
 
-- Status: active
+- Status: done
 - Why: the project must prove it generalizes outside j3-owned fixtures before
   optimizing more GreenShot progress.
 - Write scope: `docs/REAL_REPO_EVAL_LADDER.md`, a small real-repo eval

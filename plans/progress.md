@@ -554,3 +554,28 @@ meaningful work. Do not replace this file with a daily reset.
   (`019e3b45-2fff-73d3-890d-a02d8262237b`), and `DATA-004` is running as
   Copernicus (`019e3b45-301a-7a41-8138-3d139d4506b4`).
 - Blockers: none
+
+### 2026-05-18 - REAL-001 - Real repo eval ladder spike
+
+- Owner: worker Dewey (`019e3b45-2fe1-7083-9203-c310474a3fd0`)
+- Files changed: `docs/REAL_REPO_EVAL_LADDER.md`,
+  `examples/real_repo_eval_ladder.json`,
+  `tests/test_real_repo_eval_ladder.py`, `plans/active.md`,
+  `plans/backlog.md`, `plans/progress.md`
+- Tests: `pytest tests/test_real_repo_eval_ladder.py -q` -> 3 passed;
+  `python -m json.tool examples/real_repo_eval_ladder.json >/dev/null` ->
+  passed; `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check` -> passed.
+- Result: added a falsifiable real-repo ladder with four pinned permissively
+  licensed Python repositories: `pytest-dev/iniconfig`, `python-hyper/h11`,
+  `python-humanize/humanize`, and `mahmoud/boltons`. The ladder defines
+  tests-only and one-file feature tasks, checkout refs, setup and validation
+  commands, repo-level split/leakage rules, runtime limits, pass/fail metrics,
+  first expected failure modes, and explicit results that would falsify
+  real-repo generalization or cheap validation.
+- Commit: pending worker commit
+- Push: pending worker push
+- Next: add a small runner that clones pinned refs to `/tmp`, verifies baseline
+  validation, applies one candidate within the allowed write paths, and emits
+  JSONL outcome rows.
+- Blockers: none

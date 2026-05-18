@@ -1,0 +1,291 @@
+{
+  "schema_version": "real-repo-eval-ladder-v1",
+  "description": "Pinned real-repository ladder for testing whether j3 generalizes outside project-owned fixtures.",
+  "checked_at": "2026-05-18",
+  "zero_hosted_usage_required": true,
+  "defaults": {
+    "max_candidates": 3,
+    "per_candidate_timeout_seconds": 120,
+    "per_task_timeout_seconds": 600,
+    "median_runtime_target_seconds": 180,
+    "network_policy": "network allowed only during clean dependency setup; candidate validation must run offline",
+    "residual_labels": [
+      "tests_only_scope_violation",
+      "wrong_test_location",
+      "repo_import_setup_failure",
+      "one_file_materialization_gap",
+      "wrong_symbol_or_module",
+      "validation_selection_gap",
+      "dependency_or_tooling_gap"
+    ]
+  },
+  "split_policy": {
+    "unit": "repository",
+    "calibration_repos": [
+      "iniconfig"
+    ],
+    "heldout_repos": [
+      "h11",
+      "humanize",
+      "boltons"
+    ],
+    "rules": [
+      "Do not train on prompts, diffs, hidden checks, or paraphrases from held-out repositories.",
+      "Do not add these prompts to GreenShot fixtures.",
+      "Issue/PR replay rows from the same repository must use the same split or be excluded.",
+      "Repo-specific action rules keyed by repository name, path, or exact prompt are disallowed."
+    ]
+  },
+  "gates": {
+    "baseline_viability": {
+      "minimum_repos_passing_baseline": 3
+    },
+    "tests_only": {
+      "minimum_pass_at_3": 3,
+      "total_tasks": 4,
+      "production_file_edits_allowed": false
+    },
+    "one_file_feature": {
+      "minimum_pass_at_3": 2,
+      "total_tasks": 4,
+      "minimum_distinct_repos_passing": 2,
+      "maximum_production_files_changed": 1
+    },
+    "falsifiers": [
+      "pass@3 == 0/4 on one-file feature tasks after generic materialization support exists",
+      "pass@3 < 2/4 on tests-only tasks while at least three baseline repositories validate",
+      "passing requires hosted patch generation or repo-specific actions",
+      "more than one repository cannot maintain baseline validation within the runtime cap"
+    ]
+  },
+  "repositories": [
+    {
+      "id": "iniconfig",
+      "upstream": "https://github.com/pytest-dev/iniconfig.git",
+      "homepage": "https://github.com/pytest-dev/iniconfig",
+      "license": "MIT",
+      "checkout_ref": "77db208ab4ae0cd2061d909fe222a1db72867850",
+      "split": "calibration",
+      "setup_commands": [
+        "python -m pip install -e . pytest"
+      ],
+      "baseline_validation_commands": [
+        "python -m pytest testing -q"
+      ],
+      "tasks": [
+        {
+          "id": "iniconfig-tests-parse-comments",
+          "task_type": "tests_only",
+          "prompt": "Add pytest coverage for existing INI parsing behavior around comment-only lines, inline section comments, and duplicate keys. Do not change production code.",
+          "allowed_write_paths": [
+            "testing/test_iniconfig.py"
+          ],
+          "public_validation_commands": [
+            "python -m pytest testing/test_iniconfig.py -q"
+          ],
+          "hidden_like_checks": [
+            "Production files under src/iniconfig are byte-for-byte unchanged.",
+            "New tests fail if duplicate key errors stop reporting the offending key name.",
+            "New tests cover both # and ; comment markers."
+          ],
+          "expected_failure_modes": [
+            "tests_only_scope_violation",
+            "wrong_test_location"
+          ]
+        },
+        {
+          "id": "iniconfig-feature-section-default",
+          "task_type": "one_file_feature",
+          "prompt": "Add a small convenience method for safely retrieving an optional section with a default mapping when the section is missing.",
+          "allowed_write_paths": [
+            "src/iniconfig/__init__.py",
+            "testing/test_iniconfig.py"
+          ],
+          "public_validation_commands": [
+            "python -m pytest testing/test_iniconfig.py -q"
+          ],
+          "hidden_like_checks": [
+            "Only src/iniconfig/__init__.py may change among production files.",
+            "The existing __getitem__ missing-section KeyError behavior is unchanged.",
+            "The new method preserves iteration order for existing sections."
+          ],
+          "expected_failure_modes": [
+            "one_file_materialization_gap",
+            "wrong_symbol_or_module"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "h11",
+      "upstream": "https://github.com/python-hyper/h11.git",
+      "homepage": "https://github.com/python-hyper/h11",
+      "license": "MIT",
+      "checkout_ref": "62c5068c971579d61fa1b55373390e12f25fd856",
+      "split": "heldout",
+      "setup_commands": [
+        "python -m pip install -e . -r test-requirements.txt"
+      ],
+      "baseline_validation_commands": [
+        "python -m pytest h11/tests/test_util.py h11/tests/test_headers.py h11/tests/test_state.py -q"
+      ],
+      "tasks": [
+        {
+          "id": "h11-tests-bytesify-memoryview",
+          "task_type": "tests_only",
+          "prompt": "Add pytest coverage for existing bytesify behavior with bytearray, memoryview, ASCII str, non-ASCII str, and int inputs. Do not change production code.",
+          "allowed_write_paths": [
+            "h11/tests/test_util.py"
+          ],
+          "public_validation_commands": [
+            "python -m pytest h11/tests/test_util.py -q"
+          ],
+          "hidden_like_checks": [
+            "Production files under h11 are unchanged.",
+            "The memoryview test verifies the exact bytes returned, not only the type.",
+            "The int input still raises TypeError."
+          ],
+          "expected_failure_modes": [
+            "tests_only_scope_violation",
+            "wrong_test_location"
+          ]
+        },
+        {
+          "id": "h11-feature-bytesify-object-message",
+          "task_type": "one_file_feature",
+          "prompt": "Improve bytesify's TypeError for unsupported non-bytes-like objects so the message includes the object's type name.",
+          "allowed_write_paths": [
+            "h11/_util.py",
+            "h11/tests/test_util.py"
+          ],
+          "public_validation_commands": [
+            "python -m pytest h11/tests/test_util.py -q"
+          ],
+          "hidden_like_checks": [
+            "Only h11/_util.py may change among production files.",
+            "bytes, bytearray, memoryview, and ASCII str behavior is unchanged.",
+            "Unsupported object errors include the concrete type name."
+          ],
+          "expected_failure_modes": [
+            "wrong_symbol_or_module",
+            "validation_selection_gap"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "humanize",
+      "upstream": "https://github.com/python-humanize/humanize.git",
+      "homepage": "https://github.com/python-humanize/humanize",
+      "license": "MIT",
+      "checkout_ref": "bde649fc2927c022dd2a9eedba2a1ed677b97902",
+      "split": "heldout",
+      "setup_commands": [
+        "python -m pip install -e '.[tests]'"
+      ],
+      "baseline_validation_commands": [
+        "python -m pytest tests/test_filesize.py tests/test_number.py tests/test_lists.py tests/test_time.py -q --benchmark-disable"
+      ],
+      "tasks": [
+        {
+          "id": "humanize-tests-naturalsize-negative-strings",
+          "task_type": "tests_only",
+          "prompt": "Add pytest coverage for existing naturalsize behavior with negative numeric strings, GNU suffixes, and binary suffixes. Do not change production code.",
+          "allowed_write_paths": [
+            "tests/test_filesize.py"
+          ],
+          "public_validation_commands": [
+            "python -m pytest tests/test_filesize.py -q --benchmark-disable"
+          ],
+          "hidden_like_checks": [
+            "Production files under src/humanize are unchanged.",
+            "At least one new assertion covers a negative string input.",
+            "The tests cover GNU and binary suffix modes separately."
+          ],
+          "expected_failure_modes": [
+            "tests_only_scope_violation",
+            "dependency_or_tooling_gap"
+          ]
+        },
+        {
+          "id": "humanize-feature-naturalsize-zero-format",
+          "task_type": "one_file_feature",
+          "prompt": "Teach naturalsize to accept an optional zero_format string used only when the absolute byte value is zero.",
+          "allowed_write_paths": [
+            "src/humanize/filesize.py",
+            "tests/test_filesize.py"
+          ],
+          "public_validation_commands": [
+            "python -m pytest tests/test_filesize.py -q --benchmark-disable"
+          ],
+          "hidden_like_checks": [
+            "Only src/humanize/filesize.py may change among production files.",
+            "Existing naturalsize calls without zero_format keep their old output.",
+            "zero_format applies to both 0 and -0.0 inputs."
+          ],
+          "expected_failure_modes": [
+            "one_file_materialization_gap",
+            "validation_selection_gap"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "boltons",
+      "upstream": "https://github.com/mahmoud/boltons.git",
+      "homepage": "https://github.com/mahmoud/boltons",
+      "license": "BSD-3-Clause",
+      "checkout_ref": "207651ee6055aabd0d9cdeac2e00140cdc208d44",
+      "split": "heldout",
+      "setup_commands": [
+        "python -m pip install -e . -r requirements-test.txt"
+      ],
+      "baseline_validation_commands": [
+        "python -m pytest tests/test_strutils.py tests/test_iterutils.py -q"
+      ],
+      "tasks": [
+        {
+          "id": "boltons-tests-slugify-delimiter",
+          "task_type": "tests_only",
+          "prompt": "Add tests for existing strutils.slugify behavior with custom delimiters, empty strings, ascii output, and lower=False. Do not change production code.",
+          "allowed_write_paths": [
+            "tests/test_strutils.py"
+          ],
+          "public_validation_commands": [
+            "python -m pytest tests/test_strutils.py -q"
+          ],
+          "hidden_like_checks": [
+            "Production files under boltons are unchanged.",
+            "The ascii=True test asserts bytes output.",
+            "The custom delimiter test includes punctuation and whitespace."
+          ],
+          "expected_failure_modes": [
+            "tests_only_scope_violation",
+            "wrong_test_location"
+          ]
+        },
+        {
+          "id": "boltons-feature-slugify-max-length",
+          "task_type": "one_file_feature",
+          "prompt": "Add an optional max_length argument to strutils.slugify that truncates the final slug without leaving a trailing delimiter.",
+          "allowed_write_paths": [
+            "boltons/strutils.py",
+            "tests/test_strutils.py"
+          ],
+          "public_validation_commands": [
+            "python -m pytest tests/test_strutils.py -q"
+          ],
+          "hidden_like_checks": [
+            "Only boltons/strutils.py may change among production files.",
+            "Existing slugify calls without max_length keep their old output.",
+            "Truncation never leaves the configured delimiter at the end."
+          ],
+          "expected_failure_modes": [
+            "one_file_materialization_gap",
+            "wrong_symbol_or_module"
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -7,8 +7,9 @@ This is the live coordinator board. Keep it current and compact.
 - Coordinator mode: persistent multi-week execution.
 - Parallel worker default: 2.
 - Parallel worker maximum: 3, only with disjoint write scopes.
-- Current review state: `ACT-002` and `DATA-002` are complete; ready for the
-  next bounded assignment.
+- Current review state: coordinator review complete after eight worker slices;
+  no active workers. Next useful loop should verify the ACT-002 matrix impact
+  and add the lightweight plan consistency gate before broader expansion.
 - Current product gate stance: transition ranking remains shadow-only; the
   2026-05-18 `TRANS-001` matrix decision was `remain_shadow_only`.
 
@@ -18,20 +19,23 @@ No active worker tasks.
 
 ## Ready Queue
 
-These are good next assignments after the current active tasks complete:
+These are good next assignments for the next loop:
 
-1. `OPS-002`: add a lightweight plan consistency check.
-2. `GS7-002`: add five non-calculator request-to-repo fixtures.
-3. `DATA-003`: prototype issue/PR mining manifest.
+1. `TRANS-004`: rerun targeted `greenshot_6_subset` matrix evidence after
+   `ACT-002`.
+2. `OPS-002`: add a lightweight plan consistency check.
+3. `GS7-002`: add five non-calculator request-to-repo fixtures.
+4. `DATA-003`: prototype issue/PR mining manifest.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
 ## Paused Or Blocked
 
 - `TRANS-003`: blocked until the `TRANS-002` generation and ranking residuals
-  have focused fixes or regression evidence; do not expand the matrix while the
-  current standard gate remains nonzero.
-- `DATA-004`: blocked until issue/PR mining and schema validation exist.
+  have focused fixes or regression evidence; do not expand the full matrix
+  until targeted `TRANS-004` evidence is recorded.
+- `DATA-004`: blocked until issue/PR mining exists; schema validation now
+  exists from `DATA-002`.
 - `MODEL-002`: waiting for coordinator scoping into bounded scorer tasks based
   on the `TRANS-002` ranking clusters, especially add-keyword decoys and
   mapping key/value target features.

@@ -224,9 +224,27 @@ meaningful work. Do not replace this file with a daily reset.
   `human_seed` rows without explicit `expected.action` and cross-split
   near-duplicates as review warnings; GreenShot-7 intent fixtures are now a
   supported `source_type` and do not require synthetic `generation` metadata.
-- Commit: pending final hash reported by worker
-- Push: pending
+- Commit: 4ad88346f9e47292e95c10f01411e150b1da6300
+- Push: succeeded
 - Next: assign split cleanup or schema normalization only if the coordinator
   wants warnings converted to a hard gate; otherwise `DATA-003` can build on
   this validator.
+- Blockers: none
+
+### 2026-05-18 - COORD - Post-loop review
+
+- Owner: coordinator
+- Files changed: `plans/active.md`, `plans/backlog.md`, `plans/progress.md`
+- Tests: `git diff --check` passed
+- Result: reviewed eight worker slices from the loop:
+  `TRANS-001`, `GS7-001`, `TRANS-002`, `DATA-001`, `ACT-002`, `DATA-002`,
+  plus coordinator dispatch/integration commits. Transition ranking remains
+  shadow-only. The single candidate-generation residual has a focused fix; the
+  remaining transition work is evidence refresh and scorer-ranking clusters.
+  Prompt corpus validation is now repeatable, with current corpora at zero
+  errors and review warnings.
+- Commit: pending
+- Push: pending
+- Next: start a fresh loop with `TRANS-004` and `OPS-002`, or pair `GS7-002`
+  with `DATA-003` if the priority shifts toward request-to-repo/data growth.
 - Blockers: none

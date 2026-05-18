@@ -109,7 +109,7 @@ Long-term target:
 
 ### DATA-002: Add prompt/spec schema validation
 
-- Status: active
+- Status: done
 - Why: learned prompt and transition models need stable fields.
 - Write scope: request-spec schema docs, validator, tests.
 - Acceptance: validates seed and expanded prompt rows with clear errors for
@@ -130,7 +130,8 @@ Long-term target:
 ### DATA-004: Normalize first 25 real prompt/repo transition examples
 
 - Status: blocked
-- Blocker: depends on DATA-003 and schema validation.
+- Blocker: depends on DATA-003 issue/PR mining; DATA-002 schema validation is
+  now available.
 - Why: trainable prompt understanding needs real user-like task text.
 - Write scope: versioned local data file or external manifest; docs with
   provenance.
@@ -163,13 +164,27 @@ Long-term target:
 ### TRANS-003: Expand standard matrix manifest cautiously
 
 - Status: blocked
-- Blocker: depends on `TRANS-002` blocker diagnosis and safe expansion
-  criteria.
+- Blocker: depends on targeted post-`ACT-002` evidence and remaining ranking
+  residual fixes.
 - Why: product gates need broader held-out suites without making local runs
   impractical.
 - Write scope: `examples/transition_shadow_matrix.json`, tests, docs.
 - Acceptance: manifest balances runtime, suite diversity, and held-out evidence.
 - Tests: `pytest tests/test_transition_shadow_matrix.py -q`.
+
+### TRANS-004: Rerun targeted matrix evidence after subscript-key fix
+
+- Status: ready
+- Why: `ACT-002` fixed the single `TRANS-002` candidate-generation gap, but the
+  matrix evidence still records the pre-fix residual count.
+- Write scope: generated outputs under `/tmp`, progress notes only unless a
+  local runner bug appears.
+- Acceptance: rerun `greenshot_6_subset` with the standard matrix runner,
+  record whether `http_no_store_directive_subscript_key` is solved within the
+  matrix cap, and update residual/gate counts for that subset.
+- Tests: targeted matrix command with `--only greenshot_6_subset`,
+  `report-transition-residuals --matrix`, guarded decision if applicable, and
+  focused transition tests if command behavior changes.
 
 ## Workstream E: Repo State, Actions, And Models
 
@@ -193,7 +208,7 @@ Long-term target:
 
 ### ACT-002: Fix subscript-key generation gap from matrix residuals
 
-- Status: active
+- Status: done
 - Why: `TRANS-002` found one candidate-generation gap:
   `greenshot_6_subset/http_no_store_directive_subscript_key` needs the
   `change_subscript_key` candidate from `"no-store"` to `"no_store"` to enter
@@ -250,9 +265,11 @@ Long-term target:
 
 Start with these unless fresh evidence changes the order:
 
-1. `DATA-002`: add prompt/spec schema validation from the DATA-001 audit.
-2. `ACT-002`: fix the subscript-key generation gap from TRANS-002.
-3. `OPS-002`: add a lightweight plan consistency check.
-4. `GS7-002`: add five non-calculator request-to-repo fixtures.
+1. `TRANS-004`: rerun targeted `greenshot_6_subset` matrix evidence after
+   `ACT-002`.
+2. `OPS-002`: add a lightweight plan consistency check.
+3. `GS7-002`: add five non-calculator request-to-repo fixtures.
+4. `DATA-003`: prototype issue/PR mining manifest.
 5. Coordinator review: choose between GreenShot-7 fixture expansion, scorer
-   ranking work, or broader data provenance work based on evidence.
+   ranking work, or broader data provenance work based on the targeted rerun
+   and schema validation.

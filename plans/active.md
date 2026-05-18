@@ -44,29 +44,11 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-### `DATA-040`: Live pytest issue/PR decoy validation slice
-
-- Status: active
-- Owner: worker Arendt (`019e3ce3-e9b5-7b13-a7b9-b9c07d778150`).
-- Write scope: issue/PR decoy validation and ranking-evidence modules/tests
-  only (`j3/issue_pr_decoy_validation.py`,
-  `j3/issue_pr_candidate_ranking.py`, their focused tests, optional
-  `docs/DATA_040_*`, and generated artifacts under `/tmp`). Do not edit
-  typed-builder or held-out materialization modules.
-- Acceptance: materialize and live-validate realistic decoys for the
-  validated DATA-029 `pytest-dev/pytest#14462/#14466` row, using the existing
-  DATA-037 decoy definitions as the target negative set. Record candidate-after
-  snapshots, touched files, validation command/runtime/status, residual
-  labels, and rerun the DATA-037 ranking report with DATA-038 accepted
-  snapshots plus DATA-039/DATA-040 decoy validation evidence. The result should
-  either remove the pytest row's `decoys_not_live_validated` and
-  `decoy_candidate_after_unavailable` blockers, or record the exact
-  materialization/validation blocker.
-
 ### `MAT-010`: First held-out typed-builder materialization probe
 
 - Status: active
-- Owner: worker Lovelace (`019e3ce3-e9da-7863-bb91-b68423ca8388`).
+- Owner: worker Tesla (`019e3ce5-2db8-71f0-80fd-38096e43b7d2`) with
+  coordinator integration after worker pause.
 - Write scope: new typed-builder materialization module/tests/docs only
   (`j3/heldout_typed_builder_candidate.py`,
   `tests/test_heldout_typed_builder_candidate.py`, optional `docs/MAT_010_*`,
@@ -108,6 +90,20 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `DATA-040`: materialized and live-validated four realistic decoys for the
+  validated `pytest-dev/pytest#14462/#14466` issue/PR replay. The pytest row
+  now has live decoy validation outcomes and candidate-after snapshots for all
+  four decoys, so `decoys_not_live_validated` and
+  `decoy_candidate_after_unavailable` are removed for that row. Three decoys
+  failed and one passed, creating the honest blocker
+  `decoy_validation_outcomes_include_passing_candidates`; pass@1/pass@k remain
+  blocked and the ranking harness remains shadow-only. Artifacts:
+  `/tmp/j3-data-040-pytest-decoy-validation/decoy-validation-bundle.json`,
+  `/tmp/j3-data-040-pytest-decoy-validation/decoy-validation-candidates.jsonl`,
+  `/tmp/j3-data-040-pytest-decoy-validation/decoy-validation-report.md`,
+  `/tmp/j3-data-040-ranking-with-live-decoys/ranking-report.json`,
+  `/tmp/j3-data-040-ranking-with-live-decoys/ranking-report.md`, and
+  `docs/DATA_040_LIVE_PYTEST_DECOY_VALIDATION_2026-05-18.md`.
 - `DATA-039`: materialized and live-validated four realistic decoys for the
   validated `scrapy/scrapy#7293/#7351` issue/PR replay. The Scrapy row now has
   live decoy validation outcomes and candidate-after snapshots for all four

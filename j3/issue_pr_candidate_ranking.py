@@ -103,6 +103,7 @@ def build_issue_pr_candidate_ranking_report(
     scrapy_candidate_path: Path = DEFAULT_SCRAPY_CANDIDATE_PATH,
     candidate_after_bundle_path: Path | None = None,
     decoy_validation_bundle_path: Path | None = None,
+    decoy_validation_bundle_paths: Sequence[Path] = (),
 ) -> dict[str, object]:
     """Build a shadow-only ranking report for the DATA-037 real candidates."""
 
@@ -111,11 +112,14 @@ def build_issue_pr_candidate_ranking_report(
         if candidate_after_bundle_path is not None
         else {}
     )
-    decoy_validation_index = (
-        load_issue_pr_decoy_validation_bundle_index(decoy_validation_bundle_path)
-        if decoy_validation_bundle_path is not None
-        else {}
-    )
+    decoy_validation_index: dict[str, dict[str, object]] = {}
+    for bundle_path in [
+        *([decoy_validation_bundle_path] if decoy_validation_bundle_path else []),
+        *decoy_validation_bundle_paths,
+    ]:
+        decoy_validation_index.update(
+            load_issue_pr_decoy_validation_bundle_index(bundle_path)
+        )
     rows = [
         _build_pytest_row(
             pytest_candidate_path.expanduser().resolve(),
@@ -795,8 +799,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument(
         "--decoy-validation-bundle",
         type=Path,
-        default=None,
-        help="Optional DATA-039 decoy validation bundle JSON for materialized decoys.",
+        action="append",
+        default=[],
+        help=(
+            "Optional decoy validation bundle JSON for materialized decoys. "
+            "May be supplied more than once."
+        ),
     )
     args = parser.parse_args(argv)
 
@@ -804,7 +812,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         pytest_candidate_path=args.pytest_candidate,
         scrapy_candidate_path=args.scrapy_candidate,
         candidate_after_bundle_path=args.candidate_after_bundle,
-        decoy_validation_bundle_path=args.decoy_validation_bundle,
+        decoy_validation_bundle_paths=args.decoy_validation_bundle,
     )
     artifacts = write_issue_pr_candidate_ranking_report(report, out_dir=args.out_dir)
     print(json.dumps({name: str(path) for name, path in artifacts.items()}, sort_keys=True))

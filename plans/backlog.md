@@ -2296,7 +2296,7 @@ Long-term target:
 
 ### DATA-040: Live pytest issue/PR decoy validation slice
 
-- Status: active
+- Status: done
 - Why: DATA-039 proved the Scrapy row can receive live decoy outcomes, but the
   pytest #14462 row still has label-only decoys. Ranking gains on issue/PR
   rows remain unclaimable until pytest decoys are materialized, snapshotted,
@@ -2317,6 +2317,21 @@ Long-term target:
   materialization/validation blocker.
 - Tests: focused decoy validation/ranking tests, plan consistency,
   `git diff --check`, and live focused validation when decoys are materialized.
+- Result: materialized and live-validated four pytest #14462/#14466 decoys.
+  All four now have candidate-after snapshots; validation status counts are
+  `failed = 3` and `passed = 1`. The pytest ranking row no longer has
+  `decoys_not_live_validated` or `decoy_candidate_after_unavailable`, but it
+  remains blocked by `decoy_validation_outcomes_include_passing_candidates`,
+  `no_guarded_issue_pr_ranker`, and
+  `issue_specific_semantics_not_in_current_features`. Both validated issue/PR
+  rows now have live decoy evidence, and both expose passing decoys that make
+  pass@1/pass@k claims invalid under the current validation recipes.
+- Artifacts: `/tmp/j3-data-040-pytest-decoy-validation/decoy-validation-bundle.json`,
+  `/tmp/j3-data-040-pytest-decoy-validation/decoy-validation-candidates.jsonl`,
+  `/tmp/j3-data-040-pytest-decoy-validation/decoy-validation-report.md`,
+  `/tmp/j3-data-040-ranking-with-live-decoys/ranking-report.json`,
+  `/tmp/j3-data-040-ranking-with-live-decoys/ranking-report.md`, and
+  `docs/DATA_040_LIVE_PYTEST_DECOY_VALIDATION_2026-05-18.md`.
 
 ### VAL-001: Strengthen Scrapy passing-decoy validation without label leakage
 

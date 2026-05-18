@@ -170,7 +170,7 @@ def test_decoy_validation_bundle_moves_scrapy_decoy_blockers(tmp_path: Path) -> 
         pytest_candidate_path=pytest_path,
         scrapy_candidate_path=scrapy_path,
         candidate_after_bundle_path=candidate_after_bundle_path,
-        decoy_validation_bundle_path=decoy_validation_bundle_path,
+        decoy_validation_bundle_paths=[decoy_validation_bundle_path],
     )
 
     rows = {row["replay_id"]: row for row in report["rows"]}
@@ -188,6 +188,82 @@ def test_decoy_validation_bundle_moves_scrapy_decoy_blockers(tmp_path: Path) -> 
     assert {
         candidate["expected_validation_status"]
         for candidate in scrapy_row["candidates"]
+        if not candidate["expected_accepted"]
+    } == {"failed", "passed"}
+
+
+def test_decoy_validation_bundle_moves_pytest_decoy_blockers(tmp_path: Path) -> None:
+    pytest_path = _write_candidate(tmp_path, "pytest")
+    scrapy_path = _write_candidate(tmp_path, "scrapy")
+    candidate_after_bundle_path = tmp_path / "candidate-after-bundle.json"
+    candidate_after_bundle_path.write_text(
+        json.dumps(
+            {
+                "schema_version": "issue-pr-candidate-after-snapshot-v1",
+                "record_kind": "issue_pr_candidate_after_snapshot_bundle",
+                "candidates": [
+                    _candidate_after_bundle_entry("pytest"),
+                    _candidate_after_bundle_entry("scrapy"),
+                ],
+            },
+            indent=2,
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+    decoy_validation_bundle_path = tmp_path / "pytest-decoy-validation-bundle.json"
+    decoy_validation_bundle_path.write_text(
+        json.dumps(
+            {
+                "schema_version": "issue-pr-decoy-validation-v1",
+                "record_kind": "issue_pr_decoy_validation_bundle",
+                "candidates": [
+                    _pytest_decoy_validation_entry(
+                        "pytest_rel_timedelta_object_semantics",
+                        "failed",
+                    ),
+                    _pytest_decoy_validation_entry(
+                        "pytest_missing_container_dispatch",
+                        "failed",
+                    ),
+                    _pytest_decoy_validation_entry(
+                        "pytest_missing_invalid_tolerance_tests",
+                        "passed",
+                    ),
+                    _pytest_decoy_validation_entry(
+                        "pytest_partial_source_test_materialization",
+                        "failed",
+                    ),
+                ],
+            },
+            indent=2,
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+
+    report = build_issue_pr_candidate_ranking_report(
+        pytest_candidate_path=pytest_path,
+        scrapy_candidate_path=scrapy_path,
+        candidate_after_bundle_path=candidate_after_bundle_path,
+        decoy_validation_bundle_path=decoy_validation_bundle_path,
+    )
+
+    rows = {row["replay_id"]: row for row in report["rows"]}
+    pytest_row = rows["pytest-dev__pytest-issue-14462-pr-14466"]
+    pytest_reasons = {blocker["reason"] for blocker in pytest_row["scorer_blockers"]}
+    assert "decoys_not_live_validated" not in pytest_reasons
+    assert "decoy_candidate_after_unavailable" not in pytest_reasons
+    assert "decoy_validation_outcomes_include_passing_candidates" in pytest_reasons
+    assert "no_guarded_issue_pr_ranker" in pytest_reasons
+    assert "issue_specific_semantics_not_in_current_features" in pytest_reasons
+    assert all(
+        candidate["feature_inputs"]["candidate_after_available"] is True
+        for candidate in pytest_row["candidates"]
+    )
+    assert {
+        candidate["expected_validation_status"]
+        for candidate in pytest_row["candidates"]
         if not candidate["expected_accepted"]
     } == {"failed", "passed"}
 
@@ -430,6 +506,94 @@ def _scrapy_decoy_validation_entry(decoy_id: str, validation_status: str) -> dic
         "decoy_evidence": {
             "targeted_mistakes": [decoy_id],
             "description": "live decoy validation fixture",
+        },
+        "residual_labels": [f"decoy_validation_{validation_status}"],
+        "zero_hosted_usage_confirmed": True,
+    }
+
+
+def _pytest_decoy_validation_entry(decoy_id: str, validation_status: str) -> dict[str, object]:
+    replay_id = "pytest-dev__pytest-issue-14462-pr-14466"
+    candidate_id = f"{replay_id}:{decoy_id}"
+    return {
+        "schema_version": "issue-pr-decoy-validation-v1",
+        "record_kind": "issue_pr_decoy_validation_candidate",
+        "candidate_id": candidate_id,
+        "candidate_kind": "realistic_decoy",
+        "decoy_id": decoy_id,
+        "replay_id": replay_id,
+        "repo": "pytest-dev/pytest",
+        "status": "validated",
+        "action_family": "pytest_timedelta_approx_source_test_candidate",
+        "allowed_write_paths": [
+            "src/_pytest/python_api.py",
+            "testing/python/approx.py",
+        ],
+        "touched_file_paths": [
+            "src/_pytest/python_api.py",
+            "testing/python/approx.py",
+        ],
+        "candidate_diff": {
+            "changed_files": [
+                "src/_pytest/python_api.py",
+                "testing/python/approx.py",
+            ],
+            "diff_summary": {"added_line_count": 1, "removed_line_count": 1},
+        },
+        "source_materialization": {
+            "target_source_file": "src/_pytest/python_api.py",
+            "planned_changed_files": ["src/_pytest/python_api.py"],
+            "diff_summary": {"added_line_count": 1, "removed_line_count": 1},
+            "ast_delta": {"ast_parse_ok": True, "ast_delta_added_count": 1},
+        },
+        "test_materialization": {
+            "target_test_file": "testing/python/approx.py",
+            "planned_changed_files": ["testing/python/approx.py"],
+            "diff_summary": {"added_line_count": 1, "removed_line_count": 1},
+        },
+        "validation": {
+            "status": validation_status,
+            "validation_command": (
+                "python -m py_compile src/_pytest/python_api.py && "
+                "pytest testing/python/approx.py -q"
+            ),
+            "runtime_seconds": 0.1,
+        },
+        "candidate_after": {
+            "available": True,
+            "kind": "full_file_snapshot_bundle",
+            "schema_version": "issue-pr-decoy-validation-v1",
+            "candidate_id": candidate_id,
+            "replay_id": replay_id,
+            "touched_file_paths": [
+                "src/_pytest/python_api.py",
+                "testing/python/approx.py",
+            ],
+            "file_count": 2,
+            "files": {
+                "src/_pytest/python_api.py": {
+                    "path": "src/_pytest/python_api.py",
+                    "sha256_before": "0" * 64,
+                    "sha256_after": "2" * 64,
+                    "after_snapshot_path": f"/tmp/{decoy_id}/python_api.py",
+                    "diff_summary": {"added_line_count": 1, "removed_line_count": 1},
+                    "ast_delta": {"ast_parse_ok": True, "ast_delta_added_count": 1},
+                },
+                "testing/python/approx.py": {
+                    "path": "testing/python/approx.py",
+                    "sha256_before": "0" * 64,
+                    "sha256_after": "3" * 64,
+                    "after_snapshot_path": f"/tmp/{decoy_id}/approx.py",
+                    "diff_summary": {"added_line_count": 1, "removed_line_count": 1},
+                    "ast_delta": {"ast_parse_ok": True, "ast_delta_added_count": 1},
+                },
+            },
+            "embedding_available": False,
+            "embedding": None,
+        },
+        "decoy_evidence": {
+            "targeted_mistakes": [decoy_id],
+            "description": "live pytest decoy validation fixture",
         },
         "residual_labels": [f"decoy_validation_{validation_status}"],
         "zero_hosted_usage_confirmed": True,

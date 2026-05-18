@@ -3814,8 +3814,8 @@ meaningful work. Do not replace this file with a daily reset.
   of scoring label-only negatives. `MAT-010` attacks the typed-builder gap by
   attempting the MAT-007 held-out `pallets/click#3422` row with reusable typed
   action records, not a PR-named materializer.
-- Commit: pending.
-- Push: pending.
+- Commit: 2ed95e0.
+- Push: succeeded.
 - Next: spawn one worker for `DATA-040` and one worker for `MAT-010`.
 - Blockers: none.
 
@@ -3828,8 +3828,8 @@ meaningful work. Do not replace this file with a daily reset.
 - Result: recorded worker Faraday
   (`019e3ce2-e1b3-7b81-bc8c-e0f586ba8c49`) for `DATA-040` and worker Jason
   (`019e3ce2-e1e6-7c31-b22c-94d4ef57ffbf`) for `MAT-010`.
-- Commit: pending.
-- Push: pending.
+- Commit: 84a99d5.
+- Push: succeeded.
 - Next: continue non-overlapping coordinator review while both workers run.
 - Blockers: none.
 
@@ -3844,8 +3844,42 @@ meaningful work. Do not replace this file with a daily reset.
   at `84a99d5`, relaunched `DATA-040` with worker Arendt
   (`019e3ce3-e9b5-7b13-a7b9-b9c07d778150`) and `MAT-010` with worker Lovelace
   (`019e3ce3-e9da-7863-bb91-b68423ca8388`).
-- Commit: pending.
-- Push: pending.
+- Commit: 3546f05.
+- Push: succeeded.
 - Next: continue non-overlapping coordinator review while both replacement
   workers run.
 - Blockers: none.
+
+### 2026-05-18 - DATA-040 - Live pytest issue/PR decoy validation slice
+
+- Owner: worker Arendt (`019e3ce3-e9b5-7b13-a7b9-b9c07d778150`) with
+  coordinator integration after worker pause.
+- Files changed: `j3/issue_pr_decoy_validation.py`,
+  `j3/issue_pr_candidate_ranking.py`,
+  `tests/test_issue_pr_decoy_validation.py`,
+  `tests/test_issue_pr_candidate_ranking.py`,
+  `docs/DATA_040_LIVE_PYTEST_DECOY_VALIDATION_2026-05-18.md`,
+  `plans/active.md`, `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `python -m py_compile j3/issue_pr_decoy_validation.py
+  j3/issue_pr_candidate_ranking.py tests/test_issue_pr_decoy_validation.py
+  tests/test_issue_pr_candidate_ranking.py` -> passed; `pytest
+  tests/test_issue_pr_decoy_validation.py -q` -> 4 passed; `pytest
+  tests/test_issue_pr_candidate_ranking.py -q` -> 9 passed; live CLI
+  validation wrote `/tmp/j3-data-040-pytest-decoy-validation`; combined
+  ranking rerun with DATA-038, DATA-039, and DATA-040 evidence wrote
+  `/tmp/j3-data-040-ranking-with-live-decoys`.
+- Result: materialized and live-validated four realistic decoys for the
+  validated `pytest-dev/pytest#14462/#14466` row. All four have
+  candidate-after snapshots; validation outcomes are `failed = 3` and
+  `passed = 1`. The pytest ranking row no longer blocks on
+  `decoys_not_live_validated` or `decoy_candidate_after_unavailable`, but it
+  now honestly blocks on `decoy_validation_outcomes_include_passing_candidates`.
+  Both validated issue/PR rows now have live decoy evidence and both contain
+  passing decoys, so issue/PR pass@1/pass@k remain blocked under the current
+  validation signal.
+- Commit: pending.
+- Push: pending.
+- Next: finish MAT-010 integration, then dispatch validation-strengthening
+  probes for passing decoys.
+- Blockers: issue/PR ranking remains shadow-only because both validated rows
+  have passing decoys under focused validation.

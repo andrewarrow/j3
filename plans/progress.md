@@ -112,3 +112,27 @@ meaningful work. Do not replace this file with a daily reset.
   `greenshot_6_subset`, plus the one generation gap.
 - Blockers: guarded transition ranking remains blocked by the recorded matrix
   gate; no workflow command blockers.
+
+### 2026-05-18 - TRANS-002 - Matrix residual diagnosis
+
+- Owner: worker TRANS-002
+- Files changed: `docs/TRANSITION_MATRIX_RESIDUALS_2026-05-18.md`,
+  `plans/active.md`, `plans/progress.md`
+- Tests: `pytest tests/test_transition_residuals.py -q` -> 4 passed;
+  `pytest tests/test_transition_shadow_matrix.py -q` -> 6 passed;
+  `git diff --check` passed.
+- Result: diagnosed the 14 TRANS-001 residual-report failures as 1
+  `candidate_generation_gap` and 13 `scorer_ranking_gap` failures. The single
+  generation gap is missing `change_subscript_key` coverage for
+  `greenshot_6_subset/http_no_store_directive_subscript_key`; ranking gaps
+  cluster around unvalidated `add_keyword_arg` decoys, mapping key/value target
+  confusion, boundary/literal ranking, and identifier/signature decoys. All
+  residual examples also lack source/candidate-after embeddings, and several
+  scorer-top candidates have unknown validation labels.
+- Commit: pending in worker report
+- Push: pending in worker report
+- Next: assign a focused `change_subscript_key` action-generation task, then
+  scorer work for add-keyword decoys and mapping key/value target features
+  before expanding the standard matrix manifest.
+- Blockers: guarded transition ranking remains blocked by nonzero matrix
+  residuals and non-opt-in V3 suite gates.

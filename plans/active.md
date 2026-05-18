@@ -14,18 +14,6 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-### `TRANS-002`: Diagnose matrix gate blockers
-
-- Owner: worker Gauss (`019e3950-80f1-7ad1-b4f7-f39b67834c15`)
-- Status: active
-- Write scope: residual analysis docs, `plans/progress.md`,
-  `plans/active.md`; targeted tests; small fixes only if directly supported by
-  residual evidence.
-- Acceptance: matrix blockers grouped as missing generation, bad ranking, weak
-  observation, or insufficient validation, with recommended next actions.
-- Tests: `pytest tests/test_transition_residuals.py -q`,
-  `pytest tests/test_transition_shadow_matrix.py -q`, plus `git diff --check`.
-
 ### `DATA-001`: Audit expanded prompt corpus quality
 
 - Owner: worker Pascal (`019e3950-8113-7cf3-ab6e-e813b4cd332f`)
@@ -49,11 +37,13 @@ Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
 ## Paused Or Blocked
 
-- `TRANS-003`: blocked until `TRANS-002` diagnoses matrix blockers and proposes
-  safe manifest expansion criteria.
+- `TRANS-003`: blocked until the `TRANS-002` generation and ranking residuals
+  have focused fixes or regression evidence; do not expand the matrix while the
+  current standard gate remains nonzero.
 - `DATA-004`: blocked until issue/PR mining and schema validation exist.
-- `MODEL-002`: blocked until `TRANS-002` identifies concrete scorer/model
-  residual fixes.
+- `MODEL-002`: waiting for coordinator scoping into bounded scorer tasks based
+  on the `TRANS-002` ranking clusters, especially add-keyword decoys and
+  mapping key/value target features.
 
 ## Coordinator Review Triggers
 
@@ -67,6 +57,12 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `TRANS-002`: diagnosed the 2026-05-18 transition matrix residuals. Result:
+  14 residual-report failures split into 1 candidate-generation gap
+  (`change_subscript_key` for `http_no_store_directive_subscript_key`) and 13
+  scorer-ranking gaps concentrated in add-keyword decoys, mapping key/value
+  target confusion, boundary/literal ranking, and identifier/signature decoys.
+  Diagnosis recorded in `docs/TRANSITION_MATRIX_RESIDUALS_2026-05-18.md`.
 - `TRANS-001`: ran the full transition shadow matrix on 2026-05-18. Gate
   result: `remain_shadow_only`; guarded opt-in trial eligibility `false`.
   Matrix totals: 5 suites, 56 tasks, 55 ranked solved, 7 matrix residuals,

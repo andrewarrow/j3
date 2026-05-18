@@ -1221,3 +1221,35 @@ meaningful work. Do not replace this file with a daily reset.
   `humanize` or `GS7-011` `boltons`) before rerunning `REAL-008`.
 - Blockers: tests-only guarded opt-in remains blocked at `pass@3 = 2/4`;
   `humanize` and `boltons` still need materialized candidates.
+
+### 2026-05-18 - MAT-003 - h11 one-file feature materializer
+
+- Owner: worker Harvey (`019e3ba3-1dac-7d23-9968-9769e7f5dc1d`)
+- Files changed: `j3/real_repo_feature_materializer.py`,
+  `tests/test_real_repo_feature_materializer.py`,
+  `docs/MAT_003_H11_FEATURE_MATERIALIZATION_2026-05-18.md`,
+  `plans/active.md`, `plans/backlog.md`, `plans/progress.md`
+- Tests: `python -m py_compile j3/real_repo_feature_materializer.py
+  tests/test_real_repo_feature_materializer.py` -> passed;
+  `pytest tests/test_real_repo_feature_materializer.py -q` -> 3 passed; live
+  setup against `/tmp/j3-mat-003-live/h11` with
+  `python -m pip install -e /tmp/j3-mat-003-live/h11 -r /tmp/j3-mat-003-live/h11/test-requirements.txt`
+  -> passed; live materializer run
+  `python -m j3.real_repo_feature_materializer --repo-path /tmp/j3-mat-003-live/h11 --validate --out /tmp/j3-mat-003-live/candidate.json`
+  -> passed with candidate validation runtime `0.14` seconds; live candidate
+  check `python -m pytest h11/tests/test_util.py -q` -> 7 passed in 0.01s.
+- Result: materialized the first real one-file source feature candidate for
+  `h11-feature-bytesify-object-message`. The candidate changes only
+  `h11/_util.py` among production files by wrapping the final `bytes(s)`
+  conversion in a bounded `TypeError` re-raise that includes
+  `type(s).__name__`, appends focused object-message coverage to
+  `h11/tests/test_util.py`, records source and test diff/AST metadata,
+  production before/after hashes, mutation scope, validation result/runtime,
+  and zero hosted usage. Source metadata recorded 1 hunk, 6 added lines,
+  1 removed line, AST parse ok, signature preserved, and no import changes.
+- Commit: this commit
+- Push: pending
+- Next: use the successful h11 source materialization record as the first
+  one-file feature scorer input, then attempt another held-out one-file feature
+  or continue `GS7-010`/`GS7-011` to unblock the tests-only gate.
+- Blockers: none

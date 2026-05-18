@@ -526,7 +526,7 @@ Long-term target:
 
 ### MAT-003: Real one-file feature materialization probe
 
-- Status: active
+- Status: done
 - Why: tests-only wins do not answer the biggest `MAT-001` gap: turning a
   predicted repo-after behavior into bounded source edits for a real Python
   library.
@@ -540,6 +540,13 @@ Long-term target:
   expressed.
 - Tests: focused materializer tests, plan consistency, `git diff --check`, and
   a live targeted validation command when the candidate is materialized.
+- Completion note: added `j3.real_repo_feature_materializer` for the held-out
+  `h11-feature-bytesify-object-message` task. It materializes one bounded
+  source-region edit in `h11/_util.py`, appends focused pytest coverage in
+  `h11/tests/test_util.py`, records source/test diff and AST metadata,
+  production file hashes, mutation scope, validation result/runtime, and zero
+  hosted usage. Live validation against `/tmp/j3-mat-003-live/h11` passed with
+  `7 passed in 0.01s`, changing only `h11/_util.py` among production files.
 
 ### KNOW-001: Local knowledge inventory for the wedge
 

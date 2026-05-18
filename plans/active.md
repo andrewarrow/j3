@@ -20,33 +20,12 @@ This is the live coordinator board. Keep it current and compact.
   `REAL-007` scored the materialized calibration candidate plus the first
   held-out h11 candidate at `pass@1 = 2/4` and `pass@3 = 2/4`; calibration
   pass rate is `1/1`, held-out pass rate is `1/3`, and tests-only guarded
-  opt-in remains shadow-only. `MAT-003` attacks the real one-file source
-  materialization gap.
+  opt-in remains shadow-only. `MAT-003` now materializes and live-validates the
+  first real one-file source feature candidate on held-out `h11`.
 
 ## Active Tasks
 
-### `MAT-003`: Real one-file feature materialization probe
-
-- Status: active
-- Owner: worker Harvey (`019e3ba3-1dac-7d23-9968-9769e7f5dc1d`).
-- Goal: attempt the first real one-file source feature materialization against
-  the ladder task `h11-feature-bytesify-object-message`.
-- Write scope: a focused source feature materializer module such as
-  `j3/real_repo_feature_materializer.py`,
-  `tests/test_real_repo_feature_materializer.py`, one compact `docs/MAT_003_*.md`
-  report if useful, generated outputs under `/tmp`, and plan updates. Reuse
-  `j3/source_region_materializer.py` if helpful, but keep edits narrow.
-- Do not touch: `j3/real_repo_shadow_score.py` or
-  `tests/test_real_repo_shadow_score.py`; those belong to `REAL-007`.
-- Acceptance: for `h11-feature-bytesify-object-message`, materialize a bounded
-  one-file edit to `h11/_util.py` so unsupported object `TypeError` messages
-  include the object's concrete type name; update/add focused tests in
-  `h11/tests/test_util.py`; preserve the one-production-file constraint;
-  record candidate-after diff/AST metadata, mutation scope, validation result,
-  runtime, and exact blocker if the edit cannot be expressed.
-- Tests: focused materializer tests,
-  `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and a live
-  `python -m pytest h11/tests/test_util.py -q` candidate check when available.
+No active worker tasks are recorded after the latest completed batch.
 
 ## Ready Queue
 
@@ -87,6 +66,15 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `MAT-003`: materialized the first real one-file source feature candidate for
+  `h11-feature-bytesify-object-message`. The new
+  `j3.real_repo_feature_materializer` applies one bounded source-region edit to
+  `h11/_util.py`, appends a focused object-message pytest case to
+  `h11/tests/test_util.py`, records candidate-after diff/AST metadata for both
+  files, preserves the one-production-file constraint, and confirms zero
+  hosted usage. Live validation against the pinned h11 checkout under
+  `/tmp/j3-mat-003-live/h11` passed with `7 passed in 0.01s`; the candidate
+  record is `/tmp/j3-mat-003-live/candidate.json`.
 - `REAL-007`: reran the tests-only shadow score after `GS7-009`, counting both
   `iniconfig-tests-parse-comments` and `h11-tests-bytesify-memoryview` through
   the real-repo tests planner surface. The live `/tmp` run against pinned

@@ -530,15 +530,30 @@ def handle_inspect_prompt_corpus(args: argparse.Namespace) -> int:
     print("j3 inspect-prompt-corpus complete")
     print(f"labels: {args.labels.expanduser().resolve()}")
     print(f"rows: {profile['total_rows']}")
+    print(f"source types: {_format_counts(profile['source_type_counts'])}")
     print(f"splits: {_format_counts(profile['split_counts'])}")
     print(f"task types: {_format_counts(profile['task_type_counts'])}")
     print(f"repo modes: {_format_counts(profile['repo_mode_counts'])}")
     print(f"domains: {_format_counts(profile['domain_counts'])}")
     print(f"expected actions: {_format_counts(profile['expected_action_counts'])}")
     print(f"clarifications: {_format_counts(profile['clarification_counts'])}")
+    print(f"ambiguity: {_format_counts(profile['ambiguity_counts'])}")
+    print(f"inferred defaults: {_format_counts(profile['inferred_default_counts'])}")
+    print(
+        "synthetic template families: "
+        f"{len(profile['synthetic_template_family_counts'])}"
+    )
     print(
         "duplicate normalized prompts: "
         f"{profile['duplicate_normalized_prompt_count']}"
+    )
+    print(
+        "duplicate cross-split prompts: "
+        f"{profile['duplicate_cross_split_prompt_count']}"
+    )
+    print(
+        "near-duplicate cross-split prompts: "
+        f"{profile['near_duplicate_cross_split_prompt_count']}"
     )
     print(
         "near-duplicate family leakage: "
@@ -546,6 +561,7 @@ def handle_inspect_prompt_corpus(args: argparse.Namespace) -> int:
     )
     print(f"missing required fields: {profile['missing_required_field_count']}")
     print(f"unsupported scalar labels: {profile['unsupported_scalar_label_count']}")
+    print(f"schema consistency issues: {profile['schema_consistency_issue_count']}")
     return 0
 
 

@@ -129,10 +129,44 @@ meaningful work. Do not replace this file with a daily reset.
   confusion, boundary/literal ranking, and identifier/signature decoys. All
   residual examples also lack source/candidate-after embeddings, and several
   scorer-top candidates have unknown validation labels.
-- Commit: pending in worker report
-- Push: pending in worker report
+- Commit: c758739a66e4180bd906815b5a5932a7195c1269
+- Push: succeeded
 - Next: assign a focused `change_subscript_key` action-generation task, then
   scorer work for add-keyword decoys and mapping key/value target features
   before expanding the standard matrix manifest.
 - Blockers: guarded transition ranking remains blocked by nonzero matrix
   residuals and non-opt-in V3 suite gates.
+
+### 2026-05-18 - DATA-001 - Prompt corpus quality audit
+
+- Owner: worker DATA-001
+- Files changed: `j3/prompt_intents.py`, `cli/handlers.py`,
+  `tests/test_prompt_intents.py`, `tools/prompts/README.md`,
+  `plans/active.md`, `plans/progress.md`
+- Tests: `pytest tests/test_prompt_intents.py -q` -> 13 passed;
+  `pytest tests/test_prompt_jepa.py -q` -> 13 passed;
+  `python cli.py inspect-prompt-corpus --labels
+  ../prompts/coding_agent_prompts_expanded_v0.jsonl` -> 320 rows profiled;
+  `python cli.py inspect-prompt-corpus --labels
+  examples/prompt_intents/greenshot_7_intents.jsonl` -> 87 rows profiled.
+- Result: extended the repeatable `inspect-prompt-corpus` CLI/profile with
+  source type, split, task type, domain, ambiguity, inferred-default,
+  synthetic-template-family, schema-variant, unsupported-label, and cross-split
+  near-duplicate checks. The expanded 320-row corpus has source counts
+  `human_seed=80`, `synthetic_template_v0=240`; split counts `train=206`,
+  `test=72`, `validation=42`; clarification counts `no=286`, `yes=34`; 73
+  detected synthetic template families; no exact normalized duplicates, no
+  unsupported scalar labels, no missing required fields, and no family split
+  leakage. Risks: 2 cross-split near-duplicate prompt pairs and 9 schema
+  consistency issues, mostly seed rows missing fields that synthetic rows carry
+  (`prompt_family`, `generation`, `expected.action`,
+  `expected.unsupported_requirements`) plus partial `expected.inferred` and
+  `expected.clarification_fields` coverage. GreenShot-7 intent context has 87
+  unsupported `source_type=greenshot_7_intent_fixture` labels under the current
+  corpus allow-list and 12 cross-split near-duplicate prompt pairs.
+- Commit: pending
+- Push: pending
+- Next: `DATA-002` should turn the audit output into schema validation for
+  explicit expected actions, list-typed expected fields, synthetic provenance,
+  supported source types, and cross-split near-duplicate review.
+- Blockers: none

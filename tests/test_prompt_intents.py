@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -18,6 +19,7 @@ from j3.prompt_intents import (
 
 GREENSHOT_7_INTENTS = Path("examples/prompt_intents/greenshot_7_intents.jsonl")
 SEED_CORPUS = Path("../prompts/coding_agent_prompts_seed.jsonl")
+EXPANDED_CORPUS = Path("../prompts/coding_agent_prompts_expanded_v0.jsonl")
 
 
 def test_loads_greenshot_7_prompt_intent_fixtures() -> None:
@@ -115,6 +117,7 @@ def test_prompt_corpus_profile_reports_quality_issues() -> None:
                 "action": "emit_request_spec",
                 "clarify": False,
                 "artifacts": ["cli", "tests"],
+                "inferred": ["multiply"],
             },
             "tags": ["family:calc-basic"],
         },
@@ -130,9 +133,14 @@ def test_prompt_corpus_profile_reports_quality_issues() -> None:
                 "action": "emit_request_spec",
                 "clarify": False,
                 "artifacts": ["cli", "tests"],
+                "inferred": [],
             },
             "tags": [],
             "prompt_family": "calc-basic",
+            "generation": {
+                "template_version": "prompt-corpus-template-v0",
+                "review_status": "unreviewed_synthetic",
+            },
         },
         {
             "id": "bad-row",
@@ -142,7 +150,11 @@ def test_prompt_corpus_profile_reports_quality_issues() -> None:
             "repo_mode": "scratch",
             "domain": "calculator",
             "prompt": "make a calculator",
-            "expected": {"action": "write_patch", "clarify": True},
+            "expected": {
+                "action": "write_patch",
+                "clarify": True,
+                "features": "calculator",
+            },
         },
     ]
 
@@ -151,6 +163,11 @@ def test_prompt_corpus_profile_reports_quality_issues() -> None:
     assert profile["schema_version"] == "prompt-corpus-profile-v1"
     assert profile["total_rows"] == 3
     assert profile["split_counts"] == {"holdout": 1, "test": 1, "train": 1}
+    assert profile["source_type_counts"] == {
+        "human_seed": 1,
+        "synthetic_template_v0": 1,
+        "unknown_generator": 1,
+    }
     assert profile["task_type_counts"]["create_app"] == 2  # type: ignore[index]
     assert profile["repo_mode_counts"] == {"new_repo": 2, "scratch": 1}
     assert profile["domain_counts"] == {"calculator": 3}
@@ -159,6 +176,14 @@ def test_prompt_corpus_profile_reports_quality_issues() -> None:
         "write_patch": 1,
     }
     assert profile["clarification_counts"] == {"no": 2, "yes": 1}
+    assert profile["ambiguity_counts"] == {"ambiguous": 1, "not_ambiguous": 2}
+    assert profile["inferred_default_counts"] == {"multiply": 1}
+    assert profile["inferred_default_presence_counts"] == {"missing": 1, "present": 2}
+    assert profile["synthetic_template_family_counts"] == {"calc-basic": 1}
+    assert profile["template_version_counts"] == {"prompt-corpus-template-v0": 1}
+    assert profile["generation_review_status_counts"] == {
+        "unreviewed_synthetic": 1
+    }
     assert profile["duplicate_normalized_prompt_count"] == 1
     duplicate = profile["duplicate_normalized_prompts"][0]  # type: ignore[index]
     assert duplicate["normalized_prompt"] == "make me a simple cli calc"
@@ -169,6 +194,12 @@ def test_prompt_corpus_profile_reports_quality_issues() -> None:
     leakage = profile["near_duplicate_family_leakage"][0]  # type: ignore[index]
     assert leakage["family"] == "calc-basic"
     assert leakage["splits"] == ["test", "train"]
+    assert profile["duplicate_cross_split_prompt_count"] == 1
+    assert profile["near_duplicate_cross_split_prompt_count"] == 1
+    near_duplicate = profile["near_duplicate_cross_split_prompts"][0]  # type: ignore[index]
+    assert near_duplicate["similarity"] == 1.0
+    assert profile["row_schema_variant_count"] == 3
+    assert profile["expected_schema_variant_count"] == 2
     assert profile["missing_required_fields"] == [
         {
             "row_index": 2,
@@ -176,6 +207,17 @@ def test_prompt_corpus_profile_reports_quality_issues() -> None:
             "id": "bad-row",
             "field": "tags",
             "issue": "missing",
+        }
+    ]
+    assert profile["expected_field_type_issues"] == [
+        {
+            "row_index": 2,
+            "line": 3,
+            "id": "bad-row",
+            "field": "expected.features",
+            "issue": "invalid_type",
+            "expected_type": "list",
+            "actual_type": "str",
         }
     ]
     unsupported = {
@@ -189,6 +231,26 @@ def test_prompt_corpus_profile_reports_quality_issues() -> None:
         ("repo_mode", "scratch"),
         ("expected_action", "write_patch"),
     }.issubset(unsupported)
+    issue_names = {
+        issue["issue"]
+        for issue in profile["schema_consistency_issues"]  # type: ignore[union-attr]
+    }
+    assert {
+        "top_level_schema_variants",
+        "expected_schema_variants",
+        "expected_field_type_issues",
+        "unsupported_scalar_labels",
+        "duplicate_prompt_cross_split_leakage",
+        "near_duplicate_prompt_cross_split_risk",
+        "prompt_family_cross_split_leakage",
+    }.issubset(issue_names)
+    validate_fields = {
+        field["field"]
+        for field in profile["data_002_validate_fields"]  # type: ignore[union-attr]
+    }
+    assert {"expected.action", "expected.features", "prompt_family"}.issubset(
+        validate_fields
+    )
 
 
 def test_prompt_intent_eval_scores_future_predictors() -> None:
@@ -373,6 +435,29 @@ def test_loads_external_seed_prompt_corpus_profile() -> None:
     assert profile["missing_artifact_label_count"] == 8
     assert profile["clarification_count"] > 0
     assert profile["existing_repo_change_count"] > 0
+
+
+def test_inspects_expanded_prompt_corpus_when_available() -> None:
+    if not EXPANDED_CORPUS.exists():
+        pytest.skip(f"expanded prompt corpus is not available: {EXPANDED_CORPUS}")
+
+    profile = profile_prompt_corpus_rows(
+        [
+            json.loads(line)
+            for line in EXPANDED_CORPUS.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ],
+        labels_path=EXPANDED_CORPUS,
+    )
+
+    assert profile["total_rows"] == 320
+    assert profile["source_type_counts"] == {
+        "human_seed": 80,
+        "synthetic_template_v0": 240,
+    }
+    assert profile["duplicate_normalized_prompt_count"] == 0
+    assert profile["unsupported_scalar_label_count"] == 0
+    assert profile["near_duplicate_cross_split_prompt_count"] >= 1
 
 
 def test_prompt_intent_loader_validates_required_fields(tmp_path: Path) -> None:

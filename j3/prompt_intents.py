@@ -11,6 +11,7 @@ import json
 import re
 from collections import Counter
 from dataclasses import dataclass, field
+from difflib import SequenceMatcher
 from functools import lru_cache
 from pathlib import Path
 from typing import Callable, Iterable, Sequence
@@ -44,6 +45,24 @@ PROMPT_CORPUS_REQUIRED_FIELD_TYPES = {
     "expected": dict,
     "tags": list,
 }
+PROMPT_CORPUS_EXPECTED_FIELD_TYPES = {
+    "action": str,
+    "features": list,
+    "artifacts": list,
+    "interfaces": list,
+    "requested_interfaces": list,
+    "inferred": list,
+    "clarify": bool,
+    "clarification_fields": list,
+    "unsupported_requirements": list,
+    "constraints": list,
+    "target_files": list,
+}
+PROMPT_CORPUS_EXPECTED_LIST_FIELDS = {
+    field
+    for field, expected_type in PROMPT_CORPUS_EXPECTED_FIELD_TYPES.items()
+    if expected_type is list
+}
 PROMPT_CORPUS_SCALAR_LABELS = {
     "split": ("test", "train", "validation"),
     "source_type": (
@@ -70,6 +89,9 @@ PROMPT_CORPUS_SCALAR_LABELS = {
     ),
     "requires_clarification": ("no", "yes"),
 }
+PROMPT_CORPUS_NEAR_DUPLICATE_RATIO = 0.88
+PROMPT_CORPUS_NEAR_DUPLICATE_TOKEN_OVERLAP = 0.45
+PROMPT_CORPUS_NEAR_DUPLICATE_LIMIT = 50
 TARGET_FIELDS = [
     "repo_mode",
     "task_type",
@@ -449,21 +471,37 @@ def profile_prompt_corpus_rows(
     """Return corpus profile counts plus duplicate/leakage/label checks."""
 
     split_counts: Counter[str] = Counter()
+    source_type_counts: Counter[str] = Counter()
     task_type_counts: Counter[str] = Counter()
     repo_mode_counts: Counter[str] = Counter()
     domain_counts: Counter[str] = Counter()
     expected_action_counts: Counter[str] = Counter()
     clarification_counts: Counter[str] = Counter()
+    ambiguity_counts: Counter[str] = Counter()
+    inferred_default_counts: Counter[str] = Counter()
+    inferred_default_presence_counts: Counter[str] = Counter()
+    prompt_family_counts: Counter[str] = Counter()
+    synthetic_template_family_counts: Counter[str] = Counter()
+    template_version_counts: Counter[str] = Counter()
+    generation_review_status_counts: Counter[str] = Counter()
+    top_level_field_counts: Counter[str] = Counter()
+    expected_field_counts: Counter[str] = Counter()
+    top_level_schema_variants: Counter[tuple[str, ...]] = Counter()
+    expected_schema_variants: Counter[tuple[str, ...]] = Counter()
     prompt_groups: dict[str, list[dict[str, object]]] = {}
     family_groups: dict[str, list[dict[str, object]]] = {}
+    prompt_rows: list[dict[str, object]] = []
     missing_required_fields: list[dict[str, object]] = []
     unsupported_scalar_labels: list[dict[str, object]] = []
+    expected_field_type_issues: list[dict[str, object]] = []
+    synthetic_generation_missing = 0
 
     for index, row in enumerate(rows):
         row_ref = _row_reference(row, index)
         missing_required_fields.extend(_required_field_issues(row, index=index))
 
         split = _optional_scalar(row.get("split"))
+        source_type = _optional_scalar(row.get("source_type"))
         task_type = _optional_scalar(row.get("task_type"))
         repo_mode = _optional_scalar(row.get("repo_mode"))
         domain = _optional_scalar(row.get("domain"))
@@ -474,16 +512,55 @@ def profile_prompt_corpus_rows(
             expected=expected,
             expected_action=expected_action,
         )
+        tags = _string_list_value(row.get("tags"))
 
         split_counts.update([split])
+        source_type_counts.update([source_type])
         task_type_counts.update([task_type])
         repo_mode_counts.update([repo_mode])
         domain_counts.update([domain])
         expected_action_counts.update([expected_action])
         clarification_counts.update([requires_clarification])
+        ambiguity_counts.update(
+            [
+                "ambiguous"
+                if _row_is_ambiguous(
+                    task_type=task_type,
+                    tags=tags,
+                    expected_action=expected_action,
+                    requires_clarification=requires_clarification,
+                )
+                else "not_ambiguous"
+            ]
+        )
+        top_level_schema_variants.update([tuple(sorted(row))])
+        top_level_field_counts.update(str(field) for field in row)
+        expected_schema_variants.update([tuple(sorted(expected))])
+        expected_field_counts.update(str(field) for field in expected)
+        expected_field_type_issues.extend(
+            _expected_field_type_issues(row, expected, index=index)
+        )
+
+        if "inferred" in expected:
+            inferred_default_presence_counts.update(["present"])
+            inferred = expected.get("inferred")
+            if isinstance(inferred, list):
+                inferred_default_counts.update(
+                    item for item in inferred if isinstance(item, str) and item
+                )
+        else:
+            inferred_default_presence_counts.update(["missing"])
+
+        template_version = _template_version(row)
+        if template_version:
+            template_version_counts.update([template_version])
+        review_status = _generation_review_status(row)
+        if review_status:
+            generation_review_status_counts.update([review_status])
 
         prompt = row.get("prompt")
         if isinstance(prompt, str) and prompt.strip():
+            normalized_prompt = _normalize_prompt(prompt)
             prompt_groups.setdefault(_normalize_prompt(prompt), []).append(
                 {
                     **row_ref,
@@ -491,9 +568,20 @@ def profile_prompt_corpus_rows(
                     "prompt": prompt,
                 }
             )
+            prompt_rows.append(
+                {
+                    **row_ref,
+                    "split": split,
+                    "source_type": source_type,
+                    "prompt": prompt,
+                    "normalized_prompt": normalized_prompt,
+                    "tokens": _prompt_token_set(prompt),
+                }
+            )
 
         family = _prompt_family(row)
         if family:
+            prompt_family_counts.update([family])
             family_groups.setdefault(family, []).append(
                 {
                     **row_ref,
@@ -501,10 +589,20 @@ def profile_prompt_corpus_rows(
                     "prompt": prompt if isinstance(prompt, str) else "",
                 }
             )
+        else:
+            prompt_family_counts.update(["__missing__"])
+
+        if _is_synthetic_template_row(row, source_type=source_type):
+            if family:
+                synthetic_template_family_counts.update([family])
+            else:
+                synthetic_template_family_counts.update(["__missing__"])
+            if not isinstance(row.get("generation"), dict):
+                synthetic_generation_missing += 1
 
         scalar_values = {
             "split": split,
-            "source_type": _optional_scalar(row.get("source_type")),
+            "source_type": source_type,
             "task_type": task_type,
             "repo_mode": repo_mode,
             "expected_action": expected_action,
@@ -531,6 +629,11 @@ def profile_prompt_corpus_rows(
         for normalized_prompt, matches in sorted(prompt_groups.items())
         if len(matches) > 1
     ]
+    duplicate_cross_split_prompts = [
+        duplicate
+        for duplicate in duplicate_normalized_prompts
+        if len({match["split"] for match in duplicate["rows"]}) > 1
+    ]
     family_split_leakage = [
         {
             "family": family,
@@ -540,24 +643,76 @@ def profile_prompt_corpus_rows(
         for family, matches in sorted(family_groups.items())
         if len({match["split"] for match in matches}) > 1
     ]
+    near_duplicate_cross_split_prompts = _near_duplicate_cross_split_prompts(
+        prompt_rows
+    )
+    row_schema_variants = _schema_variant_records(top_level_schema_variants)
+    expected_schema_variant_records = _schema_variant_records(expected_schema_variants)
+    schema_consistency_issues = _schema_consistency_issues(
+        total_rows=len(rows),
+        row_schema_variants=row_schema_variants,
+        expected_schema_variants=expected_schema_variant_records,
+        top_level_field_counts=top_level_field_counts,
+        expected_field_counts=expected_field_counts,
+        expected_field_type_issues=expected_field_type_issues,
+        unsupported_scalar_labels=unsupported_scalar_labels,
+        duplicate_cross_split_prompts=duplicate_cross_split_prompts,
+        near_duplicate_cross_split_prompts=near_duplicate_cross_split_prompts,
+        family_split_leakage=family_split_leakage,
+        synthetic_generation_missing=synthetic_generation_missing,
+    )
 
     profile: dict[str, object] = {
         "schema_version": PROMPT_CORPUS_PROFILE_SCHEMA_VERSION,
         "total_rows": len(rows),
         "split_counts": _counter_record(split_counts.elements()),
+        "source_type_counts": _counter_record(source_type_counts.elements()),
         "task_type_counts": _counter_record(task_type_counts.elements()),
         "repo_mode_counts": _counter_record(repo_mode_counts.elements()),
         "domain_counts": _counter_record(domain_counts.elements()),
         "expected_action_counts": _counter_record(expected_action_counts.elements()),
         "clarification_counts": _counter_record(clarification_counts.elements()),
+        "ambiguity_counts": _counter_record(ambiguity_counts.elements()),
+        "inferred_default_counts": _counter_record(inferred_default_counts.elements()),
+        "inferred_default_presence_counts": _counter_record(
+            inferred_default_presence_counts.elements()
+        ),
+        "prompt_family_counts": _counter_record(prompt_family_counts.elements()),
+        "synthetic_template_family_counts": _counter_record(
+            synthetic_template_family_counts.elements()
+        ),
+        "template_version_counts": _counter_record(template_version_counts.elements()),
+        "generation_review_status_counts": _counter_record(
+            generation_review_status_counts.elements()
+        ),
+        "top_level_field_counts": _counter_record(top_level_field_counts.elements()),
+        "expected_field_counts": _counter_record(expected_field_counts.elements()),
+        "row_schema_variants": row_schema_variants,
+        "row_schema_variant_count": len(row_schema_variants),
+        "expected_schema_variants": expected_schema_variant_records,
+        "expected_schema_variant_count": len(expected_schema_variant_records),
         "duplicate_normalized_prompts": duplicate_normalized_prompts,
         "duplicate_normalized_prompt_count": len(duplicate_normalized_prompts),
+        "duplicate_cross_split_prompts": duplicate_cross_split_prompts,
+        "duplicate_cross_split_prompt_count": len(duplicate_cross_split_prompts),
+        "near_duplicate_cross_split_prompts": near_duplicate_cross_split_prompts,
+        "near_duplicate_cross_split_prompt_count": len(
+            near_duplicate_cross_split_prompts
+        ),
         "near_duplicate_family_leakage": family_split_leakage,
         "near_duplicate_family_leakage_count": len(family_split_leakage),
         "missing_required_fields": missing_required_fields,
         "missing_required_field_count": len(missing_required_fields),
         "unsupported_scalar_labels": unsupported_scalar_labels,
         "unsupported_scalar_label_count": len(unsupported_scalar_labels),
+        "expected_field_type_issues": expected_field_type_issues,
+        "expected_field_type_issue_count": len(expected_field_type_issues),
+        "synthetic_generation_missing_count": synthetic_generation_missing,
+        "schema_consistency_issues": schema_consistency_issues,
+        "schema_consistency_issue_count": len(schema_consistency_issues),
+        "data_002_validate_fields": _data_002_validate_fields(
+            schema_consistency_issues
+        ),
     }
     if labels_path is not None:
         profile["labels"] = str(labels_path)
@@ -1020,6 +1175,67 @@ def _safe_requires_clarification(
     return "no"
 
 
+def _row_is_ambiguous(
+    *,
+    task_type: str,
+    tags: Sequence[str],
+    expected_action: str,
+    requires_clarification: str,
+) -> bool:
+    return (
+        task_type == "clarify"
+        or expected_action == "ask_clarification"
+        or requires_clarification == "yes"
+        or "ambiguous" in tags
+        or "clarification" in tags
+    )
+
+
+def _expected_field_type_issues(
+    row: dict[str, object],
+    expected: dict[str, object],
+    *,
+    index: int,
+) -> list[dict[str, object]]:
+    issues: list[dict[str, object]] = []
+    row_ref = _row_reference(row, index)
+    for field, value in expected.items():
+        expected_type = PROMPT_CORPUS_EXPECTED_FIELD_TYPES.get(field)
+        if expected_type is None:
+            issues.append(
+                {
+                    **row_ref,
+                    "field": f"expected.{field}",
+                    "issue": "unknown_expected_field",
+                }
+            )
+            continue
+        if not isinstance(value, expected_type):
+            issues.append(
+                {
+                    **row_ref,
+                    "field": f"expected.{field}",
+                    "issue": "invalid_type",
+                    "expected_type": expected_type.__name__,
+                    "actual_type": type(value).__name__,
+                }
+            )
+            continue
+        if field in PROMPT_CORPUS_EXPECTED_LIST_FIELDS:
+            invalid_items = [
+                item for item in value if not isinstance(item, str) or not item
+            ]
+            if invalid_items:
+                issues.append(
+                    {
+                        **row_ref,
+                        "field": f"expected.{field}",
+                        "issue": "invalid_list_items",
+                    }
+                )
+    return issues
+
+
 def _prompt_family(row: dict[str, object]) -> str | None:
     family = row.get("prompt_family")
     if isinstance(family, str) and family:
@@ -1035,10 +1251,268 @@ def _prompt_family(row: dict[str, object]) -> str | None:
     return None
 
 
+def _template_version(row: dict[str, object]) -> str | None:
+    generation = row.get("generation")
+    if isinstance(generation, dict):
+        template_version = generation.get("template_version")
+        if isinstance(template_version, str) and template_version:
+            return template_version
+
+    tags = row.get("tags")
+    if isinstance(tags, list):
+        for tag in tags:
+            if isinstance(tag, str) and tag.startswith("prompt-corpus-template-"):
+                return tag
+    return None
+
+
+def _generation_review_status(row: dict[str, object]) -> str | None:
+    generation = row.get("generation")
+    if not isinstance(generation, dict):
+        return None
+    review_status = generation.get("review_status")
+    if isinstance(review_status, str) and review_status:
+        return review_status
+    return None
+
+
+def _is_synthetic_template_row(
+    row: dict[str, object],
+    *,
+    source_type: str,
+) -> bool:
+    if source_type.startswith("synthetic_template"):
+        return True
+    tags = row.get("tags")
+    if isinstance(tags, list):
+        return any(
+            isinstance(tag, str) and tag.startswith("prompt-corpus-template-")
+            for tag in tags
+        )
+    return False
+
+
+def _near_duplicate_cross_split_prompts(
+    prompt_rows: Sequence[dict[str, object]],
+) -> list[dict[str, object]]:
+    pairs: list[dict[str, object]] = []
+    for left_index, left in enumerate(prompt_rows):
+        for right in prompt_rows[left_index + 1:]:
+            if left["split"] == right["split"]:
+                continue
+            left_prompt = str(left["normalized_prompt"])
+            right_prompt = str(right["normalized_prompt"])
+            ratio = SequenceMatcher(None, left_prompt, right_prompt).ratio()
+            left_tokens = left["tokens"]
+            right_tokens = right["tokens"]
+            if not isinstance(left_tokens, set) or not isinstance(right_tokens, set):
+                continue
+            token_overlap = _token_overlap(left_tokens, right_tokens)
+            if (
+                ratio < PROMPT_CORPUS_NEAR_DUPLICATE_RATIO
+                or token_overlap < PROMPT_CORPUS_NEAR_DUPLICATE_TOKEN_OVERLAP
+            ):
+                continue
+            pairs.append(
+                {
+                    "similarity": round(ratio, 4),
+                    "token_overlap": round(token_overlap, 4),
+                    "left": _near_duplicate_row_record(left),
+                    "right": _near_duplicate_row_record(right),
+                }
+            )
+
+    return sorted(
+        pairs,
+        key=lambda pair: (
+            -float(pair["similarity"]),
+            -float(pair["token_overlap"]),
+            str(pair["left"]["id"]),
+            str(pair["right"]["id"]),
+        ),
+    )[:PROMPT_CORPUS_NEAR_DUPLICATE_LIMIT]
+
+
+def _near_duplicate_row_record(row: dict[str, object]) -> dict[str, object]:
+    return {
+        "row_index": row["row_index"],
+        "line": row["line"],
+        "id": row["id"],
+        "split": row["split"],
+        "source_type": row["source_type"],
+        "prompt": row["prompt"],
+    }
+
+
+def _token_overlap(left: set[str], right: set[str]) -> float:
+    if not left and not right:
+        return 0.0
+    return len(left & right) / len(left | right)
+
+
+def _schema_variant_records(
+    variants: Counter[tuple[str, ...]],
+) -> list[dict[str, object]]:
+    return [
+        {"count": count, "fields": list(fields)}
+        for fields, count in sorted(
+            variants.items(),
+            key=lambda item: (-item[1], item[0]),
+        )
+    ]
+
+
+def _schema_consistency_issues(
+    *,
+    total_rows: int,
+    row_schema_variants: Sequence[dict[str, object]],
+    expected_schema_variants: Sequence[dict[str, object]],
+    top_level_field_counts: Counter[str],
+    expected_field_counts: Counter[str],
+    expected_field_type_issues: Sequence[dict[str, object]],
+    unsupported_scalar_labels: Sequence[dict[str, object]],
+    duplicate_cross_split_prompts: Sequence[dict[str, object]],
+    near_duplicate_cross_split_prompts: Sequence[dict[str, object]],
+    family_split_leakage: Sequence[dict[str, object]],
+    synthetic_generation_missing: int,
+) -> list[dict[str, object]]:
+    issues: list[dict[str, object]] = []
+    if len(row_schema_variants) > 1:
+        issues.append(
+            {
+                "issue": "top_level_schema_variants",
+                "count": len(row_schema_variants),
+                "field": "__row__",
+            }
+        )
+    if len(expected_schema_variants) > 1:
+        issues.append(
+            {
+                "issue": "expected_schema_variants",
+                "count": len(expected_schema_variants),
+                "field": "expected",
+            }
+        )
+    for field in ("prompt_family", "generation"):
+        missing = total_rows - top_level_field_counts.get(field, 0)
+        if missing:
+            issues.append(
+                {
+                    "issue": "optional_top_level_field_missing",
+                    "field": field,
+                    "missing_count": missing,
+                }
+            )
+    for field in ("action", "inferred", "clarification_fields", "unsupported_requirements"):
+        missing = total_rows - expected_field_counts.get(field, 0)
+        if missing:
+            issues.append(
+                {
+                    "issue": "expected_field_missing",
+                    "field": f"expected.{field}",
+                    "missing_count": missing,
+                }
+            )
+    if expected_field_type_issues:
+        issues.append(
+            {
+                "issue": "expected_field_type_issues",
+                "count": len(expected_field_type_issues),
+                "field": "expected",
+            }
+        )
+    if unsupported_scalar_labels:
+        issues.append(
+            {
+                "issue": "unsupported_scalar_labels",
+                "count": len(unsupported_scalar_labels),
+                "field": "scalar_labels",
+            }
+        )
+    if duplicate_cross_split_prompts:
+        issues.append(
+            {
+                "issue": "duplicate_prompt_cross_split_leakage",
+                "count": len(duplicate_cross_split_prompts),
+                "field": "prompt",
+            }
+        )
+    if near_duplicate_cross_split_prompts:
+        issues.append(
+            {
+                "issue": "near_duplicate_prompt_cross_split_risk",
+                "count": len(near_duplicate_cross_split_prompts),
+                "field": "prompt",
+            }
+        )
+    if family_split_leakage:
+        issues.append(
+            {
+                "issue": "prompt_family_cross_split_leakage",
+                "count": len(family_split_leakage),
+                "field": "prompt_family",
+            }
+        )
+    if synthetic_generation_missing:
+        issues.append(
+            {
+                "issue": "synthetic_generation_metadata_missing",
+                "count": synthetic_generation_missing,
+                "field": "generation",
+            }
+        )
+    return issues
+
+
+def _data_002_validate_fields(
+    schema_consistency_issues: Sequence[dict[str, object]],
+) -> list[dict[str, object]]:
+    fields = {
+        "id": "non-empty unique row identifier",
+        "split": "supported stable split label",
+        "source_type": "supported provenance label",
+        "task_type": "supported task label",
+        "repo_mode": "supported repository mode",
+        "domain": "non-empty domain label",
+        "prompt": "non-empty prompt string and normalized duplicate key",
+        "tags": "list of non-empty strings",
+        "prompt_family": "template family or intentional missing marker",
+        "generation.template_version": "required for synthetic template rows",
+        "generation.review_status": "required for synthetic template rows",
+        "expected.action": "explicit supported action label",
+        "expected.features": "list of non-empty strings",
+        "expected.artifacts": "list of non-empty strings",
+        "expected.interfaces": "list of non-empty strings",
+        "expected.inferred": "list of non-empty inferred default labels",
+        "expected.clarify": "boolean clarification marker",
+        "expected.clarification_fields": "list of non-empty strings",
+        "expected.unsupported_requirements": "list of non-empty strings",
+    }
+    issue_fields = {
+        str(issue.get("field"))
+        for issue in schema_consistency_issues
+        if issue.get("field")
+    }
+    return [
+        {
+            "field": field,
+            "reason": reason,
+            "flagged_by_current_profile": field in issue_fields,
+        }
+        for field, reason in sorted(fields.items())
+    ]
+
+
 def _optional_scalar(value: object) -> str:
     if isinstance(value, str) and value:
         return value
     return "__missing__"
+
+
+def _string_list_value(value: object) -> tuple[str, ...]:
+    if not isinstance(value, list):
+        return ()
+    return tuple(item for item in value if isinstance(item, str) and item)
 
 
 def _required_str(row: dict[str, object], field: str, *, index: int) -> str:
@@ -1116,6 +1590,10 @@ def _prompt_token_features(prompt: str) -> Counter[str]:
 
 def _prompt_tokens(prompt: str) -> list[str]:
     return re.findall(r"\*\*|\^|[a-z0-9_]+", prompt.lower())
+
+
+def _prompt_token_set(prompt: str) -> set[str]:
+    return set(_prompt_tokens(prompt))
 
 
 def _prompt_character_ngram_features(tokens: Sequence[str]) -> Counter[str]:

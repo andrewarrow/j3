@@ -14,16 +14,7 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-### `DATA-001`: Audit expanded prompt corpus quality
-
-- Owner: worker Pascal (`019e3950-8113-7cf3-ab6e-e813b4cd332f`)
-- Status: active
-- Write scope: prompt inspection command/report, `plans/progress.md`,
-  `plans/active.md`; no large generated artifacts committed.
-- Acceptance: report counts by source type, split, task type, domain,
-  ambiguity, inferred defaults, and synthetic template family; flag leakage
-  risks.
-- Tests: focused prompt corpus tests or CLI smoke, plus `git diff --check`.
+No active worker tasks.
 
 ## Ready Queue
 
@@ -57,6 +48,11 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `DATA-001`: expanded `inspect-prompt-corpus` into a repeatable prompt corpus
+  quality audit. Current 320-row corpus has no exact normalized duplicates,
+  no unsupported scalar labels, and no family split leakage, but it has 2
+  cross-split near-duplicate prompt pairs and schema consistency gaps that
+  `DATA-002` should validate.
 - `TRANS-002`: diagnosed the 2026-05-18 transition matrix residuals. Result:
   14 residual-report failures split into 1 candidate-generation gap
   (`change_subscript_key` for `http_no_store_directive_subscript_key`) and 13

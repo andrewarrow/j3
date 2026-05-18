@@ -41,3 +41,17 @@ only for bootstrapping the corpus artifact.
 - Later, move a small reviewed demo corpus into `examples/prompt_intents/` if it
   should be part of the public clone-and-test path.
 - Publish larger corpora as versioned archives with manifests and checksums.
+
+## Quality Audit
+
+Profile the expanded corpus before using it for prompt/model claims:
+
+```bash
+python cli.py inspect-prompt-corpus --labels ../prompts/coding_agent_prompts_expanded_v0.jsonl
+python cli.py inspect-prompt-corpus --labels ../prompts/coding_agent_prompts_expanded_v0.jsonl --json
+```
+
+The JSON profile includes source/split/task/domain counts, clarification and
+ambiguity counts, inferred defaults, synthetic template families, cross-split
+duplicate and near-duplicate risks, schema variants, unsupported scalar labels,
+and fields the next schema validator should enforce.

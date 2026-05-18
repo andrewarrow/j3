@@ -195,6 +195,27 @@ Long-term target:
   the selected command is run. A live cloned pinned checkout passed
   `python -m pytest testing/test_iniconfig.py -q` with `54 passed in 0.03s`.
 
+### GS7-009: Materialize first held-out tests-only candidate for h11
+
+- Status: active
+- Why: the iniconfig candidate is calibration evidence only. The next proof is
+  whether the same planner/action surface can handle a held-out repo without
+  repo-name shortcuts or fixture-shaped assumptions.
+- Write scope: `j3/real_repo_tests_planner.py`,
+  `tests/test_real_repo_tests_planner.py`, optional generated outputs under
+  `/tmp`, and plan updates.
+- Acceptance: for `h11-tests-bytesify-memoryview`, select
+  `h11/tests/test_util.py` from repo-state and local-knowledge evidence;
+  materialize pytest coverage for bytearray, memoryview, ASCII str, non-ASCII
+  str, and int TypeError behavior; preserve production files; emit
+  candidate-after, mutation-scope, validation-command, residual, and
+  knowledge-use metadata; and live-validate the pinned `h11` checkout if setup
+  succeeds. If the held-out repo exposes a materialization, API, or validation
+  blocker, record the exact blocker instead of broadening scope silently.
+- Tests: focused planner/materializer tests,
+  `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and a live
+  `python -m pytest h11/tests/test_util.py -q` candidate check when available.
+
 ## Workstream C: Prompt Corpus And Intent Data
 
 ### DATA-001: Audit expanded prompt corpus quality
@@ -455,6 +476,21 @@ Long-term target:
   directly tests the biggest `MAT-001` gap.
 - Tests: focused source-region tests, plan consistency, and `git diff --check`.
 
+### MAT-003: Real one-file feature materialization probe
+
+- Status: ready
+- Why: tests-only wins do not answer the biggest `MAT-001` gap: turning a
+  predicted repo-after behavior into bounded source edits for a real Python
+  library.
+- Write scope: a focused source materialization probe for one real
+  one-file-feature ladder task, focused tests, optional docs, and plan updates.
+- Acceptance: attempt one pinned real-repo one-file feature task with a bounded
+  source-region or typed-builder action; preserve the maximum-production-file
+  constraint; record candidate-after diff/AST metadata, validation result,
+  runtime, and the first blocker if the edit cannot be expressed.
+- Tests: focused materializer tests, plan consistency, `git diff --check`, and
+  a live targeted validation command when the candidate is materialized.
+
 ### KNOW-001: Local knowledge inventory for the wedge
 
 - Status: done
@@ -584,6 +620,38 @@ Long-term target:
   `blocker_label = none`. Combined with `REAL-004` `iniconfig`, Gate A now has
   three baseline-passing repositories.
 
+### REAL-006: Rerun tests-only shadow score with candidate materialization
+
+- Status: active
+- Why: `REAL-003` scored `pass@3 = 0/4` before `GS7-008` could materialize a
+  real-repo candidate. The next gate decision must measure the candidate
+  surface directly, not infer progress from a standalone live check.
+- Write scope: `j3/real_repo_shadow_score.py`,
+  `tests/test_real_repo_shadow_score.py`, one compact `docs/REAL_006_*.md`
+  report if useful, generated outputs under `/tmp`, and plan updates.
+- Acceptance: rerun the tests-only shadow score so the `iniconfig` calibration
+  task receives a scored materialized candidate while unsupported held-out
+  repos remain explicit residuals; record pass@1, pass@3, first passing rank,
+  candidate validation status, runtime, mutation scope, hidden-like agreement,
+  residual labels, zero hosted usage, and the guarded-use gate decision.
+- Tests: `pytest tests/test_real_repo_shadow_score.py -q`,
+  `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and the
+  shadow-score command/report smoke.
+
+### REAL-007: Held-out tests-only score after first h11 materializer
+
+- Status: ready
+- Why: once `GS7-009` either passes or fails, the evidence needs a score that
+  separates calibration progress from held-out generalization.
+- Write scope: shadow-score command/report updates, generated outputs under
+  `/tmp`, compact docs if useful, and plan updates.
+- Acceptance: rerun or extend the tests-only score after the h11 result,
+  reporting calibration pass rate, held-out pass rate, runtime, mutation-scope
+  violations, hidden-like agreement, and whether the product wedge remains
+  shadow-only.
+- Tests: focused shadow-score tests, plan consistency, `git diff --check`, and
+  the score/report smoke command.
+
 ### DATA-005: Issue/PR replay preflight runner
 
 - Status: done
@@ -602,8 +670,10 @@ Long-term target:
 
 Start with these unless fresh evidence changes the order:
 
-1. `GS7-008`: materialize real-repo pytest cases for the iniconfig calibration
-   task.
-2. `KNOW-003`: wire knowledge-use attribution into tests-only planning.
-3. `MODEL-006`: candidate-after or AST-delta observation for ranking evidence.
-4. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.
+1. `REAL-007`: rerun/extend shadow scoring after the first held-out
+   materializer result, separating calibration from held-out evidence.
+2. `MAT-003`: attempt one bounded real one-file feature materialization probe.
+3. `KNOW-003`: broaden knowledge-use attribution where scoring shows missing
+   local-knowledge evidence.
+4. `MODEL-006`: candidate-after or AST-delta observation for ranking evidence.
+5. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.

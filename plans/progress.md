@@ -1062,3 +1062,24 @@ meaningful work. Do not replace this file with a daily reset.
 - Next: rerun or extend the tests-only shadow score with this candidate surface
   before considering guarded tests-only opt-in.
 - Blockers: none
+
+### 2026-05-18 - COORD - Hard-proof loop dispatch
+
+- Owner: coordinator
+- Files changed: `plans/active.md`, `plans/backlog.md`, `plans/progress.md`
+- Tests: `pytest tests/test_real_repo_tests_planner.py -q` -> 2 passed;
+  `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check` -> passed.
+- Result: reviewed `GS7-008` and `REAL-005`. The important conclusion is that
+  the `iniconfig` materializer is useful calibration evidence, not a product
+  gate. The next loop therefore assigns `REAL-006` to measure the materialized
+  candidate in the tests-only shadow score and `GS7-009` to attempt the first
+  held-out `h11` tests-only materializer. The ready queue now prioritizes
+  held-out scoring and a real one-file feature materialization probe over more
+  fixture progress.
+- Commit: pending
+- Push: pending
+- Next: dispatch workers for `REAL-006` and `GS7-009`, record their agent IDs,
+  then keep reviewing and reassigning instead of leaving the active board
+  empty.
+- Blockers: none

@@ -14,24 +14,68 @@ This is the live coordinator board. Keep it current and compact.
   2026-05-18 `TRANS-001` full matrix and `TRANS-004` targeted subset decisions
   were `remain_shadow_only`. Tests-only wedge guarded opt-in also remains
   blocked after `REAL-003` scored `pass@3 = 0/4`; `GS7-008` now materializes
-  and live-validates the `iniconfig` calibration candidate, but the full
-  tests-only shadow score has not been rerun. `REAL-005` extends live baseline
-  preflight to `h11` and `humanize`, so Gate A now has three
-  baseline-passing repositories when combined with `REAL-004` `iniconfig`.
+  and live-validates the `iniconfig` calibration candidate. `REAL-006` must
+  now rerun the full tests-only shadow score through that candidate surface.
+  `REAL-005` extends live baseline preflight to `h11` and `humanize`, so Gate A
+  now has three baseline-passing repositories when combined with `REAL-004`
+  `iniconfig`; `GS7-009` is the first held-out tests-only materialization
+  attempt and should be treated as the next generalization proof.
 
 ## Active Tasks
 
-No active worker tasks are recorded after `GS7-008` and `REAL-005` completed.
+### `REAL-006`: Rerun tests-only shadow score with candidate materialization
+
+- Status: active
+- Owner: pending worker dispatch.
+- Goal: update the tests-only shadow scorer so `GS7-008`'s real-repo
+  candidate surface is actually scored for `iniconfig`, while held-out repos
+  remain explicit blockers until materializers exist.
+- Write scope: `j3/real_repo_shadow_score.py`,
+  `tests/test_real_repo_shadow_score.py`, one compact `docs/REAL_006_*.md`
+  report if useful, generated outputs under `/tmp`, and plan updates.
+- Do not touch: `j3/real_repo_tests_planner.py`; that belongs to `GS7-009`.
+- Acceptance: record pass@1/pass@3, first passing rank, candidate validation
+  status, runtime, mutation scope, hidden-like agreement, residual labels, zero
+  hosted usage, and a gate decision. Expected result is still
+  `remain_shadow_only` unless at least three of four tests-only tasks pass.
+- Tests: `pytest tests/test_real_repo_shadow_score.py -q`,
+  `pytest tests/test_plan_consistency.py -q`, `git diff --check`, plus the
+  shadow-score command/report smoke.
+
+### `GS7-009`: Materialize first held-out tests-only candidate for `h11`
+
+- Status: active
+- Owner: pending worker dispatch.
+- Goal: attack `h11-tests-bytesify-memoryview` as the first held-out
+  tests-only generalization proof after the `iniconfig` calibration pass.
+- Write scope: `j3/real_repo_tests_planner.py`,
+  `tests/test_real_repo_tests_planner.py`, optional generated outputs under
+  `/tmp`, and plan updates.
+- Do not touch: `j3/real_repo_shadow_score.py`; that belongs to `REAL-006`.
+- Acceptance: select `h11/tests/test_util.py` from repo-state and local
+  knowledge, materialize pytest coverage for bytearray, memoryview, ASCII str,
+  non-ASCII str, and int TypeError behavior, preserve production files, emit
+  candidate-after/mutation-scope/knowledge-use metadata, and live-validate the
+  pinned `h11` checkout if setup succeeds. If the held-out repo exposes a
+  materialization or API gap, record that precise blocker.
+- Tests: focused planner/materializer tests,
+  `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and a live
+  `python -m pytest h11/tests/test_util.py -q` candidate check when available.
 
 ## Ready Queue
 
 These are good next assignments for the next loop:
 
-1. `KNOW-003`: wire knowledge-use attribution into tests-only planning.
-2. `MODEL-006`: add candidate-after or AST-delta observation for ranking
+1. `REAL-007`: rerun/extend shadow scoring after the first held-out
+   materializer result, with held-out pass/fail separated from calibration.
+2. `MAT-003`: turn the `MAT-001` audit into the next bounded source
+   materialization probe for a real one-file feature task.
+3. `KNOW-003`: broaden knowledge-use attribution beyond the iniconfig planner
+   if `REAL-006` shows missing knowledge residuals outside calibration.
+4. `MODEL-006`: add candidate-after or AST-delta observation for ranking
    evidence.
-3. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.
-4. `MODEL-004`: distinguish mapping key and value targets.
+5. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.
+6. `MODEL-004`: distinguish mapping key and value targets.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 

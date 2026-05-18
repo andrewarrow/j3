@@ -3752,8 +3752,8 @@ meaningful work. Do not replace this file with a daily reset.
   imported `_pytest` from an older temp checkout, so the final command forces
   `PYTHONPATH=src` and directly exercises the accepted regression in the
   candidate checkout.
-- Commit: pending.
-- Push: pending.
+- Commit: cefb996.
+- Push: succeeded.
 - Next: finish DATA-039 integration, then dispatch the next hard falsification
   slice based on whether live decoys are cleanly rankable.
 - Blockers: none for MAT-009; broader materialization still needs typed-builder

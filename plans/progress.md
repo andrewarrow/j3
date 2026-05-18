@@ -1903,8 +1903,10 @@ meaningful work. Do not replace this file with a daily reset.
   the Click #2745 `default_map` prompt/spec fields that blocked candidate
   generation in `DATA-007`. `KNOW-005` will acquire the Requests replay local
   knowledge now that `DATA-008` proved the validation setup is fixable.
-- Commit: pending.
-- Push: pending.
-- Next: run plan checks, commit this dispatch, then assign one worker to
-  `DATA-009` and one worker to `KNOW-005` with disjoint write scopes.
+- Commit: 1baad26.
+- Push: succeeded.
+- Next: workers dispatched for `DATA-009` and `KNOW-005`: Darwin
+  (`019e3c08-9145-77c1-bc42-1d6a10f868c5`) owns the Click #2745 prompt/spec
+  normalization, and Gibbs (`019e3c08-c0ad-7141-900f-ae92ca2b8620`) owns the
+  Requests replay local-knowledge records.
 - Blockers: none.

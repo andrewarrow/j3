@@ -47,7 +47,7 @@ This is the live coordinator board. Keep it current and compact.
 ### `DATA-009`: Click default_map prompt/spec normalization
 
 - Status: active
-- Owner: coordinator dispatch pending.
+- Owner: worker Darwin (`019e3c08-9145-77c1-bc42-1d6a10f868c5`).
 - Why: `DATA-007` blocked `pallets__click-issue-2745-pr-3364` before any
   candidate attempt because the replay row lacks the concrete prompt/spec
   fields needed to judge edits.
@@ -66,7 +66,7 @@ This is the live coordinator board. Keep it current and compact.
 ### `KNOW-005`: Requests replay local knowledge records
 
 - Status: active
-- Owner: coordinator dispatch pending.
+- Owner: worker Gibbs (`019e3c08-c0ad-7141-900f-ae92ca2b8620`).
 - Why: `DATA-008` removed the validation setup blocker for
   `psf__requests-issue-7432-pr-7433`, but candidate generation still needs
   local knowledge for request body preparation, stream detection, redirects,

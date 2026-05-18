@@ -44,29 +44,16 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-### `VAL-002`: Cross-row passing-decoy validation adequacy probe
-
-- Status: active
-- Owner: worker Locke (`019e3cf2-f35a-7271-b4e1-a88cfd426e2b`).
-- Write scope: focused validation-strength probe module/tests/docs only
-  (`j3/issue_pr_validation_strength_probe.py`,
-  `tests/test_issue_pr_validation_strength_probe.py`, optional
-  `docs/VAL_002_*`, and generated artifacts under `/tmp`). Avoid typed-builder
-  materialization modules.
-- Acceptance: use DATA-039 and DATA-040 artifacts to identify every passing
-  decoy, then run or design at least one stronger, label-safe validation
-  recipe against accepted candidates and passing decoys. Record whether the
-  recipe converts passing decoys into failures while preserving accepted
-  candidate pass status, runtime/cost, and leakage risk. If validation cannot
-  distinguish coverage-gap decoys without accepted-label leakage, record that
-  as a product-gate blocker.
+No active worker tasks while the coordinator records the next hard-probe
+assignments after `VAL-002`.
 
 ## Ready Queue
 
 These are good next assignments for the next loop:
 
-1. `VAL-001`: strengthen validation for Scrapy passing decoys without leaking
-   accepted labels.
+1. `VAL-003`: coverage-gap decoy policy and ranking-denominator probe.
+2. `MAT-012`: third held-out typed-builder/general-AST materialization stress
+   row.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
@@ -90,6 +77,18 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `VAL-002`: ran cross-row label-safe behavior probes against every passing
+  decoy from DATA-039 and DATA-040. Accepted candidates passed all recipes;
+  `scrapy_mutating_peek` converted from passing decoy to behavior failure;
+  `scrapy_missing_tests` and `pytest_missing_invalid_tolerance_tests` remained
+  passing coverage-gap decoys. The issue/PR ranking gate remains shadow-only
+  with blocker
+  `coverage_gap_decoy_indistinguishable_without_accepted_label_leakage`.
+  Artifacts:
+  `/tmp/j3-val-002-validation-strength-probe/validation-strength-report.json`,
+  `/tmp/j3-val-002-validation-strength-probe/validation-strength-report.md`,
+  and
+  `docs/VAL_002_CROSS_ROW_VALIDATION_STRENGTH_PROBE_2026-05-18.md`.
 - `MAT-011`: materialized and live-validated the held-out `psf/requests#7441`
   typed-builder row from base `b7b549b54571d03950b16afd2d01bc6ff0348224` to
   accepted head `412f581d7e7c27bfee4f042fcac89bae9a804afe`. The candidate

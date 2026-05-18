@@ -3975,3 +3975,33 @@ meaningful work. Do not replace this file with a daily reset.
 - Next: integrate VAL-002, then dispatch the next validation or typed-builder
   probe based on residuals.
 - Blockers: none for MAT-011; typed-builder coverage still needs more rows.
+
+### 2026-05-18 - VAL-002 - Cross-row passing-decoy validation adequacy probe
+
+- Owner: worker Locke (`019e3cf2-f35a-7271-b4e1-a88cfd426e2b`) with
+  coordinator integration after worker pause.
+- Files changed: `j3/issue_pr_validation_strength_probe.py`,
+  `tests/test_issue_pr_validation_strength_probe.py`,
+  `docs/VAL_002_CROSS_ROW_VALIDATION_STRENGTH_PROBE_2026-05-18.md`,
+  `plans/active.md`, `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `python -m py_compile j3/issue_pr_validation_strength_probe.py
+  tests/test_issue_pr_validation_strength_probe.py` -> passed; `pytest
+  tests/test_issue_pr_validation_strength_probe.py -q` -> 4 passed; live CLI
+  probe wrote `/tmp/j3-val-002-validation-strength-probe`; accepted pytest
+  checkout was prepared with the same editable `.venv` setup as DATA-040 before
+  the final run; `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check` for touched files -> passed.
+- Result: identified three passing decoys across DATA-039 and DATA-040 and ran
+  two label-safe behavior recipes against accepted checkouts and passing decoy
+  checkouts. Accepted candidates passed all six live runs. The Scrapy peek
+  behavior probe converted `scrapy_mutating_peek` from a passing decoy into a
+  failure while preserving accepted behavior. `scrapy_missing_tests` and
+  `pytest_missing_invalid_tolerance_tests` remained passing coverage-gap
+  decoys because their source behavior matches accepted source behavior.
+- Commit: pending.
+- Push: pending.
+- Next: dispatch `VAL-003` to separate coverage-gap product blockers from
+  ranker denominator policy, and `MAT-012` to stress held-out materialization
+  generalization.
+- Blockers: issue/PR ranking remains shadow-only with
+  `coverage_gap_decoy_indistinguishable_without_accepted_label_leakage`.

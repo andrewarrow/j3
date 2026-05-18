@@ -822,6 +822,30 @@ Long-term target:
   `/tmp/j3-mat-011-requests-7441-final/accepted.diff`, and
   `docs/MAT_011_REQUESTS_7441_TYPED_BUILDER_CANDIDATE_2026-05-18.md`.
 
+### MAT-012: Third held-out typed-builder/general-AST materialization stress row
+
+- Status: ready
+- Why: MAT-010 and MAT-011 are positive held-out typed-builder rows, but the
+  materialization question is still falsifiable: do action families generalize,
+  or do they keep expanding per PR? `pallets/click#3396` is a harder held-out
+  row from MAT-007 because it spans sentinel aliases and parser annotations
+  across three files.
+- Write scope: `j3/heldout_typed_builder_candidate.py`,
+  `tests/test_heldout_typed_builder_candidate.py`, optional
+  `docs/MAT_012_*`, and generated artifacts under `/tmp`. Avoid issue/PR
+  ranking, validation-strength probes, and planning files unless explicitly
+  assigned by the coordinator.
+- Acceptance: attempt `pallets/click#3396` first, using reusable typed or
+  general AST action records rather than a PR-named action kind. Record pinned
+  base ref, accepted changed files, mutation scope, candidate-after diff/AST
+  metadata, accepted-diff comparison, validation result or exact blocker, and
+  whether the action vocabulary stayed general. If `click#3396` is blocked by
+  unavailable repo setup or an unbounded synthesis need, record that blocker
+  and only then fall back to the next MAT-007 `general_typed_builder` row such
+  as `psf/requests#7437`.
+- Tests: focused typed-builder/general-AST materializer tests,
+  `git diff --check`, and live validation or a recorded validation blocker.
+
 ### KNOW-001: Local knowledge inventory for the wedge
 
 - Status: done
@@ -2380,7 +2404,7 @@ Long-term target:
 
 ### VAL-001: Strengthen Scrapy passing-decoy validation without label leakage
 
-- Status: ready
+- Status: done
 - Why: DATA-039 found two Scrapy decoys that pass the current focused
   validation command. That means the validation signal is not yet trustworthy
   enough to support issue/PR ranking claims for the row.
@@ -2395,10 +2419,15 @@ Long-term target:
   leakage risks. If no label-safe validation exists, record that blocker.
 - Tests: focused validation helper tests, plan consistency, `git diff --check`,
   and live validation recipe runs when feasible.
+- Completion note: superseded by the broader `VAL-002` cross-row probe. The
+  Scrapy label-safe peek behavior recipe preserved the accepted candidate,
+  converted `scrapy_mutating_peek` into a failure, and left
+  `scrapy_missing_tests` as a coverage-gap blocker that cannot fail without
+  accepted-test or accepted-diff leakage.
 
 ### VAL-002: Cross-row passing-decoy validation adequacy probe
 
-- Status: active
+- Status: done
 - Why: DATA-039 and DATA-040 now prove both validated issue/PR rows have live
   decoy evidence, but both rows include passing decoys. This attacks the hard
   validation question directly: can validation stay cheap and trustworthy, or
@@ -2417,12 +2446,44 @@ Long-term target:
   as a product-gate blocker.
 - Tests: focused validation probe tests, plan consistency, `git diff --check`,
   and live validation recipe runs when feasible.
+- Result: ran label-safe behavior recipes against all three passing decoys from
+  DATA-039 and DATA-040. Accepted candidates passed all six live runs;
+  `scrapy_mutating_peek` converted to a failure, while
+  `scrapy_missing_tests` and `pytest_missing_invalid_tolerance_tests` remained
+  passing coverage-gap decoys. The ranking gate remains shadow-only with
+  blocker
+  `coverage_gap_decoy_indistinguishable_without_accepted_label_leakage`.
+- Artifacts:
+  `/tmp/j3-val-002-validation-strength-probe/validation-strength-report.json`,
+  `/tmp/j3-val-002-validation-strength-probe/validation-strength-report.md`,
+  and `docs/VAL_002_CROSS_ROW_VALIDATION_STRENGTH_PROBE_2026-05-18.md`.
+
+### VAL-003: Coverage-gap decoy policy and ranking-denominator probe
+
+- Status: ready
+- Why: VAL-002 proved stronger behavior validation can catch a missed semantic
+  decoy, but source-equivalent coverage-gap decoys remain indistinguishable
+  without leaking accepted tests or accepted diffs. The next hard question is
+  whether issue/PR ranking can report honest held-out gains while coverage-gap
+  risks stay as separate product blockers.
+- Write scope: issue/PR ranking or validation-policy helper code/tests,
+  optional `docs/VAL_003_*`, and generated artifacts under `/tmp`. Avoid
+  materialization modules.
+- Acceptance: define and run a shadow-only policy experiment over the DATA-039,
+  DATA-040, and VAL-002 artifacts that separates behavior-observable hard
+  negatives from coverage-gap product blockers without using accepted-label
+  leakage. Record strict ranking readiness, behavior-negative-only ranking
+  readiness, blocker counts, pass@1/pass@k if rankable, runtime, and the exact
+  reason if the separation itself depends on decoy labels rather than
+  observable candidate/validation evidence.
+- Tests: focused ranking/policy tests, `git diff --check`, and a CLI or smoke
+  command that writes the VAL-003 artifact bundle.
 
 ## Next Recommended Queue
 
 Start with these unless fresh evidence changes the order:
 
-1. `DATA-040`: live pytest #14462 decoy validation.
-2. `MAT-010`: first held-out typed-builder materialization probe.
-3. `VAL-001`: strengthen validation for Scrapy passing decoys without leaking
-   accepted labels.
+1. `VAL-003`: coverage-gap decoy policy and ranking-denominator probe.
+2. `MAT-012`: third held-out typed-builder/general-AST materialization stress
+   row.
+3. `KNOW-003`: wire knowledge-use attribution into tests-only planning.

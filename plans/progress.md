@@ -1821,3 +1821,32 @@ meaningful work. Do not replace this file with a daily reset.
   isolation, and Hubble (`019e3bfa-487c-7cc3-8886-824d0bb43ac8`) owns the
   Click replay local-knowledge records.
 - Blockers: none
+
+### 2026-05-18 - KNOW-004 - Click replay local knowledge records
+
+- Owner: worker Hubble (`019e3bfa-487c-7cc3-8886-824d0bb43ac8`).
+- Files changed: `j3/local_knowledge.py`, `tests/test_local_knowledge.py`,
+  `plans/active.md`, `plans/backlog.md`, `plans/progress.md`.
+- Tests: `python -m py_compile j3/local_knowledge.py` -> passed; `pytest
+  tests/test_local_knowledge.py -q` -> 4 passed; CLI smoke `python -m
+  j3.local_knowledge --click-replay-row
+  pallets__click-issue-3298-pr-3299 --manifest
+  examples/issue_pr_mini_replay/manifest.json --repo
+  /tmp/j3-know-004-click --out /tmp/j3-know-004-click-records.jsonl
+  --retrieved-at 2026-05-18T00:00:00Z --setup-command "python -m pip install
+  -e . pytest" --baseline-validation-command "pytest tests/test_options.py
+  -q"` -> passed with 8 records; `pytest tests/test_plan_consistency.py -q`
+  -> 6 passed; `git diff --check` -> passed.
+- Result: added compact issue/PR replay knowledge support for the Click #3298
+  row without hosted LLM use. The new records cover repo changed-file context,
+  repo test pattern, focused validation recipe, Click parameter default
+  handling, type-conversion semantics, non-string default handling,
+  empty-string check semantics, and third-party `semver.Version` reproduction
+  context, with provenance hashes, replay-row links, `DATA-007` outcome links,
+  and split `train`. The schema extension is limited to
+  `repo_changed_file_context_record` and `library_idiom_record`.
+- Commit: pending
+- Push: pending
+- Next: issue/PR candidate generation for Click #3298 can require citations to
+  these record categories before ranking or materialization starts.
+- Blockers: none

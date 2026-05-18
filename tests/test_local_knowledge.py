@@ -6,6 +6,8 @@ from pathlib import Path
 import pytest
 
 from j3.local_knowledge import (
+    CLICK_REPLAY_REQUIRED_KNOWLEDGE_CATEGORIES,
+    build_click_replay_local_knowledge_records,
     build_knowledge_use_record,
     extract_local_knowledge_records,
     validate_local_knowledge_record,
@@ -92,6 +94,210 @@ def _tasks() -> list[dict[str, object]]:
             "expected_failure_modes": ["wrong_test_location"],
         }
     ]
+
+
+def _write_click_replay_repo(repo: Path) -> None:
+    (repo / "src" / "click").mkdir(parents=True)
+    (repo / "tests").mkdir()
+    (repo / "pyproject.toml").write_text(
+        """[build-system]
+requires = ["flit_core<4"]
+build-backend = "flit_core.buildapi"
+
+[project]
+name = "click"
+version = "8.4.0"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+""",
+        encoding="utf-8",
+    )
+    (repo / "src" / "click" / "__init__.py").write_text(
+        """from .core import Command, Context, Option, Parameter
+""",
+        encoding="utf-8",
+    )
+    (repo / "src" / "click" / "core.py").write_text(
+        '''from __future__ import annotations
+
+import inspect
+
+UNSET = object()
+
+
+class Context:
+    show_default = None
+
+
+class Command:
+    pass
+
+
+class Parameter:
+    multiple = False
+    nargs = 1
+    required = False
+
+    def consume_value(self, ctx, opts):
+        default_value = self.get_default(ctx)
+        if default_value is not UNSET:
+            return default_value, "default"
+        return UNSET, None
+
+    def get_default(self, ctx, call=True):
+        return getattr(self, "default", UNSET)
+
+    def type_cast_value(self, ctx, value):
+        if value is None:
+            if self.multiple or self.nargs == -1:
+                return ()
+            return value
+        if self.multiple:
+            return tuple(self.type(x, self, ctx) for x in value)
+        return self.type(value, param=self, ctx=ctx)
+
+    def value_is_missing(self, value):
+        if value is UNSET:
+            return True
+        if (self.nargs != 1 or self.multiple) and value == ():
+            return True
+        return False
+
+    def process_value(self, ctx, value):
+        if value is UNSET:
+            if self.multiple or self.nargs == -1:
+                value = ()
+        else:
+            value = self.type_cast_value(ctx, value)
+        if self.required and self.value_is_missing(value):
+            raise RuntimeError("missing")
+        return value
+
+
+class Option(Parameter):
+    is_bool_flag = False
+    secondary_opts = ()
+
+    def __init__(self, opts, default=UNSET, show_default=None):
+        self.opts = opts
+        self.default = default
+        self.show_default = show_default
+
+    def get_default(self, ctx, call=True):
+        return super().get_default(ctx, call=False)
+
+    def get_help_extra(self, ctx):
+        default_value = self.get_default(ctx, call=False)
+        extra = {}
+        show_default = bool(self.show_default)
+        show_default_is_str = isinstance(self.show_default, str)
+        if show_default_is_str or (show_default and default_value not in (None, UNSET)):
+            if show_default_is_str:
+                default_string = f"({self.show_default})"
+            elif inspect.isfunction(default_value):
+                default_string = "(dynamic)"
+            elif self.is_bool_flag and not self.secondary_opts and not default_value:
+                default_string = ""
+            elif default_value == "":
+                default_string = '""'
+            else:
+                default_string = str(default_value)
+            if default_string:
+                extra["default"] = default_string
+        return extra
+
+    def get_help_record(self, ctx):
+        extra = self.get_help_extra(ctx)
+        return self.opts[0], f"[default: {extra['default']}]" if extra else ""
+''',
+        encoding="utf-8",
+    )
+    (repo / "tests" / "test_options.py").write_text(
+        '''from __future__ import annotations
+
+import pytest
+
+import click
+
+
+def test_show_default_string(runner):
+    opt = click.Option(["--limit"], show_default="unlimited")
+    ctx = click.Context(click.Command("cli"))
+    assert opt.get_help_extra(ctx) == {"default": "(unlimited)"}
+    message = opt.get_help_record(ctx)[1]
+    assert "[default: (unlimited)]" in message
+
+
+def test_show_default_with_empty_string(runner):
+    opt = click.Option(["--limit"], default="", show_default=True)
+    ctx = click.Context(click.Command("cli"))
+    message = opt.get_help_record(ctx)[1]
+    assert '[default: ""]' in message
+
+
+@pytest.mark.parametrize(
+    ("ctx_value", "opt_value", "extra_value", "expect"),
+    [(None, True, {"default": "1"}, True), (False, False, {}, False)],
+)
+def test_show_default_precedence(ctx_value, opt_value, extra_value, expect):
+    assert bool(extra_value) is expect
+''',
+        encoding="utf-8",
+    )
+
+
+def _click_replay_row() -> dict[str, object]:
+    return {
+        "id": "pallets__click-issue-3298-pr-3299",
+        "repo": "pallets/click",
+        "prompt_text": (
+            "Fix issue #3298: a semver.Version default causes an error. "
+            "Accepted PR #3299 fixes a speculative empty string check."
+        ),
+        "prompt_source": {
+            "issue_number": 3298,
+            "issue_title": "semver.Version as default causing an error",
+            "issue_url": "https://github.com/pallets/click/issues/3298",
+            "pull_request_number": 3299,
+            "pull_request_title": "Fix speculative empty string check",
+            "pull_request_url": "https://github.com/pallets/click/pull/3299",
+        },
+        "repo_before_ref": {
+            "provider": "github",
+            "repo": "pallets/click",
+            "branch": "stable",
+            "sha": "04ef3a6f473deb2499721a8d11f92a7d2c0912f2",
+        },
+        "accepted_change": {
+            "kind": "merged_pull_request",
+            "pull_request_url": "https://github.com/pallets/click/pull/3299",
+            "diff_url": "https://github.com/pallets/click/pull/3299.diff",
+            "merge_commit_sha": "1458800409ed12076f18451889b0857db36aa522",
+            "changed_files": ["src/click/core.py", "tests/test_options.py"],
+        },
+        "validation": {
+            "command": "pytest tests/test_options.py -q",
+            "source": "inferred_from_changed_tests",
+            "availability": "partial",
+        },
+        "provenance_license": {
+            "repository_url": "https://github.com/pallets/click",
+            "license_spdx": "BSD-3-Clause",
+            "license_url": "http://choosealicense.com/licenses/bsd-3-clause/",
+            "review_status": "curated_metadata_only",
+        },
+        "stable_split": {
+            "method": "sha256(id) % 100",
+            "bucket": 30,
+            "split": "train",
+        },
+        "initial_residual_labels": [
+            "prompt_spec_parsing_gap",
+            "local_knowledge_gap",
+            "ranking_gap",
+        ],
+    }
 
 
 def test_extract_local_knowledge_records_emit_wedge_record_families(
@@ -263,3 +469,81 @@ def test_local_knowledge_validation_rejects_raw_source_blobs(
 
     with pytest.raises(ValueError, match="raw source blobs"):
         validate_local_knowledge_record(broken)
+
+
+def test_click_replay_local_knowledge_records_cover_required_categories(
+    tmp_path: Path,
+) -> None:
+    _write_click_replay_repo(tmp_path)
+
+    first = build_click_replay_local_knowledge_records(
+        tmp_path,
+        _click_replay_row(),
+        retrieved_at="2026-05-18T00:00:00Z",
+        setup_commands=["python -m pip install -e . pytest"],
+        baseline_validation_commands=["pytest tests/test_options.py -q"],
+    )
+    second = build_click_replay_local_knowledge_records(
+        tmp_path,
+        _click_replay_row(),
+        retrieved_at="2026-05-18T00:00:00Z",
+        setup_commands=["python -m pip install -e . pytest"],
+        baseline_validation_commands=["pytest tests/test_options.py -q"],
+    )
+
+    assert [record["id"] for record in first] == [record["id"] for record in second]
+    assert {record["record_type"] for record in first} == {
+        "library_idiom_record",
+        "pytest_pattern_record",
+        "repo_changed_file_context_record",
+        "validation_recipe_record",
+    }
+
+    categories = {
+        record["data"]["knowledge_category"]  # type: ignore[index]
+        for record in first
+        if isinstance(record["data"], dict)
+    }
+    assert categories == set(CLICK_REPLAY_REQUIRED_KNOWLEDGE_CATEGORIES)
+
+    for record in first:
+        validate_local_knowledge_record(record)
+        assert record["split"] == "train"
+        assert record["links"]["task_ids"] == ["pallets__click-issue-3298-pr-3299"]
+        assert record["links"]["residual_labels"] == ["local_knowledge_gap"]
+
+    by_category = {
+        record["data"]["knowledge_category"]: record
+        for record in first
+        if isinstance(record["data"], dict)
+    }
+    changed_context = by_category["repo_changed_file_context"]["data"]
+    assert isinstance(changed_context, dict)
+    assert changed_context["changed_files"] == [
+        "src/click/core.py",
+        "tests/test_options.py",
+    ]
+
+    validation = by_category["focused_validation_recipe"]["data"]
+    assert isinstance(validation, dict)
+    assert validation["focused_commands"] == ["pytest tests/test_options.py -q"]
+    assert validation["required_knowledge_categories"] == list(
+        CLICK_REPLAY_REQUIRED_KNOWLEDGE_CATEGORIES
+    )
+
+    non_string = by_category["click_non_string_default_handling"]["data"]
+    assert isinstance(non_string, dict)
+    source_evidence = non_string["source_evidence"]
+    assert isinstance(source_evidence, dict)
+    empty_check = source_evidence["empty_string_comparison"]
+    assert isinstance(empty_check, dict)
+    assert empty_check["unguarded_empty_string_comparison_present"] is True
+
+    semver = by_category["third_party_semver_version_reproduction"]["data"]
+    assert isinstance(semver, dict)
+    assert semver["issue_pr"]["issue_number"] == 3298  # type: ignore[index]
+
+    output = write_local_knowledge_jsonl(first, tmp_path / "click_records.jsonl")
+    output_text = output.read_text(encoding="utf-8")
+    assert "raw_source" not in output_text
+    assert "source_text" not in output_text

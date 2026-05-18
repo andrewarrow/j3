@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import ast
 import configparser
 import hashlib
@@ -20,10 +21,12 @@ LOCAL_KNOWLEDGE_EXTRACTED_BY = (
 )
 
 RECORD_TYPES = {
+    "library_idiom_record",
     "pytest_layout_record",
     "pytest_pattern_record",
     "packaging_layout_record",
     "public_api_record",
+    "repo_changed_file_context_record",
     "validation_recipe_record",
     "knowledge_use_record",
 }
@@ -37,6 +40,16 @@ RAW_BLOB_KEYS = {
     "raw_diff",
     "full_source",
 }
+CLICK_REPLAY_REQUIRED_KNOWLEDGE_CATEGORIES = (
+    "repo_changed_file_context",
+    "repo_test_pattern",
+    "focused_validation_recipe",
+    "click_parameter_default_handling",
+    "click_type_conversion_semantics",
+    "click_non_string_default_handling",
+    "click_empty_string_check_semantics",
+    "third_party_semver_version_reproduction",
+)
 
 
 def extract_local_knowledge_records(
@@ -146,6 +159,109 @@ def build_knowledge_use_record(
         links=links,
         data=data,
     )
+
+
+def build_click_replay_local_knowledge_records(
+    repo: Path,
+    replay_row: Mapping[str, object],
+    *,
+    retrieved_at: str = "unknown",
+    setup_commands: Sequence[str] = (),
+    baseline_validation_commands: Sequence[str] = (),
+) -> tuple[dict[str, object], ...]:
+    """Build Click issue/PR replay knowledge rows from a repo-before checkout.
+
+    This extractor is intentionally narrow: it emits compact records for the
+    `pallets__click-issue-3298-pr-3299` row without copying source or diffs.
+    """
+
+    resolved = repo.expanduser().resolve()
+    if not resolved.is_dir():
+        raise FileNotFoundError(f"repo does not exist: {resolved}")
+
+    replay_id = _required_str(replay_row, "id")
+    if replay_id != "pallets__click-issue-3298-pr-3299":
+        raise ValueError(f"unsupported Click replay row: {replay_id}")
+
+    repo_id = _required_str(replay_row, "repo")
+    repo_before_ref = _mapping(replay_row.get("repo_before_ref"), field="repo_before_ref")
+    accepted_change = _mapping(replay_row.get("accepted_change"), field="accepted_change")
+    validation = _mapping(replay_row.get("validation"), field="validation")
+    provenance_license = _mapping(
+        replay_row.get("provenance_license"),
+        field="provenance_license",
+    )
+    prompt_source = _mapping(replay_row.get("prompt_source"), field="prompt_source")
+    stable_split = _mapping(replay_row.get("stable_split"), field="stable_split")
+
+    changed_files = _string_sequence(accepted_change.get("changed_files", ()))
+    validation_command = _required_str(validation, "command")
+    split = _required_str(stable_split, "split")
+    _validate_split(split)
+
+    context = {
+        "repo_id": repo_id,
+        "repo_ref": _required_str(repo_before_ref, "sha"),
+        "split": split,
+        "repo_url": _optional_str(provenance_license.get("repository_url")),
+        "license": _optional_str(provenance_license.get("license_spdx")),
+        "retrieved_at": retrieved_at,
+    }
+    links = {
+        "task_ids": [replay_id],
+        "outcome_ids": ["DATA-007/pallets__click-issue-3298-pr-3299"],
+        "residual_labels": ["local_knowledge_gap"],
+    }
+    task = {
+        "id": replay_id,
+        "task_type": "issue_pr_replay",
+        "allowed_write_paths": changed_files,
+        "public_validation_commands": [validation_command],
+        "expected_failure_modes": ["local_knowledge_gap"],
+        "required_knowledge_categories": CLICK_REPLAY_REQUIRED_KNOWLEDGE_CATEGORIES,
+    }
+
+    records: list[dict[str, object]] = [
+        _click_changed_file_context_record(
+            resolved,
+            context,
+            replay_row=replay_row,
+            changed_files=changed_files,
+            links=links,
+        ),
+        _click_repo_test_pattern_record(
+            resolved,
+            context,
+            replay_id=replay_id,
+            test_path=_click_test_path(changed_files),
+            links=links,
+        ),
+    ]
+    records.extend(
+        _validation_recipe_records(
+            resolved,
+            context,
+            setup_commands=setup_commands,
+            baseline_validation_commands=baseline_validation_commands,
+            tasks=[task],
+            outcome_ids_by_task={replay_id: ["DATA-007/pallets__click-issue-3298-pr-3299"]},
+        )
+    )
+    records.extend(
+        _click_library_idiom_records(
+            resolved,
+            context,
+            replay_id=replay_id,
+            prompt_source=prompt_source,
+            changed_files=changed_files,
+            validation_command=validation_command,
+            links=links,
+        )
+    )
+
+    for record in records:
+        validate_local_knowledge_record(record)
+    return tuple(records)
 
 
 def write_local_knowledge_jsonl(
@@ -353,11 +469,15 @@ def _validation_recipe_records(
         if not commands:
             continue
         data = {
+            "knowledge_category": "focused_validation_recipe",
             "task_id": task_id,
             "setup_commands": list(setup_commands),
             "baseline_validation_commands": list(baseline_validation_commands),
             "focused_commands": commands,
             "allowed_write_paths": _string_sequence(task.get("allowed_write_paths", ())),
+            "required_knowledge_categories": _string_sequence(
+                task.get("required_knowledge_categories", ())
+            ),
             "network_policy": {
                 "setup_network_allowed": True,
                 "candidate_validation_network_allowed": False,
@@ -384,6 +504,237 @@ def _validation_recipe_records(
             )
         )
     return tuple(records)
+
+
+def _click_changed_file_context_record(
+    repo: Path,
+    context: Mapping[str, str],
+    *,
+    replay_row: Mapping[str, object],
+    changed_files: Sequence[str],
+    links: Mapping[str, Sequence[str]],
+) -> dict[str, object]:
+    source_files = [path for path in changed_files if not _is_test_file(path)]
+    test_files = [path for path in changed_files if _is_test_file(path)]
+    data = {
+        "knowledge_category": "repo_changed_file_context",
+        "replay_id": _required_str(replay_row, "id"),
+        "issue_pr": _issue_pr_summary(replay_row),
+        "changed_files": list(changed_files),
+        "source_files": source_files,
+        "test_files": test_files,
+        "source_context": [
+            _python_file_context(repo, path, focus_names=("Option", "Parameter"))
+            for path in source_files
+        ],
+        "test_context": [
+            _python_file_context(repo, path, focus_names=("test_", "_StrictEq"))
+            for path in test_files
+        ],
+    }
+    return _source_record(
+        record_type="repo_changed_file_context_record",
+        repo=repo,
+        context=context,
+        source_kind="accepted_diff_context",
+        source_path=",".join(changed_files),
+        provenance_paths=[*changed_files, "task:" + _required_str(replay_row, "id")],
+        confidence="observed",
+        links=links,
+        data=data,
+    )
+
+
+def _click_repo_test_pattern_record(
+    repo: Path,
+    context: Mapping[str, str],
+    *,
+    replay_id: str,
+    test_path: str,
+    links: Mapping[str, Sequence[str]],
+) -> dict[str, object]:
+    tree = _parse_python(repo / test_path)
+    functions = [
+        node
+        for node in tree.body
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+    ]
+    default_tests = [
+        _function_test_shape(node)
+        for node in functions
+        if "default" in node.name or _function_uses_click_option(node)
+    ]
+    data = {
+        "knowledge_category": "repo_test_pattern",
+        "replay_id": replay_id,
+        "test_file": test_path,
+        "neighboring_imports": list(_imports(tree)),
+        "fixture_arguments": sorted(
+            {
+                arg.arg
+                for node in functions
+                for arg in node.args.args
+                if arg.arg in {"runner", "isolated_filesystem", "monkeypatch"}
+            }
+        ),
+        "click_assertion_shapes": default_tests[:20],
+        "parametrize_shapes": [
+            _pytest_pattern_from_function(node, _imports(tree))
+            for node in functions
+            if _pytest_pattern_from_function(node, _imports(tree)) is not None
+        ][:10],
+    }
+    return _source_record(
+        record_type="pytest_pattern_record",
+        repo=repo,
+        context=context,
+        source_kind="repo_file",
+        source_path=test_path,
+        provenance_paths=[test_path],
+        confidence="observed",
+        links=links,
+        data=data,
+    )
+
+
+def _click_library_idiom_records(
+    repo: Path,
+    context: Mapping[str, str],
+    *,
+    replay_id: str,
+    prompt_source: Mapping[str, object],
+    changed_files: Sequence[str],
+    validation_command: str,
+    links: Mapping[str, Sequence[str]],
+) -> tuple[dict[str, object], ...]:
+    source_path = _click_source_path(changed_files)
+    test_path = _click_test_path(changed_files)
+    core_context = _click_core_semantic_context(repo / source_path)
+    test_context = _click_option_test_context(repo / test_path)
+    base = {
+        "replay_id": replay_id,
+        "target_source_path": source_path,
+        "target_test_path": test_path,
+        "validation_command": validation_command,
+    }
+    rows = [
+        {
+            **base,
+            "knowledge_category": "click_parameter_default_handling",
+            "problem_label": "click_option_help_default_rendering",
+            "behavior_facts": [
+                "Option help rendering asks get_default with call=False before formatting default text.",
+                "show_default may be option-local, context-level, or a literal display string.",
+                "default values flow into help formatting before stringification.",
+            ],
+            "source_evidence": {
+                "methods": _pick_methods(
+                    core_context,
+                    ["Option.get_help_extra", "Option.get_default", "Parameter.consume_value"],
+                ),
+                "default_value_branches": core_context["default_value_branches"],
+            },
+            "test_evidence": {
+                "default_help_tests": test_context["default_help_tests"],
+            },
+        },
+        {
+            **base,
+            "knowledge_category": "click_type_conversion_semantics",
+            "problem_label": "click_parameter_type_cast_pipeline",
+            "behavior_facts": [
+                "Parameter.process_value is the layer that shields type_cast_value from UNSET.",
+                "type_cast_value applies the parameter type and handles multiple or nargs shapes.",
+                "value_is_missing treats UNSET and empty multi-value tuples as missing.",
+            ],
+            "source_evidence": {
+                "methods": _pick_methods(
+                    core_context,
+                    [
+                        "Parameter.type_cast_value",
+                        "Parameter.process_value",
+                        "Parameter.value_is_missing",
+                    ],
+                ),
+                "type_cast_call_shapes": core_context["type_cast_call_shapes"],
+            },
+            "test_evidence": {
+                "option_default_tests": test_context["default_help_tests"],
+            },
+        },
+        {
+            **base,
+            "knowledge_category": "click_non_string_default_handling",
+            "problem_label": "non_string_default_help_rendering",
+            "behavior_facts": [
+                "Non-string default objects can reach Option.get_help_extra.",
+                "String-specific empty checks must be guarded before comparing with arbitrary objects.",
+                "Fallback rendering uses str(default_value) for objects not handled by earlier branches.",
+            ],
+            "source_evidence": {
+                "methods": _pick_methods(core_context, ["Option.get_help_extra"]),
+                "empty_string_comparison": core_context["empty_string_comparison"],
+            },
+            "test_evidence": {
+                "strict_equality_reproduction_shape": test_context[
+                    "strict_equality_reproduction_shape"
+                ],
+            },
+        },
+        {
+            **base,
+            "knowledge_category": "click_empty_string_check_semantics",
+            "problem_label": "empty_string_default_display",
+            "behavior_facts": [
+                "An empty string default is a real displayable default for help output.",
+                "The displayed help value for an empty string default is a quoted empty string.",
+                "The empty-string branch must not classify unrelated non-string defaults.",
+            ],
+            "source_evidence": {
+                "methods": _pick_methods(core_context, ["Option.get_help_extra"]),
+                "empty_string_comparison": core_context["empty_string_comparison"],
+            },
+            "test_evidence": {
+                "empty_string_tests": test_context["empty_string_tests"],
+            },
+        },
+        {
+            **base,
+            "knowledge_category": "third_party_semver_version_reproduction",
+            "problem_label": "semver_version_default_comparison",
+            "behavior_facts": [
+                "The replay issue reports semver.Version as the non-string default object.",
+                "The accepted regression shape can be reproduced with an object whose equality rejects string operands.",
+                "The candidate should not require semver as a hard test dependency when a local strict-equality double captures the same comparison failure.",
+            ],
+            "issue_pr": {
+                "issue_number": prompt_source.get("issue_number"),
+                "issue_title": prompt_source.get("issue_title"),
+                "issue_url": prompt_source.get("issue_url"),
+                "pull_request_number": prompt_source.get("pull_request_number"),
+                "pull_request_url": prompt_source.get("pull_request_url"),
+            },
+            "test_evidence": {
+                "strict_equality_reproduction_shape": test_context[
+                    "strict_equality_reproduction_shape"
+                ],
+            },
+        },
+    ]
+    return tuple(
+        _source_record(
+            record_type="library_idiom_record",
+            repo=repo,
+            context=context,
+            source_kind="repo_file",
+            source_path=source_path if row["knowledge_category"].startswith("click_") else test_path,
+            provenance_paths=[source_path, test_path, "task:" + replay_id],
+            confidence="observed",
+            links=links,
+            data=row,
+        )
+        for row in rows
+    )
 
 
 def _pytest_pattern_records(
@@ -659,6 +1010,316 @@ def _test_import_examples(
     return examples[:10]
 
 
+def _issue_pr_summary(replay_row: Mapping[str, object]) -> dict[str, object]:
+    prompt_source = _mapping(replay_row.get("prompt_source"), field="prompt_source")
+    accepted_change = _mapping(replay_row.get("accepted_change"), field="accepted_change")
+    return {
+        "issue_number": prompt_source.get("issue_number"),
+        "issue_title": prompt_source.get("issue_title"),
+        "issue_url": prompt_source.get("issue_url"),
+        "pull_request_number": prompt_source.get("pull_request_number"),
+        "pull_request_title": prompt_source.get("pull_request_title"),
+        "pull_request_url": prompt_source.get("pull_request_url"),
+        "merge_commit_sha": accepted_change.get("merge_commit_sha"),
+    }
+
+
+def _python_file_context(
+    repo: Path,
+    relative_path: str,
+    *,
+    focus_names: Sequence[str],
+) -> dict[str, object]:
+    path = repo / relative_path
+    tree = _parse_python(path)
+    classes = []
+    functions = []
+    for node in tree.body:
+        if isinstance(node, ast.ClassDef):
+            methods = [
+                {
+                    "name": child.name,
+                    "line_span": [child.lineno, child.end_lineno or child.lineno],
+                    "argument_names": [arg.arg for arg in child.args.args],
+                }
+                for child in node.body
+                if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef))
+            ]
+            if not focus_names or any(name in node.name for name in focus_names):
+                classes.append(
+                    {
+                        "name": node.name,
+                        "line_span": [node.lineno, node.end_lineno or node.lineno],
+                        "methods": methods,
+                    }
+                )
+        elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            if not focus_names or any(node.name.startswith(name) for name in focus_names):
+                functions.append(_function_test_shape(node))
+    return {
+        "path": relative_path,
+        "imports": list(_imports(tree))[:20],
+        "classes": classes[:10],
+        "functions": functions[:25],
+        "sha256": _sha256_bytes(path.read_bytes()),
+    }
+
+
+def _click_core_semantic_context(path: Path) -> dict[str, object]:
+    tree = _parse_python(path)
+    methods: dict[str, dict[str, object]] = {}
+    for class_node in [node for node in tree.body if isinstance(node, ast.ClassDef)]:
+        if class_node.name not in {"Parameter", "Option"}:
+            continue
+        for child in class_node.body:
+            if not isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                continue
+            key = f"{class_node.name}.{child.name}"
+            calls = sorted(
+                {
+                    _call_name(grandchild.func)
+                    for grandchild in ast.walk(child)
+                    if isinstance(grandchild, ast.Call) and _call_name(grandchild.func)
+                }
+            )
+            methods[key] = {
+                "name": key,
+                "line_span": [child.lineno, child.end_lineno or child.lineno],
+                "argument_names": [arg.arg for arg in child.args.args],
+                "call_names": calls[:30],
+            }
+    return {
+        "methods": methods,
+        "default_value_branches": _branch_shapes(
+            tree,
+            function_name="get_help_extra",
+            left_name="default_value",
+        ),
+        "empty_string_comparison": _empty_string_comparison_shape(tree),
+        "type_cast_call_shapes": _type_cast_call_shapes(tree),
+    }
+
+
+def _click_option_test_context(path: Path) -> dict[str, object]:
+    tree = _parse_python(path)
+    functions = [
+        node
+        for node in tree.body
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+    ]
+    classes = [node for node in tree.body if isinstance(node, ast.ClassDef)]
+    default_help_tests = [
+        _function_test_shape(node)
+        for node in functions
+        if "default" in node.name or _function_uses_click_option(node)
+    ]
+    empty_string_tests = [
+        shape
+        for shape in default_help_tests
+        if "empty" in str(shape.get("name", "")) or '""' in str(shape.get("string_literals", ()))
+    ]
+    strict_classes = [
+        {
+            "name": node.name,
+            "line_span": [node.lineno, node.end_lineno or node.lineno],
+            "methods": [
+                child.name
+                for child in node.body
+                if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef))
+            ],
+        }
+        for node in classes
+        if any(
+            isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef))
+            and child.name in {"__eq__", "__str__"}
+            for child in node.body
+        )
+    ]
+    return {
+        "default_help_tests": default_help_tests[:20],
+        "empty_string_tests": empty_string_tests[:10],
+        "strict_equality_reproduction_shape": {
+            "classes": strict_classes[:5],
+            "parametrized_default_tests": [
+                shape
+                for shape in default_help_tests
+                if shape.get("parametrize") is not None
+            ][:5],
+        },
+    }
+
+
+def _function_test_shape(node: ast.FunctionDef | ast.AsyncFunctionDef) -> dict[str, object]:
+    calls = sorted(
+        {
+            _call_name(child.func)
+            for child in ast.walk(node)
+            if isinstance(child, ast.Call) and _call_name(child.func)
+        }
+    )
+    string_literals = sorted(
+        {
+            child.value
+            for child in ast.walk(node)
+            if isinstance(child, ast.Constant) and isinstance(child.value, str)
+        }
+    )
+    return {
+        "name": node.name,
+        "line_span": [node.lineno, node.end_lineno or node.lineno],
+        "argument_names": [arg.arg for arg in node.args.args],
+        "call_names": calls[:30],
+        "string_literals": string_literals[:20],
+        "parametrize": _parametrize_shape(node.decorator_list),
+    }
+
+
+def _function_uses_click_option(node: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
+    for child in ast.walk(node):
+        if isinstance(child, ast.Call) and _call_name(child.func) in {
+            "click.Option",
+            "Option",
+        }:
+            return True
+    return False
+
+
+def _pick_methods(
+    core_context: Mapping[str, object],
+    names: Sequence[str],
+) -> list[dict[str, object]]:
+    methods = _mapping(core_context.get("methods"), field="methods")
+    picked = []
+    for name in names:
+        method = methods.get(name)
+        if isinstance(method, Mapping):
+            picked.append(dict(method))
+    return picked
+
+
+def _branch_shapes(
+    tree: ast.Module,
+    *,
+    function_name: str,
+    left_name: str,
+) -> list[dict[str, object]]:
+    branches = []
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        if node.name != function_name:
+            continue
+        for child in ast.walk(node):
+            if isinstance(child, ast.If):
+                names = sorted(_names_in_node(child.test))
+                if left_name in names:
+                    branches.append(
+                        {
+                            "line": child.lineno,
+                            "test_names": names,
+                            "test_shape": type(child.test).__name__,
+                            "call_names": sorted(_calls_in_node(child.test)),
+                        }
+                    )
+    return branches
+
+
+def _empty_string_comparison_shape(tree: ast.Module) -> dict[str, object]:
+    comparisons = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Compare):
+            continue
+        literals = [
+            comparator.value
+            for comparator in node.comparators
+            if isinstance(comparator, ast.Constant) and isinstance(comparator.value, str)
+        ]
+        names = sorted(_names_in_node(node))
+        if "" in literals and "default_value" in names:
+            comparisons.append(
+                {
+                    "line": node.lineno,
+                    "names": names,
+                    "operators": [type(operator).__name__ for operator in node.ops],
+                    "string_literals": literals,
+                    "has_isinstance_string_guard_in_same_test": _has_isinstance_string_guard(node),
+                }
+            )
+    return {
+        "comparisons": comparisons,
+        "unguarded_empty_string_comparison_present": any(
+            not item["has_isinstance_string_guard_in_same_test"] for item in comparisons
+        ),
+    }
+
+
+def _type_cast_call_shapes(tree: ast.Module) -> list[dict[str, object]]:
+    shapes = []
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        if node.name not in {"type_cast_value", "process_value", "value_is_missing"}:
+            continue
+        shapes.append(
+            {
+                "function": node.name,
+                "line_span": [node.lineno, node.end_lineno or node.lineno],
+                "call_names": sorted(_calls_in_node(node))[:30],
+                "mentions": sorted(_names_in_node(node) & {"UNSET", "multiple", "nargs"}),
+            }
+        )
+    return shapes
+
+
+def _names_in_node(node: ast.AST) -> set[str]:
+    names = set()
+    for child in ast.walk(node):
+        if isinstance(child, ast.Name):
+            names.add(child.id)
+        elif isinstance(child, ast.Attribute):
+            names.add(child.attr)
+    return names
+
+
+def _calls_in_node(node: ast.AST) -> set[str]:
+    return {
+        _call_name(child.func)
+        for child in ast.walk(node)
+        if isinstance(child, ast.Call) and _call_name(child.func)
+    }
+
+
+def _has_isinstance_string_guard(node: ast.AST) -> bool:
+    parent = node
+    while isinstance(parent, ast.BoolOp):
+        parent = parent.values[0]
+    for child in ast.walk(node):
+        if isinstance(child, ast.Call) and _call_name(child.func) == "isinstance":
+            if len(child.args) >= 2 and _call_name(child.args[1]) == "str":
+                return True
+    return False
+
+
+def _click_source_path(changed_files: Sequence[str]) -> str:
+    for path in changed_files:
+        if path == "src/click/core.py":
+            return path
+    for path in changed_files:
+        if not _is_test_file(path):
+            return path
+    raise ValueError("Click replay row must include a source changed file")
+
+
+def _click_test_path(changed_files: Sequence[str]) -> str:
+    for path in changed_files:
+        if path == "tests/test_options.py":
+            return path
+    for path in changed_files:
+        if _is_test_file(path):
+            return path
+    raise ValueError("Click replay row must include a test changed file")
+
+
 def _pytest_config_list(
     pyproject: Mapping[str, object],
     pytest_ini: Mapping[str, str],
@@ -855,6 +1516,16 @@ def _required_str(row: Mapping[str, object], field: str) -> str:
     return value
 
 
+def _optional_str(value: object) -> str:
+    return value if isinstance(value, str) else ""
+
+
+def _mapping(value: object, *, field: str) -> Mapping[str, object]:
+    if not isinstance(value, Mapping):
+        raise ValueError(f"{field} must be an object")
+    return value
+
+
 def _string_sequence(value: object) -> list[str]:
     if value is None:
         return []
@@ -930,3 +1601,85 @@ def _contains_raw_blob_key(value: object) -> bool:
     elif isinstance(value, list):
         return any(_contains_raw_blob_key(item) for item in value)
     return False
+
+
+def _load_manifest_replay_row(manifest: Path, replay_id: str) -> Mapping[str, object]:
+    payload = json.loads(manifest.read_text(encoding="utf-8"))
+    records = payload.get("records")
+    if not isinstance(records, list):
+        raise ValueError("issue/PR replay manifest must contain records")
+    for row in records:
+        if isinstance(row, Mapping) and row.get("id") == replay_id:
+            return row
+    raise ValueError(f"replay row not found in manifest: {replay_id}")
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description="Emit compact local-knowledge records from local sources."
+    )
+    parser.add_argument("--click-replay-row", help="issue/PR replay row id to extract")
+    parser.add_argument(
+        "--manifest",
+        type=Path,
+        default=Path("examples/issue_pr_mini_replay/manifest.json"),
+        help="issue/PR mini replay manifest",
+    )
+    parser.add_argument("--repo", type=Path, help="local repo-before checkout")
+    parser.add_argument("--out", type=Path, required=True, help="output JSONL path")
+    parser.add_argument("--retrieved-at", default="unknown")
+    parser.add_argument(
+        "--setup-command",
+        action="append",
+        default=[],
+        help="setup command to store in validation recipe records",
+    )
+    parser.add_argument(
+        "--baseline-validation-command",
+        action="append",
+        default=[],
+        help="baseline validation command to store in validation recipe records",
+    )
+    args = parser.parse_args(argv)
+
+    if args.click_replay_row:
+        if args.repo is None:
+            parser.error("--repo is required with --click-replay-row")
+        row = _load_manifest_replay_row(args.manifest, args.click_replay_row)
+        records = build_click_replay_local_knowledge_records(
+            args.repo,
+            row,
+            retrieved_at=args.retrieved_at,
+            setup_commands=args.setup_command,
+            baseline_validation_commands=args.baseline_validation_command,
+        )
+    else:
+        parser.error("no extraction mode selected")
+
+    output = write_local_knowledge_jsonl(records, args.out)
+    print(
+        json.dumps(
+            {
+                "output": str(output),
+                "records": len(records),
+                "record_type_counts": dict(
+                    sorted(
+                        {
+                            record_type: sum(
+                                1
+                                for record in records
+                                if record["record_type"] == record_type
+                            )
+                            for record_type in {str(record["record_type"]) for record in records}
+                        }.items()
+                    )
+                ),
+            },
+            sort_keys=True,
+        )
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

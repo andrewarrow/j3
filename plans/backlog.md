@@ -684,7 +684,7 @@ Long-term target:
 
 ### KNOW-004: Click replay local knowledge records
 
-- Status: active
+- Status: done
 - Why: `DATA-007` shows the Click #3298 issue/PR replay row cannot move to
   candidate generation until local knowledge exists for Click default handling,
   type conversion, non-string defaults, and repo test conventions.
@@ -698,6 +698,14 @@ Long-term target:
   extension if these categories cannot be represented honestly.
 - Tests: focused local-knowledge tests, plan consistency, `git diff --check`,
   and a smoke command or fixture proving records can be emitted.
+- Completion note: added `library_idiom_record` and
+  `repo_changed_file_context_record` as the smallest schema extension for
+  issue/PR replay knowledge, plus a Click #3298 extractor and CLI smoke path.
+  The live `/tmp` run emitted eight compact records for
+  `pallets__click-issue-3298-pr-3299`: changed-file context, repo test
+  pattern, focused validation recipe, Click parameter default handling, type
+  conversion semantics, non-string default handling, empty-string check
+  semantics, and third-party `semver.Version` reproduction context.
 
 ### WEDGE-001: Product wedge decision
 

@@ -60,24 +60,6 @@ This is the live coordinator board. Keep it current and compact.
   tests/test_plan_consistency.py -q`, `git diff --check`, and the live
   validation-recipe smoke command when feasible.
 
-### KNOW-004: Click Replay Local Knowledge Records
-
-- Status: active
-- Owner: worker Hubble (`019e3bfa-487c-7cc3-8886-824d0bb43ac8`).
-- Write scope: `j3/local_knowledge.py`, `tests/test_local_knowledge.py`,
-  optional example/report files, generated artifacts under `/tmp`, and plan
-  updates.
-- Acceptance: produce compact local-knowledge records for the Click #3298 row
-  before candidate generation: repo changed-file context, repo test pattern,
-  focused validation recipe, Click parameter default handling, type-conversion
-  semantics, non-string default handling, empty-string check semantics, and
-  third-party `semver.Version` reproduction context, with provenance and split
-  labels. If the existing schema cannot express a category, add the smallest
-  schema extension and tests.
-- Required checks: focused local-knowledge tests, `pytest
-  tests/test_plan_consistency.py -q`, `git diff --check`, and a smoke command
-  or fixture proving the records can be emitted.
-
 ## Ready Queue
 
 These are good next assignments for the next loop:
@@ -111,6 +93,14 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `KNOW-004`: added a narrow Click replay local-knowledge extractor and CLI
+  smoke path for `pallets__click-issue-3298-pr-3299`. The emitted records cover
+  repo changed-file context, repo test pattern, focused validation recipe,
+  Click parameter default handling, type-conversion semantics, non-string
+  default handling, empty-string check semantics, and third-party
+  `semver.Version` reproduction context, all linked to the replay row with
+  provenance hashes and split `train`. Smoke artifact:
+  `/tmp/j3-know-004-click-records.jsonl`.
 - `REAL-012`: reran the full one-file feature shadow score after `MAT-006`,
   counting `iniconfig-feature-section-default`,
   `h11-feature-bytesify-object-message`,

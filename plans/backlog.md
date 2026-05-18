@@ -651,7 +651,7 @@ Long-term target:
 
 ### MAT-007: Real PR materialization coverage refresh
 
-- Status: active
+- Status: done
 - Why: DATA-029 and DATA-035 prove two difficult source/test issue/PR
   candidates can be materialized, but they may still be bespoke wins. The next
   hard question is whether the materialization surface is converging on reusable
@@ -670,6 +670,21 @@ Long-term target:
   criteria for action vocabulary explosion or weak generalization.
 - Tests: plan consistency, `git diff --check`, and focused checker tests if
   code is added.
+- Completion note: refreshed the materialization coverage thesis with 24
+  held-out accepted Python PR diffs plus two validated-candidate reference
+  rows for DATA-029 and DATA-035. Held-out counts are
+  `current_structured_action = 4`, `general_typed_builder = 7`,
+  `repo_convention_builder = 4`, `constrained_local_generator = 7`, and
+  `not_currently_expressible = 2`. DATA-029 and DATA-035 are real
+  constrained-source wins, but they are not counted as held-out generalization
+  because the current action labels remain domain-specific. The report defines
+  failure criteria for action vocabulary explosion, including more than half
+  of new materializer action kinds becoming repo/issue-specific and the next
+  10 held-out constrained-source attempts requiring more than 10 new action
+  kinds total. Artifacts:
+  `docs/MAT_007_REAL_PR_MATERIALIZATION_REFRESH_2026-05-18.md`,
+  `docs/MAT_007_REAL_PR_MATERIALIZATION_REFRESH_2026-05-18.jsonl`, and
+  `/tmp/j3-mat-007-real-pr-materialization-refresh/MAT_007_REAL_PR_MATERIALIZATION_REFRESH_2026-05-18.jsonl`.
 
 ### KNOW-001: Local knowledge inventory for the wedge
 

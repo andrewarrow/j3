@@ -3537,3 +3537,35 @@ meaningful work. Do not replace this file with a daily reset.
   outcomes before claiming issue/PR ranking gains; ranking remains shadow-only.
 - Blockers: current candidate-record features are insufficient for honest
   issue/PR decoy ranking.
+
+### 2026-05-18 - MAT-007 - Real PR materialization coverage refresh
+
+- Owner: worker Bacon (`019e3cb6-2c94-7423-9a3d-db7e5fa19e1d`) with
+  coordinator integration after worker pause.
+- Files changed:
+  `docs/MAT_007_REAL_PR_MATERIALIZATION_REFRESH_2026-05-18.md`,
+  `docs/MAT_007_REAL_PR_MATERIALIZATION_REFRESH_2026-05-18.jsonl`,
+  `plans/active.md`, `plans/backlog.md`, and `plans/progress.md`.
+- Tests: JSONL validation/count script -> 26 rows, including 24
+  `held_out_refresh` rows and 2
+  `validated_candidate_reference_not_held_out_count` rows; held-out label
+  counts are `{"constrained_local_generator":7,"general_typed_builder":7,
+  "current_structured_action":4,"repo_convention_builder":4,
+  "not_currently_expressible":2}`; copied JSONL to
+  `/tmp/j3-mat-007-real-pr-materialization-refresh/`; `pytest
+  tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check` ->
+  passed.
+- Result: refreshed the MAT-001 action-coverage thesis after DATA-029 and
+  DATA-035. The two validated candidates are real constrained-source/test wins,
+  but they do not yet count as held-out generalization because their action
+  labels remain domain-specific. The held-out panel still shows large
+  constrained-generator and typed-builder buckets, so the next materialization
+  task should require reusable source-region/method-insert/call-site/pytest
+  insertion action records rather than another PR-named materializer.
+- Commit: pending.
+- Push: pending.
+- Next: attempt `requests#7427` or `pytest#14475` with reusable
+  parameterized source-region and pytest insertion actions, or build the typed
+  annotation/import middle layer exposed by the 7 held-out typed-builder rows.
+- Blockers: DATA-029/DATA-035 have not yet proven reusable held-out
+  generalization; action vocabulary explosion remains a concrete risk.

@@ -44,19 +44,8 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-### `MAT-007`: Real PR materialization coverage refresh
-
-- Status: active
-- Owner: worker Bacon (`019e3cb6-2c94-7423-9a3d-db7e5fa19e1d`).
-- Write scope: materialization-audit docs or data under `docs/` and `/tmp`,
-  optional focused checker/tests, and planning updates. Do not implement new
-  materializers in this task.
-- Acceptance: refresh the MAT-001 action-coverage thesis against a held-out
-  sample of real accepted Python PR diffs after DATA-029 and DATA-035. Report
-  current-structured-action, general-builder, repo-convention-builder,
-  constrained-local-generator, and not-expressible counts; identify whether the
-  bounded materializer wins are generalizing or becoming bespoke actions; and
-  define concrete failure criteria for action vocabulary explosion.
+No active worker tasks at this instant; the coordinator is recording the next
+dispatch. Continuous loop mode still applies.
 
 ## Ready Queue
 
@@ -89,6 +78,18 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `MAT-007`: refreshed real PR materialization coverage after the DATA-029 and
+  DATA-035 validated candidate wins. The held-out panel contains 24 accepted
+  Python PR diffs, excluding the two validated candidate reference rows.
+  Counts remain challenging: `current_structured_action = 4`,
+  `general_typed_builder = 7`, `repo_convention_builder = 4`,
+  `constrained_local_generator = 7`, and `not_currently_expressible = 2`.
+  The result confirms that DATA-029 and DATA-035 are real constrained-source
+  wins, but they do not yet collapse the held-out constrained bucket because
+  the implemented action labels remain domain-specific. Artifacts:
+  `docs/MAT_007_REAL_PR_MATERIALIZATION_REFRESH_2026-05-18.md`,
+  `docs/MAT_007_REAL_PR_MATERIALIZATION_REFRESH_2026-05-18.jsonl`, and
+  `/tmp/j3-mat-007-real-pr-materialization-refresh/MAT_007_REAL_PR_MATERIALIZATION_REFRESH_2026-05-18.jsonl`.
 - `DATA-037`: added a shadow-only real issue/PR ranking decoy harness for the
   validated DATA-029 pytest #14462 and DATA-035 Scrapy #7293 candidate records.
   Each row has one accepted validated candidate and four realistic decoys. The

@@ -1,0 +1,571 @@
+{
+  "schema_version": "issue-pr-mini-replay-v0",
+  "record_kind": "issue_pr_mini_replay_manifest",
+  "curated_at": "2026-05-18",
+  "source": {
+    "kind": "curated_github_metadata",
+    "provider": "github",
+    "retrieved_with": "gh api graphql",
+    "live_api_access_required_for_manifest_use": false,
+    "notes": [
+      "Checked-in rows intentionally keep only compact reviewed metadata, titles, links, refs, changed paths, labels, and validation commands.",
+      "Issue bodies, PR bodies, patches, and harvested diffs are not stored in git."
+    ]
+  },
+  "license_and_terms": {
+    "hosting_terms": "Public GitHub issue and PR metadata; verify redistribution and training use before expanding beyond compact metadata.",
+    "repository_licenses": [
+      "Apache-2.0",
+      "BSD-3-Clause",
+      "MIT"
+    ]
+  },
+  "split_policy": {
+    "method": "sha256(record.id) % 100",
+    "train": "0-69",
+    "validation": "70-84",
+    "test": "85-99"
+  },
+  "residual_label_vocabulary": [
+    "local_knowledge_gap",
+    "materialization_gap",
+    "validation_gap",
+    "ranking_gap",
+    "prompt_spec_parsing_gap"
+  ],
+  "records": [
+    {
+      "id": "psf__requests-issue-7432-pr-7433",
+      "repo": "psf/requests",
+      "prompt_text": "Fix issue #7432: `prepare_body` stream detection regression. Accepted PR #7433 fixes stream detection for `__getattr__`-based file wrappers.",
+      "prompt_source": {
+        "issue_number": 7432,
+        "issue_title": "`prepare_body` stream detection regression",
+        "issue_url": "https://github.com/psf/requests/issues/7432",
+        "pull_request_number": 7433,
+        "pull_request_title": "Fix `prepare_body` stream detection for `__getattr__`-based file wrappers",
+        "pull_request_url": "https://github.com/psf/requests/pull/7433"
+      },
+      "repo_before_ref": {
+        "provider": "github",
+        "repo": "psf/requests",
+        "branch": "main",
+        "sha": "0b401c76b6e80a4eecf3c690085b2553f6e261ca"
+      },
+      "accepted_change": {
+        "kind": "merged_pull_request",
+        "pull_request_url": "https://github.com/psf/requests/pull/7433",
+        "diff_url": "https://github.com/psf/requests/pull/7433.diff",
+        "merge_commit_sha": "6404f345e562d962abe6700a1c357ec1e7e18232",
+        "changed_files": [
+          "src/requests/models.py",
+          "tests/test_requests.py"
+        ]
+      },
+      "validation": {
+        "command": "pytest tests/test_requests.py -q",
+        "source": "inferred_from_changed_tests",
+        "availability": "partial"
+      },
+      "provenance_license": {
+        "repository_url": "https://github.com/psf/requests",
+        "license_spdx": "Apache-2.0",
+        "license_url": "http://choosealicense.com/licenses/apache-2.0/",
+        "review_status": "curated_metadata_only"
+      },
+      "stable_split": {
+        "method": "sha256(id) % 100",
+        "bucket": 42,
+        "split": "train"
+      },
+      "initial_residual_labels": [
+        "prompt_spec_parsing_gap",
+        "local_knowledge_gap",
+        "ranking_gap"
+      ]
+    },
+    {
+      "id": "pallets__click-issue-2745-pr-3364",
+      "repo": "pallets/click",
+      "prompt_text": "Fix issue #2745: modifying `default_map` in a callback behaves differently between Click 7.1.2 and 8.0.0. Accepted PR #3364 splits string values from `default_map` for multi-value parameters.",
+      "prompt_source": {
+        "issue_number": 2745,
+        "issue_title": "Modifying `default_map` in callback behaves differently between click 7.1.2 and 8.0.0",
+        "issue_url": "https://github.com/pallets/click/issues/2745",
+        "pull_request_number": 3364,
+        "pull_request_title": "Split string values from `default_map` for multi-value parameters",
+        "pull_request_url": "https://github.com/pallets/click/pull/3364"
+      },
+      "repo_before_ref": {
+        "provider": "github",
+        "repo": "pallets/click",
+        "branch": "main",
+        "sha": "8a2b48901a08b3d2ec3a9bbd151948a9765368c6"
+      },
+      "accepted_change": {
+        "kind": "merged_pull_request",
+        "pull_request_url": "https://github.com/pallets/click/pull/3364",
+        "diff_url": "https://github.com/pallets/click/pull/3364.diff",
+        "merge_commit_sha": "c8da1fcc2cb4523c1fb5bef7f0ca82394dde1efd",
+        "changed_files": [
+          "CHANGES.rst",
+          "docs/commands.md",
+          "docs/conf.py",
+          "src/click/core.py",
+          "tests/test_defaults.py"
+        ]
+      },
+      "validation": {
+        "command": "pytest tests/test_defaults.py -q",
+        "source": "inferred_from_changed_tests",
+        "availability": "partial"
+      },
+      "provenance_license": {
+        "repository_url": "https://github.com/pallets/click",
+        "license_spdx": "BSD-3-Clause",
+        "license_url": "http://choosealicense.com/licenses/bsd-3-clause/",
+        "review_status": "curated_metadata_only"
+      },
+      "stable_split": {
+        "method": "sha256(id) % 100",
+        "bucket": 52,
+        "split": "train"
+      },
+      "initial_residual_labels": [
+        "prompt_spec_parsing_gap",
+        "materialization_gap",
+        "ranking_gap"
+      ]
+    },
+    {
+      "id": "pallets__click-issue-3298-pr-3299",
+      "repo": "pallets/click",
+      "prompt_text": "Fix issue #3298: a semver.Version default causes an error. Accepted PR #3299 fixes a speculative empty string check.",
+      "prompt_source": {
+        "issue_number": 3298,
+        "issue_title": "semver.Version as default causing an error",
+        "issue_url": "https://github.com/pallets/click/issues/3298",
+        "pull_request_number": 3299,
+        "pull_request_title": "Fix speculative empty string check",
+        "pull_request_url": "https://github.com/pallets/click/pull/3299"
+      },
+      "repo_before_ref": {
+        "provider": "github",
+        "repo": "pallets/click",
+        "branch": "stable",
+        "sha": "04ef3a6f473deb2499721a8d11f92a7d2c0912f2"
+      },
+      "accepted_change": {
+        "kind": "merged_pull_request",
+        "pull_request_url": "https://github.com/pallets/click/pull/3299",
+        "diff_url": "https://github.com/pallets/click/pull/3299.diff",
+        "merge_commit_sha": "1458800409ed12076f18451889b0857db36aa522",
+        "changed_files": [
+          "src/click/core.py",
+          "tests/test_options.py"
+        ]
+      },
+      "validation": {
+        "command": "pytest tests/test_options.py -q",
+        "source": "inferred_from_changed_tests",
+        "availability": "partial"
+      },
+      "provenance_license": {
+        "repository_url": "https://github.com/pallets/click",
+        "license_spdx": "BSD-3-Clause",
+        "license_url": "http://choosealicense.com/licenses/bsd-3-clause/",
+        "review_status": "curated_metadata_only"
+      },
+      "stable_split": {
+        "method": "sha256(id) % 100",
+        "bucket": 30,
+        "split": "train"
+      },
+      "initial_residual_labels": [
+        "prompt_spec_parsing_gap",
+        "local_knowledge_gap",
+        "ranking_gap"
+      ]
+    },
+    {
+      "id": "pytest-dev__pytest-issue-14442-pr-14443",
+      "repo": "pytest-dev/pytest",
+      "prompt_text": "Fix issue #14442: `--strict-markers` and `--strict-config` in `addopts` silently stopped working. Accepted PR #14443 fixes strict options from addopts.",
+      "prompt_source": {
+        "issue_number": 14442,
+        "issue_title": "`--strict-markers` / `--strict-config` via `addopts` silently stopped working (pytest 9 regression)",
+        "issue_url": "https://github.com/pytest-dev/pytest/issues/14442",
+        "pull_request_number": 14443,
+        "pull_request_title": "Fix strict options from addopts",
+        "pull_request_url": "https://github.com/pytest-dev/pytest/pull/14443"
+      },
+      "repo_before_ref": {
+        "provider": "github",
+        "repo": "pytest-dev/pytest",
+        "branch": "main",
+        "sha": "8f81c76744daf72d4f77cfc8423f4bdc60733d78"
+      },
+      "accepted_change": {
+        "kind": "merged_pull_request",
+        "pull_request_url": "https://github.com/pytest-dev/pytest/pull/14443",
+        "diff_url": "https://github.com/pytest-dev/pytest/pull/14443.diff",
+        "merge_commit_sha": "a481f264d70ac3d053d5f7408f4ac1ec439d0c2f",
+        "changed_files": [
+          "AUTHORS",
+          "changelog/14442.bugfix.rst",
+          "src/_pytest/config/__init__.py",
+          "testing/test_config.py",
+          "testing/test_mark.py"
+        ]
+      },
+      "validation": {
+        "command": "pytest testing/test_config.py testing/test_mark.py -q",
+        "source": "inferred_from_changed_tests",
+        "availability": "partial"
+      },
+      "provenance_license": {
+        "repository_url": "https://github.com/pytest-dev/pytest",
+        "license_spdx": "MIT",
+        "license_url": "http://choosealicense.com/licenses/mit/",
+        "review_status": "curated_metadata_only"
+      },
+      "stable_split": {
+        "method": "sha256(id) % 100",
+        "bucket": 33,
+        "split": "train"
+      },
+      "initial_residual_labels": [
+        "prompt_spec_parsing_gap",
+        "local_knowledge_gap",
+        "validation_gap",
+        "ranking_gap"
+      ]
+    },
+    {
+      "id": "pytest-dev__pytest-issue-14462-pr-14466",
+      "repo": "pytest-dev/pytest",
+      "prompt_text": "Fix issue #14462: `approx` with timedelta treats the `rel` parameter like an absolute tolerance. Accepted PR #14466 accepts float rel values and computes relative tolerance from the expected value.",
+      "prompt_source": {
+        "issue_number": 14462,
+        "issue_title": "approx with timedelta: rel parameter treated as absolute tolerance despite its name",
+        "issue_url": "https://github.com/pytest-dev/pytest/issues/14462",
+        "pull_request_number": 14466,
+        "pull_request_title": "fix approx rel for timedelta: accept float, compute rel * expected",
+        "pull_request_url": "https://github.com/pytest-dev/pytest/pull/14466"
+      },
+      "repo_before_ref": {
+        "provider": "github",
+        "repo": "pytest-dev/pytest",
+        "branch": "main",
+        "sha": "fbab7c5dfe63a22f545207e8dc163ed61ad51d98"
+      },
+      "accepted_change": {
+        "kind": "merged_pull_request",
+        "pull_request_url": "https://github.com/pytest-dev/pytest/pull/14466",
+        "diff_url": "https://github.com/pytest-dev/pytest/pull/14466.diff",
+        "merge_commit_sha": "2c555d62fa2c51ccb0c4c1cdd6243149ce4ffa97",
+        "changed_files": [
+          "src/_pytest/python_api.py",
+          "testing/python/approx.py"
+        ]
+      },
+      "validation": {
+        "command": "pytest testing/python/approx.py -q",
+        "source": "inferred_from_changed_tests",
+        "availability": "partial"
+      },
+      "provenance_license": {
+        "repository_url": "https://github.com/pytest-dev/pytest",
+        "license_spdx": "MIT",
+        "license_url": "http://choosealicense.com/licenses/mit/",
+        "review_status": "curated_metadata_only"
+      },
+      "stable_split": {
+        "method": "sha256(id) % 100",
+        "bucket": 66,
+        "split": "train"
+      },
+      "initial_residual_labels": [
+        "local_knowledge_gap",
+        "materialization_gap",
+        "ranking_gap"
+      ]
+    },
+    {
+      "id": "pytest-dev__pytest-issue-14381-pr-14382",
+      "repo": "pytest-dev/pytest",
+      "prompt_text": "Fix issue #14381: the short version option `-V` does not show version information. Accepted PR #14382 fixes `-V` handling.",
+      "prompt_source": {
+        "issue_number": 14381,
+        "issue_title": "Version short name (-V) does not appear to work",
+        "issue_url": "https://github.com/pytest-dev/pytest/issues/14381",
+        "pull_request_number": 14382,
+        "pull_request_title": "Fix `-V` to show version information",
+        "pull_request_url": "https://github.com/pytest-dev/pytest/pull/14382"
+      },
+      "repo_before_ref": {
+        "provider": "github",
+        "repo": "pytest-dev/pytest",
+        "branch": "main",
+        "sha": "8ecf49ec2807768105b05dda5461b28cdad89d03"
+      },
+      "accepted_change": {
+        "kind": "merged_pull_request",
+        "pull_request_url": "https://github.com/pytest-dev/pytest/pull/14382",
+        "diff_url": "https://github.com/pytest-dev/pytest/pull/14382.diff",
+        "merge_commit_sha": "d72943a57266ef368fb3498a3fd136cbf1c7aee6",
+        "changed_files": [
+          "changelog/14381.bugfix.rst",
+          "src/_pytest/config/__init__.py",
+          "testing/test_helpconfig.py"
+        ]
+      },
+      "validation": {
+        "command": "pytest testing/test_helpconfig.py -q",
+        "source": "inferred_from_changed_tests",
+        "availability": "partial"
+      },
+      "provenance_license": {
+        "repository_url": "https://github.com/pytest-dev/pytest",
+        "license_spdx": "MIT",
+        "license_url": "http://choosealicense.com/licenses/mit/",
+        "review_status": "curated_metadata_only"
+      },
+      "stable_split": {
+        "method": "sha256(id) % 100",
+        "bucket": 65,
+        "split": "train"
+      },
+      "initial_residual_labels": [
+        "prompt_spec_parsing_gap",
+        "materialization_gap",
+        "validation_gap"
+      ]
+    },
+    {
+      "id": "python-poetry__poetry-issue-1328-pr-10845",
+      "repo": "python-poetry/poetry",
+      "prompt_text": "Fix issue #1328: periods in a repository name cause problems. Accepted PR #10845 supports periods in repository names.",
+      "prompt_source": {
+        "issue_number": 1328,
+        "issue_title": "Period(s) in repository \"name\" causes issues",
+        "issue_url": "https://github.com/python-poetry/poetry/issues/1328",
+        "pull_request_number": 10845,
+        "pull_request_title": "fix: support periods in repository names",
+        "pull_request_url": "https://github.com/python-poetry/poetry/pull/10845"
+      },
+      "repo_before_ref": {
+        "provider": "github",
+        "repo": "python-poetry/poetry",
+        "branch": "main",
+        "sha": "720d3cd161d97ebc3dcacecc94a611135bdab35c"
+      },
+      "accepted_change": {
+        "kind": "merged_pull_request",
+        "pull_request_url": "https://github.com/python-poetry/poetry/pull/10845",
+        "diff_url": "https://github.com/python-poetry/poetry/pull/10845.diff",
+        "merge_commit_sha": "8d84f20b5e20e52c340c7a9f60f1a6487d87558f",
+        "changed_files": [
+          "src/poetry/config/config.py",
+          "src/poetry/config/config_source.py",
+          "src/poetry/config/dict_config_source.py",
+          "src/poetry/config/file_config_source.py",
+          "src/poetry/console/commands/config.py",
+          "src/poetry/publishing/publisher.py",
+          "src/poetry/utils/authenticator.py",
+          "src/poetry/utils/password_manager.py",
+          "tests/config/test_dict_config_source.py",
+          "tests/config/test_file_config_source.py",
+          "tests/conftest.py",
+          "tests/console/commands/test_config.py"
+        ]
+      },
+      "validation": {
+        "command": "pytest tests/config/test_dict_config_source.py tests/config/test_file_config_source.py tests/console/commands/test_config.py -q",
+        "source": "inferred_from_changed_tests",
+        "availability": "partial"
+      },
+      "provenance_license": {
+        "repository_url": "https://github.com/python-poetry/poetry",
+        "license_spdx": "MIT",
+        "license_url": "http://choosealicense.com/licenses/mit/",
+        "review_status": "curated_metadata_only"
+      },
+      "stable_split": {
+        "method": "sha256(id) % 100",
+        "bucket": 29,
+        "split": "train"
+      },
+      "initial_residual_labels": [
+        "prompt_spec_parsing_gap",
+        "local_knowledge_gap",
+        "materialization_gap",
+        "validation_gap",
+        "ranking_gap"
+      ]
+    },
+    {
+      "id": "pypa__pip-issue-12018-pr-13886",
+      "repo": "pypa/pip",
+      "prompt_text": "Fix issue #12018: installing a package with an extra and a URL constraint raises an AssertionError. Accepted PR #13886 allows URL constraints to apply to requirements with extras.",
+      "prompt_source": {
+        "issue_number": 12018,
+        "issue_title": "AssertionError when installing a package with an extra and a URL constraint",
+        "issue_url": "https://github.com/pypa/pip/issues/12018",
+        "pull_request_number": 13886,
+        "pull_request_title": "Allow URL constraints to apply to requirements with extras",
+        "pull_request_url": "https://github.com/pypa/pip/pull/13886"
+      },
+      "repo_before_ref": {
+        "provider": "github",
+        "repo": "pypa/pip",
+        "branch": "main",
+        "sha": "8df7b668b3766e1d4a71246509d64aeec47a805b"
+      },
+      "accepted_change": {
+        "kind": "merged_pull_request",
+        "pull_request_url": "https://github.com/pypa/pip/pull/13886",
+        "diff_url": "https://github.com/pypa/pip/pull/13886.diff",
+        "merge_commit_sha": "b97708aadb64c9f07497f964bb32eb4df0fa2a30",
+        "changed_files": [
+          "news/12018.bugfix.rst",
+          "src/pip/_internal/resolution/resolvelib/factory.py",
+          "tests/functional/test_install_reqs.py"
+        ]
+      },
+      "validation": {
+        "command": "pytest tests/functional/test_install_reqs.py -q",
+        "source": "inferred_from_changed_tests",
+        "availability": "partial"
+      },
+      "provenance_license": {
+        "repository_url": "https://github.com/pypa/pip",
+        "license_spdx": "MIT",
+        "license_url": "http://choosealicense.com/licenses/mit/",
+        "review_status": "curated_metadata_only"
+      },
+      "stable_split": {
+        "method": "sha256(id) % 100",
+        "bucket": 84,
+        "split": "validation"
+      },
+      "initial_residual_labels": [
+        "local_knowledge_gap",
+        "materialization_gap",
+        "validation_gap",
+        "ranking_gap"
+      ]
+    },
+    {
+      "id": "scrapy__scrapy-issue-7293-pr-7351",
+      "repo": "scrapy/scrapy",
+      "prompt_text": "Fix issue #7293: `DownloaderInterface._active_downloads` returns the wrong value. Accepted PR #7351 fixes DownloaderAwarePriorityQueue tie-breaking across slots.",
+      "prompt_source": {
+        "issue_number": 7293,
+        "issue_title": "`DownloaderInterface._active_downloads` function returns wrong value",
+        "issue_url": "https://github.com/scrapy/scrapy/issues/7293",
+        "pull_request_number": 7351,
+        "pull_request_title": "Fix DownloaderAwarePriorityQueue tie-breaking across slots",
+        "pull_request_url": "https://github.com/scrapy/scrapy/pull/7351"
+      },
+      "repo_before_ref": {
+        "provider": "github",
+        "repo": "scrapy/scrapy",
+        "branch": "master",
+        "sha": "2b174e348d88d19dd32135e8e483c4eb784aeca8"
+      },
+      "accepted_change": {
+        "kind": "merged_pull_request",
+        "pull_request_url": "https://github.com/scrapy/scrapy/pull/7351",
+        "diff_url": "https://github.com/scrapy/scrapy/pull/7351.diff",
+        "merge_commit_sha": "b68f26726ac87c5950a4258a8e29bb7ec2e0ebc1",
+        "changed_files": [
+          "scrapy/pqueues.py",
+          "tests/test_pqueues.py"
+        ]
+      },
+      "validation": {
+        "command": "pytest tests/test_pqueues.py -q",
+        "source": "inferred_from_changed_tests",
+        "availability": "partial"
+      },
+      "provenance_license": {
+        "repository_url": "https://github.com/scrapy/scrapy",
+        "license_spdx": "BSD-3-Clause",
+        "license_url": "http://choosealicense.com/licenses/bsd-3-clause/",
+        "review_status": "curated_metadata_only"
+      },
+      "stable_split": {
+        "method": "sha256(id) % 100",
+        "bucket": 84,
+        "split": "validation"
+      },
+      "initial_residual_labels": [
+        "prompt_spec_parsing_gap",
+        "local_knowledge_gap",
+        "ranking_gap"
+      ]
+    },
+    {
+      "id": "python-poetry__poetry-issue-6687-pr-10785",
+      "repo": "python-poetry/poetry",
+      "prompt_text": "Fix issue #6687: omitting a trailing slash on some PEP 503 repositories prevents inferring the correct upload URL. Accepted PR #10785 normalizes the legacy repository URL trailing slash.",
+      "prompt_source": {
+        "issue_number": 6687,
+        "issue_title": "Omitting trailing slash on some PEP 503 repositories prevents inferring the correct upload URL",
+        "issue_url": "https://github.com/python-poetry/poetry/issues/6687",
+        "pull_request_number": 10785,
+        "pull_request_title": "fix(publish): normalize legacy repository URL trailing slash (#6687)",
+        "pull_request_url": "https://github.com/python-poetry/poetry/pull/10785"
+      },
+      "repo_before_ref": {
+        "provider": "github",
+        "repo": "python-poetry/poetry",
+        "branch": "main",
+        "sha": "40bec93fec0425563b52e3175dfcc3d07b936cc4"
+      },
+      "accepted_change": {
+        "kind": "merged_pull_request",
+        "pull_request_url": "https://github.com/python-poetry/poetry/pull/10785",
+        "diff_url": "https://github.com/python-poetry/poetry/pull/10785.diff",
+        "merge_commit_sha": "a35955f4239c129d7599feed8e3a3c39befb4176",
+        "changed_files": [
+          "docs/repositories.md",
+          "src/poetry/publishing/publisher.py",
+          "tests/publishing/test_publisher.py"
+        ]
+      },
+      "validation": {
+        "command": "pytest tests/publishing/test_publisher.py -q",
+        "source": "inferred_from_changed_tests",
+        "availability": "partial"
+      },
+      "provenance_license": {
+        "repository_url": "https://github.com/python-poetry/poetry",
+        "license_spdx": "MIT",
+        "license_url": "http://choosealicense.com/licenses/mit/",
+        "review_status": "curated_metadata_only"
+      },
+      "stable_split": {
+        "method": "sha256(id) % 100",
+        "bucket": 50,
+        "split": "train"
+      },
+      "initial_residual_labels": [
+        "prompt_spec_parsing_gap",
+        "local_knowledge_gap",
+        "materialization_gap",
+        "validation_gap"
+      ]
+    }
+  ],
+  "totals": {
+    "records": 10,
+    "repositories": 5,
+    "split_counts": {
+      "train": 8,
+      "validation": 2,
+      "test": 0
+    }
+  }
+}

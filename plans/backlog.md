@@ -169,7 +169,7 @@ Long-term target:
 
 ### DATA-004: Normalize first 25 real prompt/repo transition examples
 
-- Status: active
+- Status: done
 - Why: trainable prompt understanding needs real user-like task text.
 - Write scope: versioned local data file or external manifest; docs with
   provenance.

@@ -603,3 +603,29 @@ meaningful work. Do not replace this file with a daily reset.
   repo-convention-aware pytest builders, and constrained source-region
   generation.
 - Blockers: none
+
+### 2026-05-18 - DATA-004 - Issue/PR mini replay
+
+- Owner: worker Copernicus (`019e3b45-301a-7a41-8138-3d139d4506b4`)
+- Files changed: `docs/ISSUE_PR_MINI_REPLAY.md`,
+  `examples/issue_pr_mini_replay/manifest.json`,
+  `tests/test_issue_pr_mini_replay.py`, `plans/active.md`,
+  `plans/backlog.md`, `plans/progress.md`
+- Tests: `pytest tests/test_issue_pr_mini_replay.py -q` -> 1 passed;
+  `python -m json.tool examples/issue_pr_mini_replay/manifest.json
+  >/dev/null` -> passed; `pytest tests/test_plan_consistency.py -q` ->
+  6 passed; `git diff --check` -> passed.
+- Result: normalized 10 real GitHub issue/PR examples from Requests, Click,
+  pytest, Poetry, pip, and Scrapy into compact replay rows with prompt text,
+  repo-before refs, accepted PR refs and merge commits, focused validation
+  commands where inferable from changed tests, provenance/license notes,
+  deterministic splits, and initial residual labels. The mini replay exposes
+  immediate blockers in local package knowledge, source materialization,
+  validation setup, candidate ranking, and prompt/spec parsing.
+- Commit: pending worker commit
+- Push: pending worker push
+- Next: build a replay preflight runner that checks out one `repo_before_ref`,
+  verifies dependency setup and baseline validation, and emits blocker labels
+  before attempting edits.
+- Blockers: no large artifacts committed; full issue/PR bodies and diffs still
+  need a reviewed storage/release policy before they can become training data.

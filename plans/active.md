@@ -16,20 +16,6 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-### `DATA-004`: Issue/PR mini replay
-
-- Owner: worker Copernicus (`019e3b45-301a-7a41-8138-3d139d4506b4`)
-- Status: active
-- Write scope: issue/PR mini-replay manifest/docs/fixture data, small checker
-  or schema tests if useful, and plan updates. Do not edit GreenShot
-  implementation files.
-- Acceptance: normalize 10 real issue/PR examples into prompt text,
-  repo_before ref, accepted diff or PR ref, validation command when available,
-  provenance/license notes, stable split, and initial residual labels. The goal
-  is to see what breaks first, not to solve all 10.
-- Tests: schema/checker tests if code is added,
-  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
-
 ## Ready Queue
 
 These are good next assignments for the next loop:
@@ -61,6 +47,13 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `DATA-004`: added `docs/ISSUE_PR_MINI_REPLAY.md`,
+  `examples/issue_pr_mini_replay/manifest.json`, and a schema test for 10
+  curated issue/PR replay rows from Requests, Click, pytest, Poetry, pip, and
+  Scrapy. The manifest records prompt text, repo-before refs, accepted PR refs,
+  focused validation commands where inferable, provenance/license notes,
+  stable splits, and residual labels for local knowledge, materialization,
+  validation, ranking, and prompt/spec parsing blockers.
 - `MAT-001`: added `docs/CODE_MATERIALIZATION_GAP.md`, classifying 25 merged
   Python PR diffs by the weakest materialization layer needed. Result: 4 fit
   current structured actions, 7 need general typed builders, 4 need

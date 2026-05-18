@@ -68,6 +68,14 @@ PYTEST_STRICT_ADDOPTS_REQUIRED_KNOWLEDGE_CATEGORIES = (
     "pytest_changelog_fragment_convention",
     "pytest_authors_convention",
 )
+PYTEST_TIMEDELTA_APPROX_REQUIRED_KNOWLEDGE_CATEGORIES = (
+    "repo_changed_file_context",
+    "focused_validation_recipe",
+    "pytest_approx_timedelta_tolerance_semantics",
+    "pytest_datetime_timedelta_comparison_behavior",
+    "pytest_repo_test_patterns",
+    "pytest_timedelta_approx_readiness_blockers",
+)
 
 
 def extract_local_knowledge_records(
@@ -459,6 +467,102 @@ def build_pytest_strict_addopts_local_knowledge_records(
     )
     records.extend(
         _pytest_strict_idiom_records(
+            resolved,
+            context,
+            replay_id=replay_id,
+            prompt_source=prompt_source,
+            changed_files=changed_files,
+            focused_validation_command=focused_validation_command,
+            links=links,
+        )
+    )
+
+    for record in records:
+        validate_local_knowledge_record(record)
+    return tuple(records)
+
+
+def build_pytest_timedelta_approx_local_knowledge_records(
+    repo: Path,
+    replay_row: Mapping[str, object],
+    *,
+    retrieved_at: str = "unknown",
+    setup_commands: Sequence[str] = (),
+    baseline_validation_commands: Sequence[str] = (),
+) -> tuple[dict[str, object], ...]:
+    """Build pytest #14462/#14466 local-knowledge rows from repo-before."""
+
+    resolved = repo.expanduser().resolve()
+    if not resolved.is_dir():
+        raise FileNotFoundError(f"repo does not exist: {resolved}")
+
+    replay_id = _required_str(replay_row, "id")
+    if replay_id != "pytest-dev__pytest-issue-14462-pr-14466":
+        raise ValueError(f"unsupported pytest timedelta-approx replay row: {replay_id}")
+
+    repo_id = _required_str(replay_row, "repo")
+    repo_before_ref = _mapping(replay_row.get("repo_before_ref"), field="repo_before_ref")
+    accepted_change = _mapping(replay_row.get("accepted_change"), field="accepted_change")
+    validation = _mapping(replay_row.get("validation"), field="validation")
+    provenance_license = _mapping(
+        replay_row.get("provenance_license"),
+        field="provenance_license",
+    )
+    prompt_source = _mapping(replay_row.get("prompt_source"), field="prompt_source")
+    stable_split = _mapping(replay_row.get("stable_split"), field="stable_split")
+
+    changed_files = _string_sequence(accepted_change.get("changed_files", ()))
+    split = _required_str(stable_split, "split")
+    _validate_split(split)
+    focused_validation_command = _required_str(validation, "command")
+
+    context = {
+        "repo_id": repo_id,
+        "repo_ref": _required_str(repo_before_ref, "sha"),
+        "split": split,
+        "repo_url": _optional_str(provenance_license.get("repository_url")),
+        "license": _optional_str(provenance_license.get("license_spdx")),
+        "retrieved_at": retrieved_at,
+    }
+    links = {
+        "task_ids": [replay_id],
+        "outcome_ids": ["DATA-018/pytest-dev__pytest-issue-14462-pr-14466"],
+        "residual_labels": ["local_knowledge_gap"],
+    }
+    task = {
+        "id": replay_id,
+        "task_type": "issue_pr_replay",
+        "allowed_write_paths": changed_files,
+        "public_validation_commands": [focused_validation_command],
+        "expected_failure_modes": ["local_knowledge_gap"],
+        "required_knowledge_categories": (
+            PYTEST_TIMEDELTA_APPROX_REQUIRED_KNOWLEDGE_CATEGORIES
+        ),
+    }
+
+    records: list[dict[str, object]] = [
+        _pytest_approx_changed_file_context_record(
+            resolved,
+            context,
+            replay_row=replay_row,
+            changed_files=changed_files,
+            links=links,
+        )
+    ]
+    records.extend(
+        _validation_recipe_records(
+            resolved,
+            context,
+            setup_commands=setup_commands,
+            baseline_validation_commands=baseline_validation_commands,
+            tasks=[task],
+            outcome_ids_by_task={
+                replay_id: ["DATA-018/pytest-dev__pytest-issue-14462-pr-14466"]
+            },
+        )
+    )
+    records.extend(
+        _pytest_approx_idiom_records(
             resolved,
             context,
             replay_id=replay_id,
@@ -1204,6 +1308,55 @@ def _pytest_strict_changed_file_context_record(
     )
 
 
+def _pytest_approx_changed_file_context_record(
+    repo: Path,
+    context: Mapping[str, str],
+    *,
+    replay_row: Mapping[str, object],
+    changed_files: Sequence[str],
+    links: Mapping[str, Sequence[str]],
+) -> dict[str, object]:
+    python_files = [path for path in changed_files if path.endswith(".py")]
+    source_files = [path for path in python_files if not _is_test_file(path)]
+    test_files = [path for path in python_files if _is_test_file(path)]
+    data = {
+        "knowledge_category": "repo_changed_file_context",
+        "replay_id": _required_str(replay_row, "id"),
+        "issue_pr": _issue_pr_summary(replay_row),
+        "changed_files": list(changed_files),
+        "source_files": source_files,
+        "test_files": test_files,
+        "auxiliary_files": [path for path in changed_files if path not in python_files],
+        "source_context": [
+            _python_file_context(
+                repo,
+                path,
+                focus_names=("ApproxTimedelta", "ApproxBase", "ApproxScalar", "approx"),
+            )
+            for path in source_files
+        ],
+        "test_context": [
+            _python_file_context(
+                repo,
+                path,
+                focus_names=("TestApproxDatetime", "test_timedelta", "test_datetime"),
+            )
+            for path in test_files
+        ],
+    }
+    return _source_record(
+        record_type="repo_changed_file_context_record",
+        repo=repo,
+        context=context,
+        source_kind="accepted_diff_context",
+        source_path=",".join(changed_files),
+        provenance_paths=[*changed_files, "task:" + _required_str(replay_row, "id")],
+        confidence="observed",
+        links=links,
+        data=data,
+    )
+
+
 def _pytest_strict_idiom_records(
     repo: Path,
     context: Mapping[str, str],
@@ -1334,6 +1487,151 @@ def _pytest_strict_idiom_records(
                 mark_test_path=mark_test_path,
                 replay_id=replay_id,
             ),
+            confidence="observed",
+            links=links,
+            data=row,
+        )
+        for row in rows
+    )
+
+
+def _pytest_approx_idiom_records(
+    repo: Path,
+    context: Mapping[str, str],
+    *,
+    replay_id: str,
+    prompt_source: Mapping[str, object],
+    changed_files: Sequence[str],
+    focused_validation_command: str,
+    links: Mapping[str, Sequence[str]],
+) -> tuple[dict[str, object], ...]:
+    source_path = _pytest_approx_source_path(changed_files)
+    test_path = _pytest_approx_test_path(changed_files)
+    source_context = _pytest_approx_semantic_context(repo / source_path)
+    test_context = _pytest_approx_test_context(repo / test_path)
+    base = {
+        "replay_id": replay_id,
+        "target_source_path": source_path,
+        "target_test_files": [test_path],
+        "focused_validation_command": focused_validation_command,
+    }
+    rows = [
+        {
+            **base,
+            "knowledge_category": "pytest_approx_timedelta_tolerance_semantics",
+            "problem_label": "timedelta_rel_treated_as_absolute_tolerance",
+            "behavior_facts": [
+                "ApproxScalar computes relative tolerance as rel * abs(expected).",
+                "Repo-before ApproxTimedelta requires rel to be a timedelta and then stores max(abs, rel) as an absolute tolerance.",
+                "Accepted behavior makes timedelta rel a numeric fraction and computes rel * abs(expected).",
+                "When abs and rel are both provided, the effective timedelta tolerance is the larger of abs and the scaled relative tolerance.",
+            ],
+            "source_evidence": {
+                "methods": _pick_methods(
+                    source_context,
+                    [
+                        "ApproxTimedelta.__init__",
+                        "ApproxTimedelta.__eq__",
+                        "ApproxScalar.tolerance",
+                    ],
+                ),
+                "timedelta_constructor": source_context["timedelta_constructor"],
+                "scalar_tolerance": source_context["scalar_tolerance"],
+            },
+            "test_evidence": {
+                "timedelta_tests": test_context["timedelta_tests"],
+                "target_future_tests": [
+                    "test_timedelta_rel_within_tolerance",
+                    "test_timedelta_rel_outside_tolerance",
+                    "test_timedelta_rel_scales_with_expected",
+                    "test_timedelta_rel_must_be_number",
+                ],
+            },
+        },
+        {
+            **base,
+            "knowledge_category": "pytest_datetime_timedelta_comparison_behavior",
+            "problem_label": "datetime_and_timedelta_approx_policy",
+            "behavior_facts": [
+                "datetime comparisons require abs=timedelta(...) and reject rel.",
+                "timedelta comparisons support abs=timedelta(...) and should support numeric rel fractions.",
+                "nan_ok is rejected for datetime/timedelta comparisons.",
+                "Incompatible actual values compare False rather than leaking TypeError.",
+            ],
+            "issue_pr": {
+                "issue_number": prompt_source.get("issue_number"),
+                "issue_title": prompt_source.get("issue_title"),
+                "issue_url": prompt_source.get("issue_url"),
+                "pull_request_number": prompt_source.get("pull_request_number"),
+                "pull_request_url": prompt_source.get("pull_request_url"),
+            },
+            "source_evidence": {
+                "methods": _pick_methods(
+                    source_context,
+                    [
+                        "ApproxTimedelta.__init__",
+                        "ApproxTimedelta.__eq__",
+                        "ApproxTimedelta._repr_compare",
+                    ],
+                ),
+                "timedelta_constructor": source_context["timedelta_constructor"],
+            },
+            "test_evidence": {
+                "datetime_tests": test_context["datetime_tests"],
+                "timedelta_tests": test_context["timedelta_tests"],
+            },
+        },
+        {
+            **base,
+            "knowledge_category": "pytest_repo_test_patterns",
+            "problem_label": "pytest_approx_datetime_timedelta_tests",
+            "behavior_facts": [
+                "Approx tests live in testing/python/approx.py under TestApproxDatetime.",
+                "Tests import datetime and timedelta locally inside each test method.",
+                "Existing patterns use direct equality, inequality, pytest.raises, and repr assertions.",
+                "Optional numpy coverage is skipped with pytest.importorskip, so focused validation may report skipped tests.",
+            ],
+            "test_evidence": test_context,
+        },
+        {
+            **base,
+            "knowledge_category": "pytest_timedelta_approx_readiness_blockers",
+            "problem_label": "candidate_readiness_remaining_gaps",
+            "behavior_facts": [
+                "DATA-018 proved checkout, editable install, and focused baseline validation pass.",
+                "The row still has materialization_gap and ranking_gap residual labels after evidence acquisition.",
+                "Accepted changed paths are only src/_pytest/python_api.py and testing/python/approx.py; no auxiliary file materializer is required for this row.",
+                "A future candidate attempt must materialize source dispatch/tolerance edits and focused tests before readiness can be scored.",
+            ],
+            "validation_evidence": {
+                "data_018_command": focused_validation_command,
+                "data_018_result": "102 passed, 18 skipped in 0.15s",
+                "setup_command": "python -m pip install -e . pytest",
+            },
+            "remaining_residual_labels": ["materialization_gap", "ranking_gap"],
+            "candidate_scope": {
+                "source_paths": [source_path],
+                "test_paths": [test_path],
+                "auxiliary_paths": [],
+            },
+        },
+    ]
+    return tuple(
+        _source_record(
+            record_type=(
+                "pytest_pattern_record"
+                if row["knowledge_category"] == "pytest_repo_test_patterns"
+                else "library_idiom_record"
+            ),
+            repo=repo,
+            context=context,
+            source_kind="repo_file",
+            source_path=(
+                test_path
+                if row["knowledge_category"] == "pytest_repo_test_patterns"
+                else source_path
+            ),
+            provenance_paths=[source_path, test_path, "task:" + replay_id],
             confidence="observed",
             links=links,
             data=row,
@@ -2093,6 +2391,187 @@ def _pytest_config_source_path(changed_files: Sequence[str]) -> str:
         if path.endswith(".py") and not _is_test_file(path):
             return path
     raise ValueError("pytest strict-addopts replay row must include a source file")
+
+
+def _pytest_approx_source_path(changed_files: Sequence[str]) -> str:
+    for path in changed_files:
+        if path == "src/_pytest/python_api.py":
+            return path
+    for path in changed_files:
+        if path.endswith(".py") and not _is_test_file(path):
+            return path
+    raise ValueError("pytest timedelta-approx replay row must include a source file")
+
+
+def _pytest_approx_test_path(changed_files: Sequence[str]) -> str:
+    for path in changed_files:
+        if path == "testing/python/approx.py":
+            return path
+    for path in changed_files:
+        if path.endswith(".py") and _is_test_file(path):
+            return path
+    raise ValueError("pytest timedelta-approx replay row must include a test file")
+
+
+def _pytest_approx_semantic_context(path: Path) -> dict[str, object]:
+    tree = _parse_python(path)
+    methods = _class_method_contexts(
+        tree,
+        class_names={"ApproxTimedelta", "ApproxScalar", "ApproxBase"},
+    )
+    timedelta_init = _class_method_node(
+        tree,
+        class_name="ApproxTimedelta",
+        method_name="__init__",
+    )
+    timedelta_eq = _class_method_node(
+        tree,
+        class_name="ApproxTimedelta",
+        method_name="__eq__",
+    )
+    scalar_tolerance = _class_property_node(
+        tree,
+        class_name="ApproxScalar",
+        property_name="tolerance",
+    )
+    approx_scalar = _class_method_node(
+        tree,
+        class_name="ApproxBase",
+        method_name="_approx_scalar",
+    )
+    approx_function = _module_function_node(tree, "approx")
+    return {
+        "methods": methods,
+        "timedelta_constructor": _pytest_timedelta_constructor_shape(timedelta_init),
+        "timedelta_eq": _function_semantic_shape(timedelta_eq),
+        "scalar_tolerance": _pytest_scalar_tolerance_shape(scalar_tolerance),
+        "approx_scalar_dispatch": _function_semantic_shape(approx_scalar),
+        "approx_function": _function_semantic_shape(approx_function),
+        "sha256": _sha256_bytes(path.read_bytes()),
+    }
+
+
+def _pytest_timedelta_constructor_shape(
+    node: ast.FunctionDef | ast.AsyncFunctionDef | None,
+) -> dict[str, object]:
+    if node is None:
+        return {}
+    return {
+        "line_span": [node.lineno, node.end_lineno or node.lineno],
+        "argument_names": [arg.arg for arg in node.args.args],
+        "call_names": sorted(_calls_in_node(node))[:60],
+        "mentions": sorted(
+            _names_in_node(node)
+            & {"expected", "rel", "abs", "nan_ok", "timedelta", "datetime", "max"}
+        ),
+        "string_literals": sorted(_string_constants(node))[:40],
+        "rejects_datetime_rel": "datetime" in _names_in_node(node)
+        and "rel" in _names_in_node(node),
+        "requires_explicit_tolerance": any(
+            "requires an explicit tolerance" in literal for literal in _string_constants(node)
+        ),
+        "repo_before_requires_rel_timedelta": any(
+            "relative tolerance for timedelta must be a" in literal
+            and "timedelta" in literal
+            for literal in _string_constants(node)
+        ),
+        "uses_max_over_abs_rel": "max" in _calls_in_node(node)
+        and {"abs", "rel"} <= _names_in_node(node),
+        "mentions_nan_ok": "nan_ok" in _names_in_node(node),
+    }
+
+
+def _pytest_scalar_tolerance_shape(
+    node: ast.FunctionDef | ast.AsyncFunctionDef | None,
+) -> dict[str, object]:
+    if node is None:
+        return {}
+    return {
+        "line_span": [node.lineno, node.end_lineno or node.lineno],
+        "call_names": sorted(_calls_in_node(node))[:60],
+        "mentions": sorted(
+            _names_in_node(node)
+            & {"relative_tolerance", "absolute_tolerance", "expected", "rel", "abs"}
+        ),
+        "multiplies_relative_by_expected": _has_multiply_of_names(
+            node,
+            left_names={"rel", "self.rel"},
+            right_names={"expected", "self.expected"},
+        ),
+        "returns_max_relative_absolute": "max" in _calls_in_node(node)
+        and {"relative_tolerance", "absolute_tolerance"} <= _names_in_node(node),
+    }
+
+
+def _class_property_node(
+    tree: ast.Module,
+    *,
+    class_name: str,
+    property_name: str,
+) -> ast.FunctionDef | ast.AsyncFunctionDef | None:
+    for node in tree.body:
+        if not isinstance(node, ast.ClassDef) or node.name != class_name:
+            continue
+        for child in node.body:
+            if not isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                continue
+            if child.name != property_name:
+                continue
+            if any(_call_name(decorator) == "property" for decorator in child.decorator_list):
+                return child
+    return None
+
+
+def _has_multiply_of_names(
+    node: ast.AST,
+    *,
+    left_names: set[str],
+    right_names: set[str],
+) -> bool:
+    for child in ast.walk(node):
+        if not isinstance(child, ast.BinOp) or not isinstance(child.op, ast.Mult):
+            continue
+        left = _names_in_node(child.left) | {_call_name(child.left)}
+        right = _names_in_node(child.right) | {_call_name(child.right)}
+        if left & left_names and right & right_names:
+            return True
+        if left & right_names and right & left_names:
+            return True
+    return False
+
+
+def _pytest_approx_test_context(repo: Path) -> dict[str, object]:
+    tree = _parse_python(repo)
+    functions = _all_functions(tree)
+    datetime_tests = [
+        _function_test_shape(node)
+        for node in functions
+        if "datetime" in node.name
+    ][:30]
+    timedelta_tests = [
+        _function_test_shape(node)
+        for node in functions
+        if "timedelta" in node.name
+    ][:30]
+    return {
+        "test_file": repo.name if repo.name == "approx.py" else repo.as_posix(),
+        "test_class": "TestApproxDatetime",
+        "datetime_tests": datetime_tests,
+        "timedelta_tests": timedelta_tests,
+        "pytest_tools": sorted(
+            tool for node in functions for tool in _pytest_tools(node)
+        )[:60],
+        "importorskip_calls": sorted(
+            {
+                literal
+                for node in functions
+                for literal in _string_constants(node)
+                if literal == "numpy"
+            }
+        ),
+        "imports": list(_imports(tree))[:40],
+        "sha256": _sha256_bytes(repo.read_bytes()),
+    }
 
 
 def _pytest_config_semantic_context(path: Path) -> dict[str, object]:
@@ -2916,6 +3395,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="pytest strict addopts issue/PR replay row id to extract",
     )
     parser.add_argument(
+        "--pytest-timedelta-approx-replay-row",
+        help="pytest timedelta approx issue/PR replay row id to extract",
+    )
+    parser.add_argument(
         "--manifest",
         type=Path,
         default=Path("examples/issue_pr_mini_replay/manifest.json"),
@@ -2942,6 +3425,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         args.click_replay_row,
         args.requests_replay_row,
         args.pytest_strict_addopts_replay_row,
+        args.pytest_timedelta_approx_replay_row,
     ]
     if sum(1 for mode in modes if mode) > 1:
         parser.error("choose only one replay extraction mode")
@@ -2975,6 +3459,20 @@ def main(argv: Sequence[str] | None = None) -> int:
             args.pytest_strict_addopts_replay_row,
         )
         records = build_pytest_strict_addopts_local_knowledge_records(
+            args.repo,
+            row,
+            retrieved_at=args.retrieved_at,
+            setup_commands=args.setup_command,
+            baseline_validation_commands=args.baseline_validation_command,
+        )
+    elif args.pytest_timedelta_approx_replay_row:
+        if args.repo is None:
+            parser.error("--repo is required with --pytest-timedelta-approx-replay-row")
+        row = _load_manifest_replay_row(
+            args.manifest,
+            args.pytest_timedelta_approx_replay_row,
+        )
+        records = build_pytest_timedelta_approx_local_knowledge_records(
             args.repo,
             row,
             retrieved_at=args.retrieved_at,

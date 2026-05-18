@@ -54,14 +54,6 @@ This is the live coordinator board. Keep it current and compact.
   testing/test_config.py testing/test_mark.py -q`, records auxiliary actions,
   candidate diff, mutation scope, residuals, and whether full accepted-edit
   coverage is now expressible.
-- `DATA-026`: worker Zeno (`019e3c6b-373e-7b12-b1bf-c9c21282afc3`) to acquire
-  prompt/spec and local-knowledge evidence for the next DATA-018 pytest row,
-  `pytest-dev__pytest-issue-14462-pr-14466`. Ownership: focused prompt/spec
-  and local-knowledge modules/tests, generated `/tmp` evidence, optional
-  compact report under `docs/`, and plan updates. Acceptance: no candidate
-  edits; emit normalized timedelta `approx` prompt/spec plus local knowledge
-  for `ApproxTimedelta`, source/test context, validation recipe, and remaining
-  readiness blockers.
 
 ## Ready Queue
 
@@ -94,6 +86,21 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `DATA-026`: added normalized prompt/spec and local-knowledge evidence for
+  exactly `pytest-dev__pytest-issue-14462-pr-14466`. The prompt/spec row covers
+  minimal reproduction, observed behavior, expected behavior, affected
+  `pytest.approx` / `_pytest.python_api.ApproxTimedelta` surface, input shape,
+  acceptance test shape, relative tolerance semantics, and datetime/timedelta
+  comparison behavior. The local-knowledge JSONL emits six rows covering
+  changed-file context for `src/_pytest/python_api.py` and
+  `testing/python/approx.py`, the DATA-018 focused validation recipe,
+  `ApproxTimedelta` tolerance behavior, datetime/timedelta comparison behavior,
+  repo test patterns, provenance, and remaining readiness blockers. Artifacts:
+  `/tmp/j3-data-026-pytest-14462-evidence/spec.jsonl`,
+  `/tmp/j3-data-026-pytest-14462-evidence/spec.md`,
+  `/tmp/j3-data-026-pytest-14462-evidence/knowledge.jsonl`, and
+  `docs/DATA_026_PYTEST_14462_PROMPT_SPEC_KNOWLEDGE_2026-05-18.md`. Remaining
+  blockers are materialization and ranking evidence before a candidate attempt.
 - `DATA-024`: added a bounded source/test-only pytest #14442 candidate attempt
   for exactly `pytest-dev__pytest-issue-14442-pr-14443`. The live pinned
   pytest checkout at `8f81c76744daf72d4f77cfc8423f4bdc60733d78` changed only

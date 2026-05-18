@@ -7,6 +7,7 @@ from j3.issue_pr_prompt_spec import (
     CLICK_DEFAULT_MAP_REPLAY_ID,
     CLICK_SEMVER_DEFAULT_REPLAY_ID,
     PYTEST_STRICT_ADDOPTS_REPLAY_ID,
+    PYTEST_TIMEDELTA_APPROX_REPLAY_ID,
     REQUESTS_PREPARE_BODY_REPLAY_ID,
     build_issue_pr_prompt_spec,
     build_issue_pr_prompt_specs,
@@ -367,6 +368,77 @@ def test_pytest_strict_addopts_prompt_spec_records_provenance() -> None:
     assert spec["source_text_gaps"][0]["source"] == "github_issue_14442_body"
 
 
+def test_builds_pytest_timedelta_approx_prompt_spec() -> None:
+    manifest = load_issue_pr_replay_manifest(MANIFEST_PATH)
+    spec = build_issue_pr_prompt_spec(
+        manifest,
+        PYTEST_TIMEDELTA_APPROX_REPLAY_ID,
+        manifest_path=MANIFEST_PATH,
+    )
+
+    assert spec["schema_version"] == "issue-pr-prompt-spec-v1"
+    assert spec["record_kind"] == "issue_pr_prompt_spec"
+    assert spec["prompt_spec_kind"] == "pytest_timedelta_approx_relative_tolerance"
+    assert spec["status"] == "normalized"
+    assert spec["candidate_code_edits_attempted"] is False
+    assert spec["required_prompt_fields_complete"] is True
+    assert spec["missing_prompt_fields"] == []
+    assert spec["source_text_blockers"] == []
+
+    fields = spec["normalized_fields"]
+    assert fields["minimal_reproduction"]["operation"] == (
+        "actual == pytest.approx(expected, rel=0.01)"
+    )
+    assert (
+        fields["observed_behavior"]["failure_mode"]
+        == "timedelta_rel_parameter_treated_as_timedelta_absolute_tolerance"
+    )
+    assert fields["expected_behavior"]["behavior"] == (
+        "compute_timedelta_relative_tolerance_from_expected_value"
+    )
+    assert fields["affected_api_symbol"]["implementation_symbol"] == (
+        "_pytest.python_api.ApproxTimedelta"
+    )
+    assert fields["input_shape"]["timedelta_rel_type_after_fix"] == "float_or_int_fraction"
+    assert fields["acceptance_test_shape"]["test_files"] == ["testing/python/approx.py"]
+    assert fields["relative_tolerance_semantics"]["effective_tolerance_formula"] == (
+        "max(abs_tolerance, rel * abs(expected))"
+    )
+    assert (
+        fields["datetime_timedelta_comparison_behavior"]["datetime"]["relative_tolerance"]
+        == "unsupported"
+    )
+
+
+def test_pytest_timedelta_approx_prompt_spec_records_provenance() -> None:
+    specs = build_issue_pr_prompt_specs(
+        manifest_path=MANIFEST_PATH,
+        replay_ids=[PYTEST_TIMEDELTA_APPROX_REPLAY_ID],
+    )
+    spec = specs[0]
+    provenance = spec["provenance"]
+
+    assert provenance["manifest_schema_version"] == "issue-pr-mini-replay-v0"
+    assert provenance["stable_split"]["split"] == "train"
+    normalized_from = provenance["normalized_from"]
+    assert [source["id"] for source in normalized_from] == [
+        "github_issue_14462_compact_manifest",
+        "github_pr_14466_diff",
+        "data_018_pytest_preflight",
+        "know_data_026_pytest_local_knowledge",
+        "github_pr_14466_conversation",
+    ]
+    assert normalized_from[1]["merge_commit_sha"] == (
+        "2c555d62fa2c51ccb0c4c1cdd6243149ce4ffa97"
+    )
+    assert normalized_from[1]["url"].endswith("/pull/14466.diff")
+    assert spec["field_provenance"]["relative_tolerance_semantics"] == [
+        "github_pr_14466_diff",
+        "know_data_026_pytest_approx_timedelta_tolerance_semantics",
+    ]
+    assert spec["source_text_gaps"][0]["source"] == "github_issue_14462_body"
+
+
 def test_prompt_spec_jsonl_summary_and_report(tmp_path: Path) -> None:
     specs = build_issue_pr_prompt_specs(
         manifest_path=MANIFEST_PATH,
@@ -392,7 +464,7 @@ def test_prompt_spec_jsonl_summary_and_report(tmp_path: Path) -> None:
 
 def test_unknown_prompt_spec_stays_machine_readable_blocked() -> None:
     manifest = load_issue_pr_replay_manifest(MANIFEST_PATH)
-    spec = build_issue_pr_prompt_spec(manifest, "pytest-dev__pytest-issue-14462-pr-14466")
+    spec = build_issue_pr_prompt_spec(manifest, "pytest-dev__pytest-issue-14381-pr-14382")
 
     assert spec["status"] == "blocked"
     assert spec["required_prompt_fields_complete"] is False

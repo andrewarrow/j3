@@ -20,6 +20,7 @@ CLICK_DEFAULT_MAP_REPLAY_ID = "pallets__click-issue-2745-pr-3364"
 REQUESTS_PREPARE_BODY_REPLAY_ID = "psf__requests-issue-7432-pr-7433"
 CLICK_SEMVER_DEFAULT_REPLAY_ID = "pallets__click-issue-3298-pr-3299"
 PYTEST_STRICT_ADDOPTS_REPLAY_ID = "pytest-dev__pytest-issue-14442-pr-14443"
+PYTEST_TIMEDELTA_APPROX_REPLAY_ID = "pytest-dev__pytest-issue-14462-pr-14466"
 DEFAULT_MAP_REQUIRED_FIELDS = (
     "minimal_reproduction",
     "observed_behavior",
@@ -64,6 +65,16 @@ PYTEST_STRICT_ADDOPTS_REQUIRED_FIELDS = (
     "strict_addopts_behavior",
     "strict_markers_config_semantics",
 )
+PYTEST_TIMEDELTA_APPROX_REQUIRED_FIELDS = (
+    "minimal_reproduction",
+    "observed_behavior",
+    "expected_behavior",
+    "affected_api_symbol",
+    "input_shape",
+    "acceptance_test_shape",
+    "relative_tolerance_semantics",
+    "datetime_timedelta_comparison_behavior",
+)
 
 
 def build_issue_pr_prompt_spec(
@@ -95,6 +106,12 @@ def build_issue_pr_prompt_spec(
         )
     if replay_id == PYTEST_STRICT_ADDOPTS_REPLAY_ID:
         return _pytest_strict_addopts_prompt_spec(
+            manifest=manifest,
+            manifest_path=manifest_path,
+            record=record,
+        )
+    if replay_id == PYTEST_TIMEDELTA_APPROX_REPLAY_ID:
+        return _pytest_timedelta_approx_prompt_spec(
             manifest=manifest,
             manifest_path=manifest_path,
             record=record,
@@ -1325,6 +1342,281 @@ def _pytest_strict_addopts_prompt_spec(
                 },
                 {
                     "id": "github_pr_14443_conversation",
+                    "kind": "github_pull_request",
+                    "url": pr_url,
+                    "fields": [],
+                    "availability": "not_checked_in_not_required",
+                },
+            ],
+        ),
+    }
+
+
+def _pytest_timedelta_approx_prompt_spec(
+    *,
+    manifest: Mapping[str, object],
+    manifest_path: Path | None,
+    record: Mapping[str, object],
+) -> dict[str, object]:
+    prompt_source = _mapping(record.get("prompt_source"))
+    accepted_change = _mapping(record.get("accepted_change"))
+    validation = _mapping(record.get("validation"))
+    issue_url = str(prompt_source.get("issue_url") or "")
+    pr_url = str(prompt_source.get("pull_request_url") or "")
+    diff_url = str(accepted_change.get("diff_url") or "")
+    validation_command = str(validation.get("command") or "pytest testing/python/approx.py -q")
+    knowledge_path = "/tmp/j3-data-026-pytest-14462-knowledge.jsonl"
+    field_provenance = {
+        "minimal_reproduction": [
+            "github_issue_14462_compact_manifest",
+            "github_pr_14466_diff",
+        ],
+        "observed_behavior": [
+            "github_issue_14462_compact_manifest",
+            "data_018_pytest_preflight",
+            "know_data_026_pytest_approx_timedelta_tolerance_semantics",
+        ],
+        "expected_behavior": [
+            "github_pr_14466_diff",
+            "know_data_026_pytest_approx_timedelta_tolerance_semantics",
+        ],
+        "affected_api_symbol": [
+            "github_pr_14466_diff",
+            "know_data_026_repo_changed_file_context",
+        ],
+        "input_shape": [
+            "github_issue_14462_compact_manifest",
+            "github_pr_14466_diff",
+        ],
+        "acceptance_test_shape": [
+            "github_pr_14466_diff",
+            "data_018_pytest_preflight",
+            "know_data_026_pytest_repo_test_patterns",
+        ],
+        "relative_tolerance_semantics": [
+            "github_pr_14466_diff",
+            "know_data_026_pytest_approx_timedelta_tolerance_semantics",
+        ],
+        "datetime_timedelta_comparison_behavior": [
+            "github_pr_14466_diff",
+            "know_data_026_pytest_datetime_timedelta_comparison_behavior",
+        ],
+    }
+    normalized_fields = {
+        "minimal_reproduction": {
+            "kind": "pytest_approx_timedelta_relative_tolerance",
+            "expected_value": "timedelta(seconds=100)",
+            "actual_values": [
+                "timedelta(seconds=100.5)",
+                "timedelta(seconds=102)",
+                "timedelta(seconds=111)",
+            ],
+            "operation": "actual == pytest.approx(expected, rel=0.01)",
+            "relative_tolerance": 0.01,
+            "expected_effective_tolerance": "timedelta(seconds=1)",
+        },
+        "observed_behavior": {
+            "repo_before_ref": "fbab7c5dfe63a22f545207e8dc163ed61ad51d98",
+            "failure_mode": "timedelta_rel_parameter_treated_as_timedelta_absolute_tolerance",
+            "pre_fix_type_check": (
+                "ApproxTimedelta rejects rel=0.01 because rel must be a timedelta."
+            ),
+            "pre_fix_tolerance_calculation": (
+                "When rel is a timedelta, ApproxTimedelta takes max(abs, rel) and "
+                "stores it as an absolute tolerance instead of scaling by expected."
+            ),
+            "baseline_validation": {
+                "source": "DATA-018",
+                "command": validation_command,
+                "repo_before_result": "102 passed, 18 skipped in 0.15s",
+            },
+        },
+        "expected_behavior": {
+            "behavior": "compute_timedelta_relative_tolerance_from_expected_value",
+            "relative_tolerance_result": (
+                "For timedelta expected values, rel is a numeric fraction and "
+                "rel_tolerance = rel * abs(expected)."
+            ),
+            "absolute_tolerance_result": (
+                "abs remains a datetime.timedelta and is combined with relative "
+                "tolerance by taking the larger effective timedelta."
+            ),
+            "datetime_result": (
+                "datetime expected values continue to reject rel and require "
+                "abs=timedelta(...)."
+            ),
+            "candidate_constraint": (
+                "Do not attempt candidate edits from DATA-026; future source/test "
+                "candidate scope is only src/_pytest/python_api.py and "
+                "testing/python/approx.py."
+            ),
+        },
+        "affected_api_symbol": {
+            "public_surface": "pytest.approx",
+            "implementation_symbol": "_pytest.python_api.ApproxTimedelta",
+            "related_symbols": [
+                "_pytest.python_api.ApproxBase._approx_scalar",
+                "_pytest.python_api.ApproxScalar.tolerance",
+                "_pytest.python_api.approx",
+            ],
+            "changed_file": "src/_pytest/python_api.py",
+            "changed_test_files": ["testing/python/approx.py"],
+            "auxiliary_changed_files": [],
+        },
+        "input_shape": {
+            "expected_types": ["datetime.timedelta", "datetime.datetime"],
+            "actual_types": ["datetime.timedelta", "datetime.datetime"],
+            "timedelta_rel_type_after_fix": "float_or_int_fraction",
+            "timedelta_abs_type": "datetime.timedelta",
+            "datetime_rel_policy": "unsupported",
+            "invalid_values": [
+                {"argument": "rel", "value": "timedelta(seconds=1)", "result": "TypeError"},
+                {"argument": "rel", "value": "-0.1", "result": "ValueError"},
+                {"argument": "rel", "value": "float('nan')", "result": "ValueError"},
+                {"argument": "abs", "value": "timedelta(seconds=-1)", "result": "ValueError"},
+            ],
+        },
+        "acceptance_test_shape": {
+            "test_files": ["testing/python/approx.py"],
+            "test_class": "TestApproxDatetime",
+            "test_cases": [
+                {
+                    "test_name": "test_timedelta_rel_within_tolerance",
+                    "assertion": "100s actual is equal to approx(100.5s, rel=0.01)",
+                },
+                {
+                    "test_name": "test_timedelta_rel_outside_tolerance",
+                    "assertion": "102s actual is not equal to approx(100s, rel=0.01)",
+                },
+                {
+                    "test_name": "test_timedelta_rel_scales_with_expected",
+                    "assertion": "same rel fraction creates larger tolerance for larger expected timedelta",
+                },
+                {
+                    "test_name": "test_timedelta_rel_must_be_number",
+                    "assertion": "rel=timedelta(...) raises TypeError",
+                },
+                {
+                    "test_name": "test_timedelta_in_sequence / test_timedelta_in_mapping",
+                    "assertion": "nested sequence and mapping approx values use ApproxTimedelta",
+                },
+            ],
+            "validation_command": validation_command,
+            "setup_command": "python -m pip install -e . pytest",
+        },
+        "relative_tolerance_semantics": {
+            "timedelta_rel_argument_type": "int_or_float",
+            "effective_tolerance_formula": "max(abs_tolerance, rel * abs(expected))",
+            "reference_value": "expected",
+            "zero_rel_behavior": "exact match required unless abs supplies a positive tolerance",
+            "negative_rel_behavior": "ValueError",
+            "nan_rel_behavior": "ValueError",
+            "sequence_mapping_requirement": (
+                "ApproxBase._approx_scalar must dispatch datetime/timedelta elements "
+                "to ApproxTimedelta so containers preserve the same semantics."
+            ),
+        },
+        "datetime_timedelta_comparison_behavior": {
+            "datetime": {
+                "relative_tolerance": "unsupported",
+                "absolute_tolerance": "required datetime.timedelta",
+                "comparison": "abs(expected - actual) <= abs_tolerance",
+            },
+            "timedelta": {
+                "relative_tolerance": "numeric fraction of abs(expected)",
+                "absolute_tolerance": "optional datetime.timedelta",
+                "comparison": "abs(expected - actual) <= effective_tolerance",
+            },
+            "unsupported_options": ["nan_ok"],
+            "incompatible_actual_result": "False rather than propagated TypeError",
+        },
+    }
+    return {
+        "schema_version": ISSUE_PR_PROMPT_SPEC_SCHEMA_VERSION,
+        "record_kind": "issue_pr_prompt_spec",
+        "replay_id": str(record.get("id")),
+        "repo": str(record.get("repo")),
+        "prompt_spec_kind": "pytest_timedelta_approx_relative_tolerance",
+        "status": "normalized",
+        "candidate_code_edits_attempted": False,
+        "required_prompt_fields": list(PYTEST_TIMEDELTA_APPROX_REQUIRED_FIELDS),
+        "missing_prompt_fields": [],
+        "required_prompt_fields_complete": True,
+        "source_text_blockers": [],
+        "source_text_gaps": [
+            {
+                "source": "github_issue_14462_body",
+                "availability": "not_checked_in",
+                "impact": (
+                    "Exact issue body text is unavailable locally; fields were "
+                    "normalized from compact manifest metadata, accepted PR diff, "
+                    "DATA-018 validation evidence, and DATA-026 local knowledge."
+                ),
+            },
+            {
+                "source": "github_pr_14466_conversation",
+                "availability": "not_checked_in",
+                "impact": (
+                    "PR discussion text is unavailable locally; no required "
+                    "prompt/spec field depends on unretrieved conversation text."
+                ),
+            },
+        ],
+        "normalized_fields": normalized_fields,
+        "field_provenance": field_provenance,
+        "prompt_source": dict(prompt_source),
+        "accepted_change": dict(accepted_change),
+        "provenance": _prompt_spec_provenance(
+            manifest=manifest,
+            manifest_path=manifest_path,
+            record=record,
+            normalized_from=[
+                {
+                    "id": "github_issue_14462_compact_manifest",
+                    "kind": "github_issue_metadata",
+                    "url": issue_url,
+                    "fields": [
+                        "minimal_reproduction",
+                        "observed_behavior",
+                        "input_shape",
+                    ],
+                },
+                {
+                    "id": "github_pr_14466_diff",
+                    "kind": "github_pull_request_diff",
+                    "url": diff_url,
+                    "merge_commit_sha": accepted_change.get("merge_commit_sha"),
+                    "fields": [
+                        "minimal_reproduction",
+                        "expected_behavior",
+                        "affected_api_symbol",
+                        "input_shape",
+                        "acceptance_test_shape",
+                        "relative_tolerance_semantics",
+                        "datetime_timedelta_comparison_behavior",
+                    ],
+                },
+                {
+                    "id": "data_018_pytest_preflight",
+                    "kind": "local_validation_report",
+                    "url": "docs/DATA_018_PYTEST_ISSUE_PR_PREFLIGHT_2026-05-18.md",
+                    "fields": ["observed_behavior", "acceptance_test_shape"],
+                },
+                {
+                    "id": "know_data_026_pytest_local_knowledge",
+                    "kind": "local_knowledge_jsonl",
+                    "url": knowledge_path,
+                    "fields": [
+                        "observed_behavior",
+                        "expected_behavior",
+                        "affected_api_symbol",
+                        "acceptance_test_shape",
+                        "relative_tolerance_semantics",
+                        "datetime_timedelta_comparison_behavior",
+                    ],
+                },
+                {
+                    "id": "github_pr_14466_conversation",
                     "kind": "github_pull_request",
                     "url": pr_url,
                     "fields": [],

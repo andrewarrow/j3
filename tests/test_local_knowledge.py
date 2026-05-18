@@ -8,10 +8,12 @@ import pytest
 from j3.local_knowledge import (
     CLICK_REPLAY_REQUIRED_KNOWLEDGE_CATEGORIES,
     PYTEST_STRICT_ADDOPTS_REQUIRED_KNOWLEDGE_CATEGORIES,
+    PYTEST_TIMEDELTA_APPROX_REQUIRED_KNOWLEDGE_CATEGORIES,
     REQUESTS_REPLAY_REQUIRED_KNOWLEDGE_CATEGORIES,
     build_click_replay_local_knowledge_records,
     build_knowledge_use_record,
     build_pytest_strict_addopts_local_knowledge_records,
+    build_pytest_timedelta_approx_local_knowledge_records,
     build_requests_replay_local_knowledge_records,
     extract_local_knowledge_records,
     validate_local_knowledge_record,
@@ -804,6 +806,220 @@ def _pytest_strict_replay_row() -> dict[str, object]:
     }
 
 
+def _write_pytest_timedelta_approx_repo(repo: Path) -> None:
+    (repo / "src" / "_pytest").mkdir(parents=True)
+    (repo / "testing" / "python").mkdir(parents=True)
+    (repo / "pyproject.toml").write_text(
+        """[project]
+name = "pytest"
+version = "9.1.0.dev0"
+
+[tool.pytest.ini_options]
+testpaths = ["testing"]
+""",
+        encoding="utf-8",
+    )
+    (repo / "src" / "_pytest" / "__init__.py").write_text("", encoding="utf-8")
+    (repo / "src" / "_pytest" / "python_api.py").write_text(
+        '''from __future__ import annotations
+
+import builtins
+from datetime import datetime
+from datetime import timedelta
+import math
+
+
+class ApproxBase:
+    def __init__(self, expected, rel=None, abs=None, nan_ok=False):
+        self.expected = expected
+        self.rel = rel
+        self.abs = abs
+        self.nan_ok = nan_ok
+
+    def _approx_scalar(self, x):
+        return ApproxScalar(x, rel=self.rel, abs=self.abs, nan_ok=self.nan_ok)
+
+
+class ApproxScalar(ApproxBase):
+    DEFAULT_ABSOLUTE_TOLERANCE = 1e-12
+    DEFAULT_RELATIVE_TOLERANCE = 1e-6
+
+    @property
+    def tolerance(self):
+        absolute_tolerance = (
+            self.abs if self.abs is not None else self.DEFAULT_ABSOLUTE_TOLERANCE
+        )
+        if self.rel is None and self.abs is not None:
+            return absolute_tolerance
+        relative_tolerance = (
+            self.rel if self.rel is not None else self.DEFAULT_RELATIVE_TOLERANCE
+        ) * abs(self.expected)
+        return max(relative_tolerance, absolute_tolerance)
+
+
+class ApproxTimedelta(ApproxBase):
+    def __init__(self, expected, rel=None, abs=None, nan_ok=False):
+        if isinstance(expected, datetime) and rel is not None:
+            raise TypeError("does not support relative tolerance")
+        if nan_ok:
+            raise TypeError("does not support nan_ok")
+        if abs is None and rel is None:
+            raise TypeError("requires an explicit tolerance")
+        if abs is not None and not isinstance(abs, timedelta):
+            raise TypeError("absolute tolerance for datetime/timedelta must be a timedelta")
+        if rel is not None and not isinstance(rel, timedelta):
+            raise TypeError("relative tolerance for timedelta must be a timedelta")
+        tolerance = max(t for t in (abs, rel) if t is not None)
+        super().__init__(expected, rel=None, abs=tolerance, nan_ok=False)
+
+    def __eq__(self, actual):
+        try:
+            return bool(builtins.abs(self.expected - actual) <= self.abs)
+        except (TypeError, OverflowError):
+            return False
+
+    def _repr_compare(self, other_side):
+        return ["comparison failed"]
+
+
+def approx(expected, rel=None, abs=None, nan_ok=False):
+    if isinstance(expected, (datetime, timedelta)):
+        return ApproxTimedelta(expected, rel, abs, nan_ok)
+    return ApproxScalar(expected, rel, abs, nan_ok)
+''',
+        encoding="utf-8",
+    )
+    (repo / "testing" / "python" / "approx.py").write_text(
+        '''from __future__ import annotations
+
+from math import nan
+
+import pytest
+from pytest import approx
+
+
+class TestApproxDatetime:
+    def test_datetime_within_tolerance(self):
+        from datetime import datetime
+        from datetime import timedelta
+
+        assert datetime(2024, 1, 1, 12, 0, 0) == approx(
+            datetime(2024, 1, 1, 12, 0, 0, 500000),
+            abs=timedelta(seconds=1),
+        )
+
+    def test_timedelta_within_tolerance(self):
+        from datetime import timedelta
+
+        assert timedelta(seconds=100) == approx(
+            timedelta(seconds=100.5),
+            abs=timedelta(seconds=1),
+        )
+
+    def test_timedelta_rel_within_tolerance(self):
+        from datetime import timedelta
+
+        td1 = timedelta(seconds=100)
+        td2 = timedelta(seconds=100.5)
+        assert td1 == approx(td2, rel=timedelta(seconds=1))
+
+    def test_timedelta_rel_outside_tolerance(self):
+        from datetime import timedelta
+
+        td1 = timedelta(seconds=100)
+        td2 = timedelta(seconds=102)
+        assert td1 != approx(td2, rel=timedelta(seconds=1))
+
+    def test_datetime_rejects_rel(self):
+        from datetime import datetime
+        from datetime import timedelta
+
+        with pytest.raises(TypeError, match="relative tolerance"):
+            approx(datetime(2024, 1, 1), rel=0.1, abs=timedelta(seconds=1))
+
+    def test_timedelta_rel_must_be_timedelta(self):
+        from datetime import timedelta
+
+        with pytest.raises(TypeError, match="must be a timedelta"):
+            approx(timedelta(seconds=1), rel=0.1)
+
+    def test_timedelta_repr(self):
+        from datetime import timedelta
+
+        assert "0:01:40" in repr(approx(timedelta(seconds=100), abs=timedelta(seconds=1)))
+
+
+class TestApprox:
+    def test_nan_tolerance(self):
+        with pytest.raises(ValueError):
+            1.1 == approx(1, rel=nan)
+
+    def test_numpy_optional(self):
+        pytest.importorskip("numpy")
+''',
+        encoding="utf-8",
+    )
+
+
+def _pytest_timedelta_approx_replay_row() -> dict[str, object]:
+    return {
+        "id": "pytest-dev__pytest-issue-14462-pr-14466",
+        "repo": "pytest-dev/pytest",
+        "prompt_text": (
+            "Fix issue #14462: `approx` with timedelta treats the `rel` "
+            "parameter like an absolute tolerance."
+        ),
+        "prompt_source": {
+            "issue_number": 14462,
+            "issue_title": (
+                "approx with timedelta: rel parameter treated as absolute tolerance "
+                "despite its name"
+            ),
+            "issue_url": "https://github.com/pytest-dev/pytest/issues/14462",
+            "pull_request_number": 14466,
+            "pull_request_title": (
+                "fix approx rel for timedelta: accept float, compute rel * expected"
+            ),
+            "pull_request_url": "https://github.com/pytest-dev/pytest/pull/14466",
+        },
+        "repo_before_ref": {
+            "provider": "github",
+            "repo": "pytest-dev/pytest",
+            "branch": "main",
+            "sha": "fbab7c5dfe63a22f545207e8dc163ed61ad51d98",
+        },
+        "accepted_change": {
+            "kind": "merged_pull_request",
+            "pull_request_url": "https://github.com/pytest-dev/pytest/pull/14466",
+            "diff_url": "https://github.com/pytest-dev/pytest/pull/14466.diff",
+            "merge_commit_sha": "2c555d62fa2c51ccb0c4c1cdd6243149ce4ffa97",
+            "changed_files": [
+                "src/_pytest/python_api.py",
+                "testing/python/approx.py",
+            ],
+        },
+        "validation": {
+            "command": "pytest testing/python/approx.py -q",
+            "source": "inferred_from_changed_tests",
+            "availability": "partial",
+        },
+        "provenance_license": {
+            "repository_url": "https://github.com/pytest-dev/pytest",
+            "license_spdx": "MIT",
+        },
+        "stable_split": {
+            "method": "sha256(id) % 100",
+            "bucket": 66,
+            "split": "train",
+        },
+        "initial_residual_labels": [
+            "local_knowledge_gap",
+            "materialization_gap",
+            "ranking_gap",
+        ],
+    }
+
+
 def test_extract_local_knowledge_records_emit_wedge_record_families(
     tmp_path: Path,
 ) -> None:
@@ -1244,6 +1460,102 @@ def test_pytest_strict_addopts_local_knowledge_records_cover_required_categories
     assert authors["authors_evidence"]["expected_entry_present_in_repo_before"] is False  # type: ignore[index]
 
     output = write_local_knowledge_jsonl(records, tmp_path / "pytest_records.jsonl")
+    output_text = output.read_text(encoding="utf-8")
+    assert "raw_source" not in output_text
+    assert "source_text" not in output_text
+
+
+def test_pytest_timedelta_approx_local_knowledge_records_cover_required_categories(
+    tmp_path: Path,
+) -> None:
+    _write_pytest_timedelta_approx_repo(tmp_path)
+
+    records = build_pytest_timedelta_approx_local_knowledge_records(
+        tmp_path,
+        _pytest_timedelta_approx_replay_row(),
+        retrieved_at="2026-05-18T00:00:00Z",
+        setup_commands=["python -m pip install -e . pytest"],
+        baseline_validation_commands=["pytest testing/python/approx.py -q"],
+    )
+
+    assert {record["record_type"] for record in records} == {
+        "library_idiom_record",
+        "pytest_pattern_record",
+        "repo_changed_file_context_record",
+        "validation_recipe_record",
+    }
+
+    categories = {
+        record["data"]["knowledge_category"]  # type: ignore[index]
+        for record in records
+        if isinstance(record["data"], dict)
+    }
+    assert categories == set(PYTEST_TIMEDELTA_APPROX_REQUIRED_KNOWLEDGE_CATEGORIES)
+
+    for record in records:
+        validate_local_knowledge_record(record)
+        assert record["split"] == "train"
+        assert record["links"]["task_ids"] == [
+            "pytest-dev__pytest-issue-14462-pr-14466"
+        ]
+        assert record["links"]["residual_labels"] == ["local_knowledge_gap"]
+
+    by_category = {
+        record["data"]["knowledge_category"]: record
+        for record in records
+        if isinstance(record["data"], dict)
+    }
+    changed_context = by_category["repo_changed_file_context"]["data"]
+    assert isinstance(changed_context, dict)
+    assert changed_context["changed_files"] == [
+        "src/_pytest/python_api.py",
+        "testing/python/approx.py",
+    ]
+    assert changed_context["auxiliary_files"] == []
+
+    validation = by_category["focused_validation_recipe"]["data"]
+    assert isinstance(validation, dict)
+    assert validation["focused_commands"] == ["pytest testing/python/approx.py -q"]
+    assert validation["required_knowledge_categories"] == list(
+        PYTEST_TIMEDELTA_APPROX_REQUIRED_KNOWLEDGE_CATEGORIES
+    )
+
+    tolerance = by_category["pytest_approx_timedelta_tolerance_semantics"]["data"]
+    assert isinstance(tolerance, dict)
+    source_evidence = tolerance["source_evidence"]
+    assert isinstance(source_evidence, dict)
+    constructor = source_evidence["timedelta_constructor"]
+    assert isinstance(constructor, dict)
+    assert constructor["repo_before_requires_rel_timedelta"] is True
+    assert constructor["uses_max_over_abs_rel"] is True
+    scalar = source_evidence["scalar_tolerance"]
+    assert isinstance(scalar, dict)
+    assert scalar["multiplies_relative_by_expected"] is True
+
+    behavior = by_category["pytest_datetime_timedelta_comparison_behavior"]["data"]
+    assert isinstance(behavior, dict)
+    assert behavior["issue_pr"]["issue_number"] == 14462  # type: ignore[index]
+
+    patterns = by_category["pytest_repo_test_patterns"]["data"]
+    assert isinstance(patterns, dict)
+    test_evidence = patterns["test_evidence"]
+    assert isinstance(test_evidence, dict)
+    assert "pytest.raises" in test_evidence["pytest_tools"]
+    assert test_evidence["importorskip_calls"] == ["numpy"]
+
+    blockers = by_category["pytest_timedelta_approx_readiness_blockers"]["data"]
+    assert isinstance(blockers, dict)
+    assert blockers["remaining_residual_labels"] == ["materialization_gap", "ranking_gap"]
+    assert blockers["candidate_scope"] == {
+        "source_paths": ["src/_pytest/python_api.py"],
+        "test_paths": ["testing/python/approx.py"],
+        "auxiliary_paths": [],
+    }
+
+    output = write_local_knowledge_jsonl(
+        records,
+        tmp_path / "pytest_timedelta_records.jsonl",
+    )
     output_text = output.read_text(encoding="utf-8")
     assert "raw_source" not in output_text
     assert "source_text" not in output_text

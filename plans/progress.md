@@ -2885,3 +2885,46 @@ meaningful work. Do not replace this file with a daily reset.
 - Push: succeeded.
 - Next: continue non-overlapping coordinator review while both workers run.
 - Blockers: none.
+
+### 2026-05-18 - DATA-026 - Pytest #14462 prompt/spec and local knowledge
+
+- Owner: worker Zeno (`019e3c6b-373e-7b12-b1bf-c9c21282afc3`).
+- Files changed: `j3/issue_pr_prompt_spec.py`, `j3/local_knowledge.py`,
+  `tests/test_issue_pr_prompt_spec.py`, `tests/test_local_knowledge.py`,
+  `docs/DATA_026_PYTEST_14462_PROMPT_SPEC_KNOWLEDGE_2026-05-18.md`,
+  `plans/active.md`, `plans/backlog.md`, `plans/progress.md`.
+- Tests: `python -m py_compile j3/issue_pr_prompt_spec.py
+  j3/local_knowledge.py tests/test_issue_pr_prompt_spec.py
+  tests/test_local_knowledge.py` -> passed; `pytest
+  tests/test_issue_pr_prompt_spec.py tests/test_local_knowledge.py -q` -> 19
+  passed; CLI smoke `python -m j3.issue_pr_prompt_spec --manifest
+  examples/issue_pr_mini_replay/manifest.json --replay-id
+  pytest-dev__pytest-issue-14462-pr-14466 --out
+  /tmp/j3-data-026-pytest-14462-evidence/spec.jsonl --report
+  /tmp/j3-data-026-pytest-14462-evidence/spec.md` -> emitted 1 normalized
+  row; CLI smoke `python -m j3.local_knowledge --manifest
+  examples/issue_pr_mini_replay/manifest.json
+  --pytest-timedelta-approx-replay-row
+  pytest-dev__pytest-issue-14462-pr-14466 --repo
+  /tmp/j3-data-018-pytest-preflight/repos/pytest-dev__pytest-pytest-dev__pytest-issue-14462-pr-14466-fbab7c5dfe63
+  --setup-command "python -m pip install -e . pytest"
+  --baseline-validation-command "pytest testing/python/approx.py -q" --out
+  /tmp/j3-data-026-pytest-14462-evidence/knowledge.jsonl` -> emitted 6
+  records.
+- Result: acquired machine-readable DATA-026 evidence without candidate source
+  edits. The prompt/spec row covers timedelta `approx` minimal reproduction,
+  observed `rel` handling, expected relative tolerance from `abs(expected)`,
+  affected `pytest.approx` / `ApproxTimedelta` surface, input shape,
+  acceptance test shape, relative tolerance semantics, and datetime/timedelta
+  comparison behavior. The local-knowledge rows cover changed-file context for
+  `src/_pytest/python_api.py` and `testing/python/approx.py`, DATA-018 focused
+  validation, `ApproxTimedelta` tolerance behavior, datetime/timedelta
+  comparison behavior, repo test patterns, provenance, and remaining readiness
+  blockers.
+- Commit: pending.
+- Push: pending.
+- Next: run plan consistency, `git diff --check`, then commit/push DATA-026
+  only; future work can run a readiness refresh or candidate attempt once
+  materialization and ranking gaps are addressed.
+- Blockers: no evidence blocker remains for DATA-026; candidate materialization
+  and ranking evidence remain for pytest #14462.

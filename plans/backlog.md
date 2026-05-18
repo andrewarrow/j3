@@ -1653,7 +1653,7 @@ Long-term target:
 
 ### DATA-026: Pytest #14462 prompt/spec and local knowledge evidence
 
-- Status: active
+- Status: done
 - Why: DATA-018 proved pytest #14462 has working checkout/setup/baseline
   validation, but it still needs normalized prompt/spec and local knowledge
   before candidate generation. This pushes the pytest replay path beyond a
@@ -1671,6 +1671,19 @@ Long-term target:
   remaining readiness blockers.
 - Tests: focused prompt/spec/local-knowledge tests, plan consistency,
   `git diff --check`, and CLI smoke that emits the evidence rows.
+- Completion note: added normalized prompt/spec evidence plus six
+  local-knowledge rows for `pytest-dev__pytest-issue-14462-pr-14466`.
+  Prompt/spec covers timedelta `approx` relative tolerance, observed repo-before
+  behavior, expected `rel * abs(expected)` semantics, affected
+  `_pytest.python_api.ApproxTimedelta` surface, input shape, acceptance tests,
+  and datetime/timedelta comparison policy. Local knowledge covers
+  `src/_pytest/python_api.py`, `testing/python/approx.py`, DATA-018 validation,
+  `ApproxTimedelta` tolerance behavior, repo test patterns, provenance, and
+  remaining readiness blockers. Artifacts:
+  `/tmp/j3-data-026-pytest-14462-evidence/spec.jsonl`,
+  `/tmp/j3-data-026-pytest-14462-evidence/spec.md`,
+  `/tmp/j3-data-026-pytest-14462-evidence/knowledge.jsonl`, and
+  `docs/DATA_026_PYTEST_14462_PROMPT_SPEC_KNOWLEDGE_2026-05-18.md`.
 
 ## Next Recommended Queue
 

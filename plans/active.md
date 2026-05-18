@@ -20,7 +20,7 @@ This is the live coordinator board. Keep it current and compact.
 ### `REAL-004`: Live real-repo baseline preflight
 
 - Status: active
-- Owner: pending spawn
+- Owner: worker Mendel (`019e3b7c-e583-77a0-94b5-7f8e017aabc2`)
 - Started: 2026-05-18
 - Goal: prove the mocked `REAL-002` runner can survive a real pinned checkout
   and baseline validation for at least the calibration repo before more scoring
@@ -39,7 +39,7 @@ This is the live coordinator board. Keep it current and compact.
 ### `GS7-007`: Generic real-repo tests-only planner
 
 - Status: active
-- Owner: pending spawn
+- Owner: worker Lagrange (`019e3b7d-1fb3-7741-bce8-3617790203ce`)
 - Started: 2026-05-18
 - Goal: attack the `REAL-003` `pass@3 = 0/4` residual by building the first
   generic repo-state-aware tests-only planner for a real ladder task.

@@ -935,9 +935,10 @@ meaningful work. Do not replace this file with a daily reset.
   are therefore `REAL-004`, to prove the real preflight works against an actual
   pinned checkout, and `GS7-007`, to build the first generic real-repo
   tests-only planner for the calibration task.
-- Commit: pending coordinator commit
-- Push: pending coordinator push
+- Commit: 66e86c7bfe4b596b48b6ea849d87db6812f2de63
+- Push: succeeded
 - Next: dispatch `REAL-004` and `GS7-007`; keep `KNOW-003` ready to wire
   knowledge-use attribution into planner outcomes after the planner surface is
-  visible.
+  visible. Workers: Mendel (`019e3b7c-e583-77a0-94b5-7f8e017aabc2`) and
+  Lagrange (`019e3b7d-1fb3-7741-bce8-3617790203ce`).
 - Blockers: none

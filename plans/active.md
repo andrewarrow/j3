@@ -23,35 +23,13 @@ This is the live coordinator board. Keep it current and compact.
   opt-in remains shadow-only until the next scorer run. `GS7-010` now
   materializes and live-validates the held-out `humanize` tests-only candidate.
   `MAT-003` now materializes and live-validates the first real one-file source
-  feature candidate on held-out `h11`; `REAL-009` must score it before
-  source-feature gate claims are made.
+  feature candidate on held-out `h11`; `REAL-009` scores it at
+  `pass@1 = 1/4` and `pass@3 = 1/4` across one distinct passing repo, so the
+  one-file feature gate remains shadow-only.
 
 ## Active Tasks
 
-### `REAL-009`: One-file feature shadow score after h11 materializer
-
-- Status: active
-- Owner: worker McClintock (`019e3bad-7770-7962-bea2-3cf62e4e4b8c`).
-- Goal: score the `MAT-003` h11 one-file feature candidate against the
-  real-repo ladder instead of treating the live materializer check as product
-  gate evidence by itself.
-- Write scope: a focused feature scorer such as
-  `j3/real_repo_feature_shadow_score.py`,
-  `tests/test_real_repo_feature_shadow_score.py`, one compact
-  `docs/REAL_009_*.md` report if useful, generated outputs under `/tmp`, and
-  plan updates.
-- Do not touch: `j3/real_repo_tests_planner.py` or
-  `tests/test_real_repo_tests_planner.py`; those belong to `GS7-010`.
-- Acceptance: score the four one-file feature ladder tasks with the h11
-  candidate counted through `j3.real_repo_feature_materializer`; leave
-  unsupported feature tasks as explicit materialization blockers; report
-  pass@1/pass@3, distinct repos passing, production-file constraint, runtime,
-  mutation-scope violations, zero hosted usage, and the one-file feature gate
-  decision. Expected gate remains shadow-only unless at least two tasks across
-  two repos pass.
-- Tests: focused feature-score tests,
-  `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and a live
-  score/report smoke using the pinned h11 checkout.
+No active tasks recorded by this worker.
 
 ## Ready Queue
 
@@ -92,6 +70,18 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `REAL-009`: scored the `MAT-003` h11 one-file feature candidate against the
+  full one-file feature ladder with the new
+  `j3.real_repo_feature_shadow_score` command. The live `/tmp` run against the
+  pinned h11 checkout counted `h11-feature-bytesify-object-message` through
+  `j3.real_repo_feature_materializer`, validated it with
+  `python -m pytest h11/tests/test_util.py -q`, and scored
+  `pass@1 = 1/4`, `pass@3 = 1/4`, one distinct repo passing, one production
+  file changed within the one-file constraint, zero writes outside allowlists,
+  zero mutation-scope violations, hidden-like agreement for h11, and zero
+  hosted usage. The unsupported `iniconfig`, `humanize`, and `boltons`
+  feature tasks remain explicit `one_file_materialization_gap` blockers, so
+  the one-file feature gate remains `remain_shadow_only`.
 - `GS7-010`: materialized the next held-out tests-only candidate for
   `humanize-tests-naturalsize-negative-strings`. The planner selects
   `tests/test_filesize.py` from repo-state plus local-knowledge evidence,

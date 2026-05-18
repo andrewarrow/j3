@@ -1159,7 +1159,7 @@ meaningful work. Do not replace this file with a daily reset.
   hosted usage, and explicit held-out `test_case_materialization_gap` blockers
   for `h11`, `humanize`, and `boltons`. The gate remains shadow-only because
   the tests-only threshold is at least 3/4 passing tasks.
-- Commit: pending
+- Commit: 62cb495
 - Push: pending
 - Next: run `REAL-007` after integrating `GS7-009`, separating the calibration
   `iniconfig` pass from held-out h11 scoring.
@@ -1309,3 +1309,38 @@ meaningful work. Do not replace this file with a daily reset.
   `GS7-011` first if the coordinator wants all remaining held-out tests-only
   materializers before scoring.
 - Blockers: none
+
+### 2026-05-18 - REAL-009 - One-file feature shadow score
+
+- Owner: worker McClintock (`019e3bad-7770-7962-bea2-3cf62e4e4b8c`)
+- Files changed: `j3/real_repo_feature_shadow_score.py`,
+  `tests/test_real_repo_feature_shadow_score.py`,
+  `docs/REAL_009_ONE_FILE_FEATURE_SHADOW_SCORE_2026-05-18.md`,
+  `plans/active.md`, `plans/backlog.md`, `plans/progress.md`
+- Tests: `python -m py_compile j3/real_repo_feature_shadow_score.py
+  tests/test_real_repo_feature_shadow_score.py` -> passed;
+  `pytest tests/test_real_repo_feature_shadow_score.py -q` -> 3 passed;
+  `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check`
+  -> passed; live setup against
+  `/tmp/j3-real-009-feature-shadow-score-live/h11` with
+  `python -m pip install -e /tmp/j3-real-009-feature-shadow-score-live/h11 -r /tmp/j3-real-009-feature-shadow-score-live/h11/test-requirements.txt`
+  -> passed; live score/report smoke
+  `python -m j3.real_repo_feature_shadow_score --manifest examples/real_repo_eval_ladder.json --repo-path h11=/tmp/j3-real-009-feature-shadow-score-live/h11 --validate-candidates --out /tmp/j3-real-009-feature-shadow-score-live/score.json --report /tmp/j3-real-009-feature-shadow-score-live/report.md`
+  -> passed with `pass@1 = 1/4`, `pass@3 = 1/4`, one distinct repo passing,
+  and `gate_decision = remain_shadow_only`.
+- Result: scored all four one-file feature ladder tasks. The h11
+  `h11-feature-bytesify-object-message` row is counted through
+  `j3.real_repo_feature_materializer`, validates with
+  `python -m pytest h11/tests/test_util.py -q` (`7 passed in 0.02s`), changes
+  one production file within the one-file constraint, writes nothing outside
+  the allowlist, records zero mutation-scope violations, has hidden-like
+  agreement, and confirms zero hosted usage. The `iniconfig`, `humanize`, and
+  `boltons` feature rows remain explicit `one_file_materialization_gap`
+  blockers.
+- Commit: 875a2fa
+- Push: succeeded
+- Next: `MAT-004` can attempt a second real one-file feature materializer;
+  `REAL-008` should rerun the tests-only gate after integrating `GS7-010`.
+- Blockers: one-file feature gate remains shadow-only at `pass@3 = 1/4` across
+  one distinct repo; unsupported `iniconfig`, `humanize`, and `boltons`
+  one-file feature materializers are still missing.

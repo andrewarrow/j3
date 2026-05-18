@@ -771,7 +771,7 @@ Long-term target:
 
 ### REAL-009: One-file feature shadow score after h11 materializer
 
-- Status: active
+- Status: done
 - Why: `MAT-003` proved one live h11 source edit, but product evidence needs the
   ladder gate view: pass rates, distinct repos passing, mutation scope, and
   unsupported feature blockers.
@@ -786,6 +786,17 @@ Long-term target:
   decision.
 - Tests: focused feature-score tests, plan consistency, `git diff --check`, and
   the score/report smoke command.
+- Completion note: added `j3.real_repo_feature_shadow_score`, focused tests,
+  and `docs/REAL_009_ONE_FILE_FEATURE_SHADOW_SCORE_2026-05-18.md`. The live
+  `/tmp/j3-real-009-feature-shadow-score-live` run against the pinned h11
+  checkout counted `h11-feature-bytesify-object-message` through
+  `j3.real_repo_feature_materializer` and validated it with
+  `7 passed in 0.02s`, scoring `pass@1 = 1/4`, `pass@3 = 1/4`, one distinct
+  repo passing, preserved one-production-file constraint, zero writes outside
+  allowlists, zero mutation-scope violations, and zero hosted usage. The
+  one-file feature gate remains `remain_shadow_only` because unsupported
+  `iniconfig`, `humanize`, and `boltons` feature tasks remain explicit
+  `one_file_materialization_gap` blockers.
 
 ### DATA-005: Issue/PR replay preflight runner
 

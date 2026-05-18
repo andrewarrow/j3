@@ -81,7 +81,7 @@ Long-term target:
 
 ### GS7-002: Add five non-calculator request-to-repo fixtures
 
-- Status: ready
+- Status: active
 - Why: calculator-only success is too narrow for product evidence.
 - Write scope: `examples/greenshot_7`, GreenShot-7 tests, focused request-spec
   fixtures.
@@ -131,7 +131,7 @@ Long-term target:
 
 ### DATA-003: Prototype issue/PR mining manifest
 
-- Status: ready
+- Status: active
 - Why: serious intent data requires issue/PR text linked to accepted repo
   changes, not just commit diffs.
 - Write scope: docs and a small mining/manifest prototype; no large generated
@@ -187,7 +187,7 @@ Long-term target:
 
 ### TRANS-004: Rerun targeted matrix evidence after subscript-key fix
 
-- Status: active
+- Status: done
 - Why: `ACT-002` fixed the single `TRANS-002` candidate-generation gap, but the
   matrix evidence still records the pre-fix residual count.
 - Write scope: generated outputs under `/tmp`, progress notes only unless a

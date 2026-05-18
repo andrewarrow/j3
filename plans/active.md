@@ -16,16 +16,37 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-No active worker tasks.
+### `GS7-002`: Add five non-calculator request-to-repo fixtures
+
+- Owner: worker Hume (`019e3b1d-5a1f-7ff3-a242-f5e8ef941f37`)
+- Status: active
+- Write scope: `examples/greenshot_7`, GreenShot-7 tests, focused
+  request-spec/greenfield fixtures and implementation needed for the slice,
+  `plans/progress.md`, `plans/active.md`.
+- Acceptance: fixtures cover one small library, one parser, one tests-only
+  task, one existing-repo convention task, and one clarification task, with
+  failures classified as action coverage, prompt/spec parsing, or ranking.
+- Tests: `pytest tests/test_greenshot_7.py -q`, focused request-spec tests,
+  and `git diff --check`.
+
+### `DATA-003`: Prototype issue/PR mining manifest
+
+- Owner: worker Schrodinger (`019e3b1d-5a4e-7ee0-bac3-a8ce2ab20afc`)
+- Status: active
+- Write scope: docs and a small mining/manifest prototype; no large generated
+  artifacts committed; `plans/progress.md`, `plans/active.md`.
+- Acceptance: one Apache corpus repo can produce candidate issue/PR records
+  with provenance, links, repo-before/repo-after refs, and license/terms notes.
+- Tests: focused unit tests with fixture JSON plus `git diff --check`.
 
 ## Ready Queue
 
 These are good next assignments for the next loop:
 
-1. `GS7-002`: add five non-calculator request-to-repo fixtures.
-2. `DATA-003`: prototype issue/PR mining manifest.
-3. `REPO-001`: summarize repo-state encoder coverage.
-4. `ACT-001`: create action coverage map from residuals.
+1. `REPO-001`: summarize repo-state encoder coverage.
+2. `ACT-001`: create action coverage map from residuals.
+3. `MODEL-001`: re-evaluate learned prompt intent baseline.
+4. `SCALE-001`: draft local pretraining feasibility inventory.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 

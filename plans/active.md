@@ -18,7 +18,7 @@ This is the live coordinator board. Keep it current and compact.
 
 ### `MODEL-001`: Re-evaluate learned prompt intent baseline
 
-- Owner: worker pending assignment
+- Owner: worker Socrates (`019e3b31-5757-7a83-9f73-06f1313f2064`)
 - Status: active
 - Write scope: prompt intent evaluation code/tests/docs as needed, plus plan
   updates. Do not touch GreenShot request-spec/greenfield files.
@@ -30,7 +30,7 @@ This is the live coordinator board. Keep it current and compact.
 
 ### `GS7-004`: Implement clarification as a first-class outcome
 
-- Owner: worker pending assignment
+- Owner: worker Ptolemy (`019e3b31-5773-7432-afed-0e4d4299f4ee`)
 - Status: active
 - Write scope: request-spec/parser/planner, GreenShot-7 clarification outcome
   tests, public CLI behavior if needed, and plan updates. Do not touch prompt

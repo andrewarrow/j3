@@ -466,14 +466,16 @@ meaningful work. Do not replace this file with a daily reset.
 
 - Owner: coordinator
 - Files changed: `plans/active.md`, `plans/backlog.md`, `plans/progress.md`
-- Tests: pending coordinator dispatch check
+- Tests: `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check` passed.
 - Result: reconciled completed coverage work, marked `GS7-003` done because
   its builder acceptance was satisfied by `GS7-002` plus the public
   non-calculator `implement` fix, split the scorer follow-up into bounded
   `MODEL-003` through `MODEL-006` tasks, and assigned `MODEL-001` with
   `GS7-004` as the next active loop slice.
-- Commit: pending coordinator dispatch commit
-- Push: pending coordinator dispatch push
-- Next: spawn `MODEL-001` and `GS7-004` workers after the plan consistency
-  check passes.
+- Commit: 7c45bb080080895bfdf99bc03b5ecfe343d81545
+- Push: succeeded
+- Next: `MODEL-001` is running as Socrates
+  (`019e3b31-5757-7a83-9f73-06f1313f2064`) and `GS7-004` is running as
+  Ptolemy (`019e3b31-5773-7432-afed-0e4d4299f4ee`).
 - Blockers: none

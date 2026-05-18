@@ -34,7 +34,7 @@ This is the live coordinator board. Keep it current and compact.
 ### `REAL-008`: Tests-only gate after humanize materializer
 
 - Status: active
-- Owner: pending worker dispatch.
+- Owner: worker Kant (`019e3bb9-7038-7ee1-a876-1fa0b475f3cd`).
 - Goal: rerun the tests-only gate with the `GS7-010` humanize materializer
   counted, separating calibration and held-out evidence.
 - Write scope: `j3/real_repo_shadow_score.py`,
@@ -55,7 +55,7 @@ This is the live coordinator board. Keep it current and compact.
 ### `GS7-011`: Materialize held-out boltons tests-only candidate
 
 - Status: active
-- Owner: pending worker dispatch.
+- Owner: worker Aristotle (`019e3bb9-a3fb-7492-b95f-bb26e5ea19be`).
 - Goal: attack `boltons-tests-slugify-delimiter` as the remaining held-out
   tests-only ladder task.
 - Write scope: `j3/real_repo_tests_planner.py`,

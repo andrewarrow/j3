@@ -1358,8 +1358,11 @@ meaningful work. Do not replace this file with a daily reset.
   that `iniconfig`, `h11`, and `humanize` have live-validated materializers.
   In parallel, `GS7-011` attacks the remaining held-out `boltons` tests-only
   row so the full four-task ladder can be scored next.
-- Commit: pending
-- Push: pending
-- Next: dispatch workers for `REAL-008` and `GS7-011`; keep `REAL-010` ready
-  for the full tests-only gate after boltons.
+- Commit: 0bc3668
+- Push: succeeded
+- Next: workers dispatched for `REAL-008` and `GS7-011`: Kant
+  (`019e3bb9-7038-7ee1-a876-1fa0b475f3cd`) owns the tests-only gate scorer,
+  and Aristotle (`019e3bb9-a3fb-7492-b95f-bb26e5ea19be`) owns the held-out
+  boltons tests-only materializer. Keep `REAL-010` ready for the full
+  tests-only gate after boltons.
 - Blockers: none

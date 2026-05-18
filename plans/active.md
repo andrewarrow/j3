@@ -19,7 +19,7 @@ This is the live coordinator board. Keep it current and compact.
 ### `REAL-002`: Real repo eval ladder preflight runner
 
 - Status: active
-- Owner: pending spawn
+- Owner: worker Anscombe (`019e3b5b-9a2f-7f42-904b-374a97656881`)
 - Started: 2026-05-18
 - Goal: turn the `REAL-001` ladder contract into a runnable preflight that
   proves pinned checkout, baseline validation, timeouts, and outcome labeling
@@ -37,7 +37,7 @@ This is the live coordinator board. Keep it current and compact.
 ### `DATA-005`: Issue/PR replay preflight runner
 
 - Status: active
-- Owner: pending spawn
+- Owner: worker Carson (`019e3b5b-ca19-7400-b1a8-d568d0c4d1dd`)
 - Started: 2026-05-18
 - Goal: prove whether a `DATA-004` replay row can be checked out, setup-checked,
   baseline-validated, and residual-labeled before any edit attempt.
@@ -53,7 +53,7 @@ This is the live coordinator board. Keep it current and compact.
 ### `GS7-005`: Tests-only existing-repo support for one-file libraries
 
 - Status: active
-- Owner: pending spawn
+- Owner: worker Feynman (`019e3b5c-0165-7cf1-b0c9-cf39fcdfa3b2`)
 - Started: 2026-05-18
 - Goal: implement the first product-wedge action slice: inspect a small
   existing one-file Python library, add pytest coverage only, avoid production

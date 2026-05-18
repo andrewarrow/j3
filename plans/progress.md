@@ -2807,8 +2807,8 @@ meaningful work. Do not replace this file with a daily reset.
   candidate-after metadata. Focused tests cover wrapper/behavior residual-style
   candidates and issue/PR candidate records. Production ranking and guarded
   opt-in decisions remain unchanged.
-- Commit: pending final hash.
-- Push: pending.
+- Commit: 0e8cc35.
+- Push: succeeded.
 - Next: use these observations in a later held-out scoring run before changing
   any production ranking or guarded-use gate.
 - Blockers: none.

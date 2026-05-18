@@ -345,8 +345,8 @@ meaningful work. Do not replace this file with a daily reset.
   merge commit refs, changed-file hints, and license/terms notes. The checked-in
   fixture is small and synthetic; generated harvested manifests remain outside
   git and records are marked `unreviewed_candidate`.
-- Commit: pending worker commit
-- Push: pending worker push
+- Commit: 3feca4ec3e9a7ae7ebd17e9060afd29ef9d90dcd
+- Push: succeeded
 - Next: collect or export reviewed real issue/PR rows before starting
   `DATA-004`; keep large harvested manifests out of git.
 - Blockers: `DATA-004` still needs reviewed real issue/PR export rows and
@@ -370,9 +370,36 @@ meaningful work. Do not replace this file with a daily reset.
   and the underspecified file-converter fixture is classified as
   `expected_clarification`. GreenShot-7 now reports 15 total fixtures, 10
   built, 10 validation-passed, 5 blocked/classified, and zero harness failures.
-- Commit: pending worker commit
-- Push: pending worker push
+- Commit: 0d84fb5fab387d20526bf5772757c52d1106dabf
+- Push: succeeded
 - Next: use the classified gaps to scope tests-only actions, broader
   existing-repo support, or a greenfield builder coverage map before adding
   more synthetic requests.
+- Blockers: none
+
+### 2026-05-18 - COORD - Implement CLI non-calculator integration fix
+
+- Owner: coordinator
+- Files changed: `cli/handlers.py`, `tests/test_cli.py`,
+  `plans/backlog.md`, `plans/progress.md`
+- Tests: `pytest tests/test_cli.py::test_implement_command_builds_repo_and_request_spec_artifact
+  tests/test_cli.py::test_implement_command_validates_generated_repo_by_default
+  tests/test_cli.py::test_implement_command_builds_non_calculator_library
+  tests/test_cli.py::test_implement_command_appends_success_record
+  tests/test_cli.py::test_implement_command_records_skipped_validation
+  tests/test_cli.py::test_implement_command_blocks_clarification_without_calculator_files
+  tests/test_cli.py::test_implement_command_records_blocked_clarification -q` ->
+  7 passed; `pytest tests/test_request_spec.py
+  tests/test_greenfield_calculator.py tests/test_greenshot_7.py -q` -> 17
+  passed; `python cli.py implement --prompt "create a tiny python slugify
+  library with tests; it should lowercase text, trim punctuation, and join
+  words with hyphens" --out /tmp/j3-impl-slugify-review-fixed` -> built and
+  validation passed; `git diff --check` passed.
+- Result: `cli.py implement` now uses the generalized GreenShot greenfield
+  planner/builder and validates with the command from the request spec, so
+  non-calculator slugify library requests build through the public CLI instead
+  of crashing in the calculator-only planner.
+- Commit: pending coordinator commit
+- Push: pending coordinator push
+- Next: assign the next ready disjoint worker tasks and keep the loop active.
 - Blockers: none

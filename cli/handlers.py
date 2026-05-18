@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import shlex
 import subprocess
 from pathlib import Path
 
@@ -33,8 +34,8 @@ from j3.fixing import run_fix_workflow
 from j3.greenfield import (
     BuildResult,
     GreenfieldPlan,
-    build_calculator_repo,
-    plan_calculator_repo,
+    build_greenfield_repo,
+    plan_greenfield_repo,
 )
 from j3.greenshot_7 import run_greenshot_7_tasks, summary_has_failures
 from j3.mining import mine_git_transitions, mine_issue_pr_transition_manifest
@@ -134,10 +135,10 @@ def handle_implement(args: argparse.Namespace) -> int:
     intent = predict_prompt_intent(args.prompt)
     spec = parse_request_to_spec(args.prompt, intent=intent)
     out_dir = args.out.expanduser().resolve()
-    plan = plan_calculator_repo(spec)
+    plan = plan_greenfield_repo(spec)
 
     if spec.clarifications_needed:
-        result = build_calculator_repo(plan, out_dir)
+        result = build_greenfield_repo(plan, out_dir)
         validation = _blocked_implement_validation()
         _record_implement_attempt(
             args.record,
@@ -165,16 +166,16 @@ def handle_implement(args: argparse.Namespace) -> int:
             f"refusing to overwrite existing file: {out_dir / REQUEST_SPEC_ARTIFACT}"
         )
 
-    result = build_calculator_repo(plan, out_dir)
+    result = build_greenfield_repo(plan, out_dir)
     spec_artifact = _write_request_spec_artifact(spec, out_dir)
 
     files_written = [*result.files_written, spec_artifact.name]
     validation = (
-        _run_generated_repo_validation(out_dir)
+        _run_generated_repo_validation(out_dir, spec)
         if not args.no_validate
         else {
             "status": "skipped",
-            "command": "python -m pytest tests/test_calculator_cli.py -q",
+            "command": _implement_validation_command(spec),
             "exit_code": None,
         }
     )
@@ -1614,8 +1615,12 @@ def _write_request_spec_artifact(spec: RequestSpec, out_dir: Path) -> Path:
     return path
 
 
-def _run_generated_repo_validation(out_dir: Path) -> dict[str, object]:
-    command = ["python", "-m", "pytest", "tests/test_calculator_cli.py", "-q"]
+def _run_generated_repo_validation(
+    out_dir: Path,
+    spec: RequestSpec,
+) -> dict[str, object]:
+    command_text = _implement_validation_command(spec)
+    command = shlex.split(command_text)
     completed = subprocess.run(
         command,
         cwd=out_dir,
@@ -1626,11 +1631,21 @@ def _run_generated_repo_validation(out_dir: Path) -> dict[str, object]:
     status = "passed" if completed.returncode == 0 else "failed"
     return {
         "status": status,
-        "command": " ".join(command),
+        "command": command_text,
         "exit_code": completed.returncode,
         "stdout": completed.stdout,
         "stderr": completed.stderr,
     }
+
+
+def _implement_validation_command(spec: RequestSpec) -> str:
+    commands = spec.validation.get("commands", [])
+    if not isinstance(commands, list) or not commands:
+        return "python -m pytest tests/test_calculator_cli.py -q"
+    first = commands[0]
+    if not isinstance(first, str) or not first:
+        return "python -m pytest tests/test_calculator_cli.py -q"
+    return first
 
 
 def _blocked_implement_validation() -> dict[str, object]:

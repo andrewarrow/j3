@@ -81,7 +81,7 @@ Long-term target:
 
 ### GS7-002: Add five non-calculator request-to-repo fixtures
 
-- Status: active
+- Status: done
 - Why: calculator-only success is too narrow for product evidence.
 - Write scope: `examples/greenshot_7`, GreenShot-7 tests, focused request-spec
   fixtures.

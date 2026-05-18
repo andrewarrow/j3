@@ -1524,6 +1524,54 @@ def test_implement_command_validates_generated_repo_by_default(capsys, tmp_path)
     assert (out_dir / "request-spec.json").exists()
 
 
+def test_implement_command_builds_non_calculator_library(capsys, tmp_path) -> None:
+    out_dir = tmp_path / "slugify"
+
+    assert (
+        main(
+            [
+                "implement",
+                "--prompt",
+                (
+                    "create a tiny python slugify library with tests; it should "
+                    "lowercase text, trim punctuation, and join words with hyphens"
+                ),
+                "--out",
+                str(out_dir),
+            ]
+        )
+        == 0
+    )
+
+    output = capsys.readouterr().out
+    assert "j3 implement complete" in output
+    assert "task type: create_library" in output
+    assert "status: built" in output
+    assert "domain: text_slugify" in output
+    assert "validation: passed (python -m pytest tests/test_slugify.py -q)" in output
+    assert (out_dir / "slugify.py").exists()
+    assert (out_dir / "tests/test_slugify.py").exists()
+    request_spec = json.loads(
+        (out_dir / "request-spec.json").read_text(encoding="utf-8")
+    )
+    assert request_spec["domain"] == "text_slugify"
+    assert request_spec["artifacts"] == ["slugify.py", "tests/test_slugify.py"]
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "from slugify import slugify; print(slugify('Hello, CLI!'))",
+        ],
+        cwd=out_dir,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert completed.returncode == 0, completed.stderr
+    assert completed.stdout.strip() == "hello-cli"
+
+
 def test_implement_command_appends_success_record(capsys, tmp_path) -> None:
     out_dir = tmp_path / "calc"
     record_path = tmp_path / "records.jsonl"

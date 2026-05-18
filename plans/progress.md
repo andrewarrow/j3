@@ -963,8 +963,8 @@ meaningful work. Do not replace this file with a daily reset.
   (`python -m pytest testing -q`, `49 passed in 0.03s`) all passed. JSONL
   evidence is under `/tmp/j3-real-004-live-preflight/outcomes.jsonl`; the
   compact report is `docs/REAL_004_LIVE_PREFLIGHT_2026-05-18.md`.
-- Commit: pending
-- Push: pending
+- Commit: a41aabac0960f263476fd392af05210fe01fb18e
+- Push: succeeded
 - Next: keep `GS7-007` focused on real-repo tests-only planning; separately
   extend live baseline preflight to at least two more ladder repos before Gate A
   is claimed.

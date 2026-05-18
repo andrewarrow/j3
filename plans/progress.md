@@ -3220,10 +3220,48 @@ meaningful work. Do not replace this file with a daily reset.
   `validation`, command classification is `dependency_fixture_setup_failure`,
   and evidence acquisition status is `blocked_on_validation_recipe`. The row
   remains blocked and is not ready for prompt/spec/local-knowledge acquisition.
-- Commit: pending.
-- Push: pending.
+- Commit: 8741911.
+- Push: succeeded.
 - Next: either define a bounded pip functional-test fixture setup recipe that
   includes `scripttest` and any subsequent explicit imports, or keep the row
   blocked while prioritizing Scrapy evidence acquisition.
 - Blockers: pip validation remains blocked on fixture dependency setup after
   `installer`; next missing module is `scripttest`.
+
+### 2026-05-18 - DATA-031 - Scrapy prompt/spec and local knowledge
+
+- Owner: worker Mencius (`019e3c90-d36a-7522-b35f-4efdae1c77a0`).
+- Files changed: `j3/issue_pr_prompt_spec.py`, `j3/local_knowledge.py`,
+  `tests/test_issue_pr_prompt_spec.py`, `tests/test_local_knowledge.py`,
+  `docs/DATA_031_SCRAPY_7293_PROMPT_SPEC_KNOWLEDGE_2026-05-18.md`,
+  `plans/active.md`, `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `python -m py_compile j3/issue_pr_prompt_spec.py
+  j3/local_knowledge.py tests/test_issue_pr_prompt_spec.py
+  tests/test_local_knowledge.py` -> passed; `pytest
+  tests/test_issue_pr_prompt_spec.py tests/test_local_knowledge.py -q` -> 22
+  passed; CLI smoke `python -m j3.issue_pr_prompt_spec --replay-id
+  scrapy__scrapy-issue-7293-pr-7351 ...` -> emitted one normalized spec row;
+  CLI smoke `python -m j3.local_knowledge
+  --scrapy-downloader-aware-replay-row scrapy__scrapy-issue-7293-pr-7351 ...`
+  -> emitted six local-knowledge rows; `pytest tests/test_plan_consistency.py
+  -q` -> 6 passed; `git diff --check` -> passed.
+- Result: acquired machine-readable evidence for exactly
+  `scrapy__scrapy-issue-7293-pr-7351` with no candidate edits. The prompt/spec
+  row covers the `_active_downloads` issue framing, observed versus expected
+  queue behavior, affected `DownloaderAwarePriorityQueue` and
+  `DownloaderInterface` surface, input/reproduction shape, acceptance-test
+  shape, downloader-aware slot tie-breaking, slot active-download count
+  semantics, and priority queue ordering reproduction. Local knowledge covers
+  changed-file context for `scrapy/pqueues.py` and `tests/test_pqueues.py`,
+  the DATA-030 validation recipe, Scrapy downloader-aware queue behavior, slot
+  active-download accounting, pqueue test patterns, provenance, validation
+  split labels, and remaining readiness blockers.
+- Commit: pending.
+- Push: pending.
+- Next: a future readiness or materialization task can consume
+  `/tmp/j3-data-031-scrapy-7293-evidence/spec.jsonl` and
+  `/tmp/j3-data-031-scrapy-7293-evidence/knowledge.jsonl`; candidate
+  generation remains deferred until materialization and ranking evidence are
+  assigned.
+- Blockers: candidate materialization and ranking remain deferred; no DATA-031
+  evidence blocker remains.

@@ -1837,7 +1837,7 @@ Long-term target:
 
 ### DATA-031: Scrapy validation-split prompt/spec and local knowledge
 
-- Status: active
+- Status: done
 - Why: DATA-030 found a validation-split Scrapy row whose checkout, setup, and
   focused baseline validation pass. The next hard proof is whether local
   evidence acquisition generalizes outside train-split pytest/Click rows into
@@ -1855,6 +1855,16 @@ Long-term target:
   readiness blockers.
 - Tests: focused prompt/spec/local-knowledge tests, plan consistency,
   `git diff --check`, and CLI smoke that emits the Scrapy evidence rows.
+- Completion note: added normalized prompt/spec and six local-knowledge records
+  for exactly `scrapy__scrapy-issue-7293-pr-7351`, the validation-split Scrapy
+  row that DATA-030 proved baseline-ready. Evidence covers the
+  `_active_downloads` issue framing, `DownloaderAwarePriorityQueue`
+  tie-breaking, slot active-download accounting, changed-file context for
+  `scrapy/pqueues.py` and `tests/test_pqueues.py`, DATA-030 validation,
+  pqueue test patterns, provenance, split labels, and remaining readiness
+  blockers. Artifacts are under
+  `/tmp/j3-data-031-scrapy-7293-evidence/` and
+  `docs/DATA_031_SCRAPY_7293_PROMPT_SPEC_KNOWLEDGE_2026-05-18.md`.
 
 ### DATA-032: Pip validation recipe isolation
 

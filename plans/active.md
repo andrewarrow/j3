@@ -44,23 +44,6 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-### `DATA-031`: Scrapy validation-split prompt/spec and local knowledge
-
-- Status: active
-- Owner: worker Mencius (`019e3c90-d36a-7522-b35f-4efdae1c77a0`).
-- Write scope: `j3/issue_pr_prompt_spec.py`, `j3/local_knowledge.py`,
-  `tests/test_issue_pr_prompt_spec.py`, `tests/test_local_knowledge.py`,
-  generated outputs under `/tmp`, optional compact report under `docs/`, and
-  planning updates. Do not attempt candidate source edits.
-- Acceptance: acquire machine-readable prompt/spec and local-knowledge evidence
-  for exactly `scrapy__scrapy-issue-7293-pr-7351`, the DATA-030
-  validation-split row whose checkout/setup/baseline validation passed.
-  Evidence must cover `DownloaderAwarePriorityQueue` tie-breaking,
-  `_active_downloads` semantics, changed-file context for `scrapy/pqueues.py`
-  and `tests/test_pqueues.py`, the DATA-030 focused validation recipe,
-  priority-queue test patterns, provenance, split labels, and remaining
-  readiness blockers. No candidate edits.
-
 ## Ready Queue
 
 These are good next assignments for the next loop:
@@ -92,6 +75,22 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `DATA-031`: added normalized prompt/spec and local-knowledge evidence for
+  exactly `scrapy__scrapy-issue-7293-pr-7351` with no candidate edits. The
+  prompt/spec row covers the `_active_downloads` issue framing, observed versus
+  expected queue behavior, affected `DownloaderAwarePriorityQueue` and
+  `DownloaderInterface` surface, reproduction input shape, acceptance-test
+  shape, downloader-aware slot tie-breaking, active-download count semantics,
+  and priority queue ordering reproduction. The local-knowledge JSONL emits
+  six records covering changed-file context for `scrapy/pqueues.py` and
+  `tests/test_pqueues.py`, the DATA-030 focused validation recipe, Scrapy
+  downloader-aware priority queue behavior, slot active-download accounting,
+  pqueue test patterns, provenance, validation split labels, and remaining
+  readiness blockers. Artifacts:
+  `/tmp/j3-data-031-scrapy-7293-evidence/spec.jsonl`,
+  `/tmp/j3-data-031-scrapy-7293-evidence/spec.md`,
+  `/tmp/j3-data-031-scrapy-7293-evidence/knowledge.jsonl`, and
+  `docs/DATA_031_SCRAPY_7293_PROMPT_SPEC_KNOWLEDGE_2026-05-18.md`.
 - `DATA-032`: isolated the pip validation-split blocker for exactly
   `pypa__pip-issue-12018-pr-13886` with no candidate edits. The bounded
   recipe attempt used setup `python -m pip install -e . installer`, explicitly

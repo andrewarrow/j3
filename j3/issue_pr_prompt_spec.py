@@ -21,6 +21,7 @@ REQUESTS_PREPARE_BODY_REPLAY_ID = "psf__requests-issue-7432-pr-7433"
 CLICK_SEMVER_DEFAULT_REPLAY_ID = "pallets__click-issue-3298-pr-3299"
 PYTEST_STRICT_ADDOPTS_REPLAY_ID = "pytest-dev__pytest-issue-14442-pr-14443"
 PYTEST_TIMEDELTA_APPROX_REPLAY_ID = "pytest-dev__pytest-issue-14462-pr-14466"
+SCRAPY_DOWNLOADER_AWARE_REPLAY_ID = "scrapy__scrapy-issue-7293-pr-7351"
 DEFAULT_MAP_REQUIRED_FIELDS = (
     "minimal_reproduction",
     "observed_behavior",
@@ -75,6 +76,17 @@ PYTEST_TIMEDELTA_APPROX_REQUIRED_FIELDS = (
     "relative_tolerance_semantics",
     "datetime_timedelta_comparison_behavior",
 )
+SCRAPY_DOWNLOADER_AWARE_REQUIRED_FIELDS = (
+    "minimal_reproduction",
+    "observed_behavior",
+    "expected_behavior",
+    "affected_api_symbol",
+    "input_shape",
+    "acceptance_test_shape",
+    "downloader_slot_tie_breaking",
+    "active_download_count_semantics",
+    "priority_queue_ordering_reproduction",
+)
 
 
 def build_issue_pr_prompt_spec(
@@ -112,6 +124,12 @@ def build_issue_pr_prompt_spec(
         )
     if replay_id == PYTEST_TIMEDELTA_APPROX_REPLAY_ID:
         return _pytest_timedelta_approx_prompt_spec(
+            manifest=manifest,
+            manifest_path=manifest_path,
+            record=record,
+        )
+    if replay_id == SCRAPY_DOWNLOADER_AWARE_REPLAY_ID:
+        return _scrapy_downloader_aware_prompt_spec(
             manifest=manifest,
             manifest_path=manifest_path,
             record=record,
@@ -255,6 +273,8 @@ def _prompt_spec_report_title(specs: Sequence[Mapping[str, object]]) -> str:
         return "DATA-013 Click Semver Default Prompt Spec"
     if kinds == {"pytest_strict_addopts_config"}:
         return "DATA-021 Pytest Strict Addopts Prompt Spec"
+    if kinds == {"scrapy_downloader_aware_priority_queue_tie_breaking"}:
+        return "DATA-031 Scrapy Downloader-Aware Queue Prompt Spec"
     return "Issue/PR Prompt Spec Report"
 
 
@@ -1617,6 +1637,299 @@ def _pytest_timedelta_approx_prompt_spec(
                 },
                 {
                     "id": "github_pr_14466_conversation",
+                    "kind": "github_pull_request",
+                    "url": pr_url,
+                    "fields": [],
+                    "availability": "not_checked_in_not_required",
+                },
+            ],
+        ),
+    }
+
+
+def _scrapy_downloader_aware_prompt_spec(
+    *,
+    manifest: Mapping[str, object],
+    manifest_path: Path | None,
+    record: Mapping[str, object],
+) -> dict[str, object]:
+    prompt_source = _mapping(record.get("prompt_source"))
+    accepted_change = _mapping(record.get("accepted_change"))
+    validation = _mapping(record.get("validation"))
+    issue_url = str(prompt_source.get("issue_url") or "")
+    pr_url = str(prompt_source.get("pull_request_url") or "")
+    diff_url = str(accepted_change.get("diff_url") or "")
+    validation_command = str(validation.get("command") or "pytest tests/test_pqueues.py -q")
+    knowledge_path = "/tmp/j3-data-031-scrapy-7293-evidence/knowledge.jsonl"
+    field_provenance = {
+        "minimal_reproduction": [
+            "github_issue_7293_compact_manifest",
+            "github_pr_7351_diff",
+        ],
+        "observed_behavior": [
+            "github_issue_7293_compact_manifest",
+            "data_030_scrapy_preflight",
+            "know_data_031_scrapy_downloader_aware_priority_queue",
+        ],
+        "expected_behavior": [
+            "github_pr_7351_diff",
+            "know_data_031_scrapy_downloader_aware_priority_queue",
+        ],
+        "affected_api_symbol": [
+            "github_pr_7351_diff",
+            "know_data_031_repo_changed_file_context",
+        ],
+        "input_shape": [
+            "github_pr_7351_diff",
+            "know_data_031_scrapy_pqueue_test_patterns",
+        ],
+        "acceptance_test_shape": [
+            "github_pr_7351_diff",
+            "data_030_scrapy_preflight",
+            "know_data_031_scrapy_pqueue_test_patterns",
+        ],
+        "downloader_slot_tie_breaking": [
+            "github_pr_7351_diff",
+            "know_data_031_scrapy_downloader_aware_priority_queue",
+        ],
+        "active_download_count_semantics": [
+            "github_issue_7293_compact_manifest",
+            "know_data_031_scrapy_slot_active_download_accounting",
+        ],
+        "priority_queue_ordering_reproduction": [
+            "github_pr_7351_diff",
+            "know_data_031_scrapy_pqueue_test_patterns",
+        ],
+    }
+    normalized_fields = {
+        "minimal_reproduction": {
+            "kind": "scrapy_downloader_aware_priority_queue_equal_active_slots",
+            "queue_class": "scrapy.pqueues.DownloaderAwarePriorityQueue",
+            "downstream_queue_class": "scrapy.squeues.FifoMemoryQueue",
+            "downloader_slot_meta_key": "scrapy.core.downloader.Downloader.DOWNLOAD_SLOT",
+            "requests": [
+                {"url": "https://example.org/a1", "slot": "slot-a"},
+                {"url": "https://example.org/b1", "slot": "slot-b"},
+                {"url": "https://example.org/a2", "slot": "slot-a"},
+                {"url": "https://example.org/b2", "slot": "slot-b"},
+            ],
+            "downloader_state": {
+                "slot_active_counts": {"slot-a": 0, "slot-b": 0},
+                "tracked_active_downloads": "no active downloads in MockDownloader slots",
+            },
+        },
+        "observed_behavior": {
+            "repo_before_ref": "2b174e348d88d19dd32135e8e483c4eb784aeca8",
+            "failure_mode": "equal_active_slot_tie_breaking_restarts_from_smallest_slot",
+            "issue_label": "DownloaderInterface._active_downloads returns wrong value",
+            "root_cause": (
+                "DownloaderAwarePriorityQueue.pop and peek select min(stats)[1], "
+                "so equal active-download counts fall back to lexicographic slot "
+                "ordering instead of a fair slot rotation."
+            ),
+            "repo_before_selection": "min([(0, 'slot-a'), (0, 'slot-b')])[1] == 'slot-a'",
+            "effect": (
+                "When queued slots have the same active-download count, the "
+                "lexicographically smallest slot can be repeatedly drained before "
+                "later slots even though _active_downloads reports the same score."
+            ),
+            "baseline_validation": {
+                "source": "DATA-030",
+                "command": validation_command,
+                "repo_before_result": "11 passed, 2 skipped, 2 warnings in 0.20s",
+            },
+        },
+        "expected_behavior": {
+            "behavior": "rotate_equal_active_download_slots_without_starvation",
+            "least_active_policy": (
+                "Slots with fewer active downloads still win before slots with "
+                "more active downloads."
+            ),
+            "tie_policy": (
+                "For slots with the same active-download count, choose the first "
+                "slot after the last selected slot, wrapping to the smallest slot "
+                "when needed."
+            ),
+            "peek_policy": "peek uses the same slot choice but must not advance rotation state",
+            "candidate_constraint": (
+                "DATA-031 is evidence acquisition only; future candidate scope is "
+                "limited to scrapy/pqueues.py and tests/test_pqueues.py."
+            ),
+        },
+        "affected_api_symbol": {
+            "public_surface": "scrapy.pqueues.DownloaderAwarePriorityQueue",
+            "implementation_symbol": "scrapy.pqueues.DownloaderAwarePriorityQueue.pop",
+            "related_symbols": [
+                "scrapy.pqueues.DownloaderAwarePriorityQueue.peek",
+                "scrapy.pqueues.DownloaderAwarePriorityQueue._next_slot",
+                "scrapy.pqueues.DownloaderInterface.stats",
+                "scrapy.pqueues.DownloaderInterface._active_downloads",
+            ],
+            "changed_file": "scrapy/pqueues.py",
+            "changed_test_files": ["tests/test_pqueues.py"],
+            "auxiliary_changed_files": [],
+        },
+        "input_shape": {
+            "queue_slots": ["slot-a", "slot-b", "slot-c"],
+            "request_shape": {
+                "type": "scrapy.http.request.Request",
+                "slot_source": "request.meta[Downloader.DOWNLOAD_SLOT]",
+                "priority": "default request priority is sufficient for the reproduction",
+            },
+            "active_download_count_source": "len(downloader.slots[slot].active)",
+            "missing_downloader_slot_count": 0,
+            "equal_count_case": {"slot-a": 0, "slot-b": 0},
+            "deletion_case": (
+                "After a selected slot queue becomes empty and is removed, the "
+                "rotation marker still needs to continue from that deleted slot."
+            ),
+        },
+        "acceptance_test_shape": {
+            "test_files": ["tests/test_pqueues.py"],
+            "test_class": "TestDownloaderAwarePriorityQueue",
+            "test_cases": [
+                {
+                    "test_name": "test_tie_breaking_rotates_slots",
+                    "assertion": (
+                        "four requests across slot-a and slot-b pop as "
+                        "slot-a, slot-b, slot-a, slot-b"
+                    ),
+                },
+                {
+                    "test_name": "test_tie_breaking_keeps_rotation_after_selected_slot_is_deleted",
+                    "assertion": (
+                        "slot rotation continues as slot-a, slot-b, slot-c, "
+                        "slot-a when a selected slot queue is deleted"
+                    ),
+                },
+            ],
+            "validation_command": validation_command,
+            "setup_command": "python -m pip install -e .",
+        },
+        "downloader_slot_tie_breaking": {
+            "repo_before_selector": "slot = min(stats)[1]",
+            "repo_before_tie_key": "(active_download_count, slot_name)",
+            "accepted_selector": "DownloaderAwarePriorityQueue._next_slot(stats, update_state=...)",
+            "state": "_last_selected_slot",
+            "rotation_order": "next slot with the minimum active count after the last selected slot, else wrap",
+            "pop_updates_state": True,
+            "peek_updates_state": False,
+        },
+        "active_download_count_semantics": {
+            "method": "DownloaderInterface._active_downloads",
+            "inputs": ["slot"],
+            "missing_slot_result": 0,
+            "existing_slot_result": "len(self.downloader.slots[slot].active)",
+            "stats_shape": "list[tuple[int, str]] where each item is (active_downloads, slot)",
+            "bug_boundary": (
+                "The active count itself remains the scheduling score; the fix "
+                "changes only how equal scores are ordered across slots."
+            ),
+        },
+        "priority_queue_ordering_reproduction": {
+            "no_active_downloads": {
+                "input_slots": ["slot-a", "slot-b", "slot-a", "slot-b"],
+                "expected_pop_slots": ["slot-a", "slot-b", "slot-a", "slot-b"],
+            },
+            "deleted_selected_slot": {
+                "input_slots": ["slot-a", "slot-a", "slot-b", "slot-c"],
+                "expected_pop_slots": ["slot-a", "slot-b", "slot-c", "slot-a"],
+            },
+            "controls": [
+                "single-slot push/pop behavior remains FIFO through the downstream queue",
+                "DownloaderInterface._active_downloads still prioritizes lower active counts",
+                "peek observes the next slot without moving _last_selected_slot",
+            ],
+        },
+    }
+    return {
+        "schema_version": ISSUE_PR_PROMPT_SPEC_SCHEMA_VERSION,
+        "record_kind": "issue_pr_prompt_spec",
+        "replay_id": str(record.get("id")),
+        "repo": str(record.get("repo")),
+        "prompt_spec_kind": "scrapy_downloader_aware_priority_queue_tie_breaking",
+        "status": "normalized",
+        "candidate_code_edits_attempted": False,
+        "required_prompt_fields": list(SCRAPY_DOWNLOADER_AWARE_REQUIRED_FIELDS),
+        "missing_prompt_fields": [],
+        "required_prompt_fields_complete": True,
+        "source_text_blockers": [],
+        "source_text_gaps": [
+            {
+                "source": "github_issue_7293_body",
+                "availability": "not_checked_in",
+                "impact": (
+                    "Exact issue body text is unavailable locally; fields were "
+                    "normalized from compact manifest metadata, accepted PR diff, "
+                    "DATA-030 validation evidence, and DATA-031 local knowledge."
+                ),
+            },
+            {
+                "source": "github_pr_7351_conversation",
+                "availability": "not_checked_in",
+                "impact": (
+                    "PR discussion text is unavailable locally; no required "
+                    "prompt/spec field depends on unretrieved conversation text."
+                ),
+            },
+        ],
+        "normalized_fields": normalized_fields,
+        "field_provenance": field_provenance,
+        "prompt_source": dict(prompt_source),
+        "accepted_change": dict(accepted_change),
+        "provenance": _prompt_spec_provenance(
+            manifest=manifest,
+            manifest_path=manifest_path,
+            record=record,
+            normalized_from=[
+                {
+                    "id": "github_issue_7293_compact_manifest",
+                    "kind": "github_issue_metadata",
+                    "url": issue_url,
+                    "fields": [
+                        "minimal_reproduction",
+                        "observed_behavior",
+                        "active_download_count_semantics",
+                    ],
+                },
+                {
+                    "id": "github_pr_7351_diff",
+                    "kind": "github_pull_request_diff",
+                    "url": diff_url,
+                    "merge_commit_sha": accepted_change.get("merge_commit_sha"),
+                    "fields": [
+                        "minimal_reproduction",
+                        "expected_behavior",
+                        "affected_api_symbol",
+                        "input_shape",
+                        "acceptance_test_shape",
+                        "downloader_slot_tie_breaking",
+                        "priority_queue_ordering_reproduction",
+                    ],
+                },
+                {
+                    "id": "data_030_scrapy_preflight",
+                    "kind": "local_validation_report",
+                    "url": "docs/DATA_030_VALIDATION_SPLIT_PREFLIGHT_2026-05-18.md",
+                    "fields": ["observed_behavior", "acceptance_test_shape"],
+                },
+                {
+                    "id": "know_data_031_scrapy_local_knowledge",
+                    "kind": "local_knowledge_jsonl",
+                    "url": knowledge_path,
+                    "fields": [
+                        "observed_behavior",
+                        "expected_behavior",
+                        "affected_api_symbol",
+                        "input_shape",
+                        "acceptance_test_shape",
+                        "downloader_slot_tie_breaking",
+                        "active_download_count_semantics",
+                        "priority_queue_ordering_reproduction",
+                    ],
+                },
+                {
+                    "id": "github_pr_7351_conversation",
                     "kind": "github_pull_request",
                     "url": pr_url,
                     "fields": [],

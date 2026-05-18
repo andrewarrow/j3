@@ -10,11 +10,13 @@ from j3.local_knowledge import (
     PYTEST_STRICT_ADDOPTS_REQUIRED_KNOWLEDGE_CATEGORIES,
     PYTEST_TIMEDELTA_APPROX_REQUIRED_KNOWLEDGE_CATEGORIES,
     REQUESTS_REPLAY_REQUIRED_KNOWLEDGE_CATEGORIES,
+    SCRAPY_DOWNLOADER_AWARE_REQUIRED_KNOWLEDGE_CATEGORIES,
     build_click_replay_local_knowledge_records,
     build_knowledge_use_record,
     build_pytest_strict_addopts_local_knowledge_records,
     build_pytest_timedelta_approx_local_knowledge_records,
     build_requests_replay_local_knowledge_records,
+    build_scrapy_downloader_aware_local_knowledge_records,
     extract_local_knowledge_records,
     validate_local_knowledge_record,
     write_local_knowledge_jsonl,
@@ -1555,6 +1557,443 @@ def test_pytest_timedelta_approx_local_knowledge_records_cover_required_categori
     output = write_local_knowledge_jsonl(
         records,
         tmp_path / "pytest_timedelta_records.jsonl",
+    )
+    output_text = output.read_text(encoding="utf-8")
+    assert "raw_source" not in output_text
+    assert "source_text" not in output_text
+
+
+def _write_scrapy_downloader_aware_repo(repo: Path) -> None:
+    (repo / "scrapy").mkdir()
+    (repo / "scrapy" / "core" / "downloader").mkdir(parents=True)
+    (repo / "scrapy" / "http" / "request").mkdir(parents=True)
+    (repo / "scrapy" / "spiders").mkdir()
+    (repo / "scrapy" / "squeues").mkdir()
+    (repo / "scrapy" / "utils").mkdir()
+    (repo / "tests").mkdir()
+    (repo / "pyproject.toml").write_text(
+        """[project]
+name = "Scrapy"
+version = "2.14.2"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+""",
+        encoding="utf-8",
+    )
+    (repo / "scrapy" / "__init__.py").write_text("", encoding="utf-8")
+    (repo / "scrapy" / "core" / "__init__.py").write_text("", encoding="utf-8")
+    (repo / "scrapy" / "core" / "downloader" / "__init__.py").write_text(
+        '''from __future__ import annotations
+
+from dataclasses import dataclass, field
+
+
+@dataclass
+class Slot:
+    active: set[object] = field(default_factory=set)
+
+
+class Downloader:
+    DOWNLOAD_SLOT = "download_slot"
+
+    def __init__(self):
+        self.slots = {}
+
+    def get_slot_key(self, request):
+        if self.DOWNLOAD_SLOT in request.meta:
+            return request.meta[self.DOWNLOAD_SLOT]
+        return request.url.split("/")[2]
+''',
+        encoding="utf-8",
+    )
+    (repo / "scrapy" / "http" / "__init__.py").write_text("", encoding="utf-8")
+    (repo / "scrapy" / "http" / "request" / "__init__.py").write_text(
+        '''from __future__ import annotations
+
+
+class Request:
+    def __init__(self, url, priority=0, meta=None):
+        self.url = url
+        self.priority = priority
+        self.meta = dict(meta or {})
+''',
+        encoding="utf-8",
+    )
+    (repo / "scrapy" / "spiders" / "__init__.py").write_text(
+        '''class Spider:
+    pass
+''',
+        encoding="utf-8",
+    )
+    (repo / "scrapy" / "squeues" / "__init__.py").write_text(
+        '''class FifoMemoryQueue:
+    def __init__(self, *args, **kwargs):
+        self.items = []
+
+    def push(self, request):
+        self.items.append(request)
+
+    def pop(self):
+        return self.items.pop(0) if self.items else None
+
+    def peek(self):
+        return self.items[0] if self.items else None
+
+    def close(self):
+        return None
+
+    def __len__(self):
+        return len(self.items)
+''',
+        encoding="utf-8",
+    )
+    (repo / "scrapy" / "utils" / "__init__.py").write_text("", encoding="utf-8")
+    (repo / "scrapy" / "utils" / "misc.py").write_text(
+        '''def build_from_crawler(cls, crawler, *args, **kwargs):
+    return cls(crawler, *args, **kwargs)
+
+
+def load_object(path):
+    return path
+''',
+        encoding="utf-8",
+    )
+    (repo / "scrapy" / "utils" / "test.py").write_text(
+        '''def get_crawler(spider_cls):
+    class Settings:
+        def getint(self, name):
+            return 0
+
+    class Crawler:
+        settings = Settings()
+        engine = None
+
+        def _create_spider(self, name):
+            return spider_cls()
+
+    return Crawler()
+''',
+        encoding="utf-8",
+    )
+    (repo / "scrapy" / "pqueues.py").write_text(
+        '''from __future__ import annotations
+
+from scrapy.utils.misc import build_from_crawler
+
+
+class ScrapyPriorityQueue:
+    def __init__(self, crawler, downstream_queue_cls, key, startprios=(), *, start_queue_cls=None):
+        self.crawler = crawler
+        self.downstream_queue_cls = downstream_queue_cls
+        self.key = key
+        self.queues = {}
+        self.curprio = None
+
+    def push(self, request):
+        priority = -request.priority
+        if priority not in self.queues:
+            self.queues[priority] = self.downstream_queue_cls()
+        self.queues[priority].push(request)
+        if self.curprio is None or priority < self.curprio:
+            self.curprio = priority
+
+    def pop(self):
+        if self.curprio is None:
+            return None
+        queue = self.queues[self.curprio]
+        request = queue.pop()
+        if not queue:
+            del self.queues[self.curprio]
+            self.curprio = min(self.queues) if self.queues else None
+        return request
+
+    def peek(self):
+        if self.curprio is None:
+            return None
+        return self.queues[self.curprio].peek()
+
+    def close(self):
+        return list(self.queues)
+
+    def __len__(self):
+        return sum(len(queue) for queue in self.queues.values())
+
+
+class DownloaderInterface:
+    def __init__(self, crawler):
+        self.downloader = crawler.engine.downloader
+
+    def stats(self, possible_slots):
+        return [(self._active_downloads(slot), slot) for slot in possible_slots]
+
+    def get_slot_key(self, request):
+        return self.downloader.get_slot_key(request)
+
+    def _active_downloads(self, slot):
+        if slot not in self.downloader.slots:
+            return 0
+        return len(self.downloader.slots[slot].active)
+
+
+class DownloaderAwarePriorityQueue:
+    def __init__(self, crawler, downstream_queue_cls, key, slot_startprios=None, *, start_queue_cls=None):
+        self._downloader_interface = DownloaderInterface(crawler)
+        self.downstream_queue_cls = downstream_queue_cls
+        self.key = key
+        self.crawler = crawler
+        self.pqueues = {}
+
+    def pqfactory(self, slot, startprios=()):
+        return ScrapyPriorityQueue(self.crawler, self.downstream_queue_cls, self.key + "/" + slot, startprios)
+
+    def pop(self):
+        stats = self._downloader_interface.stats(self.pqueues)
+        if not stats:
+            return None
+        slot = min(stats)[1]
+        queue = self.pqueues[slot]
+        request = queue.pop()
+        if len(queue) == 0:
+            del self.pqueues[slot]
+        return request
+
+    def push(self, request):
+        slot = self._downloader_interface.get_slot_key(request)
+        if slot not in self.pqueues:
+            self.pqueues[slot] = self.pqfactory(slot)
+        self.pqueues[slot].push(request)
+
+    def peek(self):
+        stats = self._downloader_interface.stats(self.pqueues)
+        if not stats:
+            return None
+        slot = min(stats)[1]
+        return self.pqueues[slot].peek()
+
+    def close(self):
+        active = {slot: queue.close() for slot, queue in self.pqueues.items()}
+        self.pqueues.clear()
+        return active
+
+    def __len__(self):
+        return sum(len(queue) for queue in self.pqueues.values())
+''',
+        encoding="utf-8",
+    )
+    (repo / "tests" / "test_scheduler.py").write_text(
+        '''from __future__ import annotations
+
+
+class MockSlot:
+    def __init__(self):
+        self.active = []
+
+
+class MockDownloader:
+    def __init__(self):
+        self.slots = {}
+
+    def get_slot_key(self, request):
+        if "download_slot" in request.meta:
+            return request.meta["download_slot"]
+        return request.url.split("/")[2]
+''',
+        encoding="utf-8",
+    )
+    (repo / "tests" / "test_pqueues.py").write_text(
+        '''from __future__ import annotations
+
+from unittest.mock import Mock
+
+import pytest
+
+from scrapy.core.downloader import Downloader
+from scrapy.http.request import Request
+from scrapy.pqueues import DownloaderAwarePriorityQueue, ScrapyPriorityQueue
+from scrapy.spiders import Spider
+from scrapy.squeues import FifoMemoryQueue
+from scrapy.utils.test import get_crawler
+from tests.test_scheduler import MockDownloader
+
+
+class TestDownloaderAwarePriorityQueue:
+    def setup_method(self):
+        crawler = get_crawler(Spider)
+        crawler.engine = Mock(downloader=MockDownloader())
+        self.queue = DownloaderAwarePriorityQueue(
+            crawler=crawler,
+            downstream_queue_cls=FifoMemoryQueue,
+            key="foo/bar",
+        )
+
+    def test_push_pop(self):
+        req1 = Request("http://www.example.com/1")
+        req2 = Request("http://www.example.com/2")
+        self.queue.push(req1)
+        self.queue.push(req2)
+        assert self.queue.pop().url == req1.url
+        assert self.queue.pop().url == req2.url
+
+    def test_tie_breaking_rotates_slots(self):
+        req_a1 = Request("https://example.org/a1")
+        req_a1.meta[Downloader.DOWNLOAD_SLOT] = "slot-a"
+        req_b1 = Request("https://example.org/b1")
+        req_b1.meta[Downloader.DOWNLOAD_SLOT] = "slot-b"
+        assert [req_a1.meta[Downloader.DOWNLOAD_SLOT], req_b1.meta[Downloader.DOWNLOAD_SLOT]]
+
+
+@pytest.mark.parametrize(("input_", "output"), [([{}, {}], [2, 1])])
+def test_pop_order(input_, output):
+    assert input_
+    assert output
+''',
+        encoding="utf-8",
+    )
+
+
+def _scrapy_downloader_aware_replay_row() -> dict[str, object]:
+    return {
+        "id": "scrapy__scrapy-issue-7293-pr-7351",
+        "repo": "scrapy/scrapy",
+        "prompt_text": (
+            "Fix issue #7293: `DownloaderInterface._active_downloads` returns "
+            "the wrong value. Accepted PR #7351 fixes "
+            "DownloaderAwarePriorityQueue tie-breaking across slots."
+        ),
+        "prompt_source": {
+            "issue_number": 7293,
+            "issue_title": "`DownloaderInterface._active_downloads` function returns wrong value",
+            "issue_url": "https://github.com/scrapy/scrapy/issues/7293",
+            "pull_request_number": 7351,
+            "pull_request_title": "Fix DownloaderAwarePriorityQueue tie-breaking across slots",
+            "pull_request_url": "https://github.com/scrapy/scrapy/pull/7351",
+        },
+        "repo_before_ref": {
+            "provider": "github",
+            "repo": "scrapy/scrapy",
+            "branch": "master",
+            "sha": "2b174e348d88d19dd32135e8e483c4eb784aeca8",
+        },
+        "accepted_change": {
+            "kind": "merged_pull_request",
+            "pull_request_url": "https://github.com/scrapy/scrapy/pull/7351",
+            "diff_url": "https://github.com/scrapy/scrapy/pull/7351.diff",
+            "merge_commit_sha": "b68f26726ac87c5950a4258a8e29bb7ec2e0ebc1",
+            "changed_files": ["scrapy/pqueues.py", "tests/test_pqueues.py"],
+        },
+        "validation": {
+            "command": "pytest tests/test_pqueues.py -q",
+            "source": "inferred_from_changed_tests",
+            "availability": "partial",
+        },
+        "provenance_license": {
+            "repository_url": "https://github.com/scrapy/scrapy",
+            "license_spdx": "BSD-3-Clause",
+        },
+        "stable_split": {
+            "method": "sha256(id) % 100",
+            "bucket": 84,
+            "split": "validation",
+        },
+        "initial_residual_labels": [
+            "prompt_spec_parsing_gap",
+            "local_knowledge_gap",
+            "ranking_gap",
+        ],
+    }
+
+
+def test_scrapy_downloader_aware_local_knowledge_records_cover_required_categories(
+    tmp_path: Path,
+) -> None:
+    _write_scrapy_downloader_aware_repo(tmp_path)
+
+    records = build_scrapy_downloader_aware_local_knowledge_records(
+        tmp_path,
+        _scrapy_downloader_aware_replay_row(),
+        retrieved_at="2026-05-18T00:00:00Z",
+        setup_commands=["python -m pip install -e ."],
+        baseline_validation_commands=["pytest tests/test_pqueues.py -q"],
+    )
+
+    assert {record["record_type"] for record in records} == {
+        "library_idiom_record",
+        "pytest_pattern_record",
+        "repo_changed_file_context_record",
+        "validation_recipe_record",
+    }
+
+    categories = {
+        record["data"]["knowledge_category"]  # type: ignore[index]
+        for record in records
+        if isinstance(record["data"], dict)
+    }
+    assert categories == set(SCRAPY_DOWNLOADER_AWARE_REQUIRED_KNOWLEDGE_CATEGORIES)
+
+    for record in records:
+        validate_local_knowledge_record(record)
+        assert record["split"] == "validation"
+        assert record["links"]["task_ids"] == ["scrapy__scrapy-issue-7293-pr-7351"]
+        assert record["links"]["residual_labels"] == ["local_knowledge_gap"]
+
+    by_category = {
+        record["data"]["knowledge_category"]: record
+        for record in records
+        if isinstance(record["data"], dict)
+    }
+    changed_context = by_category["repo_changed_file_context"]["data"]
+    assert isinstance(changed_context, dict)
+    assert changed_context["changed_files"] == [
+        "scrapy/pqueues.py",
+        "tests/test_pqueues.py",
+    ]
+    assert changed_context["auxiliary_files"] == []
+
+    validation = by_category["focused_validation_recipe"]["data"]
+    assert isinstance(validation, dict)
+    assert validation["focused_commands"] == ["pytest tests/test_pqueues.py -q"]
+    assert validation["required_knowledge_categories"] == list(
+        SCRAPY_DOWNLOADER_AWARE_REQUIRED_KNOWLEDGE_CATEGORIES
+    )
+
+    queue = by_category["scrapy_downloader_aware_priority_queue"]["data"]
+    assert isinstance(queue, dict)
+    source_evidence = queue["source_evidence"]
+    assert isinstance(source_evidence, dict)
+    assert source_evidence["slot_selection"]["pop"]["uses_min_stats"] is True
+    assert source_evidence["slot_selection"]["pop"]["deletes_empty_queue"] is True
+
+    accounting = by_category["scrapy_slot_active_download_accounting"]["data"]
+    assert isinstance(accounting, dict)
+    active = accounting["source_evidence"]["active_downloads"]  # type: ignore[index]
+    assert active["returns_zero_for_missing_slot"] is True
+    assert active["uses_len_slot_active"] is True
+    assert accounting["issue_pr"]["issue_number"] == 7293  # type: ignore[index]
+
+    patterns = by_category["scrapy_pqueue_test_patterns"]["data"]
+    assert isinstance(patterns, dict)
+    test_evidence = patterns["test_evidence"]
+    assert isinstance(test_evidence, dict)
+    assert test_evidence["mock_downloader_import"] is True
+    assert test_evidence["slot_meta_key_import"] is True
+    assert any(
+        item["name"] == "test_tie_breaking_rotates_slots"
+        for item in test_evidence["downloader_aware_tests"]
+    )
+
+    blockers = by_category["scrapy_pqueue_readiness_blockers"]["data"]
+    assert isinstance(blockers, dict)
+    assert blockers["remaining_residual_labels"] == ["materialization_gap", "ranking_gap"]
+    assert blockers["candidate_scope"] == {
+        "source_paths": ["scrapy/pqueues.py"],
+        "test_paths": ["tests/test_pqueues.py"],
+        "auxiliary_paths": [],
+    }
+
+    output = write_local_knowledge_jsonl(
+        records,
+        tmp_path / "scrapy_records.jsonl",
     )
     output_text = output.read_text(encoding="utf-8")
     assert "raw_source" not in output_text

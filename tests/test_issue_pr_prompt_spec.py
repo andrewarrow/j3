@@ -9,6 +9,7 @@ from j3.issue_pr_prompt_spec import (
     PYTEST_STRICT_ADDOPTS_REPLAY_ID,
     PYTEST_TIMEDELTA_APPROX_REPLAY_ID,
     REQUESTS_PREPARE_BODY_REPLAY_ID,
+    SCRAPY_DOWNLOADER_AWARE_REPLAY_ID,
     build_issue_pr_prompt_spec,
     build_issue_pr_prompt_specs,
     load_issue_pr_replay_manifest,
@@ -437,6 +438,81 @@ def test_pytest_timedelta_approx_prompt_spec_records_provenance() -> None:
         "know_data_026_pytest_approx_timedelta_tolerance_semantics",
     ]
     assert spec["source_text_gaps"][0]["source"] == "github_issue_14462_body"
+
+
+def test_builds_scrapy_downloader_aware_prompt_spec() -> None:
+    manifest = load_issue_pr_replay_manifest(MANIFEST_PATH)
+    spec = build_issue_pr_prompt_spec(
+        manifest,
+        SCRAPY_DOWNLOADER_AWARE_REPLAY_ID,
+        manifest_path=MANIFEST_PATH,
+    )
+
+    assert spec["schema_version"] == "issue-pr-prompt-spec-v1"
+    assert spec["record_kind"] == "issue_pr_prompt_spec"
+    assert spec["prompt_spec_kind"] == (
+        "scrapy_downloader_aware_priority_queue_tie_breaking"
+    )
+    assert spec["status"] == "normalized"
+    assert spec["candidate_code_edits_attempted"] is False
+    assert spec["required_prompt_fields_complete"] is True
+    assert spec["missing_prompt_fields"] == []
+    assert spec["source_text_blockers"] == []
+
+    fields = spec["normalized_fields"]
+    assert fields["minimal_reproduction"]["queue_class"] == (
+        "scrapy.pqueues.DownloaderAwarePriorityQueue"
+    )
+    assert (
+        fields["observed_behavior"]["failure_mode"]
+        == "equal_active_slot_tie_breaking_restarts_from_smallest_slot"
+    )
+    assert fields["expected_behavior"]["behavior"] == (
+        "rotate_equal_active_download_slots_without_starvation"
+    )
+    assert fields["affected_api_symbol"]["implementation_symbol"] == (
+        "scrapy.pqueues.DownloaderAwarePriorityQueue.pop"
+    )
+    assert fields["input_shape"]["active_download_count_source"] == (
+        "len(downloader.slots[slot].active)"
+    )
+    assert fields["acceptance_test_shape"]["test_files"] == ["tests/test_pqueues.py"]
+    assert fields["downloader_slot_tie_breaking"]["repo_before_selector"] == (
+        "slot = min(stats)[1]"
+    )
+    assert fields["active_download_count_semantics"]["missing_slot_result"] == 0
+    assert fields["priority_queue_ordering_reproduction"]["no_active_downloads"][
+        "expected_pop_slots"
+    ] == ["slot-a", "slot-b", "slot-a", "slot-b"]
+
+
+def test_scrapy_downloader_aware_prompt_spec_records_provenance() -> None:
+    specs = build_issue_pr_prompt_specs(
+        manifest_path=MANIFEST_PATH,
+        replay_ids=[SCRAPY_DOWNLOADER_AWARE_REPLAY_ID],
+    )
+    spec = specs[0]
+    provenance = spec["provenance"]
+
+    assert provenance["manifest_schema_version"] == "issue-pr-mini-replay-v0"
+    assert provenance["stable_split"]["split"] == "validation"
+    normalized_from = provenance["normalized_from"]
+    assert [source["id"] for source in normalized_from] == [
+        "github_issue_7293_compact_manifest",
+        "github_pr_7351_diff",
+        "data_030_scrapy_preflight",
+        "know_data_031_scrapy_local_knowledge",
+        "github_pr_7351_conversation",
+    ]
+    assert normalized_from[1]["merge_commit_sha"] == (
+        "b68f26726ac87c5950a4258a8e29bb7ec2e0ebc1"
+    )
+    assert normalized_from[1]["url"].endswith("/pull/7351.diff")
+    assert spec["field_provenance"]["downloader_slot_tie_breaking"] == [
+        "github_pr_7351_diff",
+        "know_data_031_scrapy_downloader_aware_priority_queue",
+    ]
+    assert spec["source_text_gaps"][0]["source"] == "github_issue_7293_body"
 
 
 def test_prompt_spec_jsonl_summary_and_report(tmp_path: Path) -> None:

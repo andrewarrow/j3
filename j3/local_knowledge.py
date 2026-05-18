@@ -76,6 +76,14 @@ PYTEST_TIMEDELTA_APPROX_REQUIRED_KNOWLEDGE_CATEGORIES = (
     "pytest_repo_test_patterns",
     "pytest_timedelta_approx_readiness_blockers",
 )
+SCRAPY_DOWNLOADER_AWARE_REQUIRED_KNOWLEDGE_CATEGORIES = (
+    "repo_changed_file_context",
+    "focused_validation_recipe",
+    "scrapy_downloader_aware_priority_queue",
+    "scrapy_slot_active_download_accounting",
+    "scrapy_pqueue_test_patterns",
+    "scrapy_pqueue_readiness_blockers",
+)
 
 
 def extract_local_knowledge_records(
@@ -563,6 +571,102 @@ def build_pytest_timedelta_approx_local_knowledge_records(
     )
     records.extend(
         _pytest_approx_idiom_records(
+            resolved,
+            context,
+            replay_id=replay_id,
+            prompt_source=prompt_source,
+            changed_files=changed_files,
+            focused_validation_command=focused_validation_command,
+            links=links,
+        )
+    )
+
+    for record in records:
+        validate_local_knowledge_record(record)
+    return tuple(records)
+
+
+def build_scrapy_downloader_aware_local_knowledge_records(
+    repo: Path,
+    replay_row: Mapping[str, object],
+    *,
+    retrieved_at: str = "unknown",
+    setup_commands: Sequence[str] = (),
+    baseline_validation_commands: Sequence[str] = (),
+) -> tuple[dict[str, object], ...]:
+    """Build Scrapy #7293/#7351 local-knowledge rows from repo-before."""
+
+    resolved = repo.expanduser().resolve()
+    if not resolved.is_dir():
+        raise FileNotFoundError(f"repo does not exist: {resolved}")
+
+    replay_id = _required_str(replay_row, "id")
+    if replay_id != "scrapy__scrapy-issue-7293-pr-7351":
+        raise ValueError(f"unsupported Scrapy downloader-aware replay row: {replay_id}")
+
+    repo_id = _required_str(replay_row, "repo")
+    repo_before_ref = _mapping(replay_row.get("repo_before_ref"), field="repo_before_ref")
+    accepted_change = _mapping(replay_row.get("accepted_change"), field="accepted_change")
+    validation = _mapping(replay_row.get("validation"), field="validation")
+    provenance_license = _mapping(
+        replay_row.get("provenance_license"),
+        field="provenance_license",
+    )
+    prompt_source = _mapping(replay_row.get("prompt_source"), field="prompt_source")
+    stable_split = _mapping(replay_row.get("stable_split"), field="stable_split")
+
+    changed_files = _string_sequence(accepted_change.get("changed_files", ()))
+    split = _required_str(stable_split, "split")
+    _validate_split(split)
+    focused_validation_command = _required_str(validation, "command")
+
+    context = {
+        "repo_id": repo_id,
+        "repo_ref": _required_str(repo_before_ref, "sha"),
+        "split": split,
+        "repo_url": _optional_str(provenance_license.get("repository_url")),
+        "license": _optional_str(provenance_license.get("license_spdx")),
+        "retrieved_at": retrieved_at,
+    }
+    links = {
+        "task_ids": [replay_id],
+        "outcome_ids": ["DATA-030/scrapy__scrapy-issue-7293-pr-7351"],
+        "residual_labels": ["local_knowledge_gap"],
+    }
+    task = {
+        "id": replay_id,
+        "task_type": "issue_pr_replay",
+        "allowed_write_paths": changed_files,
+        "public_validation_commands": [focused_validation_command],
+        "expected_failure_modes": ["local_knowledge_gap"],
+        "required_knowledge_categories": (
+            SCRAPY_DOWNLOADER_AWARE_REQUIRED_KNOWLEDGE_CATEGORIES
+        ),
+    }
+
+    records: list[dict[str, object]] = [
+        _scrapy_changed_file_context_record(
+            resolved,
+            context,
+            replay_row=replay_row,
+            changed_files=changed_files,
+            links=links,
+        )
+    ]
+    records.extend(
+        _validation_recipe_records(
+            resolved,
+            context,
+            setup_commands=setup_commands,
+            baseline_validation_commands=baseline_validation_commands,
+            tasks=[task],
+            outcome_ids_by_task={
+                replay_id: ["DATA-030/scrapy__scrapy-issue-7293-pr-7351"]
+            },
+        )
+    )
+    records.extend(
+        _scrapy_downloader_aware_idiom_records(
             resolved,
             context,
             replay_id=replay_id,
@@ -1357,6 +1461,59 @@ def _pytest_approx_changed_file_context_record(
     )
 
 
+def _scrapy_changed_file_context_record(
+    repo: Path,
+    context: Mapping[str, str],
+    *,
+    replay_row: Mapping[str, object],
+    changed_files: Sequence[str],
+    links: Mapping[str, Sequence[str]],
+) -> dict[str, object]:
+    python_files = [path for path in changed_files if path.endswith(".py")]
+    source_files = [path for path in python_files if not _is_test_file(path)]
+    test_files = [path for path in python_files if _is_test_file(path)]
+    data = {
+        "knowledge_category": "repo_changed_file_context",
+        "replay_id": _required_str(replay_row, "id"),
+        "issue_pr": _issue_pr_summary(replay_row),
+        "changed_files": list(changed_files),
+        "source_files": source_files,
+        "test_files": test_files,
+        "auxiliary_files": [path for path in changed_files if path not in python_files],
+        "source_context": [
+            _python_file_context(
+                repo,
+                path,
+                focus_names=(
+                    "DownloaderInterface",
+                    "DownloaderAwarePriorityQueue",
+                    "ScrapyPriorityQueue",
+                ),
+            )
+            for path in source_files
+        ],
+        "test_context": [
+            _python_file_context(
+                repo,
+                path,
+                focus_names=("TestDownloaderAwarePriorityQueue", "test_"),
+            )
+            for path in test_files
+        ],
+    }
+    return _source_record(
+        record_type="repo_changed_file_context_record",
+        repo=repo,
+        context=context,
+        source_kind="accepted_diff_context",
+        source_path=",".join(changed_files),
+        provenance_paths=[*changed_files, "task:" + _required_str(replay_row, "id")],
+        confidence="observed",
+        links=links,
+        data=data,
+    )
+
+
 def _pytest_strict_idiom_records(
     repo: Path,
     context: Mapping[str, str],
@@ -1629,6 +1786,151 @@ def _pytest_approx_idiom_records(
             source_path=(
                 test_path
                 if row["knowledge_category"] == "pytest_repo_test_patterns"
+                else source_path
+            ),
+            provenance_paths=[source_path, test_path, "task:" + replay_id],
+            confidence="observed",
+            links=links,
+            data=row,
+        )
+        for row in rows
+    )
+
+
+def _scrapy_downloader_aware_idiom_records(
+    repo: Path,
+    context: Mapping[str, str],
+    *,
+    replay_id: str,
+    prompt_source: Mapping[str, object],
+    changed_files: Sequence[str],
+    focused_validation_command: str,
+    links: Mapping[str, Sequence[str]],
+) -> tuple[dict[str, object], ...]:
+    source_path = _scrapy_pqueue_source_path(changed_files)
+    test_path = _scrapy_pqueue_test_path(changed_files)
+    source_context = _scrapy_pqueue_semantic_context(repo / source_path)
+    test_context = _scrapy_pqueue_test_context(repo / test_path)
+    base = {
+        "replay_id": replay_id,
+        "target_source_path": source_path,
+        "target_test_files": [test_path],
+        "focused_validation_command": focused_validation_command,
+    }
+    rows = [
+        {
+            **base,
+            "knowledge_category": "scrapy_downloader_aware_priority_queue",
+            "problem_label": "equal_active_slot_tie_breaking_starves_later_slots",
+            "behavior_facts": [
+                "DownloaderAwarePriorityQueue keeps one ScrapyPriorityQueue per downloader slot.",
+                "DownloaderInterface.stats returns (active_download_count, slot) tuples for queued slots.",
+                "Repo-before pop and peek select min(stats)[1], so ties are broken by slot name.",
+                "Accepted behavior adds last-selected-slot state and rotates among slots with equal active counts.",
+                "peek must compute the same selected slot without mutating last-selected-slot state.",
+            ],
+            "source_evidence": {
+                "methods": _pick_methods(
+                    source_context,
+                    [
+                        "DownloaderAwarePriorityQueue.pop",
+                        "DownloaderAwarePriorityQueue.peek",
+                        "DownloaderAwarePriorityQueue.push",
+                        "DownloaderAwarePriorityQueue.__init__",
+                    ],
+                ),
+                "slot_selection": source_context["slot_selection"],
+                "queue_lifecycle": source_context["queue_lifecycle"],
+            },
+            "test_evidence": {
+                "downloader_aware_tests": test_context["downloader_aware_tests"],
+                "future_tie_breaking_tests": [
+                    "test_tie_breaking_rotates_slots",
+                    "test_tie_breaking_keeps_rotation_after_selected_slot_is_deleted",
+                ],
+            },
+        },
+        {
+            **base,
+            "knowledge_category": "scrapy_slot_active_download_accounting",
+            "problem_label": "slot_active_download_count_used_as_queue_score",
+            "behavior_facts": [
+                "DownloaderInterface._active_downloads returns 0 for slots absent from downloader.slots.",
+                "For present slots, _active_downloads returns len(downloader.slots[slot].active).",
+                "The scheduling score is still the active-download count; the bug is tie ordering among equal scores.",
+                "Request slots are assigned through request.meta[Downloader.DOWNLOAD_SLOT] when present.",
+            ],
+            "issue_pr": {
+                "issue_number": prompt_source.get("issue_number"),
+                "issue_title": prompt_source.get("issue_title"),
+                "issue_url": prompt_source.get("issue_url"),
+                "pull_request_number": prompt_source.get("pull_request_number"),
+                "pull_request_url": prompt_source.get("pull_request_url"),
+            },
+            "source_evidence": {
+                "methods": _pick_methods(
+                    source_context,
+                    [
+                        "DownloaderInterface.stats",
+                        "DownloaderInterface._active_downloads",
+                        "DownloaderInterface.get_slot_key",
+                    ],
+                ),
+                "active_downloads": source_context["active_downloads"],
+            },
+            "test_evidence": {
+                "mock_downloader_import": test_context["mock_downloader_import"],
+                "slot_meta_key_import": test_context["slot_meta_key_import"],
+            },
+        },
+        {
+            **base,
+            "knowledge_category": "scrapy_pqueue_test_patterns",
+            "problem_label": "scrapy_pqueue_queue_ordering_tests",
+            "behavior_facts": [
+                "tests/test_pqueues.py uses get_crawler(Spider), MockDownloader, FifoMemoryQueue, and Request objects.",
+                "Downloader-aware queue tests live on TestDownloaderAwarePriorityQueue.",
+                "The accepted tests assert popped request URL or Downloader.DOWNLOAD_SLOT sequence directly.",
+                "The focused validation command runs only tests/test_pqueues.py.",
+            ],
+            "test_evidence": test_context,
+        },
+        {
+            **base,
+            "knowledge_category": "scrapy_pqueue_readiness_blockers",
+            "problem_label": "candidate_readiness_remaining_gaps",
+            "behavior_facts": [
+                "DATA-030 proved checkout, editable install, and focused baseline validation pass for the Scrapy row.",
+                "Prompt/spec and local-knowledge evidence are now available, but candidate materialization and ranking remain deferred.",
+                "Accepted changed paths are only scrapy/pqueues.py and tests/test_pqueues.py; no auxiliary materializer is required.",
+                "A future candidate attempt must materialize the slot-rotation source edit and the focused pqueue tests before readiness can be scored.",
+            ],
+            "validation_evidence": {
+                "data_030_command": focused_validation_command,
+                "data_030_result": "11 passed, 2 skipped, 2 warnings in 0.20s",
+                "setup_command": "python -m pip install -e .",
+            },
+            "remaining_residual_labels": ["materialization_gap", "ranking_gap"],
+            "candidate_scope": {
+                "source_paths": [source_path],
+                "test_paths": [test_path],
+                "auxiliary_paths": [],
+            },
+        },
+    ]
+    return tuple(
+        _source_record(
+            record_type=(
+                "pytest_pattern_record"
+                if row["knowledge_category"] == "scrapy_pqueue_test_patterns"
+                else "library_idiom_record"
+            ),
+            repo=repo,
+            context=context,
+            source_kind="repo_file",
+            source_path=(
+                test_path
+                if row["knowledge_category"] == "scrapy_pqueue_test_patterns"
                 else source_path
             ),
             provenance_paths=[source_path, test_path, "task:" + replay_id],
@@ -2413,6 +2715,26 @@ def _pytest_approx_test_path(changed_files: Sequence[str]) -> str:
     raise ValueError("pytest timedelta-approx replay row must include a test file")
 
 
+def _scrapy_pqueue_source_path(changed_files: Sequence[str]) -> str:
+    for path in changed_files:
+        if path == "scrapy/pqueues.py":
+            return path
+    for path in changed_files:
+        if path.endswith(".py") and not _is_test_file(path):
+            return path
+    raise ValueError("Scrapy downloader-aware replay row must include a source file")
+
+
+def _scrapy_pqueue_test_path(changed_files: Sequence[str]) -> str:
+    for path in changed_files:
+        if path == "tests/test_pqueues.py":
+            return path
+    for path in changed_files:
+        if path.endswith(".py") and _is_test_file(path):
+            return path
+    raise ValueError("Scrapy downloader-aware replay row must include a test file")
+
+
 def _pytest_approx_semantic_context(path: Path) -> dict[str, object]:
     tree = _parse_python(path)
     methods = _class_method_contexts(
@@ -2571,6 +2893,136 @@ def _pytest_approx_test_context(repo: Path) -> dict[str, object]:
         ),
         "imports": list(_imports(tree))[:40],
         "sha256": _sha256_bytes(repo.read_bytes()),
+    }
+
+
+def _scrapy_pqueue_semantic_context(path: Path) -> dict[str, object]:
+    tree = _parse_python(path)
+    methods = _class_method_contexts(
+        tree,
+        class_names={"DownloaderInterface", "DownloaderAwarePriorityQueue"},
+    )
+    active_downloads = _class_method_node(
+        tree,
+        class_name="DownloaderInterface",
+        method_name="_active_downloads",
+    )
+    stats = _class_method_node(
+        tree,
+        class_name="DownloaderInterface",
+        method_name="stats",
+    )
+    pop = _class_method_node(
+        tree,
+        class_name="DownloaderAwarePriorityQueue",
+        method_name="pop",
+    )
+    peek = _class_method_node(
+        tree,
+        class_name="DownloaderAwarePriorityQueue",
+        method_name="peek",
+    )
+    push = _class_method_node(
+        tree,
+        class_name="DownloaderAwarePriorityQueue",
+        method_name="push",
+    )
+    init = _class_method_node(
+        tree,
+        class_name="DownloaderAwarePriorityQueue",
+        method_name="__init__",
+    )
+    return {
+        "methods": methods,
+        "active_downloads": _scrapy_active_downloads_shape(active_downloads),
+        "stats": _function_semantic_shape(stats),
+        "slot_selection": {
+            "pop": _scrapy_slot_selection_shape(pop),
+            "peek": _scrapy_slot_selection_shape(peek),
+        },
+        "queue_lifecycle": {
+            "init": _function_semantic_shape(init),
+            "push": _function_semantic_shape(push),
+            "pop": _function_semantic_shape(pop),
+        },
+        "sha256": _sha256_bytes(path.read_bytes()),
+    }
+
+
+def _scrapy_active_downloads_shape(
+    node: ast.FunctionDef | ast.AsyncFunctionDef | None,
+) -> dict[str, object]:
+    if node is None:
+        return {}
+    return {
+        "line_span": [node.lineno, node.end_lineno or node.lineno],
+        "argument_names": [arg.arg for arg in node.args.args],
+        "mentions": sorted(_names_in_node(node) & {"slot", "downloader", "slots", "active"}),
+        "call_names": sorted(_calls_in_node(node))[:40],
+        "returns_zero_for_missing_slot": any(
+            isinstance(child, ast.Constant) and child.value == 0 for child in ast.walk(node)
+        ),
+        "uses_len_slot_active": "len" in _calls_in_node(node)
+        and {"slots", "active"} <= _names_in_node(node),
+    }
+
+
+def _scrapy_slot_selection_shape(
+    node: ast.FunctionDef | ast.AsyncFunctionDef | None,
+) -> dict[str, object]:
+    if node is None:
+        return {}
+    return {
+        "line_span": [node.lineno, node.end_lineno or node.lineno],
+        "call_names": sorted(_calls_in_node(node))[:40],
+        "mentions": sorted(
+            _names_in_node(node)
+            & {"stats", "slot", "pqueues", "_next_slot", "_last_selected_slot"}
+        ),
+        "uses_min_stats": "min" in _calls_in_node(node) and "stats" in _names_in_node(node),
+        "uses_next_slot_helper": "_next_slot" in _calls_in_node(node),
+        "deletes_empty_queue": _scrapy_deletes_empty_queue(node),
+    }
+
+
+def _scrapy_deletes_empty_queue(node: ast.AST) -> bool:
+    for child in ast.walk(node):
+        if not isinstance(child, ast.Delete):
+            continue
+        for target in child.targets:
+            if "pqueues" in _names_in_node(target):
+                return True
+    return False
+
+
+def _scrapy_pqueue_test_context(path: Path) -> dict[str, object]:
+    tree = _parse_python(path)
+    functions = _all_functions(tree)
+    downloader_aware_tests = [
+        _function_test_shape(node)
+        for node in functions
+        if "tie_breaking" in node.name
+        or "push_pop" in node.name
+        or "peek" in node.name
+    ][:30]
+    return {
+        "test_file": path.name if path.name == "test_pqueues.py" else path.as_posix(),
+        "test_class": "TestDownloaderAwarePriorityQueue",
+        "downloader_aware_tests": downloader_aware_tests,
+        "pytest_tools": sorted(
+            tool for node in functions for tool in _pytest_tools(node)
+        )[:60],
+        "mock_downloader_import": any(
+            "MockDownloader" in str(item.get("names", ""))
+            for item in _imports(tree)
+        ),
+        "slot_meta_key_import": any(
+            "Downloader" in str(item.get("names", ""))
+            or item.get("module") == "scrapy.core.downloader"
+            for item in _imports(tree)
+        ),
+        "imports": list(_imports(tree))[:40],
+        "sha256": _sha256_bytes(path.read_bytes()),
     }
 
 
@@ -3399,6 +3851,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="pytest timedelta approx issue/PR replay row id to extract",
     )
     parser.add_argument(
+        "--scrapy-downloader-aware-replay-row",
+        help="Scrapy downloader-aware queue issue/PR replay row id to extract",
+    )
+    parser.add_argument(
         "--manifest",
         type=Path,
         default=Path("examples/issue_pr_mini_replay/manifest.json"),
@@ -3426,6 +3882,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         args.requests_replay_row,
         args.pytest_strict_addopts_replay_row,
         args.pytest_timedelta_approx_replay_row,
+        args.scrapy_downloader_aware_replay_row,
     ]
     if sum(1 for mode in modes if mode) > 1:
         parser.error("choose only one replay extraction mode")
@@ -3473,6 +3930,20 @@ def main(argv: Sequence[str] | None = None) -> int:
             args.pytest_timedelta_approx_replay_row,
         )
         records = build_pytest_timedelta_approx_local_knowledge_records(
+            args.repo,
+            row,
+            retrieved_at=args.retrieved_at,
+            setup_commands=args.setup_command,
+            baseline_validation_commands=args.baseline_validation_command,
+        )
+    elif args.scrapy_downloader_aware_replay_row:
+        if args.repo is None:
+            parser.error("--repo is required with --scrapy-downloader-aware-replay-row")
+        row = _load_manifest_replay_row(
+            args.manifest,
+            args.scrapy_downloader_aware_replay_row,
+        )
+        records = build_scrapy_downloader_aware_local_knowledge_records(
             args.repo,
             row,
             retrieved_at=args.retrieved_at,

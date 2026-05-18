@@ -130,7 +130,7 @@ Long-term target:
 
 ### GS7-006: Add repo-state-aware library convention edits
 
-- Status: active
+- Status: done
 - Why: `slugify_existing_src_convention` needs repo-state-aware planning for
   package layout and exports after `REPO-001` made repo coverage inspectable.
 - Write scope: repo-state-driven existing-repo planning for a small library
@@ -139,6 +139,11 @@ Long-term target:
   repo-state coverage instead of hard-coded calculator assumptions.
 - Tests: focused repo-state/existing-repo/GreenShot tests and
   `git diff --check`.
+- Completion note: added a narrow src-package convention planner/materializer
+  for the `slugify_existing_src_convention` fixture. It validates repo-state
+  coverage for `src/acme_slug`, edits only `src/acme_slug/__init__.py`, protects
+  `src/acme_slug/text.py`, runs targeted pytest, and records the repo-state
+  evidence and source-edit scope in a structured outcome row.
 
 ## Workstream C: Prompt Corpus And Intent Data
 

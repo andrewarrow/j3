@@ -17,23 +17,7 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-### `GS7-006`: Repo-state-aware library convention edits
-
-- Status: active
-- Owner: worker Nietzsche (`019e3b6c-ce65-79f2-abd3-755b259ed56e`)
-- Started: 2026-05-18
-- Goal: add the adjacent shadow source-convention slice for small libraries
-  using repo-state coverage rather than hard-coded calculator assumptions.
-- Write scope: repo-state-driven existing-repo planning for a small library
-  convention fixture, focused tests, GreenShot fixture updates if needed, and
-  plan updates.
-- Acceptance: the `slugify_existing_src_convention` GreenShot-7 task should no
-  longer be a generic `existing_repo_support` block. It should either plan and
-  validate a minimal `src/` package export edit using repo-state coverage, or
-  emit a precise blocker naming the missing repo-state, source materialization,
-  or validation layer.
-- Tests: focused repo-state/existing-repo/GreenShot tests,
-  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+No active worker tasks are currently recorded.
 
 ## Ready Queue
 
@@ -66,6 +50,14 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `GS7-006`: added `j3/existing_repo_conventions.py` for the narrow shadow
+  source-convention slice. The `slugify_existing_src_convention` GreenShot-7
+  task now materializes a tiny `src/acme_slug` fixture, uses repo-state
+  coverage to confirm package files, imports, tests, configs, and the
+  `slugify` function, edits only `src/acme_slug/__init__.py`, validates the
+  package-level export with targeted pytest, and emits a structured
+  `greenshot_7_existing_repo_convention_attempt` row with changed files,
+  validation commands, repo-state evidence, and source-edit scope.
 - `REAL-003`: added `j3/real_repo_shadow_score.py`, focused tests, and
   `docs/REAL_003_TESTS_ONLY_SHADOW_SCORE_2026-05-18.md`. The first tests-only
   wedge shadow score used the four `REAL-001` tests-only ladder tasks with max

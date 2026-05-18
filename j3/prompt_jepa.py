@@ -42,6 +42,9 @@ PROMPT_JEPA_PROPOSAL_SCORE_THRESHOLD = 0.08
 REQUEST_REPO_ATTEMPT_KIND = "greenshot_7_request_to_repo_attempt"
 EXISTING_REPO_CHANGE_ATTEMPT_KIND = "greenshot_7_existing_repo_change_attempt"
 EXISTING_REPO_TESTS_ATTEMPT_KIND = "greenshot_7_existing_repo_tests_attempt"
+EXISTING_REPO_CONVENTION_ATTEMPT_KIND = (
+    "greenshot_7_existing_repo_convention_attempt"
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -1413,6 +1416,8 @@ def _outcome_record_from_row(
         return _existing_repo_change_outcome_record(row, index=index)
     if record_kind == EXISTING_REPO_TESTS_ATTEMPT_KIND:
         return _existing_repo_tests_outcome_record(row, index=index)
+    if record_kind == EXISTING_REPO_CONVENTION_ATTEMPT_KIND:
+        return _existing_repo_convention_outcome_record(row, index=index)
     return None
 
 
@@ -1585,6 +1590,75 @@ def _existing_repo_tests_outcome_record(
         target=_drop_none_values(target),
         tags=_outcome_tags(
             record_kind=EXISTING_REPO_TESTS_ATTEMPT_KIND,
+            target=target,
+            passed=passed,
+        ),
+    )
+
+
+def _existing_repo_convention_outcome_record(
+    row: Mapping[str, object],
+    *,
+    index: int,
+) -> PromptJepaOutcomeRecord:
+    spec = _mapping_field(row, "existing_repo_convention_spec", index=index)
+    actions = _list_field(row, "existing_repo_actions", index=index)
+    convention_result = _mapping_field(row, "convention_result", index=index)
+    validation = _mapping_field(row, "validation", index=index)
+    failure = row.get("failure_observation")
+
+    prompt = _outcome_prompt(row, index=index)
+    passed = bool(row.get("passed", False))
+    target = {
+        "schema_version": "prompt-jepa-outcome-target-v1",
+        "record_schema_version": _optional_str(row.get("schema_version")),
+        "record_kind": EXISTING_REPO_CONVENTION_ATTEMPT_KIND,
+        "repo_mode": _optional_str(spec.get("repo_mode")),
+        "task_type": _optional_str(spec.get("task_type")),
+        "domain": _optional_str(spec.get("domain")),
+        "expected_action": "emit_existing_repo_convention",
+        "requires_clarification": "no",
+        "features": _string_list(spec.get("features", [])),
+        "requested_interfaces": _interface_kinds(spec.get("interfaces", [])),
+        "target_files": _string_list(spec.get("source_edit_files", [])),
+        "source_files": _string_list(spec.get("source_files", [])),
+        "source_edit_files": _string_list(spec.get("source_edit_files", [])),
+        "protected_source_files": _string_list(
+            spec.get("protected_source_files", [])
+        ),
+        "action_kinds": _action_kinds(actions),
+        "files_changed": _string_list(convention_result.get("files_changed", [])),
+        "source_files_changed": _string_list(
+            convention_result.get("source_files_changed", [])
+        ),
+        "protected_source_files_changed": _string_list(
+            convention_result.get("protected_source_files_changed", [])
+        ),
+        "validation_status": _optional_str(validation.get("status")),
+        "outcome_status": _optional_str(convention_result.get("status")),
+        "passed": passed,
+        "failure_kind": _failure_kind(failure),
+        "convention_spec": _json_copy(spec),
+        "actions": _json_copy(actions),
+        "outcome": {
+            "convention_result": _json_copy(convention_result),
+            "validation": _json_copy(validation),
+            "failure_observation": _json_copy(failure),
+            "repo_path": _optional_str(row.get("repo_path")),
+        },
+    }
+    return PromptJepaOutcomeRecord(
+        row_id=_outcome_row_id(
+            row,
+            prefix="existing-repo-convention-attempt",
+            index=index,
+        ),
+        split=_outcome_split(row),
+        source_type=EXISTING_REPO_CONVENTION_ATTEMPT_KIND,
+        prompt=prompt,
+        target=_drop_none_values(target),
+        tags=_outcome_tags(
+            record_kind=EXISTING_REPO_CONVENTION_ATTEMPT_KIND,
             target=target,
             passed=passed,
         ),

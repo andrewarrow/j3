@@ -155,7 +155,7 @@ def test_parser_emits_non_calculator_greenfield_specs() -> None:
     }
 
 
-def test_parser_supports_tests_only_existing_slugify_and_blocks_other_gaps() -> None:
+def test_parser_supports_existing_slugify_repo_slices() -> None:
     tasks = {str(task["name"]): task for task in _load_tasks()}
 
     tests_only = parse_request_to_spec(
@@ -182,13 +182,21 @@ def test_parser_supports_tests_only_existing_slugify_and_blocks_other_gaps() -> 
     ).to_record()
     assert convention["task_type"] == "modify_library"
     assert convention["repo_mode"] == "existing_repo"
-    assert convention["unsupported_requirements"] == [
-        {
-            "field": "repo_mode",
-            "value": "src_layout_existing_repo_convention",
-            "reason": "existing_repo_support",
-        }
+    assert convention["domain"] == "text_slugify"
+    assert convention["artifacts"] == [
+        "src/acme_slug/text.py",
+        "src/acme_slug/__init__.py",
+        "tests/test_acme_slug.py",
     ]
+    assert convention["interfaces"] == [
+        {"kind": "python_api", "module": "acme_slug", "callable": "slugify"}
+    ]
+    assert convention["features"] == ["src_package_slugify_export"]
+    assert convention["clarifications_needed"] == []
+    assert convention["validation"] == {
+        "commands": ["python -m pytest tests/test_acme_slug.py -q"],
+        "hidden_cases": True,
+    }
 
 
 def test_request_spec_blocks_graphical_calculator_through_prompt_intent() -> None:

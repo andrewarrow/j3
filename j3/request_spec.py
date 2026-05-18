@@ -32,6 +32,18 @@ SLUGIFY_VALIDATION = {
     "commands": ["python -m pytest tests/test_slugify.py -q"],
     "hidden_cases": True,
 }
+SLUGIFY_SRC_CONVENTION_ARTIFACTS = [
+    "src/acme_slug/text.py",
+    "src/acme_slug/__init__.py",
+    "tests/test_acme_slug.py",
+]
+SLUGIFY_SRC_CONVENTION_INTERFACES = [
+    {"kind": "python_api", "module": "acme_slug", "callable": "slugify"}
+]
+SLUGIFY_SRC_CONVENTION_VALIDATION = {
+    "commands": ["python -m pytest tests/test_acme_slug.py -q"],
+    "hidden_cases": True,
+}
 KV_PARSER_ARTIFACTS = ["kv_parser.py", "tests/test_kv_parser.py"]
 KV_PARSER_INTERFACES = [
     {"kind": "python_api", "module": "kv_parser", "callable": "parse_key_value_lines"}
@@ -221,24 +233,33 @@ def parse_request_to_spec(
         )
 
     if _is_existing_repo_convention_request(normalized):
-        return _clarification_spec(
-            prompt=prompt,
+        return RequestSpec(
+            schema_version=SCHEMA_VERSION,
             task_name=resolved_task_name,
+            prompt=prompt,
             task_type="modify_library",
+            language="python",
             repo_mode="existing_repo",
             domain="text_slugify",
-            field="repo_mode",
-            question=(
-                "Which existing repository path and package convention should be "
-                "inspected before editing?"
-            ),
-            unsupported_requirements=[
+            artifacts=list(SLUGIFY_SRC_CONVENTION_ARTIFACTS),
+            interfaces=[
+                dict(interface) for interface in SLUGIFY_SRC_CONVENTION_INTERFACES
+            ],
+            features=["src_package_slugify_export"],
+            operation_aliases={},
+            inferred_defaults=[
                 {
-                    "field": "repo_mode",
-                    "value": "src_layout_existing_repo_convention",
-                    "reason": "existing_repo_support",
+                    "field": "features",
+                    "value": ["src_package_slugify_export"],
+                    "reason": "src_layout_existing_repo_convention",
+                    "confidence": 0.82,
                 }
             ],
+            clarifications_needed=[],
+            validation={
+                "commands": list(SLUGIFY_SRC_CONVENTION_VALIDATION["commands"]),
+                "hidden_cases": SLUGIFY_SRC_CONVENTION_VALIDATION["hidden_cases"],
+            },
         )
 
     if _is_file_converter_clarification(normalized):

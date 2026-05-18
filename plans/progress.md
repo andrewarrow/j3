@@ -884,3 +884,41 @@ meaningful work. Do not replace this file with a daily reset.
   real repository evidence and local knowledge records.
 - Blockers: the current `GS7-005` tests-only builder only supports the root
   `slugify.py` fixture shape, so it cannot target the real-repo ladder yet.
+
+### 2026-05-18 - GS7-006 - Repo-state-aware library convention edits
+
+- Owner: worker Nietzsche (`019e3b6c-ce65-79f2-abd3-755b259ed56e`)
+- Files changed: `j3/existing_repo_conventions.py`, `j3/request_spec.py`,
+  `j3/greenshot_7.py`, `j3/prompt_jepa.py`, `j3/prompt_repo_transitions.py`,
+  `examples/greenshot_7/tasks.json`, `tests/test_existing_repo_conventions.py`,
+  `tests/test_request_spec.py`, `tests/test_greenshot_7.py`,
+  `plans/active.md`, `plans/backlog.md`, `plans/progress.md`
+- Tests: `python -m json.tool examples/greenshot_7/tasks.json >/dev/null` ->
+  passed; `python -m py_compile j3/existing_repo_conventions.py
+  j3/greenshot_7.py j3/request_spec.py j3/prompt_jepa.py
+  j3/prompt_repo_transitions.py` -> passed;
+  `pytest tests/test_existing_repo_conventions.py -q` -> 3 passed;
+  `pytest tests/test_existing_repo_tests.py -q` -> 3 passed;
+  `pytest tests/test_repo_state.py -q` -> 7 passed;
+  `pytest tests/test_request_spec.py -q` -> 9 passed;
+  `pytest tests/test_greenshot_7.py -q` -> 1 passed;
+  `pytest tests/test_greenfield_calculator.py -q` -> 8 passed;
+  `pytest tests/test_prompt_jepa.py -q` -> 13 passed;
+  `pytest tests/test_prompt_repo_transitions.py -q` -> 8 passed;
+  `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check`
+  -> passed.
+- Result: the `slugify_existing_src_convention` GreenShot-7 task now builds and
+  validates a repo-state-aware source-convention edit instead of a generic
+  `existing_repo_support` block. The slice materializes a tiny `src/acme_slug`
+  fixture, confirms package files, imports, existing tests, configs, and the
+  top-level `slugify` function from repo-state coverage, edits only
+  `src/acme_slug/__init__.py` to export `slugify`, protects
+  `src/acme_slug/text.py`, runs `python -m pytest tests/test_acme_slug.py -q`,
+  and records changed files, validation commands, repo-state evidence used, and
+  source-edit scope in `greenshot_7_existing_repo_convention_attempt`.
+- Commit: pending
+- Push: pending
+- Next: use the convention outcome as the shadow source-maintenance fixture
+  while keeping real-repo source edits gated behind the one-file feature and
+  materialization evidence.
+- Blockers: none

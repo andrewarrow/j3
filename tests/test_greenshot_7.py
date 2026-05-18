@@ -75,15 +75,16 @@ def test_run_greenshot_7_tasks_builds_validates_and_records(tmp_path: Path) -> N
     summary = run_greenshot_7_tasks(TASKS_PATH, out_dir, records_path)
 
     assert summary["total"] == 15
-    assert summary["built"] == 11
+    assert summary["built"] == 12
     assert summary["existing_repo_tests_built"] == 1
-    assert summary["blocked"] == 4
-    assert summary["validation_passed"] == 11
+    assert summary["existing_repo_conventions_built"] == 1
+    assert summary["blocked"] == 3
+    assert summary["validation_passed"] == 12
     assert summary["validation_failed"] == 0
     assert summary["records_written"] == 15
     assert summary["failures"] == []
-    assert len(summary["output_dirs"]) == 11
-    assert len(summary["blocked_output_dirs"]) == 4
+    assert len(summary["output_dirs"]) == 12
+    assert len(summary["blocked_output_dirs"]) == 3
     assert summary["classified_failures"] == [
         {
             "task": "math_tool_unclear",
@@ -96,13 +97,6 @@ def test_run_greenshot_7_tasks_builds_validates_and_records(tmp_path: Path) -> N
             "task": "calculator_scientific_unclear",
             "category": "expected_clarification",
             "domain": "calculator",
-            "plan_status": "blocked",
-            "validation_status": "not_run",
-        },
-        {
-            "task": "slugify_existing_src_convention",
-            "category": "existing_repo_support",
-            "domain": "text_slugify",
             "plan_status": "blocked",
             "validation_status": "not_run",
         },
@@ -122,6 +116,7 @@ def test_run_greenshot_7_tasks_builds_validates_and_records(tmp_path: Path) -> N
                 (repo / "calculator.py").exists(),
                 (repo / "slugify.py").exists(),
                 (repo / "kv_parser.py").exists(),
+                (repo / "src/acme_slug/text.py").exists(),
             ]
         )
 
@@ -130,6 +125,7 @@ def test_run_greenshot_7_tasks_builds_validates_and_records(tmp_path: Path) -> N
         assert not (blocked_repo / "calculator.py").exists()
         assert not (blocked_repo / "slugify.py").exists()
         assert not (blocked_repo / "kv_parser.py").exists()
+        assert not (blocked_repo / "src/acme_slug/text.py").exists()
         assert not (blocked_repo / "tests/test_calculator_cli.py").exists()
 
     tasks = {str(task["name"]): task for task in json.loads(TASKS_PATH.read_text())}
@@ -141,10 +137,18 @@ def test_run_greenshot_7_tasks_builds_validates_and_records(tmp_path: Path) -> N
         fixture_source
     )
     assert (existing_slugify_repo / "tests/test_slugify.py").exists()
+    convention_repo = out_dir / "slugify_existing_src_convention"
+    assert (convention_repo / "src/acme_slug/text.py").exists()
+    init_text = (convention_repo / "src/acme_slug/__init__.py").read_text(
+        encoding="utf-8"
+    )
+    assert "from .text import slugify" in init_text
+    assert '__all__ = ["slugify"]' in init_text
 
     rows = _jsonl_rows(records_path)
     assert len(rows) == 15
     assert {row["record_kind"] for row in rows} == {
+        "greenshot_7_existing_repo_convention_attempt",
         "greenshot_7_existing_repo_tests_attempt",
         "greenshot_7_request_to_repo_attempt",
     }
@@ -160,8 +164,14 @@ def test_run_greenshot_7_tasks_builds_validates_and_records(tmp_path: Path) -> N
         for row in rows
         if row["record_kind"] == "greenshot_7_existing_repo_tests_attempt"
     ]
-    assert len(request_rows) == 14
+    convention_rows = [
+        row
+        for row in rows
+        if row["record_kind"] == "greenshot_7_existing_repo_convention_attempt"
+    ]
+    assert len(request_rows) == 13
     assert len(tests_only_rows) == 1
+    assert len(convention_rows) == 1
 
     built_rows = [
         row
@@ -174,7 +184,7 @@ def test_run_greenshot_7_tasks_builds_validates_and_records(tmp_path: Path) -> N
         if _nested(row, "clarification_decision")["status"] == "blocked"
     ]
     assert len(built_rows) == 10
-    assert len(blocked_rows) == 4
+    assert len(blocked_rows) == 3
     assert all(_nested(row, "build_result")["status"] == "built" for row in built_rows)
     assert all(_nested(row, "validation")["status"] == "passed" for row in built_rows)
     assert all(row["passed"] is True for row in built_rows)
@@ -233,6 +243,37 @@ def test_run_greenshot_7_tasks_builds_validates_and_records(tmp_path: Path) -> N
     assert tests_row["changed_files"] == ["tests/test_slugify.py"]
     assert tests_row["production_files_changed"] == []
     assert _nested(tests_row, "validation")["status"] == "passed"
+
+    convention_row = convention_rows[0]
+    assert convention_row["schema_version"] == "existing-repo-convention-attempt-v1"
+    assert convention_row["passed"] is True
+    assert convention_row["failure_observation"] is None
+    convention_spec = _nested(convention_row, "existing_repo_convention_spec")
+    assert convention_spec["source_edit_files"] == ["src/acme_slug/__init__.py"]
+    assert convention_spec["protected_source_files"] == ["src/acme_slug/text.py"]
+    assert [action["kind"] for action in convention_row["existing_repo_actions"]] == [
+        "inspect_repo",
+        "inspect_src_package_layout",
+        "add_package_export",
+        "validate",
+    ]
+    convention_result = _nested(convention_row, "convention_result")
+    assert convention_result["status"] == "validated"
+    assert convention_result["files_changed"] == ["src/acme_slug/__init__.py"]
+    assert convention_result["source_files_changed"] == ["src/acme_slug/__init__.py"]
+    assert convention_result["protected_source_files_changed"] == []
+    assert convention_row["changed_files"] == ["src/acme_slug/__init__.py"]
+    assert convention_row["validation_commands"] == [
+        "python -m pytest tests/test_acme_slug.py -q"
+    ]
+    assert _nested(convention_row, "repo_state_evidence_used")["source_root"] == "src"
+    assert _nested(convention_row, "source_edit_scope") == {
+        "mode": "package_export_only",
+        "allowed_source_files": ["src/acme_slug/__init__.py"],
+        "protected_source_files": ["src/acme_slug/text.py"],
+        "max_source_files_changed": 1,
+    }
+    assert _nested(convention_row, "validation")["status"] == "passed"
 
     smoke_repo = out_dir / "calculator_short_calc"
     smoke = _run_calculator(smoke_repo, "8", "/", "2")

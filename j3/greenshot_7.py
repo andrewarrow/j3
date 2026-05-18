@@ -8,6 +8,17 @@ import shlex
 import subprocess
 from pathlib import Path
 
+from j3.existing_repo_conventions import (
+    ExistingRepoConventionError,
+    ExistingRepoConventionPlan,
+    ExistingRepoConventionResult,
+    ExistingRepoConventionSpec,
+    append_existing_repo_convention_attempt,
+    apply_existing_repo_convention,
+    blocker_from_error as convention_blocker_from_error,
+    existing_repo_convention_spec_from_request,
+    plan_existing_repo_convention,
+)
 from j3.existing_repo_tests import (
     ExistingRepoTestsError,
     ExistingRepoTestsPlan,
@@ -55,6 +66,7 @@ def run_greenshot_7_tasks(
         "total": len(tasks),
         "built": 0,
         "existing_repo_tests_built": 0,
+        "existing_repo_conventions_built": 0,
         "blocked": 0,
         "validation_passed": 0,
         "validation_failed": 0,
@@ -86,6 +98,16 @@ def _run_one_task(
 
     if expected_action == "emit_existing_repo_tests":
         _run_existing_repo_tests_fixture(
+            task=task,
+            spec=spec,
+            task_out_dir=task_out_dir,
+            records_path=records_path,
+            summary=summary,
+        )
+        return
+
+    if expected_action == "emit_existing_repo_convention":
+        _run_existing_repo_convention_fixture(
             task=task,
             spec=spec,
             task_out_dir=task_out_dir,
@@ -291,6 +313,115 @@ def _run_existing_repo_tests_fixture(
     )
 
 
+def _run_existing_repo_convention_fixture(
+    *,
+    task: dict[str, object],
+    spec: RequestSpec,
+    task_out_dir: Path,
+    records_path: Path | None,
+    summary: dict[str, object],
+) -> None:
+    expected_features = task.get("expected_features")
+    if spec.clarifications_needed:
+        _fail(
+            summary,
+            spec.task_name,
+            "existing-repo convention fixture produced clarification",
+        )
+        return
+    if isinstance(expected_features, list) and spec.features != expected_features:
+        _fail(
+            summary,
+            spec.task_name,
+            f"features {spec.features!r} did not match {expected_features!r}",
+        )
+        return
+
+    try:
+        _materialize_existing_repo_fixture(task, task_out_dir)
+        convention_spec = existing_repo_convention_spec_from_request(spec)
+        convention_plan = plan_existing_repo_convention(
+            convention_spec,
+            task_out_dir,
+        )
+        convention_result = apply_existing_repo_convention(
+            convention_plan,
+            task_out_dir,
+        )
+    except ExistingRepoConventionError as error:
+        blocker = convention_blocker_from_error(error)
+        validation = {
+            "status": "not_run",
+            "command": None,
+            "exit_code": None,
+            "reason": blocker.get("reason", "existing_repo_convention_blocked"),
+            "blocker": blocker,
+        }
+        summary["blocked"] = int(summary["blocked"]) + 1
+        blocked_dirs = summary["blocked_output_dirs"]
+        assert isinstance(blocked_dirs, list)
+        blocked_dirs.append(str(task_out_dir))
+        _record_existing_repo_convention_classification(
+            spec=spec,
+            validation=validation,
+            blocker=blocker,
+            summary=summary,
+        )
+        _fail(
+            summary,
+            spec.task_name,
+            f"existing-repo convention blocked: {blocker.get('reason')}",
+        )
+        return
+
+    validation = convention_result.validation
+    summary["built"] = int(summary["built"]) + 1
+    summary["existing_repo_conventions_built"] = (
+        int(summary["existing_repo_conventions_built"]) + 1
+    )
+    output_dirs = summary["output_dirs"]
+    assert isinstance(output_dirs, list)
+    output_dirs.append(str(task_out_dir))
+
+    if validation["status"] == "passed":
+        summary["validation_passed"] = int(summary["validation_passed"]) + 1
+    else:
+        summary["validation_failed"] = int(summary["validation_failed"]) + 1
+        _fail(
+            summary,
+            spec.task_name,
+            f"existing-repo convention pytest failed with exit code {validation['exit_code']}",
+        )
+
+    if convention_result.protected_source_files_changed:
+        _fail(
+            summary,
+            spec.task_name,
+            "convention fixture changed protected source files: "
+            + ", ".join(convention_result.protected_source_files_changed),
+        )
+    if any(
+        path not in convention_result.source_edit_files
+        for path in convention_result.source_files_changed
+    ):
+        _fail(
+            summary,
+            spec.task_name,
+            "convention fixture changed files outside source-edit scope: "
+            + ", ".join(convention_result.source_files_changed),
+        )
+
+    _record_existing_repo_convention_if_requested(
+        records_path,
+        raw_prompt=spec.prompt,
+        request_spec=spec,
+        convention_spec=convention_spec,
+        convention_plan=convention_plan,
+        convention_result=convention_result,
+        summary=summary,
+    )
+
+
 def _run_blocked_fixture(
     *,
     task: dict[str, object],
@@ -419,6 +550,26 @@ def _record_existing_repo_tests_classification(
     )
 
 
+def _record_existing_repo_convention_classification(
+    *,
+    spec: RequestSpec,
+    validation: dict[str, object],
+    blocker: dict[str, str],
+    summary: dict[str, object],
+) -> None:
+    classified = summary["classified_failures"]
+    assert isinstance(classified, list)
+    classified.append(
+        {
+            "task": spec.task_name,
+            "category": blocker.get("reason", "existing_repo_convention_blocked"),
+            "domain": spec.domain,
+            "plan_status": "blocked",
+            "validation_status": validation["status"],
+        }
+    )
+
+
 def _record_if_requested(
     records_path: Path | None,
     *,
@@ -467,6 +618,30 @@ def _record_existing_repo_tests_if_requested(
         spec=tests_spec,
         plan=tests_plan,
         result=tests_result,
+        source=SOURCE_NAME,
+    )
+    summary["records_written"] = int(summary["records_written"]) + 1
+
+
+def _record_existing_repo_convention_if_requested(
+    records_path: Path | None,
+    *,
+    raw_prompt: str,
+    request_spec: RequestSpec,
+    convention_spec: ExistingRepoConventionSpec,
+    convention_plan: ExistingRepoConventionPlan,
+    convention_result: ExistingRepoConventionResult,
+    summary: dict[str, object],
+) -> None:
+    if records_path is None:
+        return
+    append_existing_repo_convention_attempt(
+        records_path,
+        raw_prompt=raw_prompt,
+        request_spec=request_spec,
+        spec=convention_spec,
+        plan=convention_plan,
+        result=convention_result,
         source=SOURCE_NAME,
     )
     summary["records_written"] = int(summary["records_written"]) + 1

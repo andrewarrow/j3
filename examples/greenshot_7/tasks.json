@@ -515,9 +515,34 @@
     "split": "test",
     "fixture_category": "existing_repo_convention",
     "prompt": "update an existing src/acme_slug/text.py module to expose slugify in __init__.py following the repo's src layout",
-    "expected_action": "classify_failure",
-    "expected_failure_category": "existing_repo_support",
-    "expected_features": [],
+    "expected_action": "emit_existing_repo_convention",
+    "expected_features": ["src_package_slugify_export"],
+    "existing_repo_fixture": {
+      "schema_version": "existing-repo-fixture-v1",
+      "production_files": ["src/acme_slug/text.py", "src/acme_slug/__init__.py"],
+      "files": [
+        {
+          "path": "pyproject.toml",
+          "role": "config",
+          "content": "[project]\nname = \"acme-slug\"\nversion = \"0.1.0\"\n\n[tool.pytest.ini_options]\npythonpath = [\"src\"]\n"
+        },
+        {
+          "path": "src/acme_slug/__init__.py",
+          "role": "production",
+          "content": "\"\"\"Public package exports for acme_slug.\"\"\"\n"
+        },
+        {
+          "path": "src/acme_slug/text.py",
+          "role": "production",
+          "content": "\"\"\"Small text slugification helpers for documentation paths.\"\"\"\n\nfrom __future__ import annotations\n\nimport re\n\n\ndef slugify(text: str) -> str:\n    \"\"\"Return a lowercase, hyphen-separated slug for text.\"\"\"\n\n    parts = re.findall(r\"[a-z0-9]+\", text.lower())\n    return \"-\".join(parts)\n"
+        },
+        {
+          "path": "tests/test_acme_slug.py",
+          "role": "test",
+          "content": "from __future__ import annotations\n\nfrom acme_slug import slugify\n\n\ndef test_package_exports_slugify() -> None:\n    assert slugify(\"Hello, Src Layout!\") == \"hello-src-layout\"\n"
+        }
+      ]
+    },
     "expected_spec": {
       "schema_version": "request-spec-v1",
       "task_name": "slugify_existing_src_convention",
@@ -526,28 +551,33 @@
       "repo_mode": "existing_repo",
       "domain": "text_slugify",
       "prompt": "update an existing src/acme_slug/text.py module to expose slugify in __init__.py following the repo's src layout",
-      "artifacts": [],
-      "interfaces": [],
-      "features": [],
-      "operation_aliases": {},
-      "inferred_defaults": [],
-      "clarifications_needed": [
+      "artifacts": [
+        "src/acme_slug/text.py",
+        "src/acme_slug/__init__.py",
+        "tests/test_acme_slug.py"
+      ],
+      "interfaces": [
         {
-          "field": "repo_mode",
-          "question": "Which existing repository path and package convention should be inspected before editing?"
+          "kind": "python_api",
+          "module": "acme_slug",
+          "callable": "slugify"
         }
       ],
-      "validation": {
-        "commands": [],
-        "hidden_cases": false
-      },
-      "unsupported_requirements": [
+      "features": ["src_package_slugify_export"],
+      "operation_aliases": {},
+      "inferred_defaults": [
         {
-          "field": "repo_mode",
-          "value": "src_layout_existing_repo_convention",
-          "reason": "existing_repo_support"
+          "field": "features",
+          "value": ["src_package_slugify_export"],
+          "reason": "src_layout_existing_repo_convention",
+          "confidence": 0.82
         }
-      ]
+      ],
+      "clarifications_needed": [],
+      "validation": {
+        "commands": ["python -m pytest tests/test_acme_slug.py -q"],
+        "hidden_cases": true
+      }
     }
   },
   {

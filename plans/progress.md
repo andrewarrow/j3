@@ -3686,3 +3686,21 @@ meaningful work. Do not replace this file with a daily reset.
   annotation/import builder layer exposed by MAT-007's 7 typed-builder rows.
 - Blockers: none for MAT-008; broader materialization generalization still
   needs more held-out rows.
+
+### 2026-05-18 - Coordinator Dispatch - DATA-039 / MAT-009
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, and
+  `plans/progress.md`.
+- Tests: pending before dispatch commit.
+- Result: selected the next batch from the DATA-038 and MAT-008 residuals.
+  `DATA-039` attacks the ranking blocker by trying to materialize and validate
+  realistic issue/PR decoys, preferably on the Scrapy #7293 row, so pass@1 or
+  pass@k is not based on label-only decoys. `MAT-009` attacks materialization
+  generalization by attempting the adjacent held-out `pytest#14475`
+  constrained-source/test row with reusable action records, not another
+  PR-named materializer.
+- Commit: pending.
+- Push: pending.
+- Next: dispatch independent workers for `DATA-039` and `MAT-009`.
+- Blockers: none.

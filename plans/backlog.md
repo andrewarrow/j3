@@ -724,6 +724,26 @@ Long-term target:
   `/tmp/j3-mat-008-requests-7427-final/accepted.diff`, and
   `docs/MAT_008_REQUESTS_7427_SOURCE_REGION_CANDIDATE_2026-05-18.md`.
 
+### MAT-009: Held-out pytest scanner source-region candidate
+
+- Status: active
+- Why: MAT-008 is one held-out constrained-source win, but MAT-007's failure
+  criteria require reuse across more than one held-out row. `pytest#14475` is
+  the closest pytest-family constrained-source/test probe after DATA-029.
+- Write scope: held-out source-region candidate module/tests or extensions,
+  optional MAT-009 docs/report, generated artifacts under `/tmp`, and plan
+  updates. Avoid editing DATA-039-owned ranking/decoy modules.
+- Acceptance: attempt `pytest-dev/pytest#14475` using reusable
+  source-region and pytest insertion action records, not a PR-named action
+  kind. Determine and record the pinned base ref, accepted changed files,
+  validation command, mutation scope, candidate-after diff/AST metadata,
+  accepted-diff comparison, and live validation result. If target selection,
+  repo setup, source-region materialization, pytest insertion, or validation
+  blocks, record the exact blocker. If the row needs a new bespoke action
+  family, stop and record that as action-vocabulary explosion evidence.
+- Tests: focused source-region candidate tests, plan consistency,
+  `git diff --check`, and live focused validation when materialized.
+
 ### KNOW-001: Local knowledge inventory for the wedge
 
 - Status: done
@@ -2203,6 +2223,28 @@ Long-term target:
   `/tmp/j3-data-038-issue-pr-candidate-after-snapshots/candidate-after-report.md`,
   `/tmp/j3-data-038-ranking-with-snapshots/ranking-report.json`, and
   `docs/DATA_038_ISSUE_PR_CANDIDATE_AFTER_SNAPSHOTS_2026-05-18.md`.
+
+### DATA-039: Live issue/PR decoy validation slice
+
+- Status: active
+- Why: DATA-038 resolved accepted-candidate after-state snapshots, but DATA-037
+  still blocks on unmaterialized/unvalidated decoys. Ranking gains on real
+  issue/PR rows cannot be claimed until hard decoys have local after-state and
+  validation outcomes.
+- Write scope: focused issue/PR decoy validation or ranking-evidence module
+  and tests, optional DATA-039 docs/report, generated artifacts under `/tmp`,
+  and plan updates. Avoid editing MAT-009-owned held-out source-region
+  materializers.
+- Acceptance: replace at least one DATA-037/DATA-038 ranking blocker with real
+  evidence by materializing and validating realistic decoy candidates for at
+  least one validated issue/PR row. Prefer the Scrapy #7293 row because
+  DATA-035 already provides a compact source/test materializer. Record each
+  decoy's touched files, candidate-after snapshots or paths, validation
+  command/runtime/status, residual labels, and whether the accepted candidate
+  can now be ranked against live failing decoys without leaking labels. If
+  decoy materialization or validation is too broad, record the exact blocker.
+- Tests: focused decoy validation/ranking tests, plan consistency,
+  `git diff --check`, and live focused validation when decoys are materialized.
 
 ## Next Recommended Queue
 

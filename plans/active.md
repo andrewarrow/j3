@@ -44,8 +44,37 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-No active worker tasks at this instant; the coordinator is recording the next
-dispatch. Continuous loop mode still applies.
+### `DATA-039`: Live issue/PR decoy validation slice
+
+- Status: active
+- Owner: pending worker assignment.
+- Write scope: focused issue/PR decoy validation or ranking-evidence module
+  and tests, optional DATA-039 docs/report, generated artifacts under `/tmp`,
+  and planning updates. Avoid editing MAT-009-owned held-out source-region
+  materializers.
+- Acceptance: replace at least one DATA-037/DATA-038 ranking blocker with real
+  evidence by materializing and validating realistic decoy candidates for at
+  least one validated issue/PR row. Prefer the Scrapy #7293 row because
+  DATA-035 already provides a compact source/test materializer. Record each
+  decoy's touched files, candidate-after snapshots or paths, validation
+  command/runtime/status, residual labels, and whether the accepted candidate
+  can now be ranked against live failing decoys without leaking labels. If
+  decoy materialization or validation is too broad, record the exact blocker.
+
+### `MAT-009`: Held-out pytest scanner source-region candidate
+
+- Status: active
+- Owner: pending worker assignment.
+- Write scope: held-out source-region candidate module/tests or extensions,
+  optional MAT-009 docs/report, generated artifacts under `/tmp`, and planning
+  updates. Avoid editing DATA-039-owned ranking/decoy modules.
+- Acceptance: attempt the MAT-007 recommended `pytest-dev/pytest#14475`
+  scanner fix using reusable source-region and pytest insertion action records,
+  not a PR-named action kind. Determine and record the pinned base ref,
+  accepted changed files, validation command, mutation scope, candidate-after
+  diff/AST metadata, accepted-diff comparison, and live validation result or
+  exact blocker. If the row requires a new bespoke action family, stop and
+  record that as evidence for vocabulary explosion.
 
 ## Ready Queue
 

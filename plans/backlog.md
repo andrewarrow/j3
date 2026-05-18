@@ -1154,7 +1154,7 @@ Long-term target:
 
 ### DATA-010: Issue/PR candidate readiness gate
 
-- Status: ready
+- Status: active
 - Why: after `DATA-008`, `DATA-009`, `KNOW-004`, and `KNOW-005`, the replay
   path needs a binary gate that says which first-batch rows are ready for a
   candidate attempt and which hard blocker remains.
@@ -1167,11 +1167,49 @@ Long-term target:
 - Tests: focused issue/PR readiness tests, plan consistency, and
   `git diff --check`.
 
+### DATA-011: Requests prepare_body prompt/spec normalization
+
+- Status: active
+- Why: `DATA-008` and `KNOW-005` resolved validation and local-knowledge
+  blockers for `psf__requests-issue-7432-pr-7433`, but the row still needs a
+  normalized prompt/spec record before candidate attempts can be evaluated
+  fairly.
+- Write scope: `j3/issue_pr_prompt_spec.py`,
+  `tests/test_issue_pr_prompt_spec.py`, optional compact report, and plan
+  updates.
+- Acceptance: build a structured spec for
+  `psf__requests-issue-7432-pr-7433` that records minimal reproduction,
+  observed behavior, expected behavior, affected API symbol, input shape,
+  acceptance test shape, `__getattr__` file-wrapper behavior, stream detection
+  semantics, redirect/rewind behavior, provenance, and any fields still
+  blocked on unavailable source text. The task must not attempt candidate code
+  edits.
+- Tests: focused prompt/spec tests, plan consistency, `git diff --check`, and
+  a CLI smoke proving the Requests spec can be emitted.
+
+### DATA-012: First issue/PR candidate attempt
+
+- Status: ready
+- Why: once `DATA-010` identifies a replay row that is ready for candidate
+  attempts, the project must immediately test the hard materialization and
+  ranking path on a real accepted issue/PR task.
+- Write scope: to be set by the coordinator from the `DATA-010` readiness
+  report; likely a bounded candidate materializer or candidate-attempt runner,
+  focused tests, compact report, and plan updates.
+- Acceptance: attempt exactly one readiness-approved row; record generated
+  candidate actions, source/test materialization result, allowed-write-path
+  checks, validation command/runtime, pass/fail, residual labels, and whether
+  the existing structured-action surface covered the accepted edit. If no row
+  is ready, keep this blocked with the exact missing evidence.
+- Tests: focused candidate-attempt tests, plan consistency, `git diff
+  --check`, and the live focused validation command when feasible.
+
 ## Next Recommended Queue
 
 Start with these unless fresh evidence changes the order:
 
-1. `DATA-010`: issue/PR candidate readiness gate for the first replay rows.
+1. `DATA-012`: first readiness-approved issue/PR candidate attempt after
+   `DATA-010` identifies the safest row.
 2. `KNOW-003`: broaden knowledge-use attribution where scoring shows missing
    local-knowledge evidence.
 3. `MODEL-006`: candidate-after or AST-delta observation for ranking evidence.

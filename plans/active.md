@@ -44,15 +44,55 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-No active worker tasks are currently recorded. The coordinator should dispatch
-the next ready task unless a review or blocker prevents useful continuation.
+### `DATA-010`: Issue/PR candidate readiness gate
+
+- Status: active
+- Owner: coordinator dispatch pending.
+- Why: the first replay batch now has targeted validation, prompt/spec, and
+  local-knowledge evidence, but there is no binary gate that says which rows
+  are actually ready to test materialization and ranking.
+- Write scope: issue/PR replay readiness scoring in a new or narrowly scoped
+  module, focused tests, compact report, and plan updates. Do not edit
+  `j3/issue_pr_prompt_spec.py` or `j3/local_knowledge.py`; consume them as
+  evidence instead.
+- Acceptance: consume DATA-008 validation evidence, DATA-009 prompt/spec
+  evidence, KNOW-004 Click knowledge, and KNOW-005 Requests knowledge for the
+  first DATA-006 replay rows; emit one readiness row per replay id with
+  evidence ids, missing-evidence labels, allowed write scope, validation
+  command, residual labels, and a clear `ready_for_candidate_attempt` or
+  blocker recommendation. Materialization/ranking gaps should be recorded as
+  the hard next-stage challenge, not hidden.
+- Tests: focused issue/PR readiness tests, `pytest
+  tests/test_plan_consistency.py -q`, `git diff --check`, and a CLI smoke or
+  fixture report over the first three replay rows.
+
+### `DATA-011`: Requests prepare_body prompt/spec normalization
+
+- Status: active
+- Owner: coordinator dispatch pending.
+- Why: `DATA-008` and `KNOW-005` resolved validation and local-knowledge
+  blockers for `psf__requests-issue-7432-pr-7433`, but the row still lacks a
+  normalized prompt/spec record, so a candidate attempt would still be judged
+  against an ambiguous request.
+- Write scope: `j3/issue_pr_prompt_spec.py`,
+  `tests/test_issue_pr_prompt_spec.py`, optional compact report, and plan
+  updates. Do not edit readiness or local-knowledge modules.
+- Acceptance: build a structured spec for
+  `psf__requests-issue-7432-pr-7433` that records minimal reproduction,
+  observed behavior, expected behavior, affected API symbol, input shape,
+  acceptance test shape, `__getattr__` file-wrapper behavior, stream detection
+  semantics, redirect/rewind behavior, provenance, and any fields still
+  blocked on unavailable source text. No candidate source edits.
+- Tests: focused prompt/spec tests, `pytest tests/test_plan_consistency.py
+  -q`, `git diff --check`, and a CLI smoke proving the Requests spec can be
+  emitted.
 
 ## Ready Queue
 
 These are good next assignments for the next loop:
 
-1. `DATA-010`: issue/PR candidate readiness gate for the first replay rows
-   after prompt/spec, local-knowledge, and validation blockers are resolved.
+1. `DATA-012`: first readiness-approved issue/PR candidate attempt after
+   `DATA-010` identifies the safest row.
 2. `KNOW-003`: broaden knowledge-use attribution where scoring shows missing
    local-knowledge evidence.
 3. `MODEL-006`: add candidate-after or AST-delta observation for ranking

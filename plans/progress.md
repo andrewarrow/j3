@@ -1971,9 +1971,32 @@ meaningful work. Do not replace this file with a daily reset.
   semantics, pytest-httpbin/trustme fixture setup, and ranking-relevant
   changed/test patterns, all linked to the replay row with provenance hashes
   and split `train`.
-- Commit: pending.
-- Push: pending.
+- Commit: 4b333f7.
+- Push: succeeded.
 - Next: `DATA-010` can use DATA-008 validation, DATA-009 prompt/spec, and
   KNOW-005 Requests knowledge to evaluate candidate-readiness for the first
   issue/PR replay rows.
+- Blockers: none.
+
+### 2026-05-18 - Coordinator Review And Dispatch - DATA-010 / DATA-011
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, `plans/progress.md`.
+- Tests: `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff
+  --check` -> passed.
+- Result: reviewed `DATA-009` and `KNOW-005`. Focused review checks passed:
+  `python -m py_compile j3/issue_pr_prompt_spec.py
+  tests/test_issue_pr_prompt_spec.py`, `pytest
+  tests/test_issue_pr_prompt_spec.py -q`, the `j3.issue_pr_prompt_spec` CLI
+  smoke for `pallets__click-issue-2745-pr-3364`, `python -m py_compile
+  j3/local_knowledge.py tests/test_local_knowledge.py`, `pytest
+  tests/test_local_knowledge.py -q`, combined prompt-spec/local-knowledge
+  tests, `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+  The next loop stays on hard issue/PR proof: `DATA-010` will create the
+  candidate-readiness gate, and `DATA-011` will remove the Requests
+  prompt/spec blocker left after validation and local-knowledge work.
+- Commit: pending.
+- Push: pending.
+- Next: run plan checks, commit this dispatch, then assign one worker to
+  `DATA-010` and one worker to `DATA-011` with disjoint write scopes.
 - Blockers: none.

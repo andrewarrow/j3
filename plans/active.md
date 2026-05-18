@@ -47,7 +47,7 @@ This is the live coordinator board. Keep it current and compact.
 ### `VAL-003`: Coverage-gap decoy policy and ranking-denominator probe
 
 - Status: active
-- Owner: pending worker spawn.
+- Owner: worker Aquinas (`019e3d05-21cc-79a1-a0df-0dc14d36d2eb`).
 - Write scope: issue/PR ranking or validation-policy helper code/tests,
   optional `docs/VAL_003_*`, and generated artifacts under `/tmp`. Avoid
   materialization modules.
@@ -62,7 +62,7 @@ This is the live coordinator board. Keep it current and compact.
 ### `MAT-012`: Third held-out typed-builder/general-AST materialization stress row
 
 - Status: active
-- Owner: pending worker spawn.
+- Owner: worker Sagan (`019e3d05-21fc-7c11-b53f-546a5c545603`).
 - Write scope: `j3/heldout_typed_builder_candidate.py`,
   `tests/test_heldout_typed_builder_candidate.py`, optional
   `docs/MAT_012_*`, and generated artifacts under `/tmp`. Avoid issue/PR

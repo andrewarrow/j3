@@ -1,876 +1,606 @@
-# j3 Current Plan
+# j3 Strategy
 
-This file is the live handoff for the project. Keep it current and remove stale
-status. Move long experiments, raw metrics, and hard-negative notes into focused
-markdown files instead of letting this plan become a changelog.
+This is the north star for `j3`. It is not a changelog, daily plan, benchmark
+dump, or worker board. Use `plans/active.md`, `plans/backlog.md`, and
+`plans/progress.md` for execution. Use focused docs for detailed metrics and
+experiment reports.
 
-## Table of Contents
+The purpose of this document is to keep the project aimed at the huge goal:
+build a local Python coding agent that can eventually edit, repair, refactor,
+and improve real repositories without asking a frontier autoregressive LLM to
+write candidate patches.
 
-- [Goal](#goal)
-- [Definition of No-LLM](#definition-of-no-llm)
-- [Core Thesis](#core-thesis)
-- [What Must Exist for Codex-Level Editing](#what-must-exist-for-codex-level-editing)
-- [Current Reality](#current-reality)
-  - [Existing Data and Runs](#existing-data-and-runs)
-- [Strategic Correction](#strategic-correction)
-- [System Architecture](#system-architecture)
-  - [1. Prompt and Intent Layer](#1-prompt-and-intent-layer)
-  - [2. Goal Specification Layer](#2-goal-specification-layer)
-  - [3. Repo and Observation Layer](#3-repo-and-observation-layer)
-  - [4. Structured Action Layer](#4-structured-action-layer)
-  - [5. Candidate Ranking Layer](#5-candidate-ranking-layer)
-  - [6. JEPA Transition Layer](#6-jepa-transition-layer)
-  - [7. Planning and Validation Layer](#7-planning-and-validation-layer)
-- [Prompt Understanding Track](#prompt-understanding-track)
-  - [Coding-Agent English](#coding-agent-english)
-  - [Implicit Requirement Expansion](#implicit-requirement-expansion)
-  - [Clarification Policy](#clarification-policy)
-  - [Prompt-to-Spec Schema](#prompt-to-spec-schema)
-  - [Prompt Data We Need](#prompt-data-we-need)
-  - [Prompt Corpus Scale](#prompt-corpus-scale)
-  - [Prompt Data Sources](#prompt-data-sources)
-  - [Prompt Data Quality Rules](#prompt-data-quality-rules)
-- [Repair and Ranking Track](#repair-and-ranking-track)
-  - [Current Repair Capabilities](#current-repair-capabilities)
-  - [Current GreenShot Signal](#current-greenshot-signal)
-  - [Repair Data We Need](#repair-data-we-need)
-- [Greenfield Editing Track](#greenfield-editing-track)
-  - [Why This Exists](#why-this-exists)
-  - [Greenfield Actions](#greenfield-actions)
-  - [GreenShot-7 Request-to-Repo Ladder](#greenshot-7-request-to-repo-ladder)
-- [Model Tracks](#model-tracks)
-  - [Non-Neural Baselines](#non-neural-baselines)
-  - [Trainable Prompt Encoder](#trainable-prompt-encoder)
-  - [Trainable Candidate Ranker](#trainable-candidate-ranker)
-  - [Repo-State Encoder](#repo-state-encoder)
-  - [JEPA Repo-Transition Model](#jepa-repo-transition-model)
-  - [Planning Policy](#planning-policy)
-- [Evaluation Standards](#evaluation-standards)
-  - [Repair Evaluation](#repair-evaluation)
-  - [Prompt Understanding Evaluation](#prompt-understanding-evaluation)
-  - [Greenfield Evaluation](#greenfield-evaluation)
-  - [Benchmark Reporting](#benchmark-reporting)
-- [Immediate Next Step](#immediate-next-step)
-- [Next Queue](#next-queue)
-- [Stop Conditions](#stop-conditions)
+## The Bet
 
-## Goal
-
-Build a local, no-LLM Python coding agent that can eventually edit, repair,
-refactor, and improve Python repositories at Codex-level quality. The target is
-not autocomplete and not a patch-template toy. The target is an agent that can
-read a repo, understand a user request or failing observation, choose structured
-edits, predict their consequences, validate with tools, and iterate toward
-correct code without asking a large language model to write candidate patches.
-
-The long-term bar is intentionally high: become as good at Python code editing
-as Codex running a frontier GPT-5.5-style model with high reasoning effort. The
-path is staged:
-
-1. Reliable structured repair.
-2. Strong candidate-outcome data from real repair attempts.
-3. User-prompt understanding for the subset of English used to ask coding agents
-   for changes or new code.
-4. Greenfield structured editing for new files, tests, and project scaffolds.
-5. Trainable ranking and repo-state models.
-6. A JEPA-style repo-transition planner that predicts which structured edit
-   moves the repo toward the requested target state.
-
-## Definition of No-LLM
-
-No-LLM does not mean no learned language encoder. It means:
-
-- Do not ask a large autoregressive language model to write candidate patches.
-- Do not depend on free-form source generation as the core editing mechanism.
-- Do use local structured models that encode prompts, repo state, observations,
-  actions, and outcomes.
-- Do let models rank, predict, classify, retrieve, and plan over structured
-  records.
-
-The desired system can read natural-language coding requests, but it should turn
-them into structured goal specs and structured actions rather than sampling raw
-source code.
-
-## Core Thesis
-
-LLM coding agents are powerful because they combine language understanding,
-repo reading, patch generation, and tool feedback. j3 should split those skills
-into explicit local components:
+Current LLM coding agents are powerful, but their core loop is inefficient:
 
 ```text
-user prompt or tool observation
-  -> normalized goal / observation record
-  -> repo-state representation
-  -> structured candidate actions
-  -> predicted consequence
-  -> validation
-  -> next action or stop
+prompt + large repo context -> generate patch tokens -> run tools -> retry
 ```
 
-The JEPA claim is not proven by repairing small literals. It is only credible if
-j3 learns to represent desired repo transitions and choose actions that move the
-repo toward them, including when the desired state starts as user intent rather
-than a failing pytest assertion.
+That works because frontier LLMs carry enormous priors about language, code,
+libraries, and developer intent. It is also wasteful. The agent repeatedly
+looks at raw text and samples source tokens when the durable object it needs is
+more abstract: the repository state, the goal, the action under consideration,
+and the likely consequence of that action.
 
-## What Must Exist for Codex-Level Editing
-
-j3 eventually needs all of these capabilities:
-
-- Prompt understanding for coding-agent English.
-- Repo understanding across files, imports, functions, classes, tests, config,
-  package metadata, and docs.
-- Structured actions for repair, refactor, creation, deletion, and test edits.
-- Candidate generation that is broad enough to contain the right edit.
-- Ranking that puts correct and preferred candidates early.
-- Validation with tests, type checks, lint, import checks, and hidden behavior
-  checks when available.
-- Multi-step planning when one edit exposes the next needed edit.
-- Ambiguity handling: infer common defaults when confidence is high, ask a
-  clarification when confidence is low.
-- Data splits that prove generalization across repos, task families, and prompt
-  phrasings.
-
-## Current Reality
-
-The current codebase is strongest as a structured Python repair prototype.
-
-Known useful pieces:
-
-- `j3 eval` can run ranked repair attempts and write candidate outcome JSONL.
-- Diagnostics record tested candidates, first passing index, passing candidates,
-  failure hints, target context, and preferred patch labels.
-- `train-ranker` can train from candidate outcome rows and validate held-out
-  tasks or families.
-- GreenShot-5 reached a 20-task ladder around multi-file repair, helper/API
-  boundaries, imports, warnings, config constants, dictionary keys, signature
-  propagation, and bounded multi-step repair.
-- GreenShot-6 currently has 69 tasks in the worktree:
-  - 48 `git_history`
-  - 21 `mutation`
-  - 50 `train`, 5 `test`, and 14 tasks with legacy deterministic split
-    assignment.
-- GreenShot-6 is useful real-package-derived signal, but it is skewed toward
-  small existing-file repairs:
-  - 39 `change_literal`
-  - 14 `change_dict_value`
-  - 6 `change_operator`
-  - 3 `add_keyword_arg`
-  - 2 `swap_call_arg`
-  - 1 each for `change_dict_key`, `change_subscript_key`,
-    `change_module_constant`, `modify_condition`, and `rename_symbol`.
-
-This is necessary foundation work. It is not enough for the full goal.
-
-### Existing Data and Runs
-
-The project already has local training artifacts, but they are not prompt
-understanding data.
-
-Current data:
-
-- `data/transitions/apache-python/*.jsonl` contains mined Python before/after
-  file transitions from the Apache-licensed local corpus described in
-  `docs/TRAINING.md`.
-- `runs/apache-python-git/model.json` is the current prototype repair-ranking
-  checkpoint trained from synthetic source transitions plus mined git
-  transitions.
-- `runs/apache-python-git/examples.jsonl` is the generated transition training
-  example dump for that checkpoint.
-- `runs/apache-python-git/greenshot-5-candidate-outcomes.jsonl` and
-  `runs/apache-python-git/greenshot-6-candidate-outcomes.jsonl` are candidate
-  outcome datasets from actual repair attempts.
-- `runs/apache-python-git/ranker-*` contains trained candidate-ranker artifacts
-  and metrics from those outcome rows.
-
-How these are used today:
-
-- `j3 train --data ... --transitions data/transitions/apache-python` consumes
-  Python source and mined git transitions to produce a prototype model under
-  `runs/`.
-- `j3 eval --checkpoint runs/apache-python-git/model.json ...` uses that model
-  to score/rank repair candidates.
-- `j3 train-ranker --candidate-outcomes runs/...jsonl` consumes candidate
-  outcome rows to train the separate candidate ranker.
-
-What is missing:
-
-- No current `data/` or `runs/` artifact trains prompt-to-spec understanding.
-- No current artifact learns from natural-language coding-agent prompts.
-- No current training path maps prompt text to new files, hidden behavior
-  tests, or greenfield repo outcomes.
-
-So the source/transition/ranker data is real and useful, but it is not enough
-for user intent. Prompt data is a new first-class dataset, not a replacement for
-the existing repair data.
-
-## Strategic Correction
-
-The project is on track for a repair engine, but not yet on track for a
-Codex-level coding agent. The missing first-class track is user intent.
-
-Example:
+The JEPA bet is that coding agents should learn compact transition models:
 
 ```text
-make me a simple cli python app that's a basic calculator, it should let the
-user add two numbers, subtract, etc.
+state(repo, request, observations, history) + action(edit)
+  -> predicted next state, utility, and remaining uncertainty
 ```
 
-The string `etc.` cannot be solved from Python AST repair data alone. A coding
-agent must infer that a "basic calculator" commonly includes add, subtract,
-multiply, and divide. That inference is prompt understanding plus product/task
-prior. It should become a structured prediction:
+For video, this is the difference between predicting every pixel in every frame
+and understanding that a car is moving across the screen. For code, it is the
+difference between reading every token in a repository on every turn and
+understanding that a failing assertion points to a boundary condition, a prompt
+asks for tests only, or a package layout requires updating `__init__.py`.
 
-```json
-{
-  "task_type": "new_python_cli_app",
-  "domain": "calculator",
-  "features": ["add", "subtract", "multiply", "divide"],
-  "interface": "interactive_cli",
-  "arity": 2
-}
-```
+If this works, the efficiency difference can be enormous. A local transition
+model should not need giant context windows or hosted patch generation for
+every edit. It should propose structured actions, predict their consequences,
+validate the cheapest plausible path, and learn from the observed outcome.
 
-Then structured editing can take over.
+The hard part is that efficiency does not create competence by itself. LLMs
+currently have broad language and code knowledge. `j3` must earn that knowledge
+through local data, repo representations, structured actions, docs, tests,
+issue/PR transitions, and learned encoders. That bridge is the project.
 
-Near-term correction:
+## Definition Of No-LLM
 
-- Stop treating GreenShot-6 growth alone as evidence of long-term progress.
-- Keep GreenShot-6 as the repair/ranking regression gate.
-- Start GreenShot-7 as request-to-repo work.
-- Add prompt/spec data and greenfield actions before adding many more typo-like
-  `change_literal` tasks.
+No-LLM means the production agent does not ask a large autoregressive language
+model to author candidate patches or stream source code into the repo.
 
-## System Architecture
+Allowed:
 
-### 1. Prompt and Intent Layer
+- local learned encoders for prompts, code, repo state, and observations
+- local classifiers, rankers, transition models, retrieval indexes, and planners
+- typed code builders and structured source transformations
+- local constrained generators if their outputs are validated and represented
+  as structured actions
+- frontier LLMs during development as scaffolding, review, labeling assistance,
+  or teacher signal, when provenance is recorded and eval splits remain clean
+
+Not allowed as the core product path:
+
+- sending repo text to a hosted LLM for patch authoring
+- using free-form LLM-generated diffs as the main edit mechanism
+- claiming local autonomy when a hidden hosted model is doing the hard edit
+
+The goal is not "never use language models." The goal is to stop depending on a
+giant next-token model as the runtime code-writing engine.
+
+## Six-Month Target
+
+The six-month target is not a Codex replacement. It is a credible local Python
+repo maintenance agent with a narrow but real wedge:
+
+- add tests to small existing Python libraries without changing production code
+- make small library and CLI feature edits following local conventions
+- repair common failing-test patterns with structured actions
+- update simple package exports, config, and entrypoints
+- ask clarification instead of guessing when requirements are under-specified
+- run in shadow mode on real repos and explain what it would do
+- enter guarded opt-in mode only when held-out real-repo gates pass
+
+By six months, success means a developer can point `j3` at selected small Python
+projects and get useful local suggestions or guarded edits for a constrained
+task class. Success does not mean broad open-ended software engineering.
+
+## Long-Term Target
+
+The long-term bar remains intentionally high: Codex-level Python repository
+editing without frontier LLM patch generation.
+
+That requires all of the following:
+
+- coding-agent English understanding
+- repo-state understanding across files, imports, packages, tests, config, docs,
+  entrypoints, and conventions
+- a broad structured action vocabulary for repair, creation, tests, refactors,
+  package metadata, docs, and validation
+- code materialization that can turn an intended state change into actual source
+  without pasting arbitrary model text
+- local knowledge of common Python libraries, tooling, packaging, and idioms
+- candidate generation broad enough to contain the right edit
+- ranking and transition prediction strong enough to test few candidates
+- validation that handles flaky, slow, missing, and partial test suites
+- multi-step planning and rollback
+- calibrated clarification when the goal is ambiguous
+- held-out evidence across repos, domains, prompts, and task families
+
+## What Could Kill The Project
+
+These are the blockers to watch. If they are not solved, commit velocity will
+not matter.
+
+### Fixture Overfitting
+
+Synthetic GreenShot tasks and known residuals can make the system look better
+than it is. The project must move quickly toward held-out real repositories,
+issue/PR replay, and user-like prompts. A new fixture is useful only when it
+creates reusable signal: a new action, observation, ranking feature, validation
+gate, or real generalization test.
+
+### Action Vocabulary Explosion
+
+Structured actions are efficient because they constrain search. They become a
+trap if every new task requires a bespoke action. Add actions from residual
+evidence, not imagination. When many tasks need new action kinds, step back and
+design a more general builder, transformation family, or representation.
+
+### Code Materialization Gap
+
+Predicting a repo-after embedding is not enough. The agent must materialize the
+change into files. This is the biggest technical bridge from JEPA theory to a
+working coding agent.
+
+The materialization stack should develop in this order:
+
+1. AST and config transformations for existing code.
+2. Typed builders for common files: modules, tests, CLIs, packages, configs.
+3. Repo-convention-aware builders that inspect surrounding code.
+4. Constrained local generators for small source regions, wrapped as structured
+   actions with validation and rollback.
+5. Learned proposal models only after non-neural builders and rankers expose
+   clear residuals.
+
+### Missing Local Knowledge
+
+Frontier LLMs know pytest, packaging, FastAPI, argparse, pandas, typing,
+tracebacks, docs, and idioms because they were pretrained on huge corpora. `j3`
+must acquire useful subsets of that knowledge locally:
+
+- mine issue/PR transitions with provenance and stable splits
+- index package docs and README examples
+- learn repo conventions from the current project
+- store outcomes from every candidate it tries
+- encode library-specific concepts as data, not one-off rules
+
+### Weak Validation
+
+Tests are the truth source, but real tests are slow, incomplete, flaky, and
+sometimes absent. `j3` needs validation as a first-class system:
+
+- test discovery and selection
+- subprocess, import, lint, type, and smoke checks
+- timeout and flaky-test handling
+- generated hidden-like checks for small tasks
+- confidence reporting when validation is partial
+- rollback after failed edits
+
+### Human Bottleneck
+
+An agent loop can produce many commits. One human still has to enforce honest
+evals, prevent overfitting, choose product wedges, review risky architecture,
+and decide when a result is not meaningful. The operating model should multiply
+execution while keeping strategic choices explicit.
+
+## Architecture
+
+`j3` should stay decomposed. Each layer has a measurable contract.
+
+### Prompt And Intent
 
 Input:
 
-- User request.
-- Optional repo context.
-- Optional tool failure.
-- Optional existing tests, README, issues, or examples.
+- user request
+- optional repo context
+- optional tool failure or issue text
+- optional docs, examples, README, or existing tests
 
 Output:
 
-- Structured task spec.
-- Confidence scores.
-- Ambiguity fields.
-- Optional clarification action.
+- structured request spec
+- task type, domain, artifacts, interfaces, constraints, and features
+- explicit vs inferred requirements
+- confidence and ambiguity fields
+- clarification action when needed
 
-### 2. Goal Specification Layer
+This layer handles coding-agent English, not all natural language.
 
-The task spec is the contract between natural language and code editing. It
-should describe what must exist after editing without containing raw source.
+### Repo And Observation State
+
+The repo state must be compact, inspectable, and stable:
+
+- files, packages, imports, modules, functions, classes, methods
+- calls, symbols, exports, config, entrypoints, tests, fixtures, docs
+- source hashes and embeddings
+- tool observations: pytest, traceback, mypy, ruff, stdout, stderr, warnings
+- request-derived target observations
+
+The repo representation is the substrate for planning and transition
+prediction. If it cannot see the relevant convention, the planner will guess.
+
+### Goal Specification
+
+The request spec is the contract between language and editing. It describes the
+desired repo state without containing raw implementation text.
 
 Examples:
 
-- Create a Python CLI app.
-- Add a feature to an existing module.
-- Fix a failing behavior.
-- Refactor without behavior change.
-- Add tests for an existing function.
-- Update package metadata.
+- create a small Python CLI
+- add tests for an existing function
+- add one feature following local conventions
+- repair a failing behavior
+- update package exports or metadata
+- refactor without behavior change
+- ask a clarification
 
-### 3. Repo and Observation Layer
+### Structured Actions
 
-Normalize repo state and observations:
+Actions are typed and auditable:
 
-- Files, packages, imports, symbols, functions, classes, calls.
-- Tests, entrypoints, configs, docs, examples.
-- Pytest, mypy, ruff, traceback, stdout/stderr, and assertion hints.
-- Prompt-derived desired behavior.
+- repair AST/config/text transformations
+- greenfield builders for modules, tests, CLIs, packages, configs, and docs
+- existing-repo builders for tests-only edits and convention-following edits
+- refactor actions with behavior-preservation checks
+- validation, clarification, rollback, and stop actions
 
-User prompts are observations too. A request like "basic calculator" is a
-target-state observation, not a test failure.
+Actions should remain machine-readable so ranking, transition prediction,
+validation, explanation, and training can all consume the same records.
 
-### 4. Structured Action Layer
+### Candidate Ranking
 
-Actions must be typed and inspectable:
-
-- Existing repair actions mutate AST or structured text.
-- Greenfield actions create files, functions, tests, CLI entrypoints, config,
-  package metadata, and docs.
-- Refactor actions preserve behavior while changing names, modules, or APIs.
-
-Actions should remain machine-readable so ranking, JEPA prediction, validation,
-and explanation can all consume them.
-
-### 5. Candidate Ranking Layer
-
-Rank candidates by predicted utility:
+Candidate ranking predicts which action should be tried first:
 
 - Does the action match the prompt/spec?
 - Does it address the failing observation?
 - Is the target local to the relevant repo graph?
-- Does the action produce a preferred patch when multiple patches pass?
-- Is the action small enough and semantically plausible?
+- Does the candidate preserve conventions?
+- Is it small enough and semantically plausible?
+- Is it validated or likely to validate cheaply?
+- Is it preferred when multiple candidates pass?
 
-### 6. JEPA Transition Layer
+Ranking should beat simple baselines before it influences production routing.
 
-The JEPA state should include repo, request/spec, observations, and action
-history:
+### JEPA Transition Model
+
+The transition layer predicts consequences in latent state:
 
 ```text
-s(repo, request_spec, observations, history) + a(edit) -> predicted next state
+s(repo_before, request_spec, observations, history) + a(action)
+  -> repo_after_target, observation_delta, utility, uncertainty
 ```
 
-The model should predict whether an action moves the repo toward the requested
-target state before running expensive validation.
+The first useful version does not need to generate code. It needs to:
 
-### 7. Planning and Validation Layer
+- distinguish source-changing, tests-only, clarification, and no-op outcomes
+- predict whether an action family is aligned with the goal
+- rank candidate futures before expensive validation
+- expose residuals that say what representation or data is missing
 
-The planner should:
+### Planner And Policy
 
-- Propose bounded candidate actions.
-- Use ranker and JEPA predictions to choose candidates.
-- Apply one or more structured edits.
-- Run selected validation.
-- Reparse observations.
-- Continue, ask a clarification, or stop.
+The planner chooses bounded next actions:
 
-## Prompt Understanding Track
+- inspect repo
+- ask clarification
+- propose candidates
+- apply one structured edit
+- run selected validation
+- rollback
+- continue
+- stop with evidence
 
-### Coding-Agent English
+Every planner decision should leave an outcome row suitable for training.
 
-j3 does not need all of English. It needs the subset people use when asking a
-coding agent for code changes.
+## Real-Repo Eval Ladder
 
-This subset includes:
+Do not claim broad progress from local fixtures alone. Move through these gates.
 
-- Creation verbs: make, create, build, scaffold, add, implement.
-- Repair verbs: fix, debug, make pass, handle, support.
-- Refactor verbs: rename, split, extract, clean up, move, simplify.
-- Test verbs: add tests, cover, assert, reproduce.
-- Artifact nouns: CLI, API, script, package, module, class, function, test,
-  config, README, pyproject, endpoint.
-- Behavior nouns: calculator, parser, cache, validator, serializer, logger.
-- Constraints: simple, basic, local-only, no dependencies, type hints, async,
-  backwards compatible.
-- Implied scope words: etc., basic, usual, standard, CRUD, REST, auth, config.
-- Acceptance phrases: should let the user, when I run, returns, prints, raises.
+### Gate 0: Fixture Reliability
 
-### Implicit Requirement Expansion
+Use GreenShot and unit tests to keep regressions visible.
 
-Some words imply conventional defaults. j3 should learn these as structured
-priors, not hard-code every phrase forever.
+Required signal:
 
-Examples:
+- deterministic focused tests
+- candidate outcome rows
+- residual classification
+- no hidden hosted usage
 
-- "basic calculator" usually implies add, subtract, multiply, divide.
-- "simple CLI app" usually implies an executable entrypoint, argument parsing or
-  an interactive loop, help text, and stdout behavior.
-- "CRUD API" usually implies create, read, update, delete operations.
-- "add auth" is ambiguous and should often ask a clarification unless repo
-  conventions strongly imply the method.
-- "etc." should expand only when the domain has a high-confidence canonical set.
+### Gate 1: Held-Out Small Repos
 
-The model output should include confidence and source of inference:
+Create or collect small real Python repos with clean licenses and stable tests.
 
-```json
-{
-  "inferred": [
-    {
-      "field": "features",
-      "value": ["multiply", "divide"],
-      "reason": "basic_calculator_default_operations",
-      "confidence": 0.86
-    }
-  ]
-}
+Task classes:
+
+- tests-only edits
+- one-file library changes
+- simple CLIs
+- package export updates
+- config and entrypoint changes
+
+Required signal:
+
+- repo-level split, not prompt paraphrase split
+- hidden-like checks
+- no train/test leakage by task family
+- pass@1, pass@k, candidates tested, runtime, and residual groups
+
+### Gate 2: Issue/PR Replay
+
+Use reviewed issue/PR records:
+
+- issue or PR text as prompt
+- repo-before checkout
+- accepted diff as reference
+- validation commands when available
+- license and terms recorded
+
+The goal is not exact diff match. The goal is behaviorally valid local edits
+that solve the same request.
+
+### Gate 3: Shadow On Real Projects
+
+Run on real repos without changing production routing:
+
+- generate advice rows
+- compare against existing deterministic ranking
+- record what would have been edited
+- run validation where safe
+- keep transition ranking shadow-only until gates pass
+
+### Gate 4: Guarded Opt-In
+
+Allow edits only for task classes that pass held-out gates:
+
+- narrow task type
+- bounded write scope
+- clean validation
+- rollback available
+- confidence reported
+- user-visible diff and rationale
+
+### Gate 5: Broader Agent
+
+Only after repeated real-repo success:
+
+- multi-step plans
+- cross-file feature work
+- repo-specific conventions
+- refactors
+- docs and tests together
+- broader package ecosystem support
+
+## Data Strategy
+
+Data is the product moat if this approach works.
+
+Collect every example as a transition record:
+
+```text
+prompt / issue / observation
+repo_before
+request_spec
+action candidates
+chosen action
+validation result
+repo_after or blocked target
+residual label
+provenance
+split
 ```
 
-### Clarification Policy
+Prioritize:
 
-When confidence is high, infer and proceed. When confidence is low, ask a short
-clarifying question instead of fabricating requirements.
+- real issue/PR pairs with reviewed provenance
+- candidate outcomes from actual repair attempts
+- prompt/spec rows written in coding-agent English
+- docs and README examples linked to behavior
+- hard negatives where tempting edits are wrong
+- clarification examples, not only success cases
 
-Examples:
+Quality rules:
 
-- Proceed: "basic calculator" -> add/subtract/multiply/divide.
-- Ask: "add auth" in an empty repo -> password, OAuth, token, or session?
-- Ask: "make it better" -> no concrete target.
-- Proceed with local convention: "add another endpoint like the existing one"
-  when route patterns and tests make the target clear.
-
-Clarification is a structured action:
-
-```json
-{"action": "ask_clarification", "field": "auth_method", "options": [...]}
-```
-
-### Prompt-to-Spec Schema
-
-Create a versioned request spec schema. Initial fields:
-
-- `schema_version`
-- `request_text`
-- `task_type`
-- `language`
-- `repo_mode`: `new_repo`, `existing_repo`, `unknown`
-- `domain`
-- `artifacts`
-- `features`
-- `interfaces`
-- `constraints`
-- `acceptance_tests`
-- `hidden_eval_expectations`
-- `clarifications_needed`
-- `inferred_defaults`
-- `confidence`
-- `source_type`
-- `split`
-
-Calculator example:
-
-```json
-{
-  "schema_version": "request-spec-v1",
-  "task_type": "create_app",
-  "language": "python",
-  "repo_mode": "new_repo",
-  "domain": "calculator",
-  "artifacts": ["calculator.py", "tests/test_calculator.py"],
-  "features": ["add", "subtract", "multiply", "divide"],
-  "interfaces": [{"kind": "cli", "style": "interactive_or_argparse"}],
-  "constraints": ["simple", "two_number_operations"],
-  "acceptance_tests": [
-    {"operation": "add", "inputs": [2, 3], "expected": 5},
-    {"operation": "subtract", "inputs": [5, 2], "expected": 3},
-    {"operation": "multiply", "inputs": [4, 3], "expected": 12},
-    {"operation": "divide", "inputs": [8, 2], "expected": 4}
-  ],
-  "inferred_defaults": [
-    {"field": "features", "value": ["multiply", "divide"], "confidence": 0.86}
-  ],
-  "clarifications_needed": []
-}
-```
-
-### Prompt Data We Need
-
-Training should cover prompt-to-spec, spec-to-plan, and plan-to-repo outcomes:
-
-- Prompt -> structured task spec.
-- Prompt + repo summary -> structured task spec.
-- Prompt + repo_before -> action sequence.
-- Prompt + repo_before -> repo_after latent target.
-- Prompt + spec -> hidden behavioral tests.
-- Prompt pairs with similar wording but different desired behavior.
-- Ambiguous prompts labeled with the clarification that should be asked.
-
-This is not general natural-language training. It is coding-agent request
-language aligned to repo changes.
-
-### Prompt Corpus Scale
-
-We are not ready to train a serious prompt encoder yet. We are ready to define
-the schema, collect seed data, build deterministic baselines, and make small
-GreenShot-7 request-to-repo tasks.
+- stable splits by repo, domain, task family, and prompt family
+- no training on paraphrases of held-out tasks
+- synthetic data marked as synthetic
+- source licenses and terms recorded
+- generated artifacts kept out of git unless small and intentional
+- exact command lines recorded for reproducibility
 
 Scale targets:
 
-- 100 to 300 hand-authored prompt/spec rows:
-  - Purpose: schema shakeout, rule baselines, prompt phenomena inventory.
-  - Good enough to test `etc.`, ambiguity, task type labels, and request-spec
-    validation.
-  - Not enough for credible generalization claims.
-- 1,000 to 3,000 curated rows:
-  - Purpose: train a small prompt classifier/spec parser for common coding
-    requests.
-  - Should cover creation, feature addition, bug fix, refactor, tests, config,
-    docs, and clarification.
-- 10,000 to 50,000 prompt/spec/repo examples:
-  - Purpose: robust held-out prompt understanding across repos and domains.
-  - Should include mined issue/PR pairs, normalized commit/PR descriptions,
-    human-authored prompts, and synthetic data marked by provenance.
-- 100,000+ examples:
-  - Purpose: serious local prompt encoder pretraining.
-  - Needed if the model must handle many domains, paraphrases, repo styles, and
-    implicit requirement patterns without brittle rules.
+- 100 to 300 curated prompt/spec rows for schema shakeout
+- 1,000 to 3,000 rows for first local prompt classifiers
+- 10,000 to 50,000 prompt/spec/repo examples for credible generalization
+- 100,000+ examples for serious local pretraining
 
-The immediate corpus lives outside the repo at `../prompts`:
+## Model Strategy
 
-- `../prompts/README.md`
-- `../prompts/coding_agent_prompts_seed.jsonl`
+Keep simple baselines alive. A learned model matters only when it beats them on
+held-out evidence.
 
-That seed file is intentionally small and human-authored. It should be treated
-as bootstrapping data for schema and evaluation, not model-scale training data.
+### Baselines
 
-### Prompt Data Sources
+- rule-based prompt/spec parser for narrow domains
+- deterministic builders and repair generators
+- sparse or linear rankers over structured features
+- retrieval over prior prompts, specs, actions, and outcomes
 
-Use multiple sources and tag every record with provenance.
+### Prompt Encoder
 
-1. Hand-authored seed tasks.
-   - Write small, precise prompts for CLI apps, library functions, config
-     changes, tests, docs, refactors, and bug fixes.
-   - Include vague variants with `etc.`, `simple`, `basic`, and missing details.
+Predict structured fields:
 
-2. Public issue/PR pairs.
-   - Link issue text or PR description to repo-before and accepted diff.
-   - Extract structured labels: task type, files touched, action kinds, tests.
-   - Use only data whose license and terms permit local training.
+- task type
+- repo mode
+- artifacts
+- domain
+- interfaces
+- features
+- constraints
+- inferred defaults
+- ambiguity and clarification fields
 
-3. Commit messages plus diffs.
-   - Useful when issue text is absent.
-   - Lower quality for prompt understanding, but useful for transition modeling.
+The output is a spec, not source code.
 
-4. README and docs examples.
-   - Examples imply expected behavior.
-   - Useful for "make a CLI like this" and API usage tasks.
+### Repo Encoder
 
-5. Coding benchmark prompts.
-   - Use for prompt-to-behavior and hidden-test evaluation.
-   - Prefer repo-edit benchmarks over single-function-only tasks.
+Encode the repo graph and tool observations:
 
-6. Synthetic prompt/spec pairs from deterministic templates.
-   - Good for bootstrapping schema coverage.
-   - Must be marked synthetic and held out separately from real user-like text.
+- file/module/package graph
+- symbols and references
+- tests and fixtures
+- config and entrypoints
+- docs and examples
+- failures and assertions
 
-7. Local human-authored prompts.
-   - Build a small curated set of prompts people would actually type into a
-     coding agent.
-   - Include shorthand, typos, ambiguity, and domain assumptions.
+### Candidate Ranker
 
-### Prompt Data Quality Rules
+Rank actions using:
 
-- Store raw prompt, normalized spec, repo-before hash, repo-after hash, and
-  validation command.
-- Keep stable splits by repo, domain, and prompt family.
-- Do not train and test on paraphrases of the same exact task.
-- Track whether defaults were explicit, inferred, or ambiguous.
-- Include negative examples where a tempting inference is wrong.
-- Include clarification examples, not only successful direct edits.
-- Do not use exact prompt strings as ranker features for held-out claims.
-- Keep licensing and source provenance in the dataset.
+- action kind and params
+- prompt/spec fields
+- repo graph locality
+- observation alignment
+- AST/config/source deltas
+- validation history
+- preferred-positive labels
+- hard negative features
 
-## Repair and Ranking Track
+### Transition Model
 
-### Current Repair Capabilities
+Predict latent outcomes:
 
-Implemented action families include:
-
-- `replace_expr`
-- `insert_guard`
-- `change_literal`
-- `change_operator`
-- `change_subscript_key`
-- `change_dict_key`
-- `change_dict_value`
-- `add_dict_key`
-- `swap_call_arg`
-- `add_keyword_arg`
-- `add_import`
-- `add_import_fallback`
-- `change_attribute`
-- `change_module_constant`
-- `wrap_try_except`
-- `add_fallback_warning`
-- `change_return_value`
-- `rename_symbol`
-- `modify_condition`
-- `propagate_signature`
-
-Observation parsing includes pytest failed nodes, assertion comparisons, numeric
-deltas, traceback frames, import/name/attribute/key/type errors, mypy, ruff, and
-selected pytest warning strings.
-
-### Current GreenShot Signal
-
-Treat current GreenShot numbers as repair-loop smoke checks, not benchmark proof
-of broad coding competence.
-
-Current worktree:
-
-```text
-GreenShot-6 tasks: 69
-source_type: git_history=48, mutation=21
-split: train=50, test=5, legacy deterministic=14
-dominant action: change_literal=39
-```
-
-Latest known standard refresh before the newest task solved all 68 tasks with
-`pass@1=51/68`, average candidates `7.59`, and a clean GreenShot-6 `split:test`
-held-out ranker validation. After adding the current task, refresh outcomes
-before claiming new metrics.
-
-### Repair Data We Need
-
-- More real git-history repairs that are not only typo/message literals.
-- More held-out tasks where the correct candidate exists but ranking is hard.
-- More tasks where missing actions are exposed by real data, not invented lists.
-- More candidate outcomes with stable splits, source type, task family, action
-  kind, pass label, preferred-positive label, AST delta, locality, and relation
-  metadata.
-- More multi-step repairs where the first edit changes the observed failure.
-
-## Greenfield Editing Track
-
-### Why This Exists
-
-Repair benchmarks start from failing code. Codex-level work often starts from a
-request and an empty or partial repo. j3 needs greenfield editing to handle:
-
-- "make me a simple CLI app"
-- "add a small FastAPI endpoint"
-- "create tests for this parser"
-- "add pyproject metadata"
-- "split this script into a package"
-
-### Greenfield Actions
-
-Add actions only as benchmarks demand them:
-
-- `create_file`
-- `create_package`
-- `create_test_file`
-- `add_function_def`
-- `add_class_def`
-- `add_argparse_cli`
-- `add_interactive_cli_loop`
-- `add_pyproject_script`
-- `add_import_for_created_symbol`
-- `add_readme_usage`
-- `add_hidden_behavior_test`
-- `wire_entrypoint_to_function`
-
-These should build AST and config structures through typed builders where
-possible, not paste free-form source blobs.
-
-### GreenShot-7 Request-to-Repo Ladder
-
-GreenShot-7 should be the first prompt-to-repo benchmark.
-
-Initial ladder:
-
-1. Empty repo -> basic calculator CLI.
-   - Prompt includes `etc.`.
-   - Expected inference: add, subtract, multiply, divide.
-   - Hidden tests check CLI behavior.
-
-2. Empty repo -> one-file library function plus tests.
-   - Prompt describes behavior in English.
-   - Hidden tests check edge cases not stated verbatim.
-
-3. Existing tiny repo -> add one feature following local conventions.
-   - Prompt references "like the existing command".
-   - Tests check convention following.
-
-4. Existing repo -> add test coverage only.
-   - Prompt asks for tests, not behavior changes.
-   - Validation checks no production change unless needed.
-
-5. Ambiguous prompt -> ask clarification.
-   - Prompt lacks a necessary choice.
-   - Correct action is `ask_clarification`, not editing.
-
-## Model Tracks
-
-### Non-Neural Baselines
-
-Before neural claims, keep simple baselines:
-
-- Rule-based prompt-to-spec for a few domains.
-- Handwritten action generation.
-- Linear or sparse ranker over structured features.
-- Retrieval over prior specs and action outcomes.
-
-These baselines make it clear what the neural track actually improves.
-
-### Trainable Prompt Encoder
-
-Train a local model to encode coding-agent English into structured spec fields:
-
-- Task type.
-- Artifact type.
-- Domain.
-- Feature set.
-- Constraints.
-- Interface.
-- Explicit vs inferred requirements.
-- Ambiguity and clarification fields.
-
-The prompt encoder should predict structured labels, not source code.
-
-### Trainable Candidate Ranker
-
-Continue ranking structured edit candidates using:
-
-- Action kind and params.
-- Target node and repo context.
-- Parsed observations.
-- Prompt/spec fields.
-- AST and config deltas.
-- Candidate pass/fail outcomes.
-- Preferred-positive labels when multiple patches pass.
-
-### Repo-State Encoder
-
-Build a compact repo graph:
-
-- Files, modules, imports.
-- Functions, classes, methods.
-- Calls and symbol references.
-- Tests and fixtures.
-- Config and entrypoints.
-- Docs and examples.
-
-The encoder should support both repair and greenfield planning.
-
-### JEPA Repo-Transition Model
-
-Train from:
-
-- Synthetic structured transitions.
-- Mined git-history transitions.
-- Candidate outcome rows.
-- Prompt/spec/repo-before/repo-after triples.
-- Failed candidate negatives.
-
-Prediction target:
-
-```text
-s(repo_before, request_spec, observations) + a
-  -> predicted latent repo_after / observation_delta / utility
-```
+- source-changing vs no-change vs clarification
+- expected validation status
+- repo-after embedding target
+- observation delta
+- utility and uncertainty
+- residual reason when wrong
 
 ### Planning Policy
 
-The planner should choose between:
+Learn when to inspect, edit, validate, clarify, rollback, or stop. Start with
+deterministic policy. Move to learned policy only after enough outcome rows
+exist to evaluate it honestly.
 
-- Apply a repair candidate.
-- Create or modify files for a request spec.
-- Run a validation command.
-- Ask a clarification.
-- Stop and report success/failure.
+## Action Strategy
 
-It should be bounded, observable, and trained from action outcomes.
+Do not grow actions as a wish list. Grow them from residuals.
 
-## Evaluation Standards
+Add a new action when:
 
-### Repair Evaluation
+- the correct edit cannot be expressed by existing actions
+- the need appears in held-out or real-repo evidence
+- validation can prove the action worked
+- the action generalizes beyond one handcrafted fixture
 
-Report:
+Do not add a new action when:
 
-- solved / total
-- pass@1
-- average and median candidates tested
-- missing-action count
-- bad-ranking count
-- weak-hint count
-- multiple-passing-candidate count
-- per-action pass@1
-- per-task-family pass@1
-- source-type pass@1
-- average test runtime
+- the correct candidate already exists and ranking is the problem
+- the fixture was invented only to justify the action
+- the change is better handled by a more general builder
+- validation cannot distinguish success from a plausible no-op
 
-### Prompt Understanding Evaluation
+Near-term action priorities:
 
-Report:
+- existing-repo tests-only edits
+- repo-state-aware package convention edits
+- small library and CLI builders
+- clarification as a first-class public outcome
+- candidate-after or AST-delta observation for ranking
 
-- prompt-to-spec exact field accuracy
-- semantic feature accuracy
-- inferred-default precision and recall
-- ambiguity detection precision and recall
-- clarification accuracy
-- robustness to paraphrase
-- generalization to held-out domains and repos
+## Product Wedge
 
-### Greenfield Evaluation
+The first usable product should be narrow and trustworthy:
 
-Report:
+```text
+local Python repo maintenance for small projects
+```
 
-- hidden-test pass rate
-- repo builds/imports
-- generated entrypoint works
-- requested files exist
-- no unnecessary files
-- no dependency additions unless requested
-- prompt requirements satisfied
-- inferred requirements satisfied when confidence was high
-- clarification chosen when confidence was low
+Start with:
 
-### Benchmark Reporting
+- tests-only edits for one-file and small-package libraries
+- conservative repair suggestions for failing pytest tasks
+- small feature additions following obvious local conventions
+- package export and config updates
+- CLI/library scaffolds with tests
 
-Keep GreenShot-4 as a periodic regression gate.
-Keep GreenShot-5/6 as repair and ranking gates.
-Create GreenShot-7 for prompt-to-repo.
+User promise:
 
-For day-to-day work, use the smallest focused test that proves the touched
-behavior. Run full `pytest -q` only as an intentional integration gate.
+- runs locally
+- shows planned action before risky edits
+- validates or reports partial confidence
+- never silently sends repo code to a hosted model
+- asks clarification instead of guessing high-risk requirements
+- leaves an auditable transition record
 
-## Immediate Next Step
+## Six-Month Readiness Criteria
 
-Do this next, before adding more GreenShot-6 literal/typo tasks:
+By the six-month mark, `j3` should be judged against these criteria:
 
-1. Finish the current GreenShot-6 bookkeeping.
-   - Run the focused loader and patching tests for the current 69-task state.
-   - Refresh GreenShot-6 outcomes with `--explore-after-pass 5`.
-   - Rerun the GreenShot-6 `split:test` held-out ranker validation.
-   - Update this plan only with fresh metrics that were actually run.
+- At least one real-repo task class passes held-out Gate 2 evidence.
+- Shadow mode produces useful advice on unfamiliar small Python repos.
+- Guarded opt-in is enabled only for task classes with passing gates.
+- Prompt/spec parsing handles common coding-agent English in the chosen wedge.
+- Repo-state coverage includes packages, imports, functions, classes, tests,
+  configs, entrypoints, docs, and parse errors.
+- The system has a tests-only existing-repo path and at least one
+  convention-following existing-repo edit path.
+- Transition ranking remains shadow-only unless it beats existing rank order on
+  held-out suites.
+- Every product claim cites reproducible commands and residual reports.
 
-2. Normalize the new prompt seed corpus.
-   - Validate `../prompts/coding_agent_prompts_seed.jsonl`.
-   - Add a small prompt-corpus summary/check command or test.
-   - Decide whether prompt data should stay outside the repo, be referenced from
-     `docs/TRAINING.md`, or be copied into `data/prompts/` once the schema is stable.
+If those are met, the project is a serious local coding-agent research product.
+If they are not met, do not claim readiness.
 
-3. Add `docs/REQUEST_SPEC.md`.
-   - Define `request-spec-v1`.
-   - Include the calculator prompt with `etc.` expanded to multiply/divide as a
-     high-confidence inferred default.
-   - Include at least one ambiguous prompt where the correct action is
-     clarification.
+## Operating Principles
 
-4. Start GreenShot-7 with the calculator CLI request-to-repo task.
-   - Empty repo input.
-   - Prompt: "make me a simple cli python app that's a basic calculator, it
-     should let the user add two numbers, subtract, etc."
-   - Expected spec: add, subtract, multiply, divide.
-   - Hidden tests validate behavior.
-   - The first implementation may use deterministic prompt-to-spec rules, but
-     the data record must be suitable for later training.
+- Optimize for honest evidence over demo breadth.
+- Prefer reusable action surfaces over one-off fixtures.
+- Prefer real held-out repos over more synthetic variants.
+- Keep production routing conservative until gates pass.
+- Treat clarification as success when requirements are genuinely ambiguous.
+- Record residuals precisely: missing action, bad ranking, weak observation,
+  weak prompt/spec, validation gap, materialization gap, or data leakage.
+- Do not add dependencies without a capability reason.
+- Do not rewrite planning docs to manufacture progress.
+- Every worker batch should leave the system easier to evaluate.
 
-## Next Queue
+## Stop And Pivot Conditions
 
-After the immediate step:
+Pause fixture growth when:
 
-- Implement a request-spec loader and validator.
-- Add `j3 implement` or equivalent command path for request-to-repo tasks.
-- Add the first greenfield actions: `create_file`, `add_function_def`,
-  `create_test_file`, and `add_argparse_cli` or `add_interactive_cli_loop`.
-- Add five GreenShot-7 seed tasks across creation, feature addition, tests-only,
-  convention following, and clarification.
-- Create a prompt/spec JSONL dataset format with provenance and stable splits.
-- Mine a small issue/PR sample and manually normalize it into request specs.
-- Keep GreenShot-6 as the repair regression gate while GreenShot-7 grows.
-
-## Stop Conditions
-
-Pause GreenShot-6 task growth when:
-
-- New tasks are mostly more typo-like `change_literal` examples.
-- The held-out ranker is already clean and no new hard negative appears.
-- Dataset size increases without new action, ranking, observation, or prompt
-  signal.
+- new tasks are mostly more literal or typo variants
+- metrics improve only on generated or near-duplicate tasks
+- residuals keep pointing to ranking, validation, or prompt gaps instead
 
 Pause action expansion when:
 
-- The right candidate already exists and ranking is the actual problem.
-- Candidate generation grows faster than validation and deduplication.
-- The action is motivated only by a handcrafted fixture.
+- the existing action set can express the correct edit
+- candidate counts grow faster than validation and deduplication
+- the action does not have a clear real-repo path
 
-Pause prompt inference when:
+Pause model work when:
 
-- The system guesses low-confidence requirements instead of asking.
-- Prompt/spec data is mostly synthetic templates.
-- Evaluation uses exact prompt strings instead of held-out paraphrases,
-  domains, and repos.
+- baselines are not strong enough to beat
+- data splits are weak or leaky
+- residuals cannot explain failures
+- the model improves aggregate metrics while hurting product gates
 
-Start serious JEPA model work only when:
+Pivot the product wedge when:
 
-- Repair candidate outcomes have stable, diverse splits.
-- Prompt-to-spec records exist for real coding-agent requests.
-- GreenShot-7 has request-to-repo tasks with hidden behavioral tests.
-- The non-neural baselines are strong enough to be worth beating.
-- Failures are categorized well enough to diagnose model regressions.
+- the chosen wedge cannot produce real-repo wins after repeated residual-driven
+  iterations
+- validation is too weak to prove success
+- users do not trust or want the suggested edits
+
+## Immediate Strategic Queue
+
+Execution details belong in `plans/backlog.md`, but the next strategic slices
+should stay aligned with this queue:
+
+1. Finish repo-state coverage and make it visible to planners.
+2. Implement first-class clarification outcomes.
+3. Add existing-repo tests-only support for a small library.
+4. Add repo-state-aware package convention edits.
+5. Build a reviewed real-repo eval ladder with issue/PR provenance.
+6. Keep transition ranking shadow-only while fixing residual clusters.
+7. Draft the local pretraining and knowledge-acquisition inventory.
+
+The project should always be able to answer: what real task class became more
+reliable, what evidence proves it, and what blocker is next?

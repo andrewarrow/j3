@@ -2296,3 +2296,16 @@ meaningful work. Do not replace this file with a daily reset.
 - Push: succeeded.
 - Next: workers dispatched for `DATA-016` and `DATA-017`.
 - Blockers: none.
+
+### 2026-05-18 - Worker IDs - DATA-016 / DATA-017
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/progress.md`.
+- Tests: pending worker-ID checkpoint checks.
+- Result: recorded worker Euclid
+  (`019e3c34-c990-7f43-b57e-f67c39493e0e`) for `DATA-016` and worker Erdos
+  (`019e3c34-c9b5-76f3-beaa-0c4b9000665d`) for `DATA-017`.
+- Commit: pending coordinator checkpoint commit.
+- Push: pending.
+- Next: continue non-overlapping coordinator review while both workers run.
+- Blockers: none.

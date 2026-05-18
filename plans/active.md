@@ -44,15 +44,17 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-- `DATA-016`: worker to attempt the readiness-approved Click #3298 issue/PR
-  candidate (`pallets__click-issue-3298-pr-3299`) with the existing
+- `DATA-016`: worker Euclid (`019e3c34-c990-7f43-b57e-f67c39493e0e`) to
+  attempt the readiness-approved Click #3298 issue/PR candidate
+  (`pallets__click-issue-3298-pr-3299`) with the existing
   candidate-attempt evidence shape. Ownership: `j3/issue_pr_candidate_attempt.py`,
   `tests/test_issue_pr_candidate_attempt.py`, generated `/tmp` artifacts, and
   plan updates. Acceptance: live focused validation with `pytest
   tests/test_options.py -q` when feasible, exact residual labels, and an
   honest structured-action coverage or materialization blocker.
-- `DATA-017`: worker to audit the DATA-014 accepted auxiliary-path gap for
-  `CHANGES.rst`, `docs/commands.md`, and `docs/conf.py`. Ownership:
+- `DATA-017`: worker Erdos (`019e3c34-c9b5-76f3-beaa-0c4b9000665d`) to audit
+  the DATA-014 accepted auxiliary-path gap for `CHANGES.rst`,
+  `docs/commands.md`, and `docs/conf.py`. Ownership:
   `j3/issue_pr_auxiliary_gap_audit.py`,
   `tests/test_issue_pr_auxiliary_gap_audit.py`,
   `docs/DATA_017_CLICK_AUXILIARY_MATERIALIZATION_GAP_2026-05-18.md`,

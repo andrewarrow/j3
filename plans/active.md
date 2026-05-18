@@ -47,7 +47,7 @@ This is the live coordinator board. Keep it current and compact.
 ### `DATA-029`: Pytest #14462 source/test candidate attempt
 
 - Status: active
-- Owner: worker pending assignment.
+- Owner: worker Kuhn (`019e3c81-4427-7613-9735-b1b1548e15a1`).
 - Write scope: `j3/issue_pr_candidate_attempt.py`,
   `tests/test_issue_pr_candidate_attempt.py`, generated outputs under `/tmp`,
   optional compact report under `docs/`, and planning updates.
@@ -64,7 +64,7 @@ This is the live coordinator board. Keep it current and compact.
 ### `DATA-030`: Validation-split issue/PR preflight
 
 - Status: active
-- Owner: worker pending assignment.
+- Owner: worker Halley (`019e3c81-444a-70a2-ae76-02773780452d`).
 - Write scope: `j3/issue_pr_preflight.py`,
   `tests/test_issue_pr_preflight.py`, generated outputs under `/tmp`,
   optional compact report under `docs/`, and planning updates. Do not attempt

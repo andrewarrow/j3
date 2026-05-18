@@ -3072,7 +3072,21 @@ meaningful work. Do not replace this file with a daily reset.
   source/test diff. The next loop therefore assigns `DATA-029` to attempt the
   constrained source/test materializer directly, and `DATA-030` to pressure the
   replay pipeline with validation-split issue/PR preflight evidence.
+- Commit: abf385e.
+- Push: succeeded.
+- Next: workers dispatched for `DATA-029` and `DATA-030`.
+- Blockers: none.
+
+### 2026-05-18 - Worker IDs - DATA-029 / DATA-030
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/progress.md`.
+- Tests: `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff
+  --check` -> passed.
+- Result: recorded worker Kuhn
+  (`019e3c81-4427-7613-9735-b1b1548e15a1`) for `DATA-029` and worker Halley
+  (`019e3c81-444a-70a2-ae76-02773780452d`) for `DATA-030`.
 - Commit: pending.
 - Push: pending.
-- Next: dispatch workers for `DATA-029` and `DATA-030`.
+- Next: continue non-overlapping coordinator review while both workers run.
 - Blockers: none.

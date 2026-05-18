@@ -91,16 +91,19 @@ Long-term target:
 
 ### GS7-003: Add structured greenfield library builders
 
-- Status: ready
+- Status: done
 - Why: request-to-repo needs typed creation actions beyond calculator CLI files.
 - Write scope: greenfield action planning/building modules and focused tests.
 - Acceptance: can create a small module plus tests from a request spec without
   pasting arbitrary source blobs.
 - Tests: focused greenfield tests and `pytest tests/test_greenshot_7.py -q`.
+- Completion note: satisfied by `GS7-002` and the coordinator `implement` CLI
+  integration fix, which added bounded slugify and key/value parser builders
+  plus public CLI validation for non-calculator library creation.
 
 ### GS7-004: Implement clarification as a first-class outcome
 
-- Status: ready
+- Status: active
 - Why: Codex-like behavior requires asking when requirements are under-specified.
 - Write scope: request spec parser/planner, GreenShot-7 clarification fixture,
   tests.
@@ -108,6 +111,30 @@ Long-term target:
   instead of editing files.
 - Tests: `pytest tests/test_request_spec.py -q`,
   `pytest tests/test_greenshot_7.py -q`.
+
+### GS7-005: Add tests-only existing-repo support for one-file libraries
+
+- Status: ready
+- Why: `ACT-001` classified `slugify_tests_only_existing` as a request-to-repo
+  action coverage gap, not a repair ranking problem.
+- Write scope: existing-repo request planning/building for tests-only library
+  support, fixtures, focused tests, and docs if needed.
+- Acceptance: can inspect a one-file existing library, create a pytest file
+  without changing implementation, validate it, and record a structured
+  request-to-repo outcome.
+- Tests: focused existing-repo/GreenShot tests and `git diff --check`.
+
+### GS7-006: Add repo-state-aware library convention edits
+
+- Status: ready
+- Why: `slugify_existing_src_convention` needs repo-state-aware planning for
+  package layout and exports after `REPO-001` made repo coverage inspectable.
+- Write scope: repo-state-driven existing-repo planning for a small library
+  convention fixture, focused tests, and docs if needed.
+- Acceptance: can plan and validate a minimal `src/` package export edit using
+  repo-state coverage instead of hard-coded calculator assumptions.
+- Tests: focused repo-state/existing-repo/GreenShot tests and
+  `git diff --check`.
 
 ## Workstream C: Prompt Corpus And Intent Data
 
@@ -236,7 +263,7 @@ Long-term target:
 
 ### MODEL-001: Re-evaluate learned prompt intent baseline
 
-- Status: ready
+- Status: active
 - Why: prompt-intent progress needs held-out domain evidence and residuals.
 - Write scope: model/eval commands and focused tests, not broad architecture.
 - Acceptance: report exact-field accuracy, ambiguity accuracy, inferred-default
@@ -245,12 +272,59 @@ Long-term target:
 
 ### MODEL-002: Start new scorer/model work only after evidence review
 
-- Status: blocked
-- Blocker: depends on TRANS-001/TRANS-002 and GS7 baseline evidence.
+- Status: parked
+- Blocker: superseded by bounded subtasks `MODEL-003` through `MODEL-006`
+  based on `docs/ACTION_COVERAGE_MAP.md`.
 - Why: new scorer versions should respond to concrete residuals.
 - Write scope: TBD after review.
 - Acceptance: TBD after review.
 - Tests: TBD after review.
+
+### MODEL-003: Penalize add-keyword decoys
+
+- Status: ready
+- Why: `ACT-001` and `TRANS-002` show unvalidated `add_keyword_arg` candidates
+  outranking passing candidates in several residual clusters.
+- Write scope: transition scorer fixtures/features/tests for add-keyword
+  decoy ranking only.
+- Acceptance: focused residual fixtures reduce false priority for unvalidated
+  `add_keyword_arg` candidates unless failure hints name a missing keyword path.
+- Tests: focused transition action scoring/ranking tests.
+
+### MODEL-004: Distinguish mapping key and value targets
+
+- Status: ready
+- Why: remaining residuals confuse mapping key mutation with value mutation
+  despite existing structured actions.
+- Write scope: transition scorer fixtures/features/tests for mapping
+  key/value target evidence only.
+- Acceptance: scorer evidence distinguishes `change_dict_key`,
+  `change_dict_value`, `add_dict_key`, and `change_subscript_key` when the same
+  mapping appears in competing candidates.
+- Tests: focused transition action scoring/ranking tests.
+
+### MODEL-005: Improve boundary and literal action ranking
+
+- Status: ready
+- Why: transition residuals still include boundary/literal and module-constant
+  candidates where equivalent-looking edits outrank the passing action family.
+- Write scope: transition scorer fixtures/features/tests for boundary/literal
+  action-family and file/symbol alignment.
+- Acceptance: focused residual fixtures improve ranking for boundary/literal
+  examples without adding new repair action kinds.
+- Tests: focused transition action scoring/ranking tests.
+
+### MODEL-006: Add candidate-after or AST-delta observation
+
+- Status: ready
+- Why: identifier, attribute, signature, and wrapper residuals need evidence
+  that a candidate changes the failing behavior rather than a nearby name or
+  import.
+- Write scope: candidate observation/scorer feature prototype and focused
+  residual tests.
+- Acceptance: scorer inputs expose candidate-after or AST-delta signals for
+  the residual families without enabling production ranking by default.
+- Tests: focused transition action scoring/ranking tests.
 
 ## Workstream F: Long-Term Training Scale
 
@@ -278,10 +352,8 @@ Long-term target:
 
 Start with these unless fresh evidence changes the order:
 
-1. `GS7-002`: add five non-calculator request-to-repo fixtures.
-2. `REPO-001`: summarize repo-state encoder coverage.
-3. `ACT-001`: create action coverage map from residuals.
-4. `MODEL-001`: re-evaluate learned prompt intent baseline.
-5. Coordinator review: choose between GreenShot-7 fixture expansion, scorer
-   ranking work, reviewed issue/PR normalization, or broader data provenance
-   work based on the targeted rerun and schema validation.
+1. `MODEL-001`: re-evaluate learned prompt intent baseline.
+2. `GS7-004`: implement clarification as a first-class outcome.
+3. `SCALE-001`: draft local pretraining feasibility inventory.
+4. `GS7-005`: add tests-only existing-repo support for one-file libraries.
+5. `GS7-006`: add repo-state-aware library convention edits.

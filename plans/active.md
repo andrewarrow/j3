@@ -16,17 +16,40 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-No active tasks are currently recorded. The coordinator should dispatch the
-next ready bounded task unless a review blocker is found.
+### `MODEL-001`: Re-evaluate learned prompt intent baseline
+
+- Owner: worker pending assignment
+- Status: active
+- Write scope: prompt intent evaluation code/tests/docs as needed, plus plan
+  updates. Do not touch GreenShot request-spec/greenfield files.
+- Acceptance: reports exact-field accuracy, ambiguity/clarification accuracy,
+  inferred-default precision/recall, and grouped residuals on the current
+  prompt corpus.
+- Tests: focused prompt-intent tests or CLI smoke,
+  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+
+### `GS7-004`: Implement clarification as a first-class outcome
+
+- Owner: worker pending assignment
+- Status: active
+- Write scope: request-spec/parser/planner, GreenShot-7 clarification outcome
+  tests, public CLI behavior if needed, and plan updates. Do not touch prompt
+  intent evaluation files.
+- Acceptance: ambiguous prompts produce a structured clarification response
+  with questions and no filesystem writes, rather than only a blocked build
+  record.
+- Tests: `pytest tests/test_request_spec.py -q`,
+  `pytest tests/test_greenshot_7.py -q`, focused CLI tests if public behavior
+  changes, `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
 
 ## Ready Queue
 
 These are good next assignments for the next loop:
 
-1. `MODEL-001`: re-evaluate learned prompt intent baseline.
-2. `SCALE-001`: draft local pretraining feasibility inventory.
-3. `GS7-003`: add structured greenfield library builders.
-4. `GS7-004`: implement clarification as a first-class outcome.
+1. `SCALE-001`: draft local pretraining feasibility inventory.
+2. `GS7-005`: add tests-only existing-repo support for one-file libraries.
+3. `GS7-006`: add repo-state-aware library convention edits.
+4. `MODEL-003`: scorer residual slice for add-keyword decoys.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
@@ -38,9 +61,8 @@ Run at most two tasks in parallel unless write scopes are plainly disjoint.
 - `DATA-004`: blocked until reviewed real issue/PR export rows are available;
   the `DATA-003` manifest prototype exists and documents the remaining manual
   review requirements.
-- `MODEL-002`: waiting for coordinator scoping into bounded scorer tasks based
-  on the `TRANS-002` ranking clusters, especially add-keyword decoys and
-  mapping key/value target features.
+- `MODEL-002`: superseded by bounded scorer subtasks in the backlog, beginning
+  with `MODEL-003` through `MODEL-006`.
 
 ## Coordinator Review Triggers
 

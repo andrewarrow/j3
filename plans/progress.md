@@ -3569,3 +3569,23 @@ meaningful work. Do not replace this file with a daily reset.
   annotation/import middle layer exposed by the 7 held-out typed-builder rows.
 - Blockers: DATA-029/DATA-035 have not yet proven reusable held-out
   generalization; action vocabulary explosion remains a concrete risk.
+
+### 2026-05-18 - Coordinator Dispatch - DATA-038 / MAT-008
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, and
+  `plans/progress.md`.
+- Tests: pending before dispatch commit.
+- Result: selected the next hard-proof batch from DATA-037 and MAT-007
+  residuals. `DATA-038` targets the ranking blocker by producing full
+  candidate-after sidecar snapshots for the validated DATA-029 and DATA-035
+  issue/PR candidates and then rechecking whether the DATA-037
+  `full_candidate_after_unavailable` blocker moves. `MAT-008` targets
+  materialization generalization by attempting the held-out `psf/requests#7427`
+  source/test edit with reusable `replace_function_region` and
+  repo-convention pytest insertion action records instead of a PR-named
+  materializer.
+- Commit: pending.
+- Push: pending.
+- Next: dispatch independent workers for `DATA-038` and `MAT-008`.
+- Blockers: none.

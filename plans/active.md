@@ -44,8 +44,37 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-No active worker tasks at this instant; the coordinator is recording the next
-dispatch. Continuous loop mode still applies.
+### `DATA-038`: Issue/PR candidate-after snapshot bundle
+
+- Status: active
+- Owner: pending worker assignment.
+- Write scope: a focused candidate-after snapshot module and tests, optional
+  integration with the DATA-037 ranking harness, generated artifacts under
+  `/tmp`, optional compact docs/report, and planning updates. Avoid editing
+  MAT-008-owned materialization code.
+- Acceptance: for the validated DATA-029 pytest #14462 and DATA-035 Scrapy
+  #7293 candidates, produce a sidecar candidate-after bundle with touched file
+  paths, before/after hashes, full after-file snapshots or exact paths to
+  stored snapshots, diff/AST metadata, validation status, and provenance. Then
+  rerun or extend the DATA-037 ranking report enough to show the
+  `full_candidate_after_unavailable` blocker is resolved or replaced by the
+  next exact blocker. Do not change production ranking gates.
+
+### `MAT-008`: Held-out requests source-region candidate
+
+- Status: active
+- Owner: pending worker assignment.
+- Write scope: a generic held-out source-region candidate module and tests,
+  optional docs/report, generated artifacts under `/tmp`, and planning updates.
+  Do not edit DATA-038-owned ranking or snapshot modules.
+- Acceptance: attempt the MAT-007 recommended `psf/requests#7427`
+  `should_bypass_proxies` domain-boundary edit using reusable action records
+  such as `replace_function_region` plus repo-convention pytest insertion, not
+  a `requests_7427` bespoke action kind. In a pinned live checkout at the
+  MAT-001 base, change only the accepted source/test files when feasible,
+  record candidate-after diff/AST metadata and mutation scope, compare against
+  the accepted PR diff where practical, and run the focused validation command
+  or record the exact materialization/validation blocker.
 
 ## Ready Queue
 

@@ -686,6 +686,29 @@ Long-term target:
   `docs/MAT_007_REAL_PR_MATERIALIZATION_REFRESH_2026-05-18.jsonl`, and
   `/tmp/j3-mat-007-real-pr-materialization-refresh/MAT_007_REAL_PR_MATERIALIZATION_REFRESH_2026-05-18.jsonl`.
 
+### MAT-008: Held-out requests source-region candidate
+
+- Status: active
+- Why: MAT-007 says the next materialization proof must reuse generic
+  source-region, method/call-site, and pytest-insertion action shapes on a
+  held-out accepted PR instead of adding another PR-named materializer.
+  `psf/requests#7427` is the cleanest held-out constrained-source probe from
+  MAT-001 and MAT-007.
+- Write scope: a generic held-out source-region candidate module and tests,
+  optional docs/report, generated artifacts under `/tmp`, and plan updates.
+  Do not edit DATA-038-owned ranking or snapshot modules.
+- Acceptance: attempt the `psf/requests#7427` `should_bypass_proxies`
+  domain-boundary edit against the MAT-001 base
+  `b684dcb9bbf3aa557d1238e72062c4a29737dd1c` using reusable action records,
+  not a `requests_7427` bespoke action kind. Materialize only the accepted
+  source/test files when feasible, record candidate-after diff/AST metadata,
+  mutation scope, action-family reuse evidence, accepted-diff comparison, and
+  focused validation result. If repo setup, exact test targeting, or
+  repo-convention test insertion blocks, record the exact blocker rather than
+  broadening scope.
+- Tests: focused source-region candidate tests, plan consistency,
+  `git diff --check`, and live focused validation when materialized.
+
 ### KNOW-001: Local knowledge inventory for the wedge
 
 - Status: done
@@ -2128,6 +2151,28 @@ Long-term target:
   `/tmp/j3-data-037-issue-pr-ranking-decoys/decoy-candidates.jsonl`,
   `/tmp/j3-data-037-issue-pr-ranking-decoys/ranking-report.md`, and
   `docs/DATA_037_ISSUE_PR_RANKING_DECOY_HARNESS_2026-05-18.md`.
+
+### DATA-038: Issue/PR candidate-after snapshot bundle
+
+- Status: active
+- Why: DATA-037 blocks ranking on two real issue/PR candidates because complete
+  candidate-after snapshots are unavailable and current generic diff/AST
+  features are too weak to distinguish accepted candidates from hard decoys.
+  The next proof is whether the candidate-attempt pipeline can expose full
+  touched-file after-state evidence without using hosted LLM judgment.
+- Write scope: a focused candidate-after snapshot module and tests, optional
+  integration with the DATA-037 ranking harness, generated artifacts under
+  `/tmp`, optional compact docs/report, and plan updates. Avoid editing
+  MAT-008-owned materialization code.
+- Acceptance: for the validated DATA-029 pytest #14462 and DATA-035 Scrapy
+  #7293 candidates, produce a sidecar candidate-after bundle with touched file
+  paths, before/after hashes, full after-file snapshots or exact paths to
+  stored snapshots, diff/AST metadata, validation status, and provenance. Then
+  rerun or extend the DATA-037 ranking report enough to show the
+  `full_candidate_after_unavailable` blocker is resolved or replaced by the
+  next exact blocker. Do not change production ranking gates.
+- Tests: focused snapshot/ranking tests, plan consistency, `git diff --check`,
+  and a CLI/report smoke if a CLI is added.
 
 ## Next Recommended Queue
 

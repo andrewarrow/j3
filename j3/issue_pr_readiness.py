@@ -14,11 +14,13 @@ from j3.issue_pr_preflight import (
 )
 from j3.issue_pr_prompt_spec import (
     PYTEST_STRICT_ADDOPTS_REPLAY_ID as PROMPT_SPEC_PYTEST_STRICT_ADDOPTS_REPLAY_ID,
+    PYTEST_TIMEDELTA_APPROX_REPLAY_ID as PROMPT_SPEC_PYTEST_TIMEDELTA_APPROX_REPLAY_ID,
     build_issue_pr_prompt_specs,
 )
 from j3.local_knowledge import (
     CLICK_REPLAY_REQUIRED_KNOWLEDGE_CATEGORIES,
     PYTEST_STRICT_ADDOPTS_REQUIRED_KNOWLEDGE_CATEGORIES,
+    PYTEST_TIMEDELTA_APPROX_REQUIRED_KNOWLEDGE_CATEGORIES,
     REQUESTS_REPLAY_REQUIRED_KNOWLEDGE_CATEGORIES,
 )
 
@@ -28,11 +30,15 @@ REQUESTS_REPLAY_ID = "psf__requests-issue-7432-pr-7433"
 CLICK_DEFAULT_MAP_REPLAY_ID = "pallets__click-issue-2745-pr-3364"
 CLICK_SEMVER_REPLAY_ID = "pallets__click-issue-3298-pr-3299"
 PYTEST_STRICT_ADDOPTS_REPLAY_ID = PROMPT_SPEC_PYTEST_STRICT_ADDOPTS_REPLAY_ID
+PYTEST_TIMEDELTA_APPROX_REPLAY_ID = PROMPT_SPEC_PYTEST_TIMEDELTA_APPROX_REPLAY_ID
 NEXT_STAGE_CHALLENGE_LABELS = ("materialization_gap", "ranking_gap")
 REQUIRED_KNOWLEDGE_BY_REPLAY_ID = {
     REQUESTS_REPLAY_ID: REQUESTS_REPLAY_REQUIRED_KNOWLEDGE_CATEGORIES,
     CLICK_SEMVER_REPLAY_ID: CLICK_REPLAY_REQUIRED_KNOWLEDGE_CATEGORIES,
     PYTEST_STRICT_ADDOPTS_REPLAY_ID: PYTEST_STRICT_ADDOPTS_REQUIRED_KNOWLEDGE_CATEGORIES,
+    PYTEST_TIMEDELTA_APPROX_REPLAY_ID: (
+        PYTEST_TIMEDELTA_APPROX_REQUIRED_KNOWLEDGE_CATEGORIES
+    ),
 }
 
 
@@ -687,15 +693,23 @@ def _next_stage_challenges(
     challenges: list[dict[str, object]] = []
     for label in labels:
         if label == "materialization_gap":
+            if auxiliary_paths:
+                remaining_challenge = (
+                    "materialize the accepted source/test edit paths "
+                    f"{source_test_paths}; full accepted-edit parity also "
+                    "requires either auxiliary materializers or explicit "
+                    f"exclusion for {auxiliary_paths}"
+                )
+            else:
+                remaining_challenge = (
+                    "materialize the accepted source/test edit paths "
+                    f"{source_test_paths}; source/test scope matches the full "
+                    "accepted edit scope"
+                )
             challenges.append(
                 {
                     "label": label,
-                    "remaining_challenge": (
-                        "materialize the accepted source/test edit paths "
-                        f"{source_test_paths}; full accepted-edit parity also "
-                        "requires either auxiliary materializers or explicit "
-                        f"exclusion for {auxiliary_paths}"
-                    ),
+                    "remaining_challenge": remaining_challenge,
                     "source_test_paths": source_test_paths,
                     "auxiliary_paths": auxiliary_paths,
                 }
@@ -743,7 +757,12 @@ def _is_python_source_file(path: str) -> bool:
 
 def _is_test_file(path: str) -> bool:
     name = Path(path).name
-    return name.startswith("test_") or name.endswith("_test.py") or "/test" in path
+    return (
+        name.startswith("test_")
+        or name.endswith("_test.py")
+        or path.startswith(("test/", "tests/", "testing/"))
+        or "/test" in path
+    )
 
 
 def _source_path(row: Mapping[str, object]) -> str:

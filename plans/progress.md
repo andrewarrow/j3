@@ -2996,3 +2996,32 @@ meaningful work. Do not replace this file with a daily reset.
 - Push: succeeded.
 - Next: continue non-overlapping coordinator review while both workers run.
 - Blockers: none.
+
+### 2026-05-18 - DATA-027 - Pytest #14462 readiness refresh
+
+- Owner: worker Nash (`019e3c77-e8af-72d1-80de-e622fd4b28a7`).
+- Files changed: `j3/issue_pr_readiness.py`,
+  `tests/test_issue_pr_readiness.py`, `plans/active.md`,
+  `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `python -m py_compile j3/issue_pr_readiness.py
+  tests/test_issue_pr_readiness.py` -> passed; `pytest
+  tests/test_issue_pr_readiness.py -q` -> 6 passed; CLI smoke `python -m
+  j3.issue_pr_readiness --replay-id
+  pytest-dev__pytest-issue-14462-pr-14466 ...` -> emitted one ready JSONL row
+  and report; `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git
+  diff --check` -> passed.
+- Result: refreshed candidate-readiness for exactly
+  `pytest-dev__pytest-issue-14462-pr-14466` using DATA-018 preflight and
+  DATA-026 prompt/spec/local-knowledge evidence. The row is ready, has no
+  missing-evidence labels, records validation command
+  `pytest testing/python/approx.py -q`, records allowed write scope exactly
+  `src/_pytest/python_api.py` and `testing/python/approx.py` with no auxiliary
+  paths, and cites one prompt/spec row, one validation row, and six
+  local-knowledge rows. Residual labels remain `materialization_gap` and
+  `ranking_gap`; materialization and ranking are the next-stage challenges
+  before any candidate attempt.
+- Commit: pending.
+- Push: pending.
+- Next: DATA-028 can use the DATA-027 readiness row as candidate-attempt
+  precondition evidence while auditing materialization coverage.
+- Blockers: none.

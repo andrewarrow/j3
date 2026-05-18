@@ -44,15 +44,6 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-- `DATA-027`: worker Nash (`019e3c77-e8af-72d1-80de-e622fd4b28a7`) to refresh
-  candidate-readiness for `pytest-dev__pytest-issue-14462-pr-14466` using
-  DATA-018 preflight and DATA-026 prompt/spec/local-knowledge evidence.
-  Ownership:
-  `j3/issue_pr_readiness.py`, `tests/test_issue_pr_readiness.py`, generated
-  `/tmp` readiness artifacts, optional compact report under `docs/`, and plan
-  updates. Acceptance: one readiness row with exact missing-evidence labels,
-  allowed write scope, validation command, residual labels, evidence sources,
-  and recommendation.
 - `DATA-028`: worker Heisenberg (`019e3c77-e916-7c71-af0d-4260a6c4030c`) to
   audit materialization coverage for
   `pytest-dev__pytest-issue-14462-pr-14466` before any candidate edit.
@@ -94,6 +85,18 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `DATA-027`: refreshed candidate-readiness for exactly
+  `pytest-dev__pytest-issue-14462-pr-14466` using DATA-018 preflight and
+  DATA-026 prompt/spec/local-knowledge evidence. The row is
+  `ready_for_candidate_attempt` with no missing-evidence labels, validation
+  command `pytest testing/python/approx.py -q`, evidence counts
+  `{"prompt_spec":1,"validation":1,"local_knowledge":6}`, and residual labels
+  `materialization_gap` and `ranking_gap`. Allowed write scope is exactly
+  `src/_pytest/python_api.py` and `testing/python/approx.py`, with no
+  auxiliary paths; materialization and ranking remain the next-stage
+  challenges before any candidate attempt. Artifacts:
+  `/tmp/j3-data-027-pytest-14462-readiness/readiness.jsonl` and
+  `/tmp/j3-data-027-pytest-14462-readiness/report.md`.
 - `DATA-025`: added deterministic pytest #14442 auxiliary materializers and a
   full-scope candidate mode. The live pinned pytest checkout at
   `8f81c76744daf72d4f77cfc8423f4bdc60733d78` changed exactly `AUTHORS`,

@@ -1698,7 +1698,7 @@ Long-term target:
 
 ### DATA-027: Pytest #14462 readiness refresh
 
-- Status: active
+- Status: done
 - Why: DATA-026 supplied prompt/spec and local-knowledge evidence for pytest
   #14462 after DATA-018 proved checkout/setup/baseline validation. The next
   gate must say whether the row is candidate-ready and what materialization or
@@ -1715,6 +1715,16 @@ Long-term target:
   concrete evidence gap.
 - Tests: focused readiness tests, plan consistency, `git diff --check`, and a
   CLI smoke for the single pytest row.
+- Completion note: readiness is refreshed for exactly
+  `pytest-dev__pytest-issue-14462-pr-14466`. The DATA-027 row is
+  `ready_for_candidate_attempt`, has no missing-evidence labels, records
+  validation command `pytest testing/python/approx.py -q`, uses evidence counts
+  `{"prompt_spec":1,"validation":1,"local_knowledge":6}`, and keeps
+  `materialization_gap` plus `ranking_gap` as next-stage challenges. Allowed
+  write scope is exactly `src/_pytest/python_api.py` and
+  `testing/python/approx.py`, with no auxiliary accepted-edit paths. Artifacts:
+  `/tmp/j3-data-027-pytest-14462-readiness/readiness.jsonl` and
+  `/tmp/j3-data-027-pytest-14462-readiness/report.md`.
 
 ### DATA-028: Pytest #14462 materialization coverage audit
 

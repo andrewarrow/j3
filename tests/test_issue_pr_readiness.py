@@ -7,6 +7,7 @@ from j3.issue_pr_readiness import (
     CLICK_DEFAULT_MAP_REPLAY_ID,
     CLICK_SEMVER_REPLAY_ID,
     PYTEST_STRICT_ADDOPTS_REPLAY_ID,
+    PYTEST_TIMEDELTA_APPROX_REPLAY_ID,
     REQUESTS_REPLAY_ID,
     build_issue_pr_readiness_rows,
     main,
@@ -21,6 +22,7 @@ from j3.issue_pr_prompt_spec import (
 from j3.local_knowledge import (
     CLICK_REPLAY_REQUIRED_KNOWLEDGE_CATEGORIES,
     PYTEST_STRICT_ADDOPTS_REQUIRED_KNOWLEDGE_CATEGORIES,
+    PYTEST_TIMEDELTA_APPROX_REQUIRED_KNOWLEDGE_CATEGORIES,
     REQUESTS_REPLAY_REQUIRED_KNOWLEDGE_CATEGORIES,
 )
 
@@ -197,6 +199,74 @@ def test_pytest_strict_addopts_readiness_records_full_scope_note() -> None:
     assert {
         evidence["knowledge_category"] for evidence in knowledge_evidence
     } == set(PYTEST_STRICT_ADDOPTS_REQUIRED_KNOWLEDGE_CATEGORIES)
+
+
+def test_pytest_timedelta_approx_readiness_consumes_data_026_categories() -> None:
+    rows = build_issue_pr_readiness_rows(
+        manifest_path=MANIFEST_PATH,
+        replay_ids=[PYTEST_TIMEDELTA_APPROX_REPLAY_ID],
+        preflight_records=[
+            _passed_preflight(
+                PYTEST_TIMEDELTA_APPROX_REPLAY_ID,
+                "pytest testing/python/approx.py -q",
+                required_knowledge_categories=(
+                    "repo_changed_file_context",
+                    "repo_test_pattern",
+                    "focused_validation_recipe",
+                ),
+            )
+        ],
+        prompt_specs=[_normalized_prompt_spec(PYTEST_TIMEDELTA_APPROX_REPLAY_ID)],
+        local_knowledge_records=_knowledge_records(
+            PYTEST_TIMEDELTA_APPROX_REPLAY_ID,
+            PYTEST_TIMEDELTA_APPROX_REQUIRED_KNOWLEDGE_CATEGORIES,
+        ),
+    )
+
+    row = rows[0]
+
+    assert row["ready_for_candidate_attempt"] is True
+    assert row["blocker_recommendation"] == (
+        "ready_for_candidate_attempt; "
+        "next_stage_challenge=materialization_gap,ranking_gap"
+    )
+    assert row["missing_evidence_labels"] == []
+    assert row["validation_command"] == "pytest testing/python/approx.py -q"
+    assert row["required_local_knowledge_categories"] == list(
+        PYTEST_TIMEDELTA_APPROX_REQUIRED_KNOWLEDGE_CATEGORIES
+    )
+    assert row["local_knowledge_categories_present"] == sorted(
+        PYTEST_TIMEDELTA_APPROX_REQUIRED_KNOWLEDGE_CATEGORIES
+    )
+    assert row["allowed_write_scope"]["python_source_paths"] == [
+        "src/_pytest/python_api.py"
+    ]
+    assert row["allowed_write_scope"]["test_paths"] == ["testing/python/approx.py"]
+    assert row["allowed_write_scope"]["auxiliary_paths"] == []
+    assert "matches the full accepted edit scope" in row["accepted_edit_scope_note"]
+    assert row["residual_labels"] == ["materialization_gap", "ranking_gap"]
+    assert row["next_stage_challenge_labels"] == [
+        "materialization_gap",
+        "ranking_gap",
+    ]
+    materialization_challenge = row["next_stage_challenges"][0]
+    assert materialization_challenge["label"] == "materialization_gap"
+    assert materialization_challenge["source_test_paths"] == [
+        "src/_pytest/python_api.py",
+        "testing/python/approx.py",
+    ]
+    assert materialization_challenge["auxiliary_paths"] == []
+    assert "source/test scope matches the full accepted edit scope" in (
+        materialization_challenge["remaining_challenge"]
+    )
+    knowledge_evidence = [
+        evidence
+        for evidence in row["evidence_sources"]
+        if evidence["evidence_type"] == "local_knowledge"
+    ]
+    assert {
+        evidence["knowledge_category"] for evidence in knowledge_evidence
+    } == set(PYTEST_TIMEDELTA_APPROX_REQUIRED_KNOWLEDGE_CATEGORIES)
 
 
 def test_readiness_jsonl_summary_report_and_cli(tmp_path: Path) -> None:

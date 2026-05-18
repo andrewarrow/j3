@@ -2028,8 +2028,8 @@ meaningful work. Do not replace this file with a daily reset.
   complete, `source_text_blockers` is empty, and unavailable source text is
   recorded as nonblocking `source_text_gaps` for the unchecked-in issue body
   and PR conversation.
-- Commit: pending in worker commit.
-- Push: pending.
+- Commit: 3272cc3.
+- Push: succeeded.
 - Next: `DATA-010` or `DATA-012` can consume the Requests prompt/spec record
   together with DATA-008 validation and KNOW-005 local knowledge when choosing
   a candidate attempt.
@@ -2228,8 +2228,8 @@ meaningful work. Do not replace this file with a daily reset.
   `pytest tests/test_defaults.py -q`, and `pytest tests/test_options.py -q`.
   Residual labels remain `materialization_gap` and `ranking_gap` for all three
   rows. No candidate code edits were attempted.
-- Commit: pending in worker commit.
-- Push: pending.
+- Commit: 39c0e82.
+- Push: succeeded.
 - Next: after DATA-014 is reviewed, assign `DATA-016` against
   `pallets__click-issue-3298-pr-3299`.
 - Blockers: none.
@@ -2268,10 +2268,31 @@ meaningful work. Do not replace this file with a daily reset.
   `docs/commands.md`, and `docs/conf.py` remain an explicit
   `accepted_auxiliary_paths_not_materialized` gap because there is no current
   changelog/docs/Sphinx config materialization action.
-- Commit: pending in worker commit.
-- Push: pending.
+- Commit: 278fcc1.
+- Push: succeeded.
 - Next: assign `DATA-016` against readiness-approved
   `pallets__click-issue-3298-pr-3299`, preserving the same evidence fields and
   recording any materialization gap precisely.
 - Blockers: none for source/test candidate validation; full accepted-edit
   coverage remains blocked on a changelog/docs/Sphinx config materializer.
+
+### 2026-05-18 - Coordinator Review And Dispatch - DATA-016 / DATA-017
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, `plans/progress.md`.
+- Tests: `python -m py_compile j3/issue_pr_candidate_attempt.py
+  tests/test_issue_pr_candidate_attempt.py` -> passed; `pytest
+  tests/test_issue_pr_candidate_attempt.py -q` -> 8 passed; `pytest
+  tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check` ->
+  passed.
+- Result: reviewed DATA-014's pushed commit and live artifact. The candidate
+  validated the Click #2745 source/test behavior and kept the accepted
+  auxiliary paths as an explicit coverage gap. The next loop now attacks two
+  falsifiable questions: `DATA-016` tests whether the issue/PR candidate
+  surface generalizes to readiness-approved Click #3298, and `DATA-017`
+  isolates the auxiliary-path materialization gap instead of treating the
+  successful focused test as full accepted-edit coverage.
+- Commit: pending coordinator dispatch commit.
+- Push: pending.
+- Next: workers dispatched for `DATA-016` and `DATA-017`.
+- Blockers: none.

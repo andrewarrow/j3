@@ -1326,28 +1326,48 @@ Long-term target:
 
 ### DATA-016: Third issue/PR candidate attempt
 
-- Status: ready
+- Status: active
 - Why: after `DATA-014` and `DATA-015`, the loop should either attempt Click
   #3298 if it is readiness-approved or record why the candidate-attempt
   surface cannot yet cover it.
-- Write scope: to be set after reviewing `DATA-014` and `DATA-015`; likely
-  `j3/issue_pr_candidate_attempt.py`, focused tests, compact report, generated
-  outputs under `/tmp`, and plan updates.
-- Acceptance: attempt exactly the next readiness-approved row, preferably
-  `pallets__click-issue-3298-pr-3299`; record candidate actions,
-  materialization result, allowlist checks, validation runtime, pass/fail,
-  residual labels, and structured-action coverage or exact materialization
-  blocker.
+- Write scope: `j3/issue_pr_candidate_attempt.py`,
+  `tests/test_issue_pr_candidate_attempt.py`, compact report if useful,
+  generated outputs under `/tmp`, and plan updates.
+- Acceptance: attempt exactly `pallets__click-issue-3298-pr-3299`; record
+  candidate actions, materialization result, allowlist checks, validation
+  runtime, pass/fail, residual labels, local-knowledge evidence use, and
+  structured-action coverage or exact materialization blocker.
 - Tests: focused candidate-attempt tests, plan consistency, `git diff
   --check`, and live focused validation when feasible.
+
+### DATA-017: Click auxiliary materialization gap audit
+
+- Status: active
+- Why: `DATA-014` passed source/test validation but did not cover the full
+  accepted PR because `CHANGES.rst`, `docs/commands.md`, and `docs/conf.py`
+  have no current materializer. This is a direct test of whether structured
+  actions can cover enough real Python edits or whether auxiliary repo edits
+  become a persistent coverage hole.
+- Write scope: `j3/issue_pr_auxiliary_gap_audit.py`,
+  `tests/test_issue_pr_auxiliary_gap_audit.py`,
+  `docs/DATA_017_CLICK_AUXILIARY_MATERIALIZATION_GAP_2026-05-18.md`,
+  generated outputs under `/tmp`, and plan updates. Do not edit
+  `j3/issue_pr_candidate_attempt.py`.
+- Acceptance: classify the DATA-014 accepted auxiliary paths
+  `CHANGES.rst`, `docs/commands.md`, and `docs/conf.py` as covered by current
+  structured actions, covered by a small proposed deterministic action,
+  requiring a constrained local generator, or not currently expressible.
+  Record the provenance, action-family recommendation, validation cost,
+  failure mode if attempted, and the smallest next falsifiable materializer
+  task.
+- Tests: focused audit tests, plan consistency, `git diff --check`, and a CLI
+  smoke that emits machine-readable audit rows plus the compact report.
 
 ## Next Recommended Queue
 
 Start with these unless fresh evidence changes the order:
 
-1. `DATA-016`: third issue/PR candidate attempt against readiness-approved
-   Click #3298.
-2. `KNOW-003`: broaden knowledge-use attribution where scoring shows missing
+1. `KNOW-003`: broaden knowledge-use attribution where scoring shows missing
    local-knowledge evidence.
-3. `MODEL-006`: candidate-after or AST-delta observation for ranking evidence.
-4. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.
+2. `MODEL-006`: candidate-after or AST-delta observation for ranking evidence.
+3. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.

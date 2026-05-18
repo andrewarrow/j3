@@ -44,18 +44,32 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
+- `DATA-016`: worker to attempt the readiness-approved Click #3298 issue/PR
+  candidate (`pallets__click-issue-3298-pr-3299`) with the existing
+  candidate-attempt evidence shape. Ownership: `j3/issue_pr_candidate_attempt.py`,
+  `tests/test_issue_pr_candidate_attempt.py`, generated `/tmp` artifacts, and
+  plan updates. Acceptance: live focused validation with `pytest
+  tests/test_options.py -q` when feasible, exact residual labels, and an
+  honest structured-action coverage or materialization blocker.
+- `DATA-017`: worker to audit the DATA-014 accepted auxiliary-path gap for
+  `CHANGES.rst`, `docs/commands.md`, and `docs/conf.py`. Ownership:
+  `j3/issue_pr_auxiliary_gap_audit.py`,
+  `tests/test_issue_pr_auxiliary_gap_audit.py`,
+  `docs/DATA_017_CLICK_AUXILIARY_MATERIALIZATION_GAP_2026-05-18.md`,
+  generated `/tmp` artifacts, and plan updates. Acceptance: classify each
+  auxiliary accepted path by current/proposed action coverage and define the
+  smallest falsifiable materializer next step.
+
 ## Ready Queue
 
 These are good next assignments for the next loop:
 
-1. `DATA-016`: third issue/PR candidate attempt against readiness-approved
-   Click #3298.
-2. `KNOW-003`: broaden knowledge-use attribution where scoring shows missing
+1. `KNOW-003`: broaden knowledge-use attribution where scoring shows missing
    local-knowledge evidence.
-3. `MODEL-006`: add candidate-after or AST-delta observation for ranking
+2. `MODEL-006`: add candidate-after or AST-delta observation for ranking
    evidence.
-4. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.
-5. `MODEL-004`: distinguish mapping key and value targets.
+3. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.
+4. `MODEL-004`: distinguish mapping key and value targets.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 

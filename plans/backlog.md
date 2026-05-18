@@ -436,7 +436,7 @@ Long-term target:
 
 ### REAL-002: Real repo eval ladder preflight runner
 
-- Status: active
+- Status: done
 - Why: `REAL-001` is only a contract until a runner proves pinned repos can be
   checked out and validated cheaply.
 - Write scope: real-repo ladder runner code, focused tests, docs if needed, and
@@ -466,7 +466,7 @@ Long-term target:
 
 ### DATA-005: Issue/PR replay preflight runner
 
-- Status: active
+- Status: done
 - Why: `DATA-004` records compact real rows, but validation and setup may break
   before edit quality can be measured.
 - Write scope: replay preflight runner code, focused tests, docs if needed, and
@@ -482,11 +482,8 @@ Long-term target:
 
 Start with these unless fresh evidence changes the order:
 
-1. `MAT-002`: finish the constrained source-region materialization probe.
-2. `REAL-002`: real-repo ladder preflight runner.
-3. `DATA-005`: issue/PR replay preflight runner.
-4. `GS7-005`: tests-only existing-repo support for one-file libraries.
-5. `KNOW-002`: extract first wedge knowledge records.
-6. `GS7-006`: repo-state-aware library convention edits.
-7. `REAL-003`: first tests-only wedge shadow score after blockers clear.
-8. `MODEL-006`: candidate-after or AST-delta observation for ranking evidence.
+1. `GS7-005`: tests-only existing-repo support for one-file libraries.
+2. `KNOW-002`: extract first wedge knowledge records.
+3. `GS7-006`: repo-state-aware library convention edits.
+4. `REAL-003`: first tests-only wedge shadow score after blockers clear.
+5. `MODEL-006`: candidate-after or AST-delta observation for ranking evidence.

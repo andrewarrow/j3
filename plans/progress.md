@@ -736,3 +736,49 @@ meaningful work. Do not replace this file with a daily reset.
   (`019e3b5b-ca19-7400-b1a8-d568d0c4d1dd`), and Feynman
   (`019e3b5c-0165-7cf1-b0c9-cf39fcdfa3b2`).
 - Blockers: none
+
+### 2026-05-18 - REAL-002 - Real repo eval ladder preflight runner
+
+- Owner: worker Anscombe (`019e3b5b-9a2f-7f42-904b-374a97656881`)
+- Files changed: `j3/real_repo_preflight.py`,
+  `tests/test_real_repo_preflight.py`, `plans/active.md`,
+  `plans/backlog.md`, `plans/progress.md`
+- Tests: `pytest tests/test_real_repo_preflight.py -q` -> 5 passed;
+  `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check`
+  -> passed.
+- Result: added a callable preflight runner for the `REAL-001` manifest. It
+  uses an injectable command runner to clone pinned refs, run setup commands,
+  run baseline validation with timeout fields, enforce task allowed write paths
+  for dummy candidate path lists, classify allowed-write violations separately
+  from checkout/setup/baseline blockers, and emit one deterministic JSONL row
+  per repo task before any j3 scoring.
+- Commit: pending worker commit
+- Push: pending worker push
+- Next: use the emitted rows as the baseline viability input for `REAL-003`
+  after `GS7-005` lands tests-only existing-repo support.
+- Blockers: none
+
+### 2026-05-18 - DATA-005 - Issue/PR replay preflight runner
+
+- Owner: worker Carson (`019e3b5b-ca19-7400-b1a8-d568d0c4d1dd`)
+- Files changed: `j3/issue_pr_preflight.py`,
+  `tests/test_issue_pr_preflight.py`, `plans/active.md`,
+  `plans/backlog.md`, `plans/progress.md`
+- Tests: `pytest tests/test_issue_pr_preflight.py -q` -> 6 passed;
+  `python -m py_compile j3/issue_pr_preflight.py` -> passed;
+  `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check`
+  -> passed.
+- Result: added a callable issue/PR replay preflight runner for the `DATA-004`
+  mini manifest. It selects a replay row by id, checks out `repo_before_ref`
+  through an injectable subprocess runner, verifies the checked-out SHA, runs
+  setup and baseline validation commands before any edit attempt, classifies
+  checkout/setup failures as environment blockers and baseline failures as
+  validation blockers, surfaces prompt/spec and local-knowledge pre-edit
+  residuals, defers ranking/materialization labels as agent-stage residuals,
+  and writes deterministic JSONL outcome rows.
+- Commit: pending worker commit
+- Push: pending worker push
+- Next: feed emitted replay preflight rows into local-knowledge residual
+  extraction and use validation/setup failures as non-agent blockers before
+  attempting issue/PR edit candidates.
+- Blockers: none

@@ -16,40 +16,6 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-### `REAL-002`: Real repo eval ladder preflight runner
-
-- Status: active
-- Owner: worker Anscombe (`019e3b5b-9a2f-7f42-904b-374a97656881`)
-- Started: 2026-05-18
-- Goal: turn the `REAL-001` ladder contract into a runnable preflight that
-  proves pinned checkout, baseline validation, timeouts, and outcome labeling
-  before scoring j3 edits.
-- Write scope: real-repo preflight runner module, focused tests, docs if
-  needed, and plan updates.
-- Acceptance: clone or materialize one pinned repo to `/tmp`, run setup and
-  baseline validation with timeouts, enforce allowed write paths for a dummy
-  candidate, and emit JSONL outcome rows with environment versus agent failure
-  labels. Use subprocess mocking or a tiny local fixture for unit tests; avoid
-  network-dependent tests.
-- Tests: focused runner tests, `pytest tests/test_plan_consistency.py -q`, and
-  `git diff --check`.
-
-### `DATA-005`: Issue/PR replay preflight runner
-
-- Status: active
-- Owner: worker Carson (`019e3b5b-ca19-7400-b1a8-d568d0c4d1dd`)
-- Started: 2026-05-18
-- Goal: prove whether a `DATA-004` replay row can be checked out, setup-checked,
-  baseline-validated, and residual-labeled before any edit attempt.
-- Write scope: issue/PR replay preflight runner module, focused tests, docs if
-  needed, and plan updates.
-- Acceptance: check out or simulate one `repo_before_ref`, run dependency/setup
-  and focused validation preflight without edits, and classify failures as
-  environment, validation, prompt/spec, ranking, materialization, or local
-  knowledge blockers. Use mocked subprocesses or tiny fixtures for tests.
-- Tests: focused preflight tests, `pytest tests/test_plan_consistency.py -q`,
-  and `git diff --check`.
-
 ### `GS7-005`: Tests-only existing-repo support for one-file libraries
 
 - Status: active
@@ -103,6 +69,19 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `DATA-005`: added `j3/issue_pr_preflight.py` and focused mocked-runner
+  tests. The preflight loads a `DATA-004` mini replay row by id, clones and
+  checks out `repo_before_ref` through an injectable subprocess runner, verifies
+  the checked-out SHA, runs setup and baseline validation commands, classifies
+  environment, validation, prompt/spec, and local-knowledge blockers before any
+  edit attempt, defers ranking/materialization labels as agent-stage residuals,
+  and emits deterministic JSONL outcome rows.
+- `REAL-002`: added `j3/real_repo_preflight.py` and focused mocked-runner
+  tests. The preflight loads the `REAL-001` manifest, clones and checks out
+  pinned refs through an injectable command runner, runs setup and baseline
+  validation with timeout fields, checks dummy candidate writes against task
+  allowlists, and emits one JSONL outcome row per repo task with separate
+  environment and allowed-write blocker labels.
 - `MAT-002`: added `j3/source_region_materializer.py` and focused source-region
   tests for a structured `replace_function_region` action. The probe replaces a
   bounded region inside `should_bypass_proxies`, enforces AST parsing, function

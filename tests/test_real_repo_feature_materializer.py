@@ -6,6 +6,7 @@ from pathlib import Path
 from j3.real_repo_feature_materializer import (
     CANDIDATE_VALIDATION_DEFERRED,
     H11_BYTESIFY_OBJECT_MESSAGE_TASK_ID,
+    HUMANIZE_NATURALSIZE_ZERO_FORMAT_TASK_ID,
     INICONFIG_SECTION_DEFAULT_TASK_ID,
     materialize_real_repo_feature_candidate,
 )
@@ -33,6 +34,17 @@ def _manifest_iniconfig_feature_rows() -> tuple[dict[str, object], dict[str, obj
         item
         for item in repo["tasks"]
         if item["id"] == INICONFIG_SECTION_DEFAULT_TASK_ID
+    )
+    return repo, task
+
+
+def _manifest_humanize_feature_rows() -> tuple[dict[str, object], dict[str, object]]:
+    manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+    repo = next(item for item in manifest["repositories"] if item["id"] == "humanize")
+    task = next(
+        item
+        for item in repo["tasks"]
+        if item["id"] == HUMANIZE_NATURALSIZE_ZERO_FORMAT_TASK_ID
     )
     return repo, task
 
@@ -229,6 +241,86 @@ def test_iter_file_order() -> None:
         data="[section]\\nvalue = 1\\nvalue2 = 2\\n",
     )
     assert list(config["section"]) == ["value", "value2"]
+""",
+        encoding="utf-8",
+    )
+
+
+def _write_synthetic_humanize_checkout(repo: Path) -> None:
+    (repo / "src" / "humanize").mkdir(parents=True)
+    (repo / "tests").mkdir()
+    (repo / "src" / "humanize" / "__init__.py").write_text(
+        """from __future__ import annotations
+
+from .filesize import naturalsize
+
+__all__ = ["naturalsize"]
+""",
+        encoding="utf-8",
+    )
+    (repo / "src" / "humanize" / "filesize.py").write_text(
+        '''"""Bits and bytes related humanization."""
+
+from __future__ import annotations
+
+from math import log
+
+suffixes = {
+    "decimal": ("kB", "MB", "GB"),
+    "binary": ("KiB", "MiB", "GiB"),
+    "gnu": "KMG",
+}
+
+
+def naturalsize(
+    value: float | str,
+    binary: bool = False,
+    gnu: bool = False,
+    format: str = "%.1f",
+) -> str:
+    """Format a number of bytes like a human-readable filesize.
+
+    Args:
+        value (int, float, str): Integer to convert.
+        binary (bool): If `True`, uses binary suffixes.
+        gnu (bool): If `True`, uses GNU-style suffixes.
+        format (str): Custom formatter.
+
+    Returns:
+        str: Human readable representation of a filesize.
+    """
+    suffix = (
+        suffixes["gnu"]
+        if gnu
+        else suffixes["binary"]
+        if binary
+        else suffixes["decimal"]
+    )
+    base = 1024 if (gnu or binary) else 1000
+    bytes_ = float(value)
+    abs_bytes = abs(bytes_)
+    if abs_bytes == 1 and not gnu:
+        return "%d Byte" % int(bytes_)
+    if abs_bytes < base:
+        return f"{int(bytes_)}B" if gnu else "%d Bytes" % int(bytes_)
+    exp = int(min(log(abs_bytes, base), len(suffix)))
+    space = "" if gnu else " "
+    return format % (bytes_ / (base**exp)) + space + suffix[exp - 1]
+''',
+        encoding="utf-8",
+    )
+    (repo / "src" / "humanize" / "number.py").write_text("", encoding="utf-8")
+    (repo / "tests" / "test_filesize.py").write_text(
+        """from __future__ import annotations
+
+import humanize
+
+
+def test_naturalsize() -> None:
+    assert humanize.naturalsize(0) == "0 Bytes"
+    assert humanize.naturalsize(1) == "1 Byte"
+    assert humanize.naturalsize(1024, True) == "1.0 KiB"
+    assert humanize.naturalsize(1024, False, True) == "1.0K"
 """,
         encoding="utf-8",
     )
@@ -522,6 +614,150 @@ def test_materializes_iniconfig_section_default_feature(tmp_path: Path) -> None:
     )
     assert test_after_text != test_before
     assert "test_get_section_existing_section_preserves_order" in test_after_text
+
+
+def test_materializes_humanize_naturalsize_zero_format_feature(
+    tmp_path: Path,
+) -> None:
+    repo, task = _manifest_humanize_feature_rows()
+    _write_synthetic_humanize_checkout(tmp_path)
+    production_before = {
+        "src/humanize/__init__.py": (
+            tmp_path / "src" / "humanize" / "__init__.py"
+        ).read_bytes(),
+        "src/humanize/filesize.py": (
+            tmp_path / "src" / "humanize" / "filesize.py"
+        ).read_bytes(),
+        "src/humanize/number.py": (
+            tmp_path / "src" / "humanize" / "number.py"
+        ).read_bytes(),
+    }
+    test_before = (tmp_path / "tests" / "test_filesize.py").read_text(
+        encoding="utf-8"
+    )
+
+    candidate = materialize_real_repo_feature_candidate(
+        tmp_path,
+        repo=repo,
+        task=task,
+        validate=False,
+    )
+    row = candidate.to_record()
+
+    assert json.loads(json.dumps(row, sort_keys=True)) == row
+    assert row["repo_id"] == "humanize"
+    assert row["repo_split"] == "heldout"
+    assert row["task_id"] == "humanize-feature-naturalsize-zero-format"
+    assert row["status"] == "materialized"
+    assert row["target_source_file"] == "src/humanize/filesize.py"
+    assert row["target_test_file"] == "tests/test_filesize.py"
+    assert row["validation"] == {
+        "status": "not_run",
+        "commands": [
+            "python -m pytest tests/test_filesize.py -q --benchmark-disable"
+        ],
+        "selected_command": (
+            "python -m pytest tests/test_filesize.py -q --benchmark-disable"
+        ),
+        "not_run_reason": CANDIDATE_VALIDATION_DEFERRED,
+        "candidate_validation_network_allowed": False,
+        "runtime_seconds": 0.0,
+    }
+    assert row["zero_hosted_usage_confirmed"] is True
+    assert row["blockers"] == []
+    assert row["residual_labels"] == [CANDIDATE_VALIDATION_DEFERRED]
+
+    mutation_scope = row["mutation_scope"]
+    assert mutation_scope["mode"] == "one_file_feature"
+    assert mutation_scope["planned_write_files"] == [
+        "src/humanize/filesize.py",
+        "tests/test_filesize.py",
+    ]
+    assert mutation_scope["files_changed"] == [
+        "src/humanize/filesize.py",
+        "tests/test_filesize.py",
+    ]
+    assert mutation_scope["writes_outside_allowlist"] == []
+    assert mutation_scope["production_files"] == [
+        "src/humanize/__init__.py",
+        "src/humanize/filesize.py",
+        "src/humanize/number.py",
+    ]
+    assert mutation_scope["production_files_changed"] == [
+        "src/humanize/filesize.py"
+    ]
+    assert mutation_scope["maximum_production_files_changed"] == 1
+    assert mutation_scope["allowed_production_file"] == "src/humanize/filesize.py"
+    assert mutation_scope["one_production_file_constraint_preserved"] is True
+
+    assert row["production_file_hashes_before"]["src/humanize/__init__.py"] == (
+        row["production_file_hashes_after"]["src/humanize/__init__.py"]
+    )
+    assert row["production_file_hashes_before"]["src/humanize/number.py"] == (
+        row["production_file_hashes_after"]["src/humanize/number.py"]
+    )
+    assert row["production_file_hashes_before"]["src/humanize/filesize.py"] != (
+        row["production_file_hashes_after"]["src/humanize/filesize.py"]
+    )
+    assert (tmp_path / "src" / "humanize" / "__init__.py").read_bytes() == (
+        production_before["src/humanize/__init__.py"]
+    )
+    assert (tmp_path / "src" / "humanize" / "number.py").read_bytes() == (
+        production_before["src/humanize/number.py"]
+    )
+    assert (tmp_path / "src" / "humanize" / "filesize.py").read_bytes() != (
+        production_before["src/humanize/filesize.py"]
+    )
+
+    source_after = row["candidate_after"]["source_file"]
+    assert source_after["status"] == "materialized"
+    assert source_after["target_function"] == "naturalsize"
+    assert source_after["touched_region"]["region_name"] == (
+        "zero_format_signature_and_zero_guard"
+    )
+    assert source_after["candidate_after"]["ast_parse_ok"] is True
+    assert source_after["candidate_after"]["signature_preserved"] is False
+    assert source_after["candidate_after"]["import_changes"] == {
+        "added": [],
+        "removed": [],
+    }
+    assert "zero_format: str | None = None" in source_after["candidate_after"]["diff"]
+    assert "return zero_format" in source_after["candidate_after"]["diff"]
+
+    test_after = row["candidate_after"]["test_file"]
+    assert test_after["planned_changed_files"] == ["tests/test_filesize.py"]
+    assert test_after["wrote_file"] is True
+    assert test_after["test_case_ids"] == [
+        "humanize_naturalsize_zero_format_zero_values",
+        "humanize_naturalsize_zero_format_default_unchanged",
+        "humanize_naturalsize_zero_format_nonzero_ignored",
+    ]
+    assert test_after["ast_delta"]["ast_parse_ok"] is True
+    assert test_after["sha256_before"] != test_after["sha256_after"]
+    assert "test_naturalsize_zero_format_handles_zero_values" in test_after["diff"]
+
+    namespace: dict[str, object] = {}
+    exec(
+        (tmp_path / "src" / "humanize" / "filesize.py").read_text(encoding="utf-8"),
+        namespace,
+    )
+    naturalsize = namespace["naturalsize"]
+
+    assert naturalsize(0, zero_format="empty") == "empty"
+    assert naturalsize(-0.0, zero_format="empty") == "empty"
+    assert naturalsize(0) == "0 Bytes"
+    assert naturalsize(-0.0) == "0 Bytes"
+    assert naturalsize(1, zero_format="empty") == "1 Byte"
+    assert naturalsize(1024, True, zero_format="empty") == "1.0 KiB"
+    assert naturalsize(1024, False, True, zero_format="empty") == "1.0K"
+
+    test_after_text = (tmp_path / "tests" / "test_filesize.py").read_text(
+        encoding="utf-8"
+    )
+    assert test_after_text != test_before
+    assert "test_naturalsize_zero_format_default_behavior_is_unchanged" in (
+        test_after_text
+    )
 
 
 def test_materializer_blocks_when_source_region_is_not_expressible(

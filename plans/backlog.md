@@ -589,7 +589,7 @@ Long-term target:
 
 ### MAT-005: Held-out humanize one-file feature materialization probe
 
-- Status: active
+- Status: done
 - Why: h11 plus calibration iniconfig are not enough to prove source
   materialization on held-out library edits; humanize tests whether the
   source-region approach handles a different API shape and optional-argument
@@ -605,6 +605,15 @@ Long-term target:
   blocker if the edit cannot be expressed.
 - Tests: focused materializer tests, plan consistency, `git diff --check`, and
   live targeted validation when a candidate is materialized.
+- Completion note: added support for
+  `humanize-feature-naturalsize-zero-format` to
+  `j3.real_repo_feature_materializer`. The probe uses one bounded source-region
+  edit in `src/humanize/filesize.py` to add the optional `zero_format`
+  argument and return it only when the absolute byte value is zero, appends
+  focused tests for `0`, `-0.0`, unchanged calls without `zero_format`, and
+  nonzero values ignoring `zero_format`, records source/test diff and AST
+  metadata, protects production hashes, and live-validates the pinned checkout
+  under `/tmp/j3-mat-005-live.WXA9PU/humanize` with `73 passed in 0.03s`.
 
 ### KNOW-001: Local knowledge inventory for the wedge
 

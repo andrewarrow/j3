@@ -1394,7 +1394,7 @@ meaningful work. Do not replace this file with a daily reset.
   production files byte-for-byte. The live candidate protected 34 production
   files, reported zero production-file changes, and had zero writes outside
   the allowlist.
-- Commit: pending
+- Commit: 9e6e15d
 - Push: pending
 - Next: run `REAL-010` after integrating `GS7-011` so the full four-row
   tests-only gate can count boltons alongside iniconfig, h11, and humanize.
@@ -1548,4 +1548,35 @@ meaningful work. Do not replace this file with a daily reset.
   scorer, and Banach (`019e3bcf-0b55-79b3-9ad1-0b5b3a8f7bed`) owns the
   held-out humanize feature materializer. Review both results, then continue
   to the next falsification task.
+- Blockers: none
+
+### 2026-05-18 - MAT-005 - humanize one-file feature materializer
+
+- Owner: worker Banach (`019e3bcf-0b55-79b3-9ad1-0b5b3a8f7bed`)
+- Files changed: `j3/real_repo_feature_materializer.py`,
+  `tests/test_real_repo_feature_materializer.py`, `plans/active.md`,
+  `plans/backlog.md`, `plans/progress.md`
+- Tests: `python -m py_compile j3/real_repo_feature_materializer.py
+  tests/test_real_repo_feature_materializer.py` -> passed; `pytest
+  tests/test_real_repo_feature_materializer.py -q` -> 5 passed; live setup
+  against `/tmp/j3-mat-005-live.WXA9PU/humanize` with `python -m pip install
+  -e '.[tests]'` -> passed; live materializer run wrote
+  `/tmp/j3-mat-005-live.WXA9PU/candidate.json`, changed only
+  `src/humanize/filesize.py` among production files, and validation
+  `python -m pytest tests/test_filesize.py -q --benchmark-disable` -> 73
+  passed in 0.03s; `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check` -> passed.
+- Result: materialized `humanize-feature-naturalsize-zero-format` with one
+  bounded source-region action in `src/humanize/filesize.py` and focused
+  coverage in `tests/test_filesize.py` for custom `zero_format` output on `0`
+  and `-0.0`, unchanged default zero output without `zero_format`, and ignored
+  `zero_format` on nonzero decimal, binary, and GNU calls. The candidate record
+  includes source and test candidate-after diff/AST metadata, seven protected
+  production hashes before/after, mutation scope, validation runtime 0.256
+  seconds, zero writes outside the task allowlist, residual label
+  `candidate_validation_passed`, and zero hosted usage.
+- Commit: pending
+- Push: pending
+- Next: rerun or extend the one-file feature shadow scorer so it can count
+  `humanize-feature-naturalsize-zero-format` alongside h11 and iniconfig.
 - Blockers: none

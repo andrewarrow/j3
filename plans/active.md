@@ -27,10 +27,12 @@ This is the live coordinator board. Keep it current and compact.
   and hidden-like checks do not disagree. `MAT-003` materialized and
   live-validated the first real one-file source feature candidate on held-out
   `h11`; `MAT-004` now materializes and live-validates the second one-file
-  source feature candidate for calibration `iniconfig`. `REAL-009` last scored
-  only the h11 materializer at `pass@1 = 1/4` and `pass@3 = 1/4`, so the
-  one-file feature gate remains shadow-only until the feature scorer counts the
-  new iniconfig candidate.
+  source feature candidate for calibration `iniconfig`. `MAT-005` now
+  materializes and live-validates the next held-out one-file source feature
+  candidate for `humanize`. `REAL-009` last scored only the h11 materializer at
+  `pass@1 = 1/4` and `pass@3 = 1/4`, so the one-file feature gate remains
+  shadow-only until the feature scorer counts the newer iniconfig and humanize
+  candidates.
 
 ## Active Tasks
 
@@ -53,24 +55,6 @@ This is the live coordinator board. Keep it current and compact.
   tests/test_plan_consistency.py -q`, `git diff --check`, and a live
   score/report smoke command with pinned `iniconfig` and `h11` checkouts when
   feasible.
-
-### MAT-005: Held-Out Humanize One-File Feature Materializer
-
-- Status: active
-- Owner: worker Banach (`019e3bcf-0b55-79b3-9ad1-0b5b3a8f7bed`).
-- Write scope: `j3/real_repo_feature_materializer.py`,
-  `tests/test_real_repo_feature_materializer.py`, optional compact docs,
-  generated live artifacts under `/tmp`, and plan updates.
-- Target task: `humanize-feature-naturalsize-zero-format`.
-- Acceptance: attempt the pinned `humanize` one-file feature task with a
-  bounded source-region or typed-builder action; preserve the one-production-
-  file constraint for `src/humanize/filesize.py`; add focused validation
-  coverage in `tests/test_filesize.py`; record candidate-after diff/AST
-  metadata, mutation scope, validation result, runtime, zero hosted usage, and
-  a machine-readable blocker if the edit cannot be expressed.
-- Required checks: focused feature materializer tests, `pytest
-  tests/test_plan_consistency.py -q`, `git diff --check`, and live targeted
-  validation when a candidate is materialized.
 
 ## Ready Queue
 
@@ -105,6 +89,19 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `MAT-005`: materialized the next held-out one-file source feature candidate
+  for `humanize-feature-naturalsize-zero-format`. The feature materializer now
+  supports a bounded `naturalsize` source-region edit in
+  `src/humanize/filesize.py`, appends focused validation coverage to
+  `tests/test_filesize.py` for custom zero output on `0` and `-0.0`, unchanged
+  default zero output, and ignored `zero_format` on nonzero values, records
+  source/test candidate-after diff and AST metadata, production hashes,
+  mutation scope, validation runtime, and zero hosted usage. Live validation
+  against the pinned humanize checkout under
+  `/tmp/j3-mat-005-live.WXA9PU/humanize` passed with `73 passed in 0.03s`,
+  changing only `src/humanize/filesize.py` among production files and writing
+  nothing outside the task allowlist. Candidate record:
+  `/tmp/j3-mat-005-live.WXA9PU/candidate.json`.
 - `MAT-004`: materialized the second real one-file source feature candidate for
   `iniconfig-feature-section-default`. The existing feature materializer now
   supports the calibration iniconfig task with one bounded delimited source

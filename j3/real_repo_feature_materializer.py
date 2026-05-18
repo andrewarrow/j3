@@ -30,6 +30,9 @@ REAL_REPO_FEATURE_CANDIDATE_KIND = "real_repo_one_file_feature_candidate"
 REAL_REPO_FEATURE_ACTION_FAMILY = "one_file_source_feature_region"
 INICONFIG_SECTION_DEFAULT_TASK_ID = "iniconfig-feature-section-default"
 H11_BYTESIFY_OBJECT_MESSAGE_TASK_ID = "h11-feature-bytesify-object-message"
+HUMANIZE_NATURALSIZE_ZERO_FORMAT_TASK_ID = (
+    "humanize-feature-naturalsize-zero-format"
+)
 CANDIDATE_VALIDATION_DEFERRED = "candidate_validation_deferred"
 
 
@@ -142,11 +145,15 @@ def materialize_real_repo_feature_candidate(
     elif repo_id == "iniconfig" and task_id == INICONFIG_SECTION_DEFAULT_TASK_ID:
         target_source_file = "src/iniconfig/__init__.py"
         target_test_file = "testing/test_iniconfig.py"
+    elif repo_id == "humanize" and task_id == HUMANIZE_NATURALSIZE_ZERO_FORMAT_TASK_ID:
+        target_source_file = "src/humanize/filesize.py"
+        target_test_file = "tests/test_filesize.py"
     else:
         raise _blocker_error(
             "one-file feature materialization is only implemented for "
             "h11-feature-bytesify-object-message and "
-            "iniconfig-feature-section-default",
+            "iniconfig-feature-section-default and "
+            "humanize-feature-naturalsize-zero-format",
             field="task_id",
             reason="unsupported_real_repo_feature_task",
         )
@@ -184,8 +191,10 @@ def materialize_real_repo_feature_candidate(
         )
         if task_id == H11_BYTESIFY_OBJECT_MESSAGE_TASK_ID:
             source_action = _h11_bytesify_object_message_source_action(source_text)
-        else:
+        elif task_id == INICONFIG_SECTION_DEFAULT_TASK_ID:
             source_action = _iniconfig_section_default_source_action(source_text)
+        else:
+            source_action = _humanize_naturalsize_zero_format_source_action(source_text)
         source_result = materialize_source_region(
             resolved_repo,
             source_action,
@@ -217,8 +226,14 @@ def materialize_real_repo_feature_candidate(
             target_test_file=target_test_file,
             write=write and not blockers,
         )
-    else:
+    elif task_id == INICONFIG_SECTION_DEFAULT_TASK_ID:
         test_materialization = _materialize_iniconfig_section_default_tests(
+            resolved_repo,
+            target_test_file=target_test_file,
+            write=write and not blockers,
+        )
+    else:
+        test_materialization = _materialize_humanize_zero_format_tests(
             resolved_repo,
             target_test_file=target_test_file,
             write=write and not blockers,
@@ -532,6 +547,56 @@ def _iniconfig_section_default_source_action(source: str) -> SourceRegionAction:
     )
 
 
+def _humanize_naturalsize_zero_format_source_action(source: str) -> SourceRegionAction:
+    if "zero_format: str | None = None" in source:
+        raise SourceRegionMaterializationError(
+            "humanize naturalsize zero_format edit is already applied",
+            residual="already_applied",
+        )
+
+    start_line = _line_number(source, '    format: str = "%.1f",')
+    end_line = _line_number(source, "    abs_bytes = abs(bytes_)")
+    source_lines = source.splitlines()
+    replacement_lines = list(source_lines[start_line - 1 : end_line])
+    _insert_after(
+        replacement_lines,
+        '    format: str = "%.1f",',
+        "    zero_format: str | None = None,",
+    )
+    _insert_after(
+        replacement_lines,
+        "        format (str): Custom formatter.",
+        "        zero_format (str | None): Optional text returned for zero bytes.",
+        required=False,
+    )
+    _insert_after(
+        replacement_lines,
+        "    abs_bytes = abs(bytes_)",
+        "    if abs_bytes == 0 and zero_format is not None:\n"
+        "        return zero_format",
+    )
+    return SourceRegionAction(
+        kind=SourceRegionActionKind.REPLACE_FUNCTION_REGION,
+        target=SourceRegionTarget(
+            file_path="src/humanize/filesize.py",
+            function_name="naturalsize",
+            region_name="zero_format_signature_and_zero_guard",
+            start_line=start_line,
+            end_line=end_line,
+        ),
+        replacement_source="\n".join(replacement_lines),
+        constraints=SourceRegionConstraints(
+            max_changed_source_lines=6,
+            must_preserve_signature=False,
+        ),
+        rationale=(
+            "add an optional zero_format argument and return it only for values "
+            "whose absolute byte count is zero, before the existing small-byte "
+            "formatting branches"
+        ),
+    )
+
+
 def _materialize_h11_object_message_test(
     repo: Path,
     *,
@@ -665,6 +730,70 @@ def _merge_iniconfig_section_default_tests(existing_text: str) -> str:
     return existing_text.rstrip() + "\n\n\n" + append_block
 
 
+def _materialize_humanize_zero_format_tests(
+    repo: Path,
+    *,
+    target_test_file: str,
+    write: bool,
+) -> dict[str, object]:
+    target_path = _repo_file(repo, target_test_file)
+    before_text = target_path.read_text(encoding="utf-8") if target_path.exists() else ""
+    after_text = _merge_humanize_zero_format_tests(before_text)
+    planned_changed_files = [target_test_file] if after_text != before_text else []
+    if write and planned_changed_files:
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        target_path.write_text(after_text, encoding="utf-8")
+    status = "already_applied"
+    files_changed: list[str] = []
+    if planned_changed_files:
+        status = "materialized" if write else "planned"
+        files_changed = list(planned_changed_files) if write else []
+    return {
+        "status": status,
+        "files_changed": files_changed,
+        "candidate_after": _text_candidate_after_record(
+            file_path=target_test_file,
+            before_text=before_text,
+            after_text=after_text,
+            planned_changed_files=planned_changed_files,
+            wrote_file=write and bool(planned_changed_files),
+            test_case_ids=[
+                "humanize_naturalsize_zero_format_zero_values",
+                "humanize_naturalsize_zero_format_default_unchanged",
+                "humanize_naturalsize_zero_format_nonzero_ignored",
+            ],
+            test_functions=[
+                "test_naturalsize_zero_format_handles_zero_values",
+                "test_naturalsize_zero_format_default_behavior_is_unchanged",
+                "test_naturalsize_zero_format_is_only_used_for_zero_values",
+            ],
+        ),
+    }
+
+
+def _merge_humanize_zero_format_tests(existing_text: str) -> str:
+    first_function = "test_naturalsize_zero_format_handles_zero_values"
+    if f"def {first_function}" in existing_text:
+        return existing_text
+    append_block = (
+        "def test_naturalsize_zero_format_handles_zero_values() -> None:\n"
+        "    assert humanize.naturalsize(0, zero_format=\"empty\") == \"empty\"\n"
+        "    assert humanize.naturalsize(-0.0, zero_format=\"empty\") == \"empty\"\n"
+        "\n\n"
+        "def test_naturalsize_zero_format_default_behavior_is_unchanged() -> None:\n"
+        "    assert humanize.naturalsize(0) == \"0 Bytes\"\n"
+        "    assert humanize.naturalsize(-0.0) == \"0 Bytes\"\n"
+        "\n\n"
+        "def test_naturalsize_zero_format_is_only_used_for_zero_values() -> None:\n"
+        "    assert humanize.naturalsize(1, zero_format=\"empty\") == \"1 Byte\"\n"
+        "    assert humanize.naturalsize(1024, True, zero_format=\"empty\") == \"1.0 KiB\"\n"
+        "    assert humanize.naturalsize(1024, False, True, zero_format=\"empty\") == \"1.0K\"\n"
+    )
+    if not existing_text.strip():
+        return "import humanize\n\n\n" + append_block
+    return existing_text.rstrip() + "\n\n\n" + append_block
+
+
 def _text_candidate_after_record(
     *,
     file_path: str,
@@ -715,6 +844,7 @@ def _production_python_files(repo: Path, *, repo_id: str) -> list[str]:
     package_roots = {
         "h11": repo / "h11",
         "iniconfig": repo / "src" / "iniconfig",
+        "humanize": repo / "src" / "humanize",
     }
     package_root = package_roots.get(repo_id)
     if package_root is None:
@@ -767,6 +897,24 @@ def _line_number(source: str, needle: str) -> int:
         f"target source line not found: {needle}",
         residual="target_selection",
     )
+
+
+def _insert_after(
+    lines: list[str],
+    needle: str,
+    insertion: str,
+    *,
+    required: bool = True,
+) -> None:
+    for index, line in enumerate(lines):
+        if line == needle:
+            lines[index + 1 : index + 1] = insertion.splitlines()
+            return
+    if required:
+        raise SourceRegionMaterializationError(
+            f"target source line not found: {needle}",
+            residual="target_selection",
+        )
 
 
 def _diff_summary(before_text: str, after_text: str) -> dict[str, int]:

@@ -2574,8 +2574,8 @@ meaningful work. Do not replace this file with a daily reset.
   `docs/commands.md` and `docs/conf.py`. The candidate record includes actions,
   diff, mutation scope, validation command/runtime, residual labels, DATA-017
   and DATA-019 provenance, and Sphinx `docs_build_passed = true`.
-- Commit: pending.
-- Push: pending.
+- Commit: 791bb46.
+- Push: succeeded.
 - Next: review DATA-021 when it lands; no further Click docs validation
   blocker remains for the `docs/commands.md` plus `docs/conf.py` slice.
 - Blockers: none.

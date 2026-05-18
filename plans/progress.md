@@ -3877,8 +3877,8 @@ meaningful work. Do not replace this file with a daily reset.
   Both validated issue/PR rows now have live decoy evidence and both contain
   passing decoys, so issue/PR pass@1/pass@k remain blocked under the current
   validation signal.
-- Commit: pending.
-- Push: pending.
+- Commit: 595c42a.
+- Push: succeeded.
 - Next: finish MAT-010 integration, then dispatch validation-strengthening
   probes for passing decoys.
 - Blockers: issue/PR ranking remains shadow-only because both validated rows

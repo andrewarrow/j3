@@ -44,27 +44,8 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-### `DATA-012`: Requests issue/PR candidate attempt
-
-- Status: active
-- Owner: worker Boole (`019e3c1c-ef63-70b1-b284-d94f1b52c4e3`).
-- Why: `DATA-010` says `psf__requests-issue-7432-pr-7433` is ready for a
-  candidate attempt. This is the next hard falsification point: can the
-  structured stack materialize and validate a real accepted issue/PR edit?
-- Write scope: a bounded issue/PR candidate-attempt runner or materializer,
-  focused tests, compact report, generated outputs under `/tmp`, and plan
-  updates. Do not edit `j3/issue_pr_prompt_spec.py` or
-  `j3/local_knowledge.py`; consume DATA-008/DATA-011/KNOW-005 evidence.
-- Acceptance: attempt exactly `psf__requests-issue-7432-pr-7433` on a
-  repo-before checkout. Record candidate actions, source/test materialization
-  result, candidate diff or blocker, allowed-write-path checks, validation
-  command/runtime, pass/fail, residual labels, and whether the current
-  structured-action surface covers the accepted edit. If materialization is
-  not expressible, record the exact action/materialization gap instead of
-  broadening scope silently. No hosted LLM use.
-- Tests: focused candidate-attempt tests, `pytest
-  tests/test_plan_consistency.py -q`, `git diff --check`, and the live
-  DATA-008 focused validation recipe when feasible.
+No active worker tasks recorded after the latest DATA-012 completion; the
+coordinator should dispatch the next ready bounded task if continuing the loop.
 
 ## Ready Queue
 
@@ -102,6 +83,18 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `DATA-012`: added a bounded Requests issue/PR candidate-attempt runner for
+  exactly `psf__requests-issue-7432-pr-7433`. The live `/tmp` attempt
+  materialized the accepted source-region edit in `src/requests/models.py`,
+  inserted the redirect regression test in `tests/test_requests.py`, changed
+  only DATA-010 allowlisted paths, ran the DATA-008 setup plus focused
+  validation recipe, and passed with `6 passed, 333 deselected` in `7.224s`
+  total recorded validation runtime. The candidate record reports
+  `candidate_validation_passed`, no hosted LLM use, no writes outside the
+  allowlist, and accepted-edit coverage by the bounded source-region plus
+  deterministic pytest-method insertion surface. Artifacts:
+  `/tmp/j3-data-012-live/candidate.json` and
+  `/tmp/j3-data-012-live/report.md`.
 - `DATA-013`: added machine-readable prompt/spec normalization for
   `pallets__click-issue-3298-pr-3299` without candidate source edits. The
   record captures the semver `Version(1, 0, 0)` minimal reproduction,

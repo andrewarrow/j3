@@ -2132,3 +2132,43 @@ meaningful work. Do not replace this file with a daily reset.
   evidence, then consider Click #3298 for a candidate attempt only after the
   readiness gate confirms the prompt/spec blocker is gone.
 - Blockers: none for Click #3298 prompt/spec normalization.
+
+### 2026-05-18 - DATA-012 - Requests issue/PR candidate attempt
+
+- Owner: worker Boole (`019e3c1c-ef63-70b1-b284-d94f1b52c4e3`).
+- Files changed: `j3/issue_pr_candidate_attempt.py`,
+  `tests/test_issue_pr_candidate_attempt.py`, `plans/active.md`,
+  `plans/backlog.md`, `plans/progress.md`.
+- Tests: `python -m py_compile j3/issue_pr_candidate_attempt.py
+  tests/test_issue_pr_candidate_attempt.py` -> passed; `pytest
+  tests/test_issue_pr_candidate_attempt.py -q` -> 5 passed; live CLI smoke
+  `python -m j3.issue_pr_candidate_attempt --manifest
+  examples/issue_pr_mini_replay/manifest.json --repo-path
+  /tmp/j3-data-012-live/requests --readiness-evidence
+  /tmp/j3-data-010-readiness.jsonl --prompt-spec-evidence
+  /tmp/j3-data-011-requests-prepare-body-spec.jsonl --validation-evidence
+  /tmp/j3-data-008-live/attempts.jsonl --local-knowledge-evidence
+  /tmp/j3-know-005-requests-records.jsonl --validate
+  --validation-timeout-seconds 180 --out
+  /tmp/j3-data-012-live/candidate.json --report
+  /tmp/j3-data-012-live/report.md` -> passed with status `validated`;
+  `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff
+  --check` -> passed.
+- Result: added a bounded candidate-attempt runner for exactly
+  `psf__requests-issue-7432-pr-7433` with no hosted LLM use. The live
+  repo-before attempt materialized the accepted source-region edit in
+  `src/requests/models.py`, inserted the redirect regression test in
+  `tests/test_requests.py`, changed only DATA-010 allowlisted paths, recorded
+  candidate actions, source/test materialization, candidate diff, allowlist
+  checks, validation command/runtime, residual labels, and structured-action
+  coverage. DATA-008 focused validation passed with `6 passed, 333 deselected`
+  and recorded total runtime `7.224s`. The accepted edit is covered only by
+  this bounded Requests materializer over the existing source-region action
+  plus deterministic pytest-method insertion; it is not evidence of a general
+  issue/PR generator.
+- Commit: 045d260.
+- Push: pending.
+- Next: assign `DATA-014` for a second readiness-approved issue/PR candidate
+  attempt, preferably Click #2745 using the same candidate-attempt record shape
+  only after reviewing whether its materialization can be expressed honestly.
+- Blockers: none for DATA-012.

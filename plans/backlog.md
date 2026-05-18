@@ -1209,7 +1209,7 @@ Long-term target:
 
 ### DATA-012: First issue/PR candidate attempt
 
-- Status: active
+- Status: done
 - Why: once `DATA-010` identifies a replay row that is ready for candidate
   attempts, the project must immediately test the hard materialization and
   ranking path on a real accepted issue/PR task.
@@ -1225,6 +1225,18 @@ Long-term target:
   the exact action/materialization gap.
 - Tests: focused candidate-attempt tests, plan consistency, `git diff
   --check`, and the live focused validation command when feasible.
+- Completion note: added `j3.issue_pr_candidate_attempt`, a bounded runner for
+  exactly `psf__requests-issue-7432-pr-7433`. The live `/tmp` attempt cloned
+  the repo-before Requests checkout, materialized the accepted
+  `prepare_body` stream-wrapper source edit and redirect regression test,
+  changed only `src/requests/models.py` and `tests/test_requests.py`, ran the
+  DATA-008 setup plus focused validation recipe, and passed with
+  `6 passed, 333 deselected`. The attempt record captures candidate actions,
+  source/test materialization, candidate diff, allowlist checks, validation
+  runtime, residual label `candidate_validation_passed`, zero hosted LLM use,
+  and bounded structured-action coverage. Artifacts:
+  `/private/tmp/j3-data-012-live/candidate.json` and
+  `/private/tmp/j3-data-012-live/report.md`.
 
 ### DATA-013: Click semver prompt/spec normalization
 

@@ -4,8 +4,10 @@ import json
 from pathlib import Path
 
 from j3.issue_pr_candidate_attempt import (
+    CLICK_DEFAULT_MAP_REPLAY_ID,
     REQUESTS_REPLAY_ID,
     main,
+    run_click_default_map_issue_pr_candidate_attempt,
     run_requests_issue_pr_candidate_attempt,
     write_issue_pr_candidate_attempt_report,
 )
@@ -145,6 +147,111 @@ def test_requests_candidate_attempt_rejects_wrong_replay(tmp_path: Path) -> None
         raise AssertionError("wrong replay id should be rejected")
 
 
+def test_click_default_map_candidate_attempt_materializes_behavior_with_gap(
+    tmp_path: Path,
+) -> None:
+    repo = _write_synthetic_click_checkout(tmp_path / "click")
+
+    attempt = run_click_default_map_issue_pr_candidate_attempt(
+        repo,
+        manifest_path=MANIFEST_PATH,
+        write=True,
+        validate=False,
+        readiness_records=[_click_ready_row()],
+        prompt_spec_records=[_click_prompt_spec_row()],
+        validation_records=[_click_validation_row()],
+    )
+    record = attempt.to_record()
+
+    assert record["replay_id"] == CLICK_DEFAULT_MAP_REPLAY_ID
+    assert record["status"] == "materialized"
+    assert record["mutation_scope"]["allowed_write_path_check_passed"] is True
+    assert record["mutation_scope"]["files_changed"] == [
+        "src/click/core.py",
+        "tests/test_defaults.py",
+    ]
+    assert record["mutation_scope"]["materialization_gap_paths"] == [
+        "CHANGES.rst",
+        "docs/commands.md",
+        "docs/conf.py",
+    ]
+    assert record["structured_action_coverage"]["behavior_edit_covered"] is True
+    assert record["structured_action_coverage"]["accepted_edit_covered"] is False
+    assert (
+        record["structured_action_coverage"]["materialization_gap"]
+        == "accepted_auxiliary_changelog_docs_config_materialization_gap"
+    )
+    assert "accepted_auxiliary_paths_not_materialized" in record["residual_labels"]
+    assert "value = self.type.split_envvar_value(value)" in (
+        repo / "src" / "click" / "core.py"
+    ).read_text(encoding="utf-8")
+    assert "test_default_map_nargs" in (
+        repo / "tests" / "test_defaults.py"
+    ).read_text(encoding="utf-8")
+    assert "test_default_map_nargs" in record["test_materialization"]["diff"]
+
+
+def test_click_default_map_candidate_attempt_validation_and_report(
+    tmp_path: Path,
+) -> None:
+    repo = _write_synthetic_click_checkout(tmp_path / "click")
+
+    attempt = run_click_default_map_issue_pr_candidate_attempt(
+        repo,
+        manifest_path=MANIFEST_PATH,
+        setup_command="python -c 'print(\"setup ok\")'",
+        validation_command="python -c 'print(\"validation ok\")'",
+        write=True,
+        validate=True,
+    )
+    record = attempt.to_record()
+
+    assert record["status"] == "validated"
+    assert record["validation"]["status"] == "passed"
+    assert record["residual_labels"] == [
+        "candidate_validation_passed",
+        "accepted_auxiliary_paths_not_materialized",
+    ]
+    report = write_issue_pr_candidate_attempt_report(attempt, tmp_path / "click.md")
+    assert "DATA-014 Click default_map Issue/PR Candidate Attempt" in report.read_text(
+        encoding="utf-8"
+    )
+
+
+def test_click_default_map_candidate_attempt_cli_writes_json_and_report(
+    tmp_path: Path,
+) -> None:
+    repo = _write_synthetic_click_checkout(tmp_path / "click")
+    out_path = tmp_path / "candidate.json"
+    report_path = tmp_path / "candidate.md"
+
+    exit_code = main(
+        [
+            "--manifest",
+            str(MANIFEST_PATH),
+            "--replay-id",
+            CLICK_DEFAULT_MAP_REPLAY_ID,
+            "--repo-path",
+            str(repo),
+            "--setup-command",
+            "python -c 'print(\"setup ok\")'",
+            "--validation-command",
+            "python -c 'print(\"validation ok\")'",
+            "--validate",
+            "--out",
+            str(out_path),
+            "--report",
+            str(report_path),
+        ]
+    )
+
+    assert exit_code == 0
+    record = json.loads(out_path.read_text(encoding="utf-8"))
+    assert record["replay_id"] == CLICK_DEFAULT_MAP_REPLAY_ID
+    assert record["status"] == "validated"
+    assert report_path.exists()
+
+
 def _write_synthetic_requests_checkout(repo: Path) -> Path:
     (repo / "src" / "requests").mkdir(parents=True)
     (repo / "tests").mkdir(parents=True)
@@ -194,6 +301,85 @@ class TestRequests:
     return repo
 
 
+def _write_synthetic_click_checkout(repo: Path) -> Path:
+    (repo / "src" / "click").mkdir(parents=True)
+    (repo / "tests").mkdir(parents=True)
+    (repo / "CHANGES.rst").write_text("Version 8.3.0\n", encoding="utf-8")
+    (repo / "docs").mkdir()
+    (repo / "docs" / "commands.md").write_text("# Commands\n", encoding="utf-8")
+    (repo / "docs" / "conf.py").write_text("nitpicky = True\n", encoding="utf-8")
+    (repo / "src" / "click" / "core.py").write_text(
+        """from __future__ import annotations
+
+import typing as t
+
+
+UNSET = object()
+
+
+class ParameterSource:
+    COMMANDLINE = "COMMANDLINE"
+    DEFAULT = "DEFAULT"
+    DEFAULT_MAP = "DEFAULT_MAP"
+    ENVIRONMENT = "ENVIRONMENT"
+
+
+class Parameter:
+    nargs = 1
+
+    def value_from_envvar(self, ctx):
+        return None
+
+    def get_default(self, ctx):
+        return UNSET
+
+    def consume_value(self, ctx, opts) -> t.Any:
+        value = opts.get(self.name, UNSET)  # type: ignore
+        source = (
+            ParameterSource.COMMANDLINE
+            if value is not UNSET
+            else ParameterSource.DEFAULT
+        )
+
+        if value is UNSET:
+            envvar_value = self.value_from_envvar(ctx)
+            if envvar_value is not None:
+                value = envvar_value
+                source = ParameterSource.ENVIRONMENT
+
+        if value is UNSET:
+            default_map_value = ctx.lookup_default(self.name)  # type: ignore[arg-type]
+            if default_map_value is not None or ctx._default_map_has(self.name):
+                value = default_map_value
+                source = ParameterSource.DEFAULT_MAP
+
+        if value is UNSET:
+            default_value = self.get_default(ctx)
+            if default_value is not UNSET:
+                value = default_value
+                source = ParameterSource.DEFAULT
+
+        return value, source
+""",
+        encoding="utf-8",
+    )
+    (repo / "tests" / "test_defaults.py").write_text(
+        """import click
+import pytest
+
+
+def test_default_map_with_callable_flag_value(runner, default_map, args, expected):
+    assert True
+
+
+def test_unset_in_default_map(runner):
+    assert True
+""",
+        encoding="utf-8",
+    )
+    return repo
+
+
 def _ready_row() -> dict[str, object]:
     return {
         "record_kind": "issue_pr_candidate_readiness",
@@ -203,6 +389,33 @@ def _ready_row() -> dict[str, object]:
             ".venv/bin/python -m pytest tests/test_requests.py -q "
             "-k 'prepare_body or rewind_body or getattr_proxy_stream_follows_redirect'"
         ),
+    }
+
+
+def _click_ready_row() -> dict[str, object]:
+    return {
+        "record_kind": "issue_pr_candidate_readiness",
+        "replay_id": CLICK_DEFAULT_MAP_REPLAY_ID,
+        "ready_for_candidate_attempt": True,
+        "validation_command": "pytest tests/test_defaults.py -q",
+    }
+
+
+def _click_prompt_spec_row() -> dict[str, object]:
+    return {
+        "record_kind": "issue_pr_prompt_spec",
+        "replay_id": CLICK_DEFAULT_MAP_REPLAY_ID,
+        "status": "normalized",
+        "prompt_spec_kind": "click_default_map_multi_value_parameter",
+    }
+
+
+def _click_validation_row() -> dict[str, object]:
+    return {
+        "record_kind": "issue_pr_replay_preflight_outcome",
+        "replay_id": CLICK_DEFAULT_MAP_REPLAY_ID,
+        "status": "passed",
+        "validation_command": "pytest tests/test_defaults.py -q",
     }
 
 

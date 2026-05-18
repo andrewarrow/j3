@@ -1270,7 +1270,7 @@ Long-term target:
 
 ### DATA-014: Second issue/PR candidate attempt
 
-- Status: active
+- Status: done
 - Why: after `DATA-012`, the loop should immediately test whether the
   candidate-attempt surface generalizes to the other DATA-010 ready row instead
   of overfitting Requests.
@@ -1285,6 +1285,17 @@ Long-term target:
   not expressible, record the exact materialization/action gap.
 - Tests: focused candidate-attempt tests, plan consistency, `git diff
   --check`, and live focused validation when feasible.
+- Completion note: added a bounded Click default_map candidate-attempt path for
+  exactly `pallets__click-issue-2745-pr-3364`. The live repo-before attempt
+  materialized `src/click/core.py` with the existing delimited source-region
+  action and inserted `tests/test_defaults.py::test_default_map_nargs` with a
+  deterministic pytest-function insertion. Validation passed
+  `pytest tests/test_defaults.py -q` with `39 passed in 0.03s`, changing only
+  `src/click/core.py` and `tests/test_defaults.py` inside the DATA-010
+  allowlist. The current surface covers the source/test behavior but not the
+  full accepted edit because `CHANGES.rst`, `docs/commands.md`, and
+  `docs/conf.py` require a changelog/docs/Sphinx config materialization action
+  that does not exist yet.
 
 ### DATA-015: Issue/PR readiness refresh after Click semver spec
 
@@ -1335,7 +1346,7 @@ Long-term target:
 Start with these unless fresh evidence changes the order:
 
 1. `DATA-016`: third issue/PR candidate attempt against readiness-approved
-   Click #3298 after DATA-014 is reviewed.
+   Click #3298.
 2. `KNOW-003`: broaden knowledge-use attribution where scoring shows missing
    local-knowledge evidence.
 3. `MODEL-006`: candidate-after or AST-delta observation for ranking evidence.

@@ -44,36 +44,12 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-### `DATA-014`: Click default_map issue/PR candidate attempt
-
-- Status: active
-- Owner: worker Volta (`019e3c28-730c-73f3-ab83-c81752305c9c`).
-- Why: `DATA-012` proved one real issue/PR candidate can be materialized and
-  validated for Requests. The next hard proof is whether the same
-  candidate-attempt record shape can cover the other DATA-010 ready row without
-  overfitting to Requests.
-- Write scope: `j3/issue_pr_candidate_attempt.py`,
-  `tests/test_issue_pr_candidate_attempt.py`, optional compact report,
-  generated outputs under `/tmp`, and plan updates. Do not edit
-  `j3/issue_pr_prompt_spec.py`, `j3/issue_pr_readiness.py`, or
-  `j3/local_knowledge.py`.
-- Acceptance: attempt exactly `pallets__click-issue-2745-pr-3364` on a
-  repo-before checkout. Record candidate actions, source/test materialization
-  result, candidate diff or exact blocker, allowed-write-path checks,
-  validation command/runtime, pass/fail, residual labels, and whether the
-  current structured-action surface covers the accepted edit. If Click #2745
-  needs a materialization action not present yet, record that exact gap rather
-  than broadening scope silently. No hosted LLM use.
-- Tests: focused candidate-attempt tests, `pytest
-  tests/test_plan_consistency.py -q`, `git diff --check`, and live
-  `pytest tests/test_defaults.py -q` validation when feasible.
-
 ## Ready Queue
 
 These are good next assignments for the next loop:
 
-1. `DATA-016`: third issue/PR candidate attempt against Click #3298 after the
-   in-flight DATA-014 result is reviewed.
+1. `DATA-016`: third issue/PR candidate attempt against readiness-approved
+   Click #3298.
 2. `KNOW-003`: broaden knowledge-use attribution where scoring shows missing
    local-knowledge evidence.
 3. `MODEL-006`: add candidate-after or AST-delta observation for ranking
@@ -103,6 +79,22 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `DATA-014`: added a bounded Click default_map candidate-attempt path for
+  exactly `pallets__click-issue-2745-pr-3364`. The live `/tmp` attempt on
+  repo-before `8a2b48901a08b3d2ec3a9bbd151948a9765368c6` materialized the
+  source insertion in `src/click/core.py` with the existing delimited
+  source-region action and inserted
+  `tests/test_defaults.py::test_default_map_nargs` with a deterministic
+  pytest-function insertion. The candidate changed only `src/click/core.py`
+  and `tests/test_defaults.py`, stayed inside the DATA-010 allowlist, ran
+  `python -m pip install -e . pytest` plus `pytest tests/test_defaults.py -q`,
+  and passed with `39 passed in 0.03s` and `1.106s` total recorded validation
+  runtime. The source/test behavior is covered, but the full accepted edit is
+  not: `CHANGES.rst`, `docs/commands.md`, and `docs/conf.py` remain an
+  explicit `accepted_auxiliary_paths_not_materialized` gap because the current
+  structured-action surface has no changelog/docs/Sphinx config materializer.
+  Artifacts: `/tmp/j3-data-014-live/candidate.json` and
+  `/tmp/j3-data-014-live/report.md`.
 - `DATA-015`: reran the first-three issue/PR readiness gate with DATA-013
   Click semver prompt/spec evidence included. All three rows are now
   `ready_for_candidate_attempt` with no missing-evidence labels. Validation

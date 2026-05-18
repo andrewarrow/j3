@@ -2233,3 +2233,45 @@ meaningful work. Do not replace this file with a daily reset.
 - Next: after DATA-014 is reviewed, assign `DATA-016` against
   `pallets__click-issue-3298-pr-3299`.
 - Blockers: none.
+
+### 2026-05-18 - DATA-014 - Click default_map issue/PR candidate attempt
+
+- Owner: worker Volta (`019e3c28-730c-73f3-ab83-c81752305c9c`).
+- Files changed: `j3/issue_pr_candidate_attempt.py`,
+  `tests/test_issue_pr_candidate_attempt.py`, `plans/active.md`,
+  `plans/backlog.md`, `plans/progress.md`.
+- Tests: `python -m py_compile j3/issue_pr_candidate_attempt.py
+  tests/test_issue_pr_candidate_attempt.py` -> passed; `pytest
+  tests/test_issue_pr_candidate_attempt.py -q` -> 8 passed; live CLI smoke
+  `python -m j3.issue_pr_candidate_attempt --manifest
+  examples/issue_pr_mini_replay/manifest.json --replay-id
+  pallets__click-issue-2745-pr-3364 --repo-path /tmp/j3-data-014-live/click
+  --readiness-evidence /private/tmp/j3-data-010-readiness.jsonl
+  --prompt-spec-evidence /private/tmp/j3-data-009-click-default-map-spec.jsonl
+  --validation-evidence /private/tmp/j3-data-007-blocker-drilldown/outcomes.jsonl
+  --setup-command "python -m pip install -e . pytest" --validation-command
+  "pytest tests/test_defaults.py -q" --validate --validation-timeout-seconds
+  180 --out /tmp/j3-data-014-live/candidate.json --report
+  /tmp/j3-data-014-live/report.md` -> passed with status `validated`;
+  `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check`
+  -> passed.
+- Result: added a bounded Click default_map candidate-attempt path for exactly
+  `pallets__click-issue-2745-pr-3364` with no hosted LLM use. The live
+  repo-before attempt materialized the source insertion in `src/click/core.py`
+  using the existing delimited source-region action, inserted
+  `tests/test_defaults.py::test_default_map_nargs` with deterministic
+  pytest-function insertion, changed only `src/click/core.py` and
+  `tests/test_defaults.py`, and stayed inside the DATA-010 allowlist.
+  Validation passed `pytest tests/test_defaults.py -q` with
+  `39 passed in 0.03s` and `1.106s` total recorded runtime. The source/test
+  behavior is covered, but the full accepted edit is not: `CHANGES.rst`,
+  `docs/commands.md`, and `docs/conf.py` remain an explicit
+  `accepted_auxiliary_paths_not_materialized` gap because there is no current
+  changelog/docs/Sphinx config materialization action.
+- Commit: pending in worker commit.
+- Push: pending.
+- Next: assign `DATA-016` against readiness-approved
+  `pallets__click-issue-3298-pr-3299`, preserving the same evidence fields and
+  recording any materialization gap precisely.
+- Blockers: none for source/test candidate validation; full accepted-edit
+  coverage remains blocked on a changelog/docs/Sphinx config materializer.

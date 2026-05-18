@@ -3692,7 +3692,8 @@ meaningful work. Do not replace this file with a daily reset.
 - Owner: coordinator.
 - Files changed: `plans/active.md`, `plans/backlog.md`, and
   `plans/progress.md`.
-- Tests: pending before dispatch commit.
+- Tests: `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff
+  --check` -> passed.
 - Result: selected the next batch from the DATA-038 and MAT-008 residuals.
   `DATA-039` attacks the ranking blocker by trying to materialize and validate
   realistic issue/PR decoys, preferably on the Scrapy #7293 row, so pass@1 or
@@ -3700,7 +3701,22 @@ meaningful work. Do not replace this file with a daily reset.
   generalization by attempting the adjacent held-out `pytest#14475`
   constrained-source/test row with reusable action records, not another
   PR-named materializer.
+- Commit: 6419c34.
+- Push: succeeded.
+- Next: worker Galileo (`019e3cd0-c73c-7351-b670-d7722c384d04`) owns
+  `DATA-039`; worker Epicurus (`019e3cd1-0252-7193-bffa-6920c4a721ac`) owns
+  `MAT-009`.
+- Blockers: none.
+
+### 2026-05-18 - Worker IDs - DATA-039 / MAT-009
+
+- Owner: coordinator.
+- Files changed: `plans/active.md` and `plans/progress.md`.
+- Tests: pending before commit.
+- Result: recorded worker Galileo
+  (`019e3cd0-c73c-7351-b670-d7722c384d04`) for `DATA-039` and worker Epicurus
+  (`019e3cd1-0252-7193-bffa-6920c4a721ac`) for `MAT-009`.
 - Commit: pending.
 - Push: pending.
-- Next: dispatch independent workers for `DATA-039` and `MAT-009`.
+- Next: continue non-overlapping coordinator review while both workers run.
 - Blockers: none.

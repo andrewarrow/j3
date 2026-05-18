@@ -47,7 +47,7 @@ This is the live coordinator board. Keep it current and compact.
 ### `DATA-039`: Live issue/PR decoy validation slice
 
 - Status: active
-- Owner: pending worker assignment.
+- Owner: worker Galileo (`019e3cd0-c73c-7351-b670-d7722c384d04`).
 - Write scope: focused issue/PR decoy validation or ranking-evidence module
   and tests, optional DATA-039 docs/report, generated artifacts under `/tmp`,
   and planning updates. Avoid editing MAT-009-owned held-out source-region
@@ -64,7 +64,7 @@ This is the live coordinator board. Keep it current and compact.
 ### `MAT-009`: Held-out pytest scanner source-region candidate
 
 - Status: active
-- Owner: pending worker assignment.
+- Owner: worker Epicurus (`019e3cd1-0252-7193-bffa-6920c4a721ac`).
 - Write scope: held-out source-region candidate module/tests or extensions,
   optional MAT-009 docs/report, generated artifacts under `/tmp`, and planning
   updates. Avoid editing DATA-039-owned ranking/decoy modules.

@@ -3472,3 +3472,21 @@ meaningful work. Do not replace this file with a daily reset.
   progress.
 - Blockers: ranking evidence remains a next-stage gap; the pip row remains
   blocked separately on validation fixture setup.
+
+### 2026-05-18 - Coordinator Dispatch - DATA-037 / MAT-007
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, and
+  `plans/progress.md`.
+- Tests: pending before dispatch commit.
+- Result: selected the next batch to answer hard falsifiable questions rather
+  than continuing fixture-comfort work. `DATA-037` targets ranking survival on
+  the now-validated real issue/PR candidates from DATA-029 and DATA-035 by
+  building a shadow decoy harness and reporting pass@1/pass@k plus residuals.
+  `MAT-007` refreshes real PR materialization coverage after the two candidate
+  wins to test whether the structured-action surface is converging on reusable
+  families or becoming a bespoke action list.
+- Commit: pending.
+- Push: pending.
+- Next: dispatch independent workers for `DATA-037` and `MAT-007`.
+- Blockers: none.

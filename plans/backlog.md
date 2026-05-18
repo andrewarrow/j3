@@ -649,6 +649,28 @@ Long-term target:
   `45 passed in 0.03s`; candidate record:
   `/tmp/j3-mat-006-live.3KJIUG/candidate.json`.
 
+### MAT-007: Real PR materialization coverage refresh
+
+- Status: active
+- Why: DATA-029 and DATA-035 prove two difficult source/test issue/PR
+  candidates can be materialized, but they may still be bespoke wins. The next
+  hard question is whether the materialization surface is converging on reusable
+  families or exploding one accepted PR at a time.
+- Write scope: materialization-audit docs or data under `docs/` and `/tmp`,
+  optional focused checker/tests, and plan updates. Do not implement new
+  materializers in this task.
+- Acceptance: refresh the MAT-001 action-coverage thesis against a held-out
+  sample of real accepted Python PR diffs after DATA-029 and DATA-035. Include
+  at least 15 rows not already counted as validated candidate wins; classify
+  each diff by the weakest sufficient materialization mechanism:
+  `current_structured_action`, `general_typed_builder`,
+  `repo_convention_builder`, `constrained_local_generator`, or
+  `not_currently_expressible`. Report counts, examples, whether the DATA-029
+  and DATA-035 action families reduce the largest bucket, and concrete failure
+  criteria for action vocabulary explosion or weak generalization.
+- Tests: plan consistency, `git diff --check`, and focused checker tests if
+  code is added.
+
 ### KNOW-001: Local knowledge inventory for the wedge
 
 - Status: done
@@ -2054,11 +2076,34 @@ Long-term target:
   `/tmp/j3-data-036-pip-validation-scripttest/report-data-036.md`, and
   `docs/DATA_036_PIP_VALIDATION_RECIPE_SCRIPTTEST_PROBE_2026-05-18.md`.
 
+### DATA-037: Real issue/PR candidate ranking decoy harness
+
+- Status: active
+- Why: DATA-029 and DATA-035 prove that the system can materialize and validate
+  two real issue/PR source/test candidates, but the ranking question is still
+  unproven. The next hard proof is whether the accepted candidate can survive
+  realistic decoys on held-out real-repo rows using local, inspectable evidence.
+- Write scope: a new focused issue/PR ranking or decoy-evidence module and
+  tests, optional compact docs/report, generated outputs under `/tmp`, and
+  plan updates. Do not change production ranking gates.
+- Acceptance: consume the validated DATA-029 pytest #14462 and DATA-035 Scrapy
+  #7293 candidate records as real issue/PR rows; build a shadow ranking harness
+  with the accepted validated candidate plus at least three realistic decoys
+  for each row. Decoys should test the known hard mistakes, such as missing
+  source state, mutating `peek`, stale `min(stats)` selection, missing tests, or
+  incomplete timedelta tolerance semantics. Report pass@1, pass@k, first
+  accepted rank, candidate-after/diff/AST feature availability, residual
+  labels, and whether the accepted candidate outranks the decoys without using
+  hosted LLM judgment. If existing scorer inputs are insufficient, record the
+  exact observation or feature blocker instead of claiming a pass.
+- Tests: focused ranking/decoy tests, plan consistency, `git diff --check`,
+  and a CLI/report smoke if a CLI is added.
+
 ## Next Recommended Queue
 
 Start with these unless fresh evidence changes the order:
 
-1. `MODEL-004`: distinguish mapping key and value targets.
-2. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.
-3. `KNOW-003`: broaden knowledge-use attribution where scoring shows missing
+1. `KNOW-003`: broaden knowledge-use attribution where scoring shows missing
    local-knowledge evidence.
+2. `MODEL-004`: distinguish mapping key and value targets.
+3. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.

@@ -44,17 +44,43 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-No active worker tasks at this instant; the coordinator is recording the next
-dispatch. Continuous loop mode still applies.
+### `DATA-037`: Real issue/PR candidate ranking decoy harness
+
+- Status: active
+- Owner: pending worker assignment.
+- Write scope: a new focused issue/PR ranking or decoy-evidence module and
+  tests, optional compact docs/report, generated outputs under `/tmp`, and
+  planning updates. Do not change production ranking gates.
+- Acceptance: consume the validated DATA-029 pytest #14462 and DATA-035 Scrapy
+  #7293 candidate records as real issue/PR rows; build a shadow ranking harness
+  with the accepted validated candidate plus realistic decoys for each row;
+  report pass@1, pass@k, first accepted rank, feature inputs available from
+  candidate-after/diff/AST metadata, and residual labels. If the existing
+  ranker cannot score these rows honestly, record the exact observation or
+  feature blocker instead of inventing a passing metric.
+
+### `MAT-007`: Real PR materialization coverage refresh
+
+- Status: active
+- Owner: pending worker assignment.
+- Write scope: materialization-audit docs or data under `docs/` and `/tmp`,
+  optional focused checker/tests, and planning updates. Do not implement new
+  materializers in this task.
+- Acceptance: refresh the MAT-001 action-coverage thesis against a held-out
+  sample of real accepted Python PR diffs after DATA-029 and DATA-035. Report
+  current-structured-action, general-builder, repo-convention-builder,
+  constrained-local-generator, and not-expressible counts; identify whether the
+  bounded materializer wins are generalizing or becoming bespoke actions; and
+  define concrete failure criteria for action vocabulary explosion.
 
 ## Ready Queue
 
 These are good next assignments for the next loop:
 
-1. `MODEL-004`: distinguish mapping key and value targets.
-2. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.
-3. `KNOW-003`: broaden knowledge-use attribution where scoring shows missing
+1. `KNOW-003`: broaden knowledge-use attribution where scoring shows missing
    local-knowledge evidence.
+2. `MODEL-004`: distinguish mapping key and value targets.
+3. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 

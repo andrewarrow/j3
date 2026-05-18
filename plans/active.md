@@ -44,24 +44,25 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-- `DATA-020`: worker to materialize the DATA-017 `docs/conf.py`
-  `myst_heading_anchors = 3` Sphinx config assignment and rerun the DATA-019
-  docs build with both auxiliary docs paths present. Ownership:
+- `DATA-020`: worker Einstein (`019e3c4b-0b2b-7761-9c59-281afdde9486`) to
+  materialize the DATA-017 `docs/conf.py` `myst_heading_anchors = 3` Sphinx
+  config assignment and rerun the DATA-019 docs build with both auxiliary docs
+  paths present. Ownership:
   `j3/issue_pr_docs_materializer.py`,
   `tests/test_issue_pr_docs_materializer.py`, generated `/tmp` artifacts,
   optional compact report under `docs/`, and plan updates. Acceptance: live
   pinned Click checkout changes only `docs/commands.md` plus `docs/conf.py`,
   records the config assignment action, and either passes Sphinx docs
   validation or records the exact remaining blocker.
-- `DATA-021`: worker to acquire pytest local-knowledge and prompt/spec
-  evidence for `pytest-dev__pytest-issue-14442-pr-14443`, the first DATA-018
-  next row. Ownership: focused issue/PR prompt/spec and/or local-knowledge
-  modules/tests, generated `/tmp` evidence, optional compact report under
-  `docs/`, and plan updates. Acceptance: emit machine-readable evidence for
-  strict `addopts`, strict markers/config semantics, changed-file context,
-  pytest test patterns, focused validation recipe, changelog/AUTHORS
-  conventions, and remaining readiness blockers without attempting candidate
-  edits.
+- `DATA-021`: worker Plato (`019e3c4b-0b56-71e3-8660-a2fff453ca2d`) to acquire
+  pytest local-knowledge and prompt/spec evidence for
+  `pytest-dev__pytest-issue-14442-pr-14443`, the first DATA-018 next row.
+  Ownership: focused issue/PR prompt/spec and/or local-knowledge modules/tests,
+  generated `/tmp` evidence, optional compact report under `docs/`, and plan
+  updates. Acceptance: emit machine-readable evidence for strict `addopts`,
+  strict markers/config semantics, changed-file context, pytest test patterns,
+  focused validation recipe, changelog/AUTHORS conventions, and remaining
+  readiness blockers without attempting candidate edits.
 
 ## Ready Queue
 

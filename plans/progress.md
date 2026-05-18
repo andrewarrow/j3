@@ -2648,3 +2648,16 @@ meaningful work. Do not replace this file with a daily reset.
 - Push: succeeded.
 - Next: workers dispatched for `DATA-022` and `DATA-023`.
 - Blockers: none.
+
+### 2026-05-18 - Worker IDs - DATA-022 / DATA-023
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/progress.md`.
+- Tests: pending worker-ID checkpoint checks.
+- Result: recorded worker Dalton
+  (`019e3c56-c72f-7c13-b4b0-29f9fdc3d2dd`) for `DATA-022` and worker Godel
+  (`019e3c56-c75f-7320-8458-1a6d4fc9c3a9`) for `DATA-023`.
+- Commit: pending coordinator checkpoint commit.
+- Push: pending.
+- Next: continue non-overlapping coordinator review while both workers run.
+- Blockers: none.

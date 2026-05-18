@@ -44,15 +44,17 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-- `DATA-022`: worker to rerun candidate-readiness for
-  `pytest-dev__pytest-issue-14442-pr-14443` using DATA-018 preflight plus
-  DATA-021 prompt/spec and local-knowledge evidence. Ownership:
+- `DATA-022`: worker Dalton (`019e3c56-c72f-7c13-b4b0-29f9fdc3d2dd`) to
+  rerun candidate-readiness for `pytest-dev__pytest-issue-14442-pr-14443`
+  using DATA-018 preflight plus DATA-021 prompt/spec and local-knowledge
+  evidence. Ownership:
   `j3/issue_pr_readiness.py`, `tests/test_issue_pr_readiness.py`, generated
   `/tmp` readiness artifacts, optional compact report under `docs/`, and plan
   updates. Acceptance: one readiness row for pytest #14442 with exact missing
   evidence labels, allowed write scope, validation command, residual labels,
   and recommendation; if not ready, preserve the concrete blocker.
-- `DATA-023`: worker to audit materialization coverage for the accepted
+- `DATA-023`: worker Godel (`019e3c56-c75f-7320-8458-1a6d4fc9c3a9`) to audit
+  materialization coverage for the accepted
   `pytest-dev__pytest-issue-14442-pr-14443` diff before any candidate edit.
   Ownership: a focused issue/PR materialization audit module/tests, generated
   `/tmp` artifacts, optional compact report under `docs/`, and plan updates.

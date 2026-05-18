@@ -29,7 +29,7 @@ This is the live coordinator board. Keep it current and compact.
 ### `GS7-010`: Materialize held-out humanize tests-only candidate
 
 - Status: active
-- Owner: pending worker dispatch.
+- Owner: worker Bernoulli (`019e3bad-47d0-7093-9398-8105cdffc6f0`).
 - Goal: attack `humanize-tests-naturalsize-negative-strings` as the next
   held-out tests-only generalization proof after the h11 pass.
 - Write scope: `j3/real_repo_tests_planner.py`,
@@ -50,7 +50,7 @@ This is the live coordinator board. Keep it current and compact.
 ### `REAL-009`: One-file feature shadow score after h11 materializer
 
 - Status: active
-- Owner: pending worker dispatch.
+- Owner: worker McClintock (`019e3bad-7770-7962-bea2-3cf62e4e4b8c`).
 - Goal: score the `MAT-003` h11 one-file feature candidate against the
   real-repo ladder instead of treating the live materializer check as product
   gate evidence by itself.

@@ -1268,8 +1268,12 @@ meaningful work. Do not replace this file with a daily reset.
   scoring. The next active batch assigns `GS7-010` for the held-out `humanize`
   tests-only materializer and `REAL-009` to score the h11 one-file feature
   candidate across the ladder feature gate.
-- Commit: pending
-- Push: pending
-- Next: dispatch workers for `GS7-010` and `REAL-009`; keep `GS7-011`,
-  `REAL-008`, and `MAT-004` ready for the following loop.
+- Commit: 0a23ef0
+- Push: succeeded
+- Next: workers dispatched for `GS7-010` and `REAL-009`: Bernoulli
+  (`019e3bad-47d0-7093-9398-8105cdffc6f0`) owns the held-out `humanize`
+  tests-only materializer, and McClintock
+  (`019e3bad-7770-7962-bea2-3cf62e4e4b8c`) owns the h11 one-file feature
+  scorer. Keep `GS7-011`, `REAL-008`, and `MAT-004` ready for the following
+  loop.
 - Blockers: none

@@ -3177,7 +3177,21 @@ meaningful work. Do not replace this file with a daily reset.
   `DATA-031` to acquire Scrapy prompt/spec and local-knowledge evidence, and
   `DATA-032` to isolate whether the pip validation recipe can be made
   hermetic and cheap enough for later evidence acquisition.
+- Commit: aa01d7a.
+- Push: succeeded.
+- Next: workers dispatched for `DATA-031` and `DATA-032`.
+- Blockers: none.
+
+### 2026-05-18 - Worker IDs - DATA-031 / DATA-032
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/progress.md`.
+- Tests: `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff
+  --check` -> passed.
+- Result: recorded worker Mencius
+  (`019e3c90-d36a-7522-b35f-4efdae1c77a0`) for `DATA-031` and worker
+  Archimedes (`019e3c90-d397-7323-b096-75a565a7ebb3`) for `DATA-032`.
 - Commit: pending.
 - Push: pending.
-- Next: dispatch workers for `DATA-031` and `DATA-032`.
+- Next: continue non-overlapping coordinator review while both workers run.
 - Blockers: none.

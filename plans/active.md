@@ -47,7 +47,7 @@ This is the live coordinator board. Keep it current and compact.
 ### `DATA-031`: Scrapy validation-split prompt/spec and local knowledge
 
 - Status: active
-- Owner: worker pending assignment.
+- Owner: worker Mencius (`019e3c90-d36a-7522-b35f-4efdae1c77a0`).
 - Write scope: `j3/issue_pr_prompt_spec.py`, `j3/local_knowledge.py`,
   `tests/test_issue_pr_prompt_spec.py`, `tests/test_local_knowledge.py`,
   generated outputs under `/tmp`, optional compact report under `docs/`, and
@@ -64,7 +64,7 @@ This is the live coordinator board. Keep it current and compact.
 ### `DATA-032`: Pip validation recipe isolation
 
 - Status: active
-- Owner: worker pending assignment.
+- Owner: worker Archimedes (`019e3c90-d397-7323-b096-75a565a7ebb3`).
 - Write scope: `j3/issue_pr_preflight.py`, `tests/test_issue_pr_preflight.py`,
   generated outputs under `/tmp`, optional compact report under `docs/`, and
   planning updates. Do not attempt candidate source edits.

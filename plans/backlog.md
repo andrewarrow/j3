@@ -824,7 +824,7 @@ Long-term target:
 
 ### MAT-012: Third held-out typed-builder/general-AST materialization stress row
 
-- Status: ready
+- Status: active
 - Why: MAT-010 and MAT-011 are positive held-out typed-builder rows, but the
   materialization question is still falsifiable: do action families generalize,
   or do they keep expanding per PR? `pallets/click#3396` is a harder held-out
@@ -2460,7 +2460,7 @@ Long-term target:
 
 ### VAL-003: Coverage-gap decoy policy and ranking-denominator probe
 
-- Status: ready
+- Status: active
 - Why: VAL-002 proved stronger behavior validation can catch a missed semantic
   decoy, but source-equivalent coverage-gap decoys remain indistinguishable
   without leaking accepted tests or accepted diffs. The next hard question is

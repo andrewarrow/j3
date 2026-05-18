@@ -3998,10 +3998,29 @@ meaningful work. Do not replace this file with a daily reset.
   failure while preserving accepted behavior. `scrapy_missing_tests` and
   `pytest_missing_invalid_tolerance_tests` remained passing coverage-gap
   decoys because their source behavior matches accepted source behavior.
-- Commit: pending.
-- Push: pending.
+- Commit: 5437313.
+- Push: succeeded.
 - Next: dispatch `VAL-003` to separate coverage-gap product blockers from
   ranker denominator policy, and `MAT-012` to stress held-out materialization
   generalization.
 - Blockers: issue/PR ranking remains shadow-only with
   `coverage_gap_decoy_indistinguishable_without_accepted_label_leakage`.
+
+### 2026-05-18 - Coordinator Dispatch - VAL-003 / MAT-012
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, and
+  `plans/progress.md`.
+- Tests: `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff
+  --check` for touched files -> passed.
+- Result: selected the next hard probes from the VAL-002 and MAT-011
+  residuals. `VAL-003` attacks the validation/ranking interface by separating
+  behavior-observable hard negatives from coverage-gap product blockers without
+  accepted-label leakage. `MAT-012` attacks materialization generalization by
+  attempting the harder held-out `pallets/click#3396` typed/general-AST row
+  before falling back to another MAT-007 `general_typed_builder` row.
+- Commit: pending.
+- Push: pending.
+- Next: spawn one worker for `VAL-003` and one worker for `MAT-012`, then
+  record their worker IDs.
+- Blockers: none.

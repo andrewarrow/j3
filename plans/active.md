@@ -44,16 +44,44 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-No active worker tasks while the coordinator records the next hard-probe
-assignments after `VAL-002`.
+### `VAL-003`: Coverage-gap decoy policy and ranking-denominator probe
+
+- Status: active
+- Owner: pending worker spawn.
+- Write scope: issue/PR ranking or validation-policy helper code/tests,
+  optional `docs/VAL_003_*`, and generated artifacts under `/tmp`. Avoid
+  materialization modules.
+- Acceptance: define and run a shadow-only policy experiment over the DATA-039,
+  DATA-040, and VAL-002 artifacts that separates behavior-observable hard
+  negatives from coverage-gap product blockers without using accepted-label
+  leakage. Record strict ranking readiness, behavior-negative-only ranking
+  readiness, blocker counts, pass@1/pass@k if rankable, runtime, and the exact
+  reason if the separation itself depends on decoy labels rather than
+  observable candidate/validation evidence.
+
+### `MAT-012`: Third held-out typed-builder/general-AST materialization stress row
+
+- Status: active
+- Owner: pending worker spawn.
+- Write scope: `j3/heldout_typed_builder_candidate.py`,
+  `tests/test_heldout_typed_builder_candidate.py`, optional
+  `docs/MAT_012_*`, and generated artifacts under `/tmp`. Avoid issue/PR
+  ranking, validation-strength probes, and planning files unless explicitly
+  assigned by the coordinator.
+- Acceptance: attempt `pallets/click#3396` first, using reusable typed or
+  general AST action records rather than a PR-named action kind. Record pinned
+  base ref, accepted changed files, mutation scope, candidate-after diff/AST
+  metadata, accepted-diff comparison, validation result or exact blocker, and
+  whether the action vocabulary stayed general. If `click#3396` is blocked by
+  unavailable repo setup or an unbounded synthesis need, record that blocker
+  and only then fall back to the next MAT-007 `general_typed_builder` row such
+  as `psf/requests#7437`.
 
 ## Ready Queue
 
 These are good next assignments for the next loop:
 
-1. `VAL-003`: coverage-gap decoy policy and ranking-denominator probe.
-2. `MAT-012`: third held-out typed-builder/general-AST materialization stress
-   row.
+1. `KNOW-003`: wire knowledge-use attribution into tests-only planning.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 

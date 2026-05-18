@@ -55,7 +55,7 @@ Long-term target:
 
 ### GS7-001: Refresh current GreenShot-7 baseline
 
-- Status: active
+- Status: done
 - Why: before adding tasks, confirm what the current request-to-repo runner can
   actually solve.
 - Write scope: generated output under `/tmp`, progress notes only unless a small
@@ -100,7 +100,7 @@ Long-term target:
 
 ### DATA-001: Audit expanded prompt corpus quality
 
-- Status: ready
+- Status: active
 - Why: the current 320 rows are useful bootstrap data, not generalization proof.
 - Write scope: prompt inspection command/report and progress notes.
 - Acceptance: report counts by source type, split, task type, domain, ambiguity,
@@ -141,7 +141,7 @@ Long-term target:
 
 ### TRANS-001: Run full transition shadow matrix
 
-- Status: active
+- Status: done
 - Why: current evidence is smoke-scale and remains shadow-only.
 - Write scope: generated outputs under `/tmp`, progress notes, small bug fixes
   only if the runner fails.
@@ -151,8 +151,8 @@ Long-term target:
 
 ### TRANS-002: Diagnose matrix gate blockers
 
-- Status: blocked
-- Blocker: depends on TRANS-001.
+- Status: active
+- Blocker: none; `TRANS-001` matrix evidence exists under `/tmp`.
 - Why: next scorer/action work should follow residual evidence.
 - Write scope: residual analysis docs, targeted tests, small fixes only if
   directly supported by residuals.
@@ -163,7 +163,8 @@ Long-term target:
 ### TRANS-003: Expand standard matrix manifest cautiously
 
 - Status: blocked
-- Blocker: depends on TRANS-001 runtime and residuals.
+- Blocker: depends on `TRANS-002` blocker diagnosis and safe expansion
+  criteria.
 - Why: product gates need broader held-out suites without making local runs
   impractical.
 - Write scope: `examples/transition_shadow_matrix.json`, tests, docs.
@@ -234,10 +235,9 @@ Long-term target:
 
 Start with these unless fresh evidence changes the order:
 
-1. `OPS-001`: finish this migration and verify docs.
-2. `TRANS-001`: run the full transition shadow matrix and record the actual
-   gate result.
-3. `GS7-001`: refresh current GreenShot-7 baseline.
-4. `DATA-001`: audit prompt corpus quality.
-5. Coordinator review: choose between expanding GreenShot-7 fixtures,
-   prompt/schema validation, or matrix blocker diagnosis based on evidence.
+1. `TRANS-002`: diagnose matrix gate blockers from the 2026-05-18 evidence.
+2. `DATA-001`: audit prompt corpus quality.
+3. `OPS-002`: add a lightweight plan consistency check.
+4. `GS7-002`: add five non-calculator request-to-repo fixtures.
+5. Coordinator review: choose between prompt/schema validation,
+   GreenShot-7 fixture expansion, or scorer/model work based on evidence.

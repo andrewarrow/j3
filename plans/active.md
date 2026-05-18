@@ -14,27 +14,46 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-No worker tasks are active at this moment.
+### `TRANS-002`: Diagnose matrix gate blockers
+
+- Owner: worker Gauss (`019e3950-80f1-7ad1-b4f7-f39b67834c15`)
+- Status: active
+- Write scope: residual analysis docs, `plans/progress.md`,
+  `plans/active.md`; targeted tests; small fixes only if directly supported by
+  residual evidence.
+- Acceptance: matrix blockers grouped as missing generation, bad ranking, weak
+  observation, or insufficient validation, with recommended next actions.
+- Tests: `pytest tests/test_transition_residuals.py -q`,
+  `pytest tests/test_transition_shadow_matrix.py -q`, plus `git diff --check`.
+
+### `DATA-001`: Audit expanded prompt corpus quality
+
+- Owner: worker Pascal (`019e3950-8113-7cf3-ab6e-e813b4cd332f`)
+- Status: active
+- Write scope: prompt inspection command/report, `plans/progress.md`,
+  `plans/active.md`; no large generated artifacts committed.
+- Acceptance: report counts by source type, split, task type, domain,
+  ambiguity, inferred defaults, and synthetic template family; flag leakage
+  risks.
+- Tests: focused prompt corpus tests or CLI smoke, plus `git diff --check`.
 
 ## Ready Queue
 
-These are good next assignments after the completed `TRANS-001` and `GS7-001`
-evidence runs:
+These are good next assignments after the current active tasks complete:
 
-1. `DATA-001`: audit expanded prompt corpus quality.
-2. `OPS-002`: add a lightweight plan consistency check.
-3. `GS7-002`: add five non-calculator request-to-repo fixtures.
+1. `OPS-002`: add a lightweight plan consistency check.
+2. `GS7-002`: add five non-calculator request-to-repo fixtures.
+3. `DATA-002`: add prompt/spec schema validation.
 
-Run at most two of these in parallel at first. `TRANS-001` is mostly generated
-output and progress notes; `GS7-001` or `DATA-001` can run beside it if their
-write scopes stay separate.
+Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
 ## Paused Or Blocked
 
-- `TRANS-002`: blocked until full matrix evidence exists.
-- `TRANS-003`: blocked until matrix runtime and residuals are known.
+- `TRANS-003`: blocked until `TRANS-002` diagnoses matrix blockers and proposes
+  safe manifest expansion criteria.
 - `DATA-004`: blocked until issue/PR mining and schema validation exist.
-- `MODEL-002`: blocked until evidence review identifies concrete residuals.
+- `MODEL-002`: blocked until `TRANS-002` identifies concrete scorer/model
+  residual fixes.
 
 ## Coordinator Review Triggers
 

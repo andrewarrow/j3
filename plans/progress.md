@@ -105,8 +105,8 @@ meaningful work. Do not replace this file with a daily reset.
   `remain_shadow_only`, `eligible_for_guarded_opt_in_trial: false`; blockers
   are that all suite V3 gates must be `ready_for_guarded_opt_in` and matrix plus
   per-suite residual counts must be zero.
-- Commit: pending until this entry is committed
-- Push: pending until commit is pushed
+- Commit: 1a614fb415a007af9a83d55bb6d0904d51c3bbac
+- Push: succeeded
 - Next: start `TRANS-002` to diagnose the matrix blockers, prioritizing the 13
   scorer-ranking gaps in `greenshot_3`, `greenshot_5_subset`, and
   `greenshot_6_subset`, plus the one generation gap.

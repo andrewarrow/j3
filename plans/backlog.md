@@ -1351,7 +1351,7 @@ Long-term target:
 
 ### DATA-017: Click auxiliary materialization gap audit
 
-- Status: active
+- Status: done
 - Why: `DATA-014` passed source/test validation but did not cover the full
   accepted PR because `CHANGES.rst`, `docs/commands.md`, and `docs/conf.py`
   have no current materializer. This is a direct test of whether structured
@@ -1371,6 +1371,14 @@ Long-term target:
   task.
 - Tests: focused audit tests, plan consistency, `git diff --check`, and a CLI
   smoke that emits machine-readable audit rows plus the compact report.
+- Completion note: added a DATA-017 auxiliary-gap audit module and report for
+  Click #2745/#3364. The audit emits one JSONL row each for `CHANGES.rst`,
+  `docs/commands.md`, and `docs/conf.py`, including manifest provenance,
+  DATA-014 candidate provenance, accepted-diff stats, current/proposed action
+  family, validation cost, likely failure mode, and smallest next falsifiable
+  materializer task. It classifies the changelog and Sphinx config paths as
+  covered by small proposed deterministic actions, while the command docs
+  section requires a constrained local generator.
 
 ## Next Recommended Queue
 

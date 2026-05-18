@@ -44,16 +44,6 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-- `DATA-017`: worker Erdos (`019e3c34-c9b5-76f3-beaa-0c4b9000665d`) to audit
-  the DATA-014 accepted auxiliary-path gap for `CHANGES.rst`,
-  `docs/commands.md`, and `docs/conf.py`. Ownership:
-  `j3/issue_pr_auxiliary_gap_audit.py`,
-  `tests/test_issue_pr_auxiliary_gap_audit.py`,
-  `docs/DATA_017_CLICK_AUXILIARY_MATERIALIZATION_GAP_2026-05-18.md`,
-  generated `/tmp` artifacts, and plan updates. Acceptance: classify each
-  auxiliary accepted path by current/proposed action coverage and define the
-  smallest falsifiable materializer next step.
-
 ## Ready Queue
 
 These are good next assignments for the next loop:
@@ -103,6 +93,15 @@ Review before assigning more work if:
   gap, limited to this bounded DATA-016 surface. Artifacts:
   `/tmp/j3-data-016-live/candidate.json` and
   `/tmp/j3-data-016-live/report.md`.
+- `DATA-017`: added a machine-readable auxiliary materialization-gap audit for
+  the DATA-014 Click #2745 accepted auxiliary paths. The audit rows classify
+  `CHANGES.rst` and `docs/conf.py` as covered by small proposed deterministic
+  actions, classify `docs/commands.md` as requiring a constrained local
+  generator, record manifest and DATA-014 candidate provenance, validation
+  cost, likely failure mode, and the smallest next falsifiable materializer
+  task for each path. Artifacts: `/tmp/j3-data-017-aux-gap/audit.jsonl` and
+  `/tmp/j3-data-017-aux-gap/report.md`; checked-in report:
+  `docs/DATA_017_CLICK_AUXILIARY_MATERIALIZATION_GAP_2026-05-18.md`.
 - `DATA-014`: added a bounded Click default_map candidate-attempt path for
   exactly `pallets__click-issue-2745-pr-3364`. The live `/tmp` attempt on
   repo-before `8a2b48901a08b3d2ec3a9bbd151948a9765368c6` materialized the

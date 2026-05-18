@@ -2351,3 +2351,36 @@ meaningful work. Do not replace this file with a daily reset.
   and decide whether the next useful step is broader issue/PR scoring or a new
   materializer family.
 - Blockers: none.
+
+### 2026-05-18 - DATA-017 - Click auxiliary materialization gap audit
+
+- Owner: worker Erdos (`019e3c34-c9b5-76f3-beaa-0c4b9000665d`).
+- Files changed: `j3/issue_pr_auxiliary_gap_audit.py`,
+  `tests/test_issue_pr_auxiliary_gap_audit.py`,
+  `docs/DATA_017_CLICK_AUXILIARY_MATERIALIZATION_GAP_2026-05-18.md`,
+  `plans/active.md`, `plans/backlog.md`, `plans/progress.md`.
+- Tests: `python -m py_compile j3/issue_pr_auxiliary_gap_audit.py
+  tests/test_issue_pr_auxiliary_gap_audit.py` -> passed; `pytest
+  tests/test_issue_pr_auxiliary_gap_audit.py -q` -> 3 passed; CLI smoke
+  `python -m j3.issue_pr_auxiliary_gap_audit --manifest
+  examples/issue_pr_mini_replay/manifest.json --candidate-artifact
+  /tmp/j3-data-014-live/candidate.json --repo-path
+  /tmp/j3-data-014-live/click --out
+  /tmp/j3-data-017-aux-gap/audit.jsonl --report
+  /tmp/j3-data-017-aux-gap/report.md` -> passed with 3 rows; `pytest
+  tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check` ->
+  passed.
+- Result: added a standalone auxiliary-gap audit that consumes the issue/PR
+  manifest plus the DATA-014 candidate artifact and emits one JSONL row per
+  accepted auxiliary path. The audit classifies `CHANGES.rst` and
+  `docs/conf.py` as covered by small proposed deterministic actions, classifies
+  `docs/commands.md` as requiring a constrained local generator, records
+  accepted-diff stats, manifest and DATA-014 provenance, validation cost,
+  likely failure mode, and the smallest next falsifiable materializer task.
+- Commit: pending final DATA-017 commit.
+- Push: pending.
+- Next: the smallest next auxiliary materializer proof is the one-line Sphinx
+  config assignment action, followed by deterministic changelog insertion and
+  a constrained Click docs-section generator.
+- Blockers: none for the audit; no auxiliary materializer was implemented in
+  this slice.

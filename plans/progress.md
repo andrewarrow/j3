@@ -3114,8 +3114,8 @@ meaningful work. Do not replace this file with a daily reset.
   recipe/dependency setup rather than edit quality. Scrapy checkout, setup, and
   baseline validation passed with `11 passed, 2 skipped`; it is the next
   validation-split row ready for prompt/spec and local-knowledge acquisition.
-- Commit: pending.
-- Push: pending.
+- Commit: 9861158.
+- Push: succeeded.
 - Next: acquire Scrapy prompt/spec and local-knowledge evidence, or isolate a
   pip validation recipe that installs the missing functional-test dependency.
 - Blockers: pip validation recipe is blocked on missing `installer`;

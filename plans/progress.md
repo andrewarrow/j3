@@ -351,3 +351,28 @@ meaningful work. Do not replace this file with a daily reset.
   `DATA-004`; keep large harvested manifests out of git.
 - Blockers: `DATA-004` still needs reviewed real issue/PR export rows and
   license/terms confirmation.
+
+### 2026-05-18 - GS7-002 - Non-calculator request-to-repo fixtures
+
+- Owner: worker GS7-002
+- Files changed: `examples/greenshot_7/tasks.json`, `j3/request_spec.py`,
+  `j3/greenfield.py`, `j3/greenshot_7.py`,
+  `tests/test_request_spec.py`, `tests/test_greenfield_calculator.py`,
+  `tests/test_greenshot_7.py`, `plans/active.md`, `plans/progress.md`
+- Tests: `pytest tests/test_greenshot_7.py -q` -> 1 passed;
+  `pytest tests/test_request_spec.py -q` -> 8 passed;
+  `pytest tests/test_greenfield_calculator.py -q` -> 8 passed;
+  `git diff --check` -> passed.
+- Result: added five non-calculator GreenShot-7 fixtures. The small slugify
+  library and key/value parser fixtures now parse, build, and validate. The
+  tests-only fixture is classified as `action_coverage`, the existing
+  `src/`-layout convention fixture is classified as `existing_repo_support`,
+  and the underspecified file-converter fixture is classified as
+  `expected_clarification`. GreenShot-7 now reports 15 total fixtures, 10
+  built, 10 validation-passed, 5 blocked/classified, and zero harness failures.
+- Commit: pending worker commit
+- Push: pending worker push
+- Next: use the classified gaps to scope tests-only actions, broader
+  existing-repo support, or a greenfield builder coverage map before adding
+  more synthetic requests.
+- Blockers: none

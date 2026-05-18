@@ -1,4 +1,4 @@
-"""Deterministic request-spec parsing for the GreenShot-7 calculator slice."""
+"""Deterministic request-spec parsing for the GreenShot-7 slice."""
 
 from __future__ import annotations
 
@@ -21,6 +21,22 @@ CALCULATOR_ARTIFACTS = ["calculator.py", "tests/test_calculator_cli.py"]
 CALCULATOR_INTERFACES = [{"kind": "cli", "style": "argparse"}]
 CALCULATOR_VALIDATION = {
     "commands": ["python -m pytest tests/test_calculator_cli.py -q"],
+    "hidden_cases": True,
+}
+SLUGIFY_ARTIFACTS = ["slugify.py", "tests/test_slugify.py"]
+SLUGIFY_INTERFACES = [
+    {"kind": "python_api", "module": "slugify", "callable": "slugify"}
+]
+SLUGIFY_VALIDATION = {
+    "commands": ["python -m pytest tests/test_slugify.py -q"],
+    "hidden_cases": True,
+}
+KV_PARSER_ARTIFACTS = ["kv_parser.py", "tests/test_kv_parser.py"]
+KV_PARSER_INTERFACES = [
+    {"kind": "python_api", "module": "kv_parser", "callable": "parse_key_value_lines"}
+]
+KV_PARSER_VALIDATION = {
+    "commands": ["python -m pytest tests/test_kv_parser.py -q"],
     "hidden_cases": True,
 }
 BLOCKED_VALIDATION = {"commands": [], "hidden_cases": False}
@@ -114,6 +130,102 @@ def parse_request_to_spec(
             task_name=resolved_task_name,
             target=intent_target,
             confidence=_intent_confidence(intent),
+        )
+
+    if _is_tests_only_slugify_request(normalized):
+        return _clarification_spec(
+            prompt=prompt,
+            task_name=resolved_task_name,
+            task_type="add_tests",
+            repo_mode="existing_repo",
+            domain="text_slugify",
+            field="repo_state",
+            question=(
+                "Which repository should be inspected and what existing slugify "
+                "behavior is expected before adding tests?"
+            ),
+            unsupported_requirements=[
+                {
+                    "field": "task_type",
+                    "value": "tests_only_existing_repo",
+                    "reason": "action_coverage",
+                }
+            ],
+        )
+
+    if _is_existing_repo_convention_request(normalized):
+        return _clarification_spec(
+            prompt=prompt,
+            task_name=resolved_task_name,
+            task_type="modify_library",
+            repo_mode="existing_repo",
+            domain="text_slugify",
+            field="repo_mode",
+            question=(
+                "Which existing repository path and package convention should be "
+                "inspected before editing?"
+            ),
+            unsupported_requirements=[
+                {
+                    "field": "repo_mode",
+                    "value": "src_layout_existing_repo_convention",
+                    "reason": "existing_repo_support",
+                }
+            ],
+        )
+
+    if _is_file_converter_clarification(normalized):
+        return _clarification_spec(
+            prompt=prompt,
+            task_name=resolved_task_name,
+            domain="unknown",
+            field="requirements",
+            question=(
+                "Which file formats should be converted, and should this be a "
+                "CLI or a Python library?"
+            ),
+        )
+
+    if _is_slugify_library_request(normalized):
+        return RequestSpec(
+            schema_version=SCHEMA_VERSION,
+            task_name=resolved_task_name,
+            task_type="create_library",
+            language="python",
+            repo_mode="new_repo",
+            domain="text_slugify",
+            prompt=prompt,
+            artifacts=list(SLUGIFY_ARTIFACTS),
+            interfaces=[dict(interface) for interface in SLUGIFY_INTERFACES],
+            features=["slugify_ascii_lowercase"],
+            operation_aliases={},
+            inferred_defaults=[],
+            clarifications_needed=[],
+            validation={
+                "commands": list(SLUGIFY_VALIDATION["commands"]),
+                "hidden_cases": SLUGIFY_VALIDATION["hidden_cases"],
+            },
+        )
+
+    if _is_key_value_parser_request(normalized):
+        return RequestSpec(
+            schema_version=SCHEMA_VERSION,
+            task_name=resolved_task_name,
+            task_type="create_library",
+            language="python",
+            repo_mode="new_repo",
+            domain="key_value_parser",
+            prompt=prompt,
+            artifacts=list(KV_PARSER_ARTIFACTS),
+            interfaces=[dict(interface) for interface in KV_PARSER_INTERFACES],
+            features=["parse_key_value_lines"],
+            operation_aliases={},
+            inferred_defaults=[],
+            clarifications_needed=[],
+            validation={
+                "commands": list(KV_PARSER_VALIDATION["commands"]),
+                "hidden_cases": KV_PARSER_VALIDATION["hidden_cases"],
+            },
         )
 
     if _mentions_scientific_calculator(normalized):
@@ -308,6 +420,51 @@ def _mentions_scientific_calculator(normalized: str) -> bool:
     )
 
 
+def _is_slugify_library_request(normalized: str) -> bool:
+    return (
+        _has_word(normalized, "slugify")
+        and (_has_word(normalized, "library") or _has_word(normalized, "module"))
+        and not _has_word(normalized, "existing")
+    )
+
+
+def _is_key_value_parser_request(normalized: str) -> bool:
+    has_parser = _has_word(normalized, "parser") or _has_word(normalized, "parse")
+    has_key_value = (
+        _has_word(normalized, "key value")
+        or _has_word(normalized, "key-value")
+        or "key=value" in normalized
+    )
+    return has_parser and has_key_value and not _has_word(normalized, "existing")
+
+
+def _is_tests_only_slugify_request(normalized: str) -> bool:
+    return (
+        (
+            _has_word(normalized, "test")
+            or _has_word(normalized, "tests")
+            or _has_word(normalized, "pytest")
+            or _has_word(normalized, "coverage")
+        )
+        and _has_word(normalized, "existing")
+        and _has_word(normalized, "slugify")
+    )
+
+
+def _is_existing_repo_convention_request(normalized: str) -> bool:
+    return (
+        _has_word(normalized, "existing")
+        and (_has_word(normalized, "src layout") or "src/" in normalized)
+        and _has_word(normalized, "slugify")
+    )
+
+
+def _is_file_converter_clarification(normalized: str) -> bool:
+    return _has_word(normalized, "converter") and not (
+        _has_word(normalized, "from") and _has_word(normalized, "to")
+    )
+
+
 def _has_calculator_domain(normalized: str, explicit_features: list[str]) -> bool:
     if _has_word(normalized, "calculator") or _has_word(normalized, "calc"):
         return True
@@ -408,6 +565,8 @@ def _clarification_spec(
     *,
     prompt: str,
     task_name: str,
+    task_type: str = "create_app",
+    repo_mode: str = "new_repo",
     domain: str,
     field: str,
     question: str,
@@ -418,9 +577,9 @@ def _clarification_spec(
     return RequestSpec(
         schema_version=SCHEMA_VERSION,
         task_name=task_name,
-        task_type="create_app",
+        task_type=task_type,
         language="python",
-        repo_mode="new_repo",
+        repo_mode=repo_mode,
         domain=domain,
         prompt=prompt,
         artifacts=[],

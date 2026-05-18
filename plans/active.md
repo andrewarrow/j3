@@ -16,18 +16,7 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-### `GS7-002`: Add five non-calculator request-to-repo fixtures
-
-- Owner: worker Hume (`019e3b1d-5a1f-7ff3-a242-f5e8ef941f37`)
-- Status: active
-- Write scope: `examples/greenshot_7`, GreenShot-7 tests, focused
-  request-spec/greenfield fixtures and implementation needed for the slice,
-  `plans/progress.md`, `plans/active.md`.
-- Acceptance: fixtures cover one small library, one parser, one tests-only
-  task, one existing-repo convention task, and one clarification task, with
-  failures classified as action coverage, prompt/spec parsing, or ranking.
-- Tests: `pytest tests/test_greenshot_7.py -q`, focused request-spec tests,
-  and `git diff --check`.
+- None currently recorded.
 
 ## Ready Queue
 
@@ -64,6 +53,11 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `GS7-002`: added five non-calculator request-to-repo fixtures. The small
+  slugify library and key/value parser now build and validate through bounded
+  greenfield builders; tests-only and existing-repo convention requests are
+  classified as `action_coverage` and `existing_repo_support`; the converter
+  prompt is classified as `expected_clarification`.
 - `DATA-003`: added a deterministic issue/PR transition manifest prototype
   backed by a small `apache/airflow` fixture. The manifest records issue/PR
   text provenance, links, before/after commit refs, stable split buckets, and

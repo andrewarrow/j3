@@ -26,7 +26,10 @@ def test_parser_matches_greenshot_7_fixture_specs() -> None:
 
 def test_parser_emits_request_specs_for_positive_calculator_rows() -> None:
     positives = [
-        task for task in _load_tasks() if task["expected_action"] == "emit_request_spec"
+        task
+        for task in _load_tasks()
+        if task["expected_action"] == "emit_request_spec"
+        and task["expected_spec"]["domain"] == "calculator"
     ]
 
     assert len(positives) == 8
@@ -77,7 +80,7 @@ def test_parser_emits_blocking_clarifications_for_unclear_rows() -> None:
         task for task in _load_tasks() if task["expected_action"] == "ask_clarification"
     ]
 
-    assert len(unclear) == 2
+    assert len(unclear) == 3
     for task in unclear:
         record = parse_request_to_spec(
             str(task["prompt"]),
@@ -92,6 +95,68 @@ def test_parser_emits_blocking_clarifications_for_unclear_rows() -> None:
         assert record["clarifications_needed"] == task["expected_spec"][
             "clarifications_needed"
         ]
+
+
+def test_parser_emits_non_calculator_greenfield_specs() -> None:
+    tasks = {str(task["name"]): task for task in _load_tasks()}
+
+    slugify = parse_request_to_spec(
+        str(tasks["slugify_library_basic"]["prompt"]),
+        task_name="slugify_library_basic",
+    ).to_record()
+    assert slugify["task_type"] == "create_library"
+    assert slugify["domain"] == "text_slugify"
+    assert slugify["artifacts"] == ["slugify.py", "tests/test_slugify.py"]
+    assert slugify["features"] == ["slugify_ascii_lowercase"]
+    assert slugify["validation"] == {
+        "commands": ["python -m pytest tests/test_slugify.py -q"],
+        "hidden_cases": True,
+    }
+
+    parser = parse_request_to_spec(
+        str(tasks["key_value_parser_basic"]["prompt"]),
+        task_name="key_value_parser_basic",
+    ).to_record()
+    assert parser["task_type"] == "create_library"
+    assert parser["domain"] == "key_value_parser"
+    assert parser["artifacts"] == ["kv_parser.py", "tests/test_kv_parser.py"]
+    assert parser["features"] == ["parse_key_value_lines"]
+    assert parser["validation"] == {
+        "commands": ["python -m pytest tests/test_kv_parser.py -q"],
+        "hidden_cases": True,
+    }
+
+
+def test_parser_classifies_non_calculator_existing_repo_gaps() -> None:
+    tasks = {str(task["name"]): task for task in _load_tasks()}
+
+    tests_only = parse_request_to_spec(
+        str(tasks["slugify_tests_only_existing"]["prompt"]),
+        task_name="slugify_tests_only_existing",
+    ).to_record()
+    assert tests_only["task_type"] == "add_tests"
+    assert tests_only["repo_mode"] == "existing_repo"
+    assert tests_only["unsupported_requirements"] == [
+        {
+            "field": "task_type",
+            "value": "tests_only_existing_repo",
+            "reason": "action_coverage",
+        }
+    ]
+
+    convention = parse_request_to_spec(
+        str(tasks["slugify_existing_src_convention"]["prompt"]),
+        task_name="slugify_existing_src_convention",
+    ).to_record()
+    assert convention["task_type"] == "modify_library"
+    assert convention["repo_mode"] == "existing_repo"
+    assert convention["unsupported_requirements"] == [
+        {
+            "field": "repo_mode",
+            "value": "src_layout_existing_repo_convention",
+            "reason": "existing_repo_support",
+        }
+    ]
 
 
 def test_request_spec_blocks_graphical_calculator_through_prompt_intent() -> None:

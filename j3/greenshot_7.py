@@ -1,24 +1,32 @@
-"""Bounded GreenShot-7 runner for calculator request-to-repo fixtures."""
+"""Bounded GreenShot-7 runner for request-to-repo fixtures."""
 
 from __future__ import annotations
 
 import json
 import re
+import shlex
 import subprocess
 from pathlib import Path
 
 from j3.greenfield import (
     BuildResult,
     GreenfieldPlan,
-    build_calculator_repo,
-    plan_calculator_repo,
+    build_greenfield_repo,
+    plan_greenfield_repo,
 )
 from j3.request_outcomes import append_request_repo_attempt
 from j3.request_spec import RequestSpec, parse_request_to_spec
 
 
 SOURCE_NAME = "j3 greenshot-7"
-VALIDATION_COMMAND = "python -m pytest tests/test_calculator_cli.py -q"
+DEFAULT_VALIDATION_COMMAND = "python -m pytest tests/test_calculator_cli.py -q"
+CLASSIFICATION_VALUES = {
+    "action_coverage",
+    "prompt_spec_parsing",
+    "existing_repo_support",
+    "greenfield_builder_support",
+    "expected_clarification",
+}
 
 
 def run_greenshot_7_tasks(
@@ -41,6 +49,7 @@ def run_greenshot_7_tasks(
         "records_written": 0,
         "output_dirs": [],
         "blocked_output_dirs": [],
+        "classified_failures": [],
         "failures": [],
     }
 
@@ -62,7 +71,7 @@ def _run_one_task(
     task_out_dir = root / _task_dir_name(name)
 
     spec = parse_request_to_spec(prompt, task_name=name)
-    plan = plan_calculator_repo(spec)
+    plan = plan_greenfield_repo(spec)
 
     if expected_action == "emit_request_spec":
         _run_positive_fixture(
@@ -75,8 +84,20 @@ def _run_one_task(
         )
         return
 
+    if expected_action == "classify_failure":
+        _run_classified_fixture(
+            task=task,
+            spec=spec,
+            plan=plan,
+            task_out_dir=task_out_dir,
+            records_path=records_path,
+            summary=summary,
+        )
+        return
+
     if expected_action == "ask_clarification":
         _run_blocked_fixture(
+            task=task,
             spec=spec,
             plan=plan,
             task_out_dir=task_out_dir,
@@ -99,7 +120,7 @@ def _run_positive_fixture(
 ) -> None:
     expected_features = task.get("expected_features")
     if spec.clarifications_needed:
-        build_result = build_calculator_repo(plan, task_out_dir)
+        build_result = build_greenfield_repo(plan, task_out_dir)
         validation = _blocked_validation()
         _record_if_requested(
             records_path,
@@ -122,8 +143,8 @@ def _run_positive_fixture(
             f"features {spec.features!r} did not match {expected_features!r}",
         )
 
-    build_result = build_calculator_repo(plan, task_out_dir)
-    validation = _run_generated_repo_validation(task_out_dir)
+    build_result = build_greenfield_repo(plan, task_out_dir)
+    validation = _run_generated_repo_validation(task_out_dir, spec)
 
     summary["built"] = int(summary["built"]) + 1
     output_dirs = summary["output_dirs"]
@@ -155,6 +176,7 @@ def _run_positive_fixture(
 
 def _run_blocked_fixture(
     *,
+    task: dict[str, object],
     spec: RequestSpec,
     plan: GreenfieldPlan,
     task_out_dir: Path,
@@ -165,13 +187,20 @@ def _run_blocked_fixture(
         _fail(summary, spec.task_name, "clarification fixture was not blocked")
         return
 
-    build_result = build_calculator_repo(plan, task_out_dir)
+    build_result = build_greenfield_repo(plan, task_out_dir)
     validation = _blocked_validation()
 
     summary["blocked"] = int(summary["blocked"]) + 1
     blocked_dirs = summary["blocked_output_dirs"]
     assert isinstance(blocked_dirs, list)
     blocked_dirs.append(str(task_out_dir))
+    _record_classification(
+        task=task,
+        spec=spec,
+        plan=plan,
+        validation=validation,
+        summary=summary,
+    )
 
     _record_if_requested(
         records_path,
@@ -183,6 +212,73 @@ def _run_blocked_fixture(
         out_dir=task_out_dir,
         files_written=[],
         summary=summary,
+    )
+
+
+def _run_classified_fixture(
+    *,
+    task: dict[str, object],
+    spec: RequestSpec,
+    plan: GreenfieldPlan,
+    task_out_dir: Path,
+    records_path: Path | None,
+    summary: dict[str, object],
+) -> None:
+    if not spec.clarifications_needed and plan.status != "blocked":
+        _fail(summary, spec.task_name, "classified fixture was not blocked")
+        return
+
+    build_result = build_greenfield_repo(plan, task_out_dir)
+    validation = _blocked_validation()
+
+    summary["blocked"] = int(summary["blocked"]) + 1
+    blocked_dirs = summary["blocked_output_dirs"]
+    assert isinstance(blocked_dirs, list)
+    blocked_dirs.append(str(task_out_dir))
+    _record_classification(
+        task=task,
+        spec=spec,
+        plan=plan,
+        validation=validation,
+        summary=summary,
+    )
+
+    _record_if_requested(
+        records_path,
+        raw_prompt=spec.prompt,
+        spec=spec,
+        plan=plan,
+        build_result=build_result,
+        validation=validation,
+        out_dir=task_out_dir,
+        files_written=[],
+        summary=summary,
+    )
+
+
+def _record_classification(
+    *,
+    task: dict[str, object],
+    spec: RequestSpec,
+    plan: GreenfieldPlan,
+    validation: dict[str, object],
+    summary: dict[str, object],
+) -> None:
+    category = str(task.get("expected_failure_category", "expected_clarification"))
+    if category not in CLASSIFICATION_VALUES:
+        _fail(summary, spec.task_name, f"unsupported failure category: {category}")
+        return
+
+    classified = summary["classified_failures"]
+    assert isinstance(classified, list)
+    classified.append(
+        {
+            "task": spec.task_name,
+            "category": category,
+            "domain": spec.domain,
+            "plan_status": plan.status,
+            "validation_status": validation["status"],
+        }
     )
 
 
@@ -228,8 +324,9 @@ def _load_tasks(path: Path) -> list[dict[str, object]]:
     return tasks
 
 
-def _run_generated_repo_validation(out_dir: Path) -> dict[str, object]:
-    command = ["python", "-m", "pytest", "tests/test_calculator_cli.py", "-q"]
+def _run_generated_repo_validation(out_dir: Path, spec: RequestSpec) -> dict[str, object]:
+    command_text = _validation_command(spec)
+    command = shlex.split(command_text)
     completed = subprocess.run(
         command,
         cwd=out_dir,
@@ -240,7 +337,7 @@ def _run_generated_repo_validation(out_dir: Path) -> dict[str, object]:
     status = "passed" if completed.returncode == 0 else "failed"
     return {
         "status": status,
-        "command": VALIDATION_COMMAND,
+        "command": command_text,
         "exit_code": completed.returncode,
         "stdout": completed.stdout,
         "stderr": completed.stderr,
@@ -254,6 +351,16 @@ def _blocked_validation() -> dict[str, object]:
         "exit_code": None,
         "reason": "blocked_clarification",
     }
+
+
+def _validation_command(spec: RequestSpec) -> str:
+    commands = spec.validation.get("commands", [])
+    if not isinstance(commands, list) or not commands:
+        return DEFAULT_VALIDATION_COMMAND
+    first = commands[0]
+    if not isinstance(first, str) or not first:
+        return DEFAULT_VALIDATION_COMMAND
+    return first
 
 
 def _task_string(task: dict[str, object], key: str) -> str:

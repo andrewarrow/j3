@@ -1,4 +1,4 @@
-"""Structured greenfield planning for the GreenShot-7 calculator slice."""
+"""Structured greenfield planning for bounded GreenShot-7 repo creation."""
 
 from __future__ import annotations
 
@@ -7,7 +7,12 @@ from enum import Enum
 from pathlib import Path, PurePosixPath
 from typing import Any
 
-from j3.request_spec import CALCULATOR_FEATURES, RequestSpec
+from j3.request_spec import (
+    CALCULATOR_FEATURES,
+    KV_PARSER_ARTIFACTS,
+    SLUGIFY_ARTIFACTS,
+    RequestSpec,
+)
 
 
 PLAN_SCHEMA_VERSION = "greenfield-plan-v1"
@@ -26,6 +31,8 @@ class GreenfieldActionKind(str, Enum):
     ADD_CLI_ENTRYPOINT = "add_cli_entrypoint"
     CREATE_TEST_FILE = "create_test_file"
     ADD_CLI_BEHAVIOR_TESTS = "add_cli_behavior_tests"
+    ADD_LIBRARY_BEHAVIOR_TESTS = "add_library_behavior_tests"
+    ADD_PARSER_BEHAVIOR_TESTS = "add_parser_behavior_tests"
     ASK_CLARIFICATION = "ask_clarification"
 
 
@@ -127,28 +134,7 @@ def plan_calculator_repo(spec: RequestSpec) -> GreenfieldPlan:
     """Convert a non-blocking calculator request spec into add-only actions."""
 
     if spec.clarifications_needed:
-        blockers = [dict(clarification) for clarification in spec.clarifications_needed]
-        return GreenfieldPlan(
-            schema_version=PLAN_SCHEMA_VERSION,
-            request_schema_version=spec.schema_version,
-            task_name=spec.task_name,
-            domain=spec.domain,
-            language=spec.language,
-            repo_mode=spec.repo_mode,
-            status="blocked",
-            actions=[
-                GreenfieldAction(
-                    kind=GreenfieldActionKind.ASK_CLARIFICATION,
-                    payload={
-                        "reason": "request_spec_has_blocking_clarifications",
-                        "clarifications_needed": blockers,
-                    },
-                )
-            ],
-            artifacts=[],
-            validation=dict(spec.validation),
-            blockers=blockers,
-        )
+        return _blocked_plan(spec)
 
     _validate_calculator_spec(spec)
 
@@ -233,6 +219,152 @@ def plan_calculator_repo(spec: RequestSpec) -> GreenfieldPlan:
     )
 
 
+def plan_greenfield_repo(spec: RequestSpec) -> GreenfieldPlan:
+    """Convert a bounded GreenShot-7 request spec into structured actions."""
+
+    if spec.clarifications_needed:
+        return _blocked_plan(spec)
+    if spec.domain == "calculator":
+        return plan_calculator_repo(spec)
+    if spec.domain == "text_slugify":
+        return plan_slugify_repo(spec)
+    if spec.domain == "key_value_parser":
+        return plan_key_value_parser_repo(spec)
+    return _blocked_plan(
+        spec,
+        blockers=[
+            {
+                "field": "domain",
+                "question": (
+                    "No bounded greenfield builder exists for this request domain."
+                ),
+                "reason": "greenfield_builder_support",
+            }
+        ],
+    )
+
+
+def plan_slugify_repo(spec: RequestSpec) -> GreenfieldPlan:
+    """Convert a slugify library request spec into add-only actions."""
+
+    _validate_slugify_spec(spec)
+    actions = [
+        GreenfieldAction(
+            kind=GreenfieldActionKind.CREATE_FILE,
+            target="slugify.py",
+            payload={"artifact_role": "slugify_library_module", "mode": "create"},
+        ),
+        GreenfieldAction(
+            kind=GreenfieldActionKind.ADD_IMPORT,
+            target="slugify.py",
+            payload={"module": "re"},
+        ),
+        GreenfieldAction(
+            kind=GreenfieldActionKind.ADD_FUNCTION_DEF,
+            target="slugify.py",
+            payload={
+                "name": "slugify",
+                "params": [{"name": "text", "type": "str"}],
+                "returns": "str",
+            },
+        ),
+        GreenfieldAction(
+            kind=GreenfieldActionKind.CREATE_TEST_FILE,
+            target="tests/test_slugify.py",
+            payload={"artifact_role": "slugify_library_tests", "mode": "create"},
+        ),
+        GreenfieldAction(
+            kind=GreenfieldActionKind.ADD_LIBRARY_BEHAVIOR_TESTS,
+            target="tests/test_slugify.py",
+            payload={
+                "test_framework": "pytest",
+                "import": {"module": "slugify", "name": "slugify"},
+                "cases": [
+                    {"input": "Hello, World!", "expected": "hello-world"},
+                    {"input": "  Already--slugged  ", "expected": "already-slugged"},
+                    {"input": "Release 2026: May 18", "expected": "release-2026-may-18"},
+                ],
+            },
+        ),
+    ]
+    return GreenfieldPlan(
+        schema_version=PLAN_SCHEMA_VERSION,
+        request_schema_version=spec.schema_version,
+        task_name=spec.task_name,
+        domain=spec.domain,
+        language=spec.language,
+        repo_mode=spec.repo_mode,
+        status="ready",
+        actions=actions,
+        artifacts=list(SLUGIFY_ARTIFACTS),
+        validation=dict(spec.validation),
+        blockers=[],
+    )
+
+
+def plan_key_value_parser_repo(spec: RequestSpec) -> GreenfieldPlan:
+    """Convert a key/value parser request spec into add-only actions."""
+
+    _validate_key_value_parser_spec(spec)
+    actions = [
+        GreenfieldAction(
+            kind=GreenfieldActionKind.CREATE_FILE,
+            target="kv_parser.py",
+            payload={"artifact_role": "key_value_parser_module", "mode": "create"},
+        ),
+        GreenfieldAction(
+            kind=GreenfieldActionKind.ADD_FUNCTION_DEF,
+            target="kv_parser.py",
+            payload={
+                "name": "parse_key_value_lines",
+                "params": [{"name": "text", "type": "str"}],
+                "returns": "dict[str, str]",
+                "raises": ["ValueError"],
+            },
+        ),
+        GreenfieldAction(
+            kind=GreenfieldActionKind.CREATE_TEST_FILE,
+            target="tests/test_kv_parser.py",
+            payload={"artifact_role": "key_value_parser_tests", "mode": "create"},
+        ),
+        GreenfieldAction(
+            kind=GreenfieldActionKind.ADD_PARSER_BEHAVIOR_TESTS,
+            target="tests/test_kv_parser.py",
+            payload={
+                "test_framework": "pytest",
+                "import": {
+                    "module": "kv_parser",
+                    "name": "parse_key_value_lines",
+                },
+                "valid_cases": [
+                    {
+                        "input": "host=localhost\nport=5432\n",
+                        "expected": {"host": "localhost", "port": "5432"},
+                    },
+                    {
+                        "input": "# ignored\n\nname = ada\nmode= test\n",
+                        "expected": {"name": "ada", "mode": "test"},
+                    },
+                ],
+                "error_cases": ["missing_equals", "=missing_key"],
+            },
+        ),
+    ]
+    return GreenfieldPlan(
+        schema_version=PLAN_SCHEMA_VERSION,
+        request_schema_version=spec.schema_version,
+        task_name=spec.task_name,
+        domain=spec.domain,
+        language=spec.language,
+        repo_mode=spec.repo_mode,
+        status="ready",
+        actions=actions,
+        artifacts=list(KV_PARSER_ARTIFACTS),
+        validation=dict(spec.validation),
+        blockers=[],
+    )
+
+
 def build_calculator_repo(
     spec_or_plan: RequestSpec | GreenfieldPlan,
     out_dir: Path,
@@ -245,6 +377,36 @@ def build_calculator_repo(
         else plan_calculator_repo(spec_or_plan)
     )
     return materialize_calculator_repo(plan, out_dir)
+
+
+def build_greenfield_repo(
+    spec_or_plan: RequestSpec | GreenfieldPlan,
+    out_dir: Path,
+) -> BuildResult:
+    """Plan if needed, then materialize a bounded GreenShot-7 repo."""
+
+    plan = (
+        spec_or_plan
+        if isinstance(spec_or_plan, GreenfieldPlan)
+        else plan_greenfield_repo(spec_or_plan)
+    )
+    if plan.domain == "calculator" or plan.status == "blocked":
+        return materialize_calculator_repo(plan, out_dir)
+    if plan.domain == "text_slugify":
+        return materialize_slugify_repo(plan, out_dir)
+    if plan.domain == "key_value_parser":
+        return materialize_key_value_parser_repo(plan, out_dir)
+    return BuildResult(
+        schema_version=BUILD_SCHEMA_VERSION,
+        plan_schema_version=plan.schema_version,
+        task_name=plan.task_name,
+        status="blocked",
+        out_dir=str(out_dir),
+        artifacts=[],
+        files_written=[],
+        validation=dict(plan.validation),
+        blockers=[dict(blocker) for blocker in plan.blockers],
+    )
 
 
 def materialize_calculator_repo(plan: GreenfieldPlan, out_dir: Path) -> BuildResult:
@@ -275,6 +437,138 @@ def materialize_calculator_repo(plan: GreenfieldPlan, out_dir: Path) -> BuildRes
         CALCULATOR_TESTS: tests_text,
     }
 
+    out_dir.mkdir(parents=True, exist_ok=True)
+    for relative_path, text in writes.items():
+        target = _repo_path(out_dir, relative_path)
+        if target.exists():
+            raise FileExistsError(f"refusing to overwrite existing file: {target}")
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(text, encoding="utf-8")
+
+    return BuildResult(
+        schema_version=BUILD_SCHEMA_VERSION,
+        plan_schema_version=plan.schema_version,
+        task_name=plan.task_name,
+        status="built",
+        out_dir=str(out_dir),
+        artifacts=list(plan.artifacts),
+        files_written=list(writes),
+        validation=dict(plan.validation),
+        blockers=[],
+    )
+
+
+def materialize_slugify_repo(plan: GreenfieldPlan, out_dir: Path) -> BuildResult:
+    """Write slugify source and tests from a greenfield-plan-v1 action list."""
+
+    if plan.schema_version != PLAN_SCHEMA_VERSION:
+        raise ValueError("unsupported greenfield plan schema")
+    if plan.status == "blocked":
+        return _blocked_build_result(plan, out_dir)
+    _validate_library_materializable_plan(
+        plan,
+        domain="text_slugify",
+        artifacts=SLUGIFY_ARTIFACTS,
+        expected_actions=[
+            GreenfieldActionKind.CREATE_FILE,
+            GreenfieldActionKind.ADD_IMPORT,
+            GreenfieldActionKind.ADD_FUNCTION_DEF,
+            GreenfieldActionKind.CREATE_TEST_FILE,
+            GreenfieldActionKind.ADD_LIBRARY_BEHAVIOR_TESTS,
+        ],
+    )
+    return _write_materialized_repo(
+        plan,
+        out_dir,
+        {
+            "slugify.py": _render_slugify_source(plan),
+            "tests/test_slugify.py": _render_slugify_tests(plan),
+        },
+    )
+
+
+def materialize_key_value_parser_repo(
+    plan: GreenfieldPlan,
+    out_dir: Path,
+) -> BuildResult:
+    """Write key/value parser source and tests from a greenfield-plan-v1 plan."""
+
+    if plan.schema_version != PLAN_SCHEMA_VERSION:
+        raise ValueError("unsupported greenfield plan schema")
+    if plan.status == "blocked":
+        return _blocked_build_result(plan, out_dir)
+    _validate_library_materializable_plan(
+        plan,
+        domain="key_value_parser",
+        artifacts=KV_PARSER_ARTIFACTS,
+        expected_actions=[
+            GreenfieldActionKind.CREATE_FILE,
+            GreenfieldActionKind.ADD_FUNCTION_DEF,
+            GreenfieldActionKind.CREATE_TEST_FILE,
+            GreenfieldActionKind.ADD_PARSER_BEHAVIOR_TESTS,
+        ],
+    )
+    return _write_materialized_repo(
+        plan,
+        out_dir,
+        {
+            "kv_parser.py": _render_key_value_parser_source(plan),
+            "tests/test_kv_parser.py": _render_key_value_parser_tests(plan),
+        },
+    )
+
+
+def _blocked_plan(
+    spec: RequestSpec,
+    blockers: list[dict[str, str]] | None = None,
+) -> GreenfieldPlan:
+    resolved_blockers = (
+        [dict(blocker) for blocker in blockers]
+        if blockers is not None
+        else [dict(clarification) for clarification in spec.clarifications_needed]
+    )
+    return GreenfieldPlan(
+        schema_version=PLAN_SCHEMA_VERSION,
+        request_schema_version=spec.schema_version,
+        task_name=spec.task_name,
+        domain=spec.domain,
+        language=spec.language,
+        repo_mode=spec.repo_mode,
+        status="blocked",
+        actions=[
+            GreenfieldAction(
+                kind=GreenfieldActionKind.ASK_CLARIFICATION,
+                payload={
+                    "reason": "request_spec_has_blocking_clarifications",
+                    "clarifications_needed": resolved_blockers,
+                },
+            )
+        ],
+        artifacts=[],
+        validation=dict(spec.validation),
+        blockers=resolved_blockers,
+    )
+
+
+def _blocked_build_result(plan: GreenfieldPlan, out_dir: Path) -> BuildResult:
+    return BuildResult(
+        schema_version=BUILD_SCHEMA_VERSION,
+        plan_schema_version=plan.schema_version,
+        task_name=plan.task_name,
+        status="blocked",
+        out_dir=str(out_dir),
+        artifacts=[],
+        files_written=[],
+        validation=dict(plan.validation),
+        blockers=[dict(blocker) for blocker in plan.blockers],
+    )
+
+
+def _write_materialized_repo(
+    plan: GreenfieldPlan,
+    out_dir: Path,
+    writes: dict[str, str],
+) -> BuildResult:
     out_dir.mkdir(parents=True, exist_ok=True)
     for relative_path, text in writes.items():
         target = _repo_path(out_dir, relative_path)
@@ -327,6 +621,47 @@ def _validate_calculator_spec(spec: RequestSpec) -> None:
         raise ValueError(f"missing operation aliases for features: {missing_aliases}")
 
 
+def _validate_slugify_spec(spec: RequestSpec) -> None:
+    _validate_library_spec(
+        spec,
+        domain="text_slugify",
+        artifacts=SLUGIFY_ARTIFACTS,
+        features=["slugify_ascii_lowercase"],
+    )
+
+
+def _validate_key_value_parser_spec(spec: RequestSpec) -> None:
+    _validate_library_spec(
+        spec,
+        domain="key_value_parser",
+        artifacts=KV_PARSER_ARTIFACTS,
+        features=["parse_key_value_lines"],
+    )
+
+
+def _validate_library_spec(
+    spec: RequestSpec,
+    *,
+    domain: str,
+    artifacts: list[str],
+    features: list[str],
+) -> None:
+    if spec.schema_version != "request-spec-v1":
+        raise ValueError("unsupported request spec schema")
+    if spec.task_type != "create_library":
+        raise ValueError("library greenfield planning requires task_type=create_library")
+    if spec.language != "python":
+        raise ValueError("library greenfield planning only supports python")
+    if spec.repo_mode != "new_repo":
+        raise ValueError("library greenfield planning only supports new_repo")
+    if spec.domain != domain:
+        raise ValueError(f"library greenfield planning only supports {domain} specs")
+    if spec.artifacts != artifacts:
+        raise ValueError(f"{domain} specs must include expected artifacts")
+    if spec.features != features:
+        raise ValueError(f"{domain} specs must include expected features")
+
+
 def _validate_materializable_plan(plan: GreenfieldPlan) -> None:
     if plan.status != "ready":
         raise ValueError(f"greenfield plan is not ready to build: {plan.status}")
@@ -366,6 +701,28 @@ def _validate_materializable_plan(plan: GreenfieldPlan) -> None:
             GreenfieldActionKind.ADD_CLI_BEHAVIOR_TESTS,
         } and action.target != CALCULATOR_TESTS:
             raise ValueError(f"unexpected calculator test action target: {action.target}")
+
+
+def _validate_library_materializable_plan(
+    plan: GreenfieldPlan,
+    *,
+    domain: str,
+    artifacts: list[str],
+    expected_actions: list[GreenfieldActionKind],
+) -> None:
+    if plan.status != "ready":
+        raise ValueError(f"greenfield plan is not ready to build: {plan.status}")
+    if plan.domain != domain:
+        raise ValueError(f"materialization only supports {domain} plans")
+    if plan.language != "python":
+        raise ValueError("materialization only supports python plans")
+    if plan.repo_mode != "new_repo":
+        raise ValueError("materialization only supports new_repo plans")
+    if plan.artifacts != artifacts:
+        raise ValueError(f"{domain} materialization requires expected artifacts")
+    actual_actions = [action.kind for action in plan.actions]
+    if actual_actions != expected_actions:
+        raise ValueError(f"unexpected {domain} action sequence: {actual_actions}")
 
 
 def _operator_dispatch_payload(spec: RequestSpec) -> dict[str, object]:
@@ -528,6 +885,55 @@ def _render_calculator_source(plan: GreenfieldPlan) -> str:
     )
 
 
+def _render_slugify_source(plan: GreenfieldPlan) -> str:
+    function_action = _required_action(plan, GreenfieldActionKind.ADD_FUNCTION_DEF)
+    if function_action.payload.get("name") != "slugify":
+        raise ValueError("slugify source rendering requires slugify function")
+    return (
+        '"""Small text slugification helpers generated from a GreenShot-7 plan."""\n'
+        "\n"
+        "from __future__ import annotations\n"
+        "\n"
+        "import re\n"
+        "\n"
+        "\n"
+        "def slugify(text: str) -> str:\n"
+        '    """Return a lowercase, hyphen-separated slug for text."""\n'
+        "\n"
+        r'    parts = re.findall(r"[a-z0-9]+", text.lower())' + "\n"
+        '    return "-".join(parts)\n'
+    )
+
+
+def _render_key_value_parser_source(plan: GreenfieldPlan) -> str:
+    function_action = _required_action(plan, GreenfieldActionKind.ADD_FUNCTION_DEF)
+    if function_action.payload.get("name") != "parse_key_value_lines":
+        raise ValueError("parser source rendering requires parse_key_value_lines")
+    return (
+        '"""Key/value parsing helpers generated from a GreenShot-7 plan."""\n'
+        "\n"
+        "from __future__ import annotations\n"
+        "\n"
+        "\n"
+        "def parse_key_value_lines(text: str) -> dict[str, str]:\n"
+        '    """Parse key=value lines, ignoring blanks and full-line comments."""\n'
+        "\n"
+        "    values: dict[str, str] = {}\n"
+        "    for line_number, raw_line in enumerate(text.splitlines(), start=1):\n"
+        "        line = raw_line.strip()\n"
+        "        if not line or line.startswith(\"#\"):\n"
+        "            continue\n"
+        "        if \"=\" not in line:\n"
+        "            raise ValueError(f\"Line {line_number} is missing '='\")\n"
+        "        key, value = line.split(\"=\", 1)\n"
+        "        key = key.strip()\n"
+        "        if not key:\n"
+        "            raise ValueError(f\"Line {line_number} has an empty key\")\n"
+        "        values[key] = value.strip()\n"
+        "    return values\n"
+    )
+
+
 def _render_calculator_tests(plan: GreenfieldPlan) -> str:
     behavior = _required_action(plan, GreenfieldActionKind.ADD_CLI_BEHAVIOR_TESTS).payload
     passing_cases = _case_records(behavior, "passing_cases")
@@ -569,6 +975,63 @@ def _render_calculator_tests(plan: GreenfieldPlan) -> str:
         '        result = run_calculator(case["argv"])\n'
         "        assert result.returncode != 0\n"
         '        assert case["stderr_contains"] in result.stderr\n'
+    )
+
+
+def _render_slugify_tests(plan: GreenfieldPlan) -> str:
+    behavior = _required_action(plan, GreenfieldActionKind.ADD_LIBRARY_BEHAVIOR_TESTS)
+    cases = _dict_case_records(behavior.payload, "cases")
+    cases_literal = _format_case_literal(cases)
+    return (
+        "from __future__ import annotations\n"
+        "\n"
+        "from slugify import slugify\n"
+        "\n"
+        "\n"
+        f"CASES = {cases_literal}"
+        "\n"
+        "\n"
+        "def test_slugify_cases() -> None:\n"
+        "    for case in CASES:\n"
+        '        assert slugify(case["input"]) == case["expected"]\n'
+        "\n"
+        "\n"
+        "def test_slugify_empty_text() -> None:\n"
+        '    assert slugify("...") == ""\n'
+    )
+
+
+def _render_key_value_parser_tests(plan: GreenfieldPlan) -> str:
+    behavior = _required_action(plan, GreenfieldActionKind.ADD_PARSER_BEHAVIOR_TESTS)
+    valid_cases = _dict_case_records(behavior.payload, "valid_cases")
+    error_cases = behavior.payload.get("error_cases")
+    if not isinstance(error_cases, list) or not all(
+        isinstance(case, str) for case in error_cases
+    ):
+        raise ValueError("parser tests require string error_cases")
+    valid_literal = _format_case_literal(valid_cases)
+    error_literal = _format_literal(error_cases)
+    return (
+        "from __future__ import annotations\n"
+        "\n"
+        "import pytest\n"
+        "\n"
+        "from kv_parser import parse_key_value_lines\n"
+        "\n"
+        "\n"
+        f"VALID_CASES = {valid_literal}"
+        f"ERROR_CASES = {error_literal}\n"
+        "\n"
+        "\n"
+        "def test_parse_key_value_lines_valid_cases() -> None:\n"
+        "    for case in VALID_CASES:\n"
+        '        assert parse_key_value_lines(case["input"]) == case["expected"]\n'
+        "\n"
+        "\n"
+        "def test_parse_key_value_lines_rejects_invalid_lines() -> None:\n"
+        "    for text in ERROR_CASES:\n"
+        "        with pytest.raises(ValueError):\n"
+        "            parse_key_value_lines(text)\n"
     )
 
 
@@ -624,6 +1087,16 @@ def _case_records(behavior: dict[str, Any], key: str) -> list[dict[str, Any]]:
         argv = case.get("argv")
         if not isinstance(argv, list) or not all(isinstance(arg, str) for arg in argv):
             raise ValueError(f"{key} case argv must be a list of strings")
+    return cases
+
+
+def _dict_case_records(behavior: dict[str, Any], key: str) -> list[dict[str, Any]]:
+    cases = behavior.get(key)
+    if not isinstance(cases, list):
+        raise ValueError(f"behavior tests require {key}")
+    for case in cases:
+        if not isinstance(case, dict):
+            raise ValueError(f"{key} must contain objects")
     return cases
 
 

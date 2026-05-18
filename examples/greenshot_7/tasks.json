@@ -391,5 +391,194 @@
         "hidden_cases": false
       }
     }
+  },
+  {
+    "name": "slugify_library_basic",
+    "family": "request_spec",
+    "source_type": "prompt_fixture",
+    "split": "validation",
+    "fixture_category": "small_library",
+    "prompt": "create a tiny python slugify library with tests; it should lowercase text, trim punctuation, and join words with hyphens",
+    "expected_action": "emit_request_spec",
+    "expected_features": ["slugify_ascii_lowercase"],
+    "expected_spec": {
+      "schema_version": "request-spec-v1",
+      "task_name": "slugify_library_basic",
+      "task_type": "create_library",
+      "language": "python",
+      "repo_mode": "new_repo",
+      "domain": "text_slugify",
+      "prompt": "create a tiny python slugify library with tests; it should lowercase text, trim punctuation, and join words with hyphens",
+      "artifacts": ["slugify.py", "tests/test_slugify.py"],
+      "interfaces": [
+        {
+          "kind": "python_api",
+          "module": "slugify",
+          "callable": "slugify"
+        }
+      ],
+      "features": ["slugify_ascii_lowercase"],
+      "operation_aliases": {},
+      "inferred_defaults": [],
+      "clarifications_needed": [],
+      "validation": {
+        "commands": ["python -m pytest tests/test_slugify.py -q"],
+        "hidden_cases": true
+      }
+    }
+  },
+  {
+    "name": "key_value_parser_basic",
+    "family": "request_spec",
+    "source_type": "prompt_fixture",
+    "split": "validation",
+    "fixture_category": "parser",
+    "prompt": "create a tiny python key value parser library with tests; parse lines like host=localhost and ignore blank lines and # comments",
+    "expected_action": "emit_request_spec",
+    "expected_features": ["parse_key_value_lines"],
+    "expected_spec": {
+      "schema_version": "request-spec-v1",
+      "task_name": "key_value_parser_basic",
+      "task_type": "create_library",
+      "language": "python",
+      "repo_mode": "new_repo",
+      "domain": "key_value_parser",
+      "prompt": "create a tiny python key value parser library with tests; parse lines like host=localhost and ignore blank lines and # comments",
+      "artifacts": ["kv_parser.py", "tests/test_kv_parser.py"],
+      "interfaces": [
+        {
+          "kind": "python_api",
+          "module": "kv_parser",
+          "callable": "parse_key_value_lines"
+        }
+      ],
+      "features": ["parse_key_value_lines"],
+      "operation_aliases": {},
+      "inferred_defaults": [],
+      "clarifications_needed": [],
+      "validation": {
+        "commands": ["python -m pytest tests/test_kv_parser.py -q"],
+        "hidden_cases": true
+      }
+    }
+  },
+  {
+    "name": "slugify_tests_only_existing",
+    "family": "request_spec",
+    "source_type": "prompt_fixture",
+    "split": "test",
+    "fixture_category": "tests_only",
+    "prompt": "add pytest coverage for an existing slugify.py library without changing implementation",
+    "expected_action": "classify_failure",
+    "expected_failure_category": "action_coverage",
+    "expected_features": [],
+    "expected_spec": {
+      "schema_version": "request-spec-v1",
+      "task_name": "slugify_tests_only_existing",
+      "task_type": "add_tests",
+      "language": "python",
+      "repo_mode": "existing_repo",
+      "domain": "text_slugify",
+      "prompt": "add pytest coverage for an existing slugify.py library without changing implementation",
+      "artifacts": [],
+      "interfaces": [],
+      "features": [],
+      "operation_aliases": {},
+      "inferred_defaults": [],
+      "clarifications_needed": [
+        {
+          "field": "repo_state",
+          "question": "Which repository should be inspected and what existing slugify behavior is expected before adding tests?"
+        }
+      ],
+      "validation": {
+        "commands": [],
+        "hidden_cases": false
+      },
+      "unsupported_requirements": [
+        {
+          "field": "task_type",
+          "value": "tests_only_existing_repo",
+          "reason": "action_coverage"
+        }
+      ]
+    }
+  },
+  {
+    "name": "slugify_existing_src_convention",
+    "family": "request_spec",
+    "source_type": "prompt_fixture",
+    "split": "test",
+    "fixture_category": "existing_repo_convention",
+    "prompt": "update an existing src/acme_slug/text.py module to expose slugify in __init__.py following the repo's src layout",
+    "expected_action": "classify_failure",
+    "expected_failure_category": "existing_repo_support",
+    "expected_features": [],
+    "expected_spec": {
+      "schema_version": "request-spec-v1",
+      "task_name": "slugify_existing_src_convention",
+      "task_type": "modify_library",
+      "language": "python",
+      "repo_mode": "existing_repo",
+      "domain": "text_slugify",
+      "prompt": "update an existing src/acme_slug/text.py module to expose slugify in __init__.py following the repo's src layout",
+      "artifacts": [],
+      "interfaces": [],
+      "features": [],
+      "operation_aliases": {},
+      "inferred_defaults": [],
+      "clarifications_needed": [
+        {
+          "field": "repo_mode",
+          "question": "Which existing repository path and package convention should be inspected before editing?"
+        }
+      ],
+      "validation": {
+        "commands": [],
+        "hidden_cases": false
+      },
+      "unsupported_requirements": [
+        {
+          "field": "repo_mode",
+          "value": "src_layout_existing_repo_convention",
+          "reason": "existing_repo_support"
+        }
+      ]
+    }
+  },
+  {
+    "name": "file_converter_unclear",
+    "family": "request_spec",
+    "source_type": "prompt_fixture",
+    "split": "test",
+    "fixture_category": "clarification",
+    "prompt": "make me a file converter",
+    "expected_action": "ask_clarification",
+    "expected_failure_category": "expected_clarification",
+    "expected_features": [],
+    "expected_spec": {
+      "schema_version": "request-spec-v1",
+      "task_name": "file_converter_unclear",
+      "task_type": "create_app",
+      "language": "python",
+      "repo_mode": "new_repo",
+      "domain": "unknown",
+      "prompt": "make me a file converter",
+      "artifacts": [],
+      "interfaces": [],
+      "features": [],
+      "operation_aliases": {},
+      "inferred_defaults": [],
+      "clarifications_needed": [
+        {
+          "field": "requirements",
+          "question": "Which file formats should be converted, and should this be a CLI or a Python library?"
+        }
+      ],
+      "validation": {
+        "commands": [],
+        "hidden_cases": false
+      }
+    }
   }
 ]

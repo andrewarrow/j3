@@ -47,7 +47,7 @@ This is the live coordinator board. Keep it current and compact.
 ### REAL-012: Full One-File Feature Gate After Boltons
 
 - Status: active
-- Owner: worker to be spawned by coordinator.
+- Owner: worker Peirce (`019e3bec-9cd7-7a73-9bed-b8314105d6ee`).
 - Write scope: `j3/real_repo_feature_shadow_score.py`,
   `tests/test_real_repo_feature_shadow_score.py`, optional compact report
   under `docs/`, generated live artifacts under `/tmp`, and plan updates.
@@ -65,7 +65,7 @@ This is the live coordinator board. Keep it current and compact.
 ### DATA-007: Issue/PR Replay Blocker Drilldown
 
 - Status: active
-- Owner: worker to be spawned by coordinator.
+- Owner: worker Helmholtz (`019e3bec-9d05-7692-861b-4394de9892f2`).
 - Write scope: `j3/issue_pr_preflight.py`,
   `tests/test_issue_pr_preflight.py`, optional compact report under `docs/`,
   generated live artifacts under `/tmp`, and plan updates.

@@ -1717,15 +1717,18 @@ meaningful work. Do not replace this file with a daily reset.
 
 - Owner: coordinator.
 - Files changed: `plans/active.md`, `plans/backlog.md`, `plans/progress.md`.
-- Tests: focused verification pending before worker spawn.
+- Tests: `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff
+  --check` -> passed.
 - Result: reviewed `DATA-006` and `MAT-006` worker results. `MAT-006` removes
   the last one-file feature materialization blocker and needs an immediate
   full-gate score. `DATA-006` shows issue/PR replay blocks before edit
   attempts on validation, prompt/spec, and local knowledge; the next issue/PR
   task must turn those labels into actionable blocker detail rather than
   optimizing synthetic fixtures.
-- Commit: pending
-- Push: pending
-- Next: dispatch workers for `REAL-012` and `DATA-007`, then review both before
-  choosing the next hard proof.
+- Commit: 674be39
+- Push: succeeded
+- Next: workers dispatched for `REAL-012` and `DATA-007`: Peirce
+  (`019e3bec-9cd7-7a73-9bed-b8314105d6ee`) owns the full one-file feature
+  gate rescore, and Helmholtz (`019e3bec-9d05-7692-861b-4394de9892f2`) owns
+  the issue/PR replay blocker drilldown.
 - Blockers: none

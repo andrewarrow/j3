@@ -3883,3 +3883,36 @@ meaningful work. Do not replace this file with a daily reset.
   probes for passing decoys.
 - Blockers: issue/PR ranking remains shadow-only because both validated rows
   have passing decoys under focused validation.
+
+### 2026-05-18 - MAT-010 - Held-out typed-builder materialization probe
+
+- Owner: worker Tesla (`019e3ce5-2db8-71f0-80fd-38096e43b7d2`) with
+  coordinator integration after worker pause.
+- Files changed: `j3/heldout_typed_builder_candidate.py`,
+  `tests/test_heldout_typed_builder_candidate.py`,
+  `docs/MAT_010_CLICK_3422_TYPED_BUILDER_CANDIDATE_2026-05-18.md`,
+  `plans/active.md`, `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `python -m py_compile j3/heldout_typed_builder_candidate.py
+  tests/test_heldout_typed_builder_candidate.py` -> passed; `pytest
+  tests/test_heldout_typed_builder_candidate.py -q` -> 3 passed; live fresh
+  checkout run `python -m j3.heldout_typed_builder_candidate --repo-path
+  /tmp/j3-mat-010-click-3422-final/click --accepted-diff
+  /tmp/j3-mat-010-click-3422-final/accepted.diff --out
+  /tmp/j3-mat-010-click-3422-final/candidate.json --report
+  /tmp/j3-mat-010-click-3422-final/report.md --diff-out
+  /tmp/j3-mat-010-click-3422-final/candidate.diff --validate
+  --validation-timeout-seconds 180` -> validated; focused validation passed
+  in `0.022s`.
+- Result: materialized the held-out `pallets/click#3422` typed-builder edit
+  using reusable `class_scope_annotation_move`, `return_annotation_update`,
+  and `type_annotation_update` action records. The final fresh checkout at
+  `fc6c7c47edd6110b6bd5a1a5297b2035214b0cd1` changed only
+  `src/click/utils.py`, matched the accepted PR diff after normalization, and
+  did not need a PR-named action kind. This is the first positive held-out
+  `general_typed_builder` row after MAT-007.
+- Commit: pending.
+- Push: pending.
+- Next: dispatch the next hard probes: validation strengthening for passing
+  issue/PR decoys and the next typed-builder or repo-convention row.
+- Blockers: none for MAT-010; the typed-builder bucket still needs more rows
+  before claiming broad materialization coverage.

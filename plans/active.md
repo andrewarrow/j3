@@ -44,23 +44,6 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-### `MAT-010`: First held-out typed-builder materialization probe
-
-- Status: active
-- Owner: worker Tesla (`019e3ce5-2db8-71f0-80fd-38096e43b7d2`) with
-  coordinator integration after worker pause.
-- Write scope: new typed-builder materialization module/tests/docs only
-  (`j3/heldout_typed_builder_candidate.py`,
-  `tests/test_heldout_typed_builder_candidate.py`, optional `docs/MAT_010_*`,
-  and generated artifacts under `/tmp`). Avoid issue/PR ranking and decoy
-  modules.
-- Acceptance: attempt the MAT-007 `general_typed_builder` row
-  `pallets/click#3422` using reusable typed action records, not a PR-named
-  action kind. Determine and record the pinned base ref, accepted changed
-  files, mutation scope, candidate-after diff/AST metadata, accepted-diff
-  comparison, validation command/result if feasible, and the exact blocker if
-  the row needs source synthesis beyond typed import/annotation builders.
-
 ## Ready Queue
 
 These are good next assignments for the next loop:
@@ -90,6 +73,18 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `MAT-010`: materialized and live-validated the held-out
+  `pallets/click#3422` typed-builder row using reusable
+  `class_scope_annotation_move`, `return_annotation_update`, and
+  `type_annotation_update` action records. The final fresh checkout at
+  `fc6c7c47edd6110b6bd5a1a5297b2035214b0cd1` changed only
+  `src/click/utils.py`, matched the accepted PR diff after normalization, and
+  passed `python -m py_compile src/click/utils.py` in `0.022s`. Artifacts:
+  `/tmp/j3-mat-010-click-3422-final/candidate.json`,
+  `/tmp/j3-mat-010-click-3422-final/report.md`,
+  `/tmp/j3-mat-010-click-3422-final/candidate.diff`,
+  `/tmp/j3-mat-010-click-3422-final/accepted.diff`, and
+  `docs/MAT_010_CLICK_3422_TYPED_BUILDER_CANDIDATE_2026-05-18.md`.
 - `DATA-040`: materialized and live-validated four realistic decoys for the
   validated `pytest-dev/pytest#14462/#14466` issue/PR replay. The pytest row
   now has live decoy validation outcomes and candidate-after snapshots for all

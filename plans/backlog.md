@@ -758,7 +758,7 @@ Long-term target:
 
 ### MAT-010: First held-out typed-builder materialization probe
 
-- Status: active
+- Status: done
 - Why: MAT-007 still has `general_typed_builder = 7`; more source-region wins
   do not prove the type/import/annotation middle layer. `pallets/click#3422`
   is a compact held-out row that should force reusable typed action records
@@ -776,6 +776,17 @@ Long-term target:
   import/annotation builders.
 - Tests: focused typed-builder materializer tests, plan consistency,
   `git diff --check`, and live validation or a recorded validation blocker.
+- Result: materialized and live-validated the held-out `pallets/click#3422`
+  typed-builder row on a fresh checkout at
+  `fc6c7c47edd6110b6bd5a1a5297b2035214b0cd1`. The reusable typed actions
+  changed only `src/click/utils.py`, matched the accepted PR diff after
+  normalization, and passed `python -m py_compile src/click/utils.py` in
+  `0.022s`.
+- Artifacts: `/tmp/j3-mat-010-click-3422-final/candidate.json`,
+  `/tmp/j3-mat-010-click-3422-final/report.md`,
+  `/tmp/j3-mat-010-click-3422-final/candidate.diff`,
+  `/tmp/j3-mat-010-click-3422-final/accepted.diff`, and
+  `docs/MAT_010_CLICK_3422_TYPED_BUILDER_CANDIDATE_2026-05-18.md`.
 
 ### KNOW-001: Local knowledge inventory for the wedge
 

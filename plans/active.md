@@ -15,17 +15,37 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-No active worker tasks.
+### `TRANS-004`: Rerun targeted matrix evidence after subscript-key fix
+
+- Owner: worker Herschel (`019e3b15-7b18-7e51-af93-2c64da4243b8`)
+- Status: active
+- Write scope: generated outputs under `/tmp`, `plans/progress.md`,
+  `plans/active.md`; small runner bug fixes only if local and necessary.
+- Acceptance: rerun `greenshot_6_subset` with the standard matrix runner,
+  record whether `http_no_store_directive_subscript_key` is solved within the
+  matrix cap, and update residual/gate counts for that subset.
+- Tests: targeted matrix command with `--only greenshot_6_subset`,
+  `report-transition-residuals --matrix`, guarded decision if applicable, and
+  focused transition tests if command behavior changes.
+
+### `OPS-002`: Add a lightweight plan consistency check
+
+- Owner: worker Chandrasekhar (`019e3b15-7b3a-7461-9dc5-4db9b20d168e`)
+- Status: active
+- Write scope: small checker command or test around `plans/active.md` and
+  `plans/backlog.md`, plus `plans/progress.md` and `plans/active.md`.
+- Acceptance: focused test catches missing task IDs, invalid statuses, active
+  tasks missing from backlog, and completed/active status drift.
+- Tests: new focused test plus `git diff --check`.
 
 ## Ready Queue
 
 These are good next assignments for the next loop:
 
-1. `TRANS-004`: rerun targeted `greenshot_6_subset` matrix evidence after
-   `ACT-002`.
-2. `OPS-002`: add a lightweight plan consistency check.
-3. `GS7-002`: add five non-calculator request-to-repo fixtures.
-4. `DATA-003`: prototype issue/PR mining manifest.
+1. `GS7-002`: add five non-calculator request-to-repo fixtures.
+2. `DATA-003`: prototype issue/PR mining manifest.
+3. `REPO-001`: summarize repo-state encoder coverage.
+4. `ACT-001`: create action coverage map from residuals.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 

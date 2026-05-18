@@ -42,7 +42,7 @@ Long-term target:
 
 ### OPS-002: Add a lightweight plan consistency check
 
-- Status: ready
+- Status: active
 - Why: stale task IDs and forgotten active entries will accumulate as parallel
   work grows.
 - Write scope: a small checker command or test around `plans/active.md` and
@@ -186,7 +186,7 @@ Long-term target:
 
 ### TRANS-004: Rerun targeted matrix evidence after subscript-key fix
 
-- Status: ready
+- Status: active
 - Why: `ACT-002` fixed the single `TRANS-002` candidate-generation gap, but the
   matrix evidence still records the pre-fix residual count.
 - Write scope: generated outputs under `/tmp`, progress notes only unless a

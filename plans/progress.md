@@ -2192,8 +2192,10 @@ meaningful work. Do not replace this file with a daily reset.
   Requests materializer; the next loop tests generalization pressure with
   Click #2745 and refreshes readiness now that Click #3298 has a normalized
   spec.
-- Commit: pending.
-- Push: pending.
-- Next: run plan checks, commit this dispatch, then assign one worker to
-  `DATA-014` and one worker to `DATA-015` with disjoint write scopes.
+- Commit: a216277.
+- Push: succeeded.
+- Next: workers dispatched for `DATA-014` and `DATA-015`: Volta
+  (`019e3c28-730c-73f3-ab83-c81752305c9c`) owns the Click #2745 candidate
+  attempt, and Franklin (`019e3c28-a586-7660-8c51-f007c53d052a`) owns the
+  readiness refresh after DATA-013.
 - Blockers: none.

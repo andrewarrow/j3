@@ -47,7 +47,7 @@ This is the live coordinator board. Keep it current and compact.
 ### `DATA-014`: Click default_map issue/PR candidate attempt
 
 - Status: active
-- Owner: coordinator dispatch pending.
+- Owner: worker Volta (`019e3c28-730c-73f3-ab83-c81752305c9c`).
 - Why: `DATA-012` proved one real issue/PR candidate can be materialized and
   validated for Requests. The next hard proof is whether the same
   candidate-attempt record shape can cover the other DATA-010 ready row without
@@ -71,7 +71,7 @@ This is the live coordinator board. Keep it current and compact.
 ### `DATA-015`: Issue/PR readiness refresh after Click semver spec
 
 - Status: active
-- Owner: coordinator dispatch pending.
+- Owner: worker Franklin (`019e3c28-a586-7660-8c51-f007c53d052a`).
 - Why: `DATA-013` removed the prompt/spec blocker for
   `pallets__click-issue-3298-pr-3299`; the readiness gate must be rerun before
   any candidate attempt can use that row.

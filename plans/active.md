@@ -47,7 +47,7 @@ This is the live coordinator board. Keep it current and compact.
 ### `DATA-038`: Issue/PR candidate-after snapshot bundle
 
 - Status: active
-- Owner: pending worker assignment.
+- Owner: worker Kierkegaard (`019e3cc0-e4a0-7893-8bcf-e090084bf843`).
 - Write scope: a focused candidate-after snapshot module and tests, optional
   integration with the DATA-037 ranking harness, generated artifacts under
   `/tmp`, optional compact docs/report, and planning updates. Avoid editing
@@ -63,7 +63,7 @@ This is the live coordinator board. Keep it current and compact.
 ### `MAT-008`: Held-out requests source-region candidate
 
 - Status: active
-- Owner: pending worker assignment.
+- Owner: worker Singer (`019e3cc1-1a8b-70e2-857b-213ff36ba524`).
 - Write scope: a generic held-out source-region candidate module and tests,
   optional docs/report, generated artifacts under `/tmp`, and planning updates.
   Do not edit DATA-038-owned ranking or snapshot modules.

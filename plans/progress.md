@@ -3575,7 +3575,8 @@ meaningful work. Do not replace this file with a daily reset.
 - Owner: coordinator.
 - Files changed: `plans/active.md`, `plans/backlog.md`, and
   `plans/progress.md`.
-- Tests: pending before dispatch commit.
+- Tests: `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff
+  --check` -> passed.
 - Result: selected the next hard-proof batch from DATA-037 and MAT-007
   residuals. `DATA-038` targets the ranking blocker by producing full
   candidate-after sidecar snapshots for the validated DATA-029 and DATA-035
@@ -3585,7 +3586,22 @@ meaningful work. Do not replace this file with a daily reset.
   source/test edit with reusable `replace_function_region` and
   repo-convention pytest insertion action records instead of a PR-named
   materializer.
+- Commit: 97b1411.
+- Push: succeeded.
+- Next: worker Kierkegaard (`019e3cc0-e4a0-7893-8bcf-e090084bf843`) owns
+  `DATA-038`; worker Singer (`019e3cc1-1a8b-70e2-857b-213ff36ba524`) owns
+  `MAT-008`.
+- Blockers: none.
+
+### 2026-05-18 - Worker IDs - DATA-038 / MAT-008
+
+- Owner: coordinator.
+- Files changed: `plans/active.md` and `plans/progress.md`.
+- Tests: pending before commit.
+- Result: recorded worker Kierkegaard
+  (`019e3cc0-e4a0-7893-8bcf-e090084bf843`) for `DATA-038` and worker Singer
+  (`019e3cc1-1a8b-70e2-857b-213ff36ba524`) for `MAT-008`.
 - Commit: pending.
 - Push: pending.
-- Next: dispatch independent workers for `DATA-038` and `MAT-008`.
+- Next: continue non-overlapping coordinator review while both workers run.
 - Blockers: none.

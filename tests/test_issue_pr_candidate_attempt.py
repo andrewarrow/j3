@@ -7,11 +7,13 @@ from j3.issue_pr_candidate_attempt import (
     CLICK_DEFAULT_MAP_REPLAY_ID,
     CLICK_SEMVER_REPLAY_ID,
     PYTEST_STRICT_ADDOPTS_REPLAY_ID,
+    PYTEST_TIMEDELTA_APPROX_REPLAY_ID,
     REQUESTS_REPLAY_ID,
     main,
     run_click_default_map_issue_pr_candidate_attempt,
     run_click_semver_issue_pr_candidate_attempt,
     run_pytest_strict_addopts_issue_pr_candidate_attempt,
+    run_pytest_timedelta_approx_issue_pr_candidate_attempt,
     run_requests_issue_pr_candidate_attempt,
     write_issue_pr_candidate_attempt_report,
 )
@@ -561,6 +563,129 @@ def test_pytest_strict_addopts_candidate_validation_report_and_cli(
     assert "DATA-024 Pytest #14442" in report_path.read_text(encoding="utf-8")
 
 
+def test_pytest_timedelta_approx_candidate_materializes_source_and_test(
+    tmp_path: Path,
+) -> None:
+    repo = _write_synthetic_pytest_timedelta_approx_checkout(tmp_path / "pytest")
+
+    attempt = run_pytest_timedelta_approx_issue_pr_candidate_attempt(
+        repo,
+        manifest_path=MANIFEST_PATH,
+        write=True,
+        validate=False,
+        readiness_records=[_pytest_timedelta_approx_ready_row()],
+        prompt_spec_records=[_pytest_timedelta_approx_prompt_spec_row()],
+        validation_records=[_pytest_timedelta_approx_validation_row()],
+        local_knowledge_records=[
+            _pytest_timedelta_approx_knowledge_row("repo_changed_file_context"),
+            _pytest_timedelta_approx_knowledge_row(
+                "pytest_approx_timedelta_tolerance_semantics"
+            ),
+            _pytest_timedelta_approx_knowledge_row(
+                "pytest_datetime_timedelta_comparison_behavior"
+            ),
+        ],
+        materialization_audit_records=[
+            _pytest_timedelta_approx_audit_row("src/_pytest/python_api.py"),
+            _pytest_timedelta_approx_audit_row("testing/python/approx.py"),
+        ],
+    )
+    record = attempt.to_record()
+
+    assert record["replay_id"] == PYTEST_TIMEDELTA_APPROX_REPLAY_ID
+    assert record["action_family"] == "pytest_timedelta_approx_source_test_candidate"
+    assert record["status"] == "materialized"
+    assert record["mutation_scope"]["allowed_write_path_check_passed"] is True
+    assert record["mutation_scope"]["files_changed"] == [
+        "src/_pytest/python_api.py",
+        "testing/python/approx.py",
+    ]
+    assert record["mutation_scope"]["accepted_missing_paths"] == []
+    assert record["mutation_scope"]["full_accepted_edit_coverage_expressible"] is True
+    assert record["structured_action_coverage"]["accepted_edit_covered"] is True
+    assert record["structured_action_coverage"]["materialization_gap"] is None
+    assert record["residual_labels"] == ["candidate_validation_deferred"]
+    assert len(record["evidence"]["materialization_audit"]) == 2
+    assert len(record["evidence"]["local_knowledge"]) == 3
+
+    source = (repo / "src" / "_pytest" / "python_api.py").read_text(encoding="utf-8")
+    assert "def _approx_scalar(self, x) -> ApproxBase:" in source
+    assert "if isinstance(x, (datetime, timedelta)):" in source
+    assert "relative tolerance for timedelta must be a" in source
+    assert 'f"number, got {type(rel).__name__}"' in source
+    assert "rel_tolerance = rel * builtins.abs(expected)" in source
+    assert "datetime comparisons. Use abs=timedelta" in source
+    assert "rel=rel, abs=tolerance" in source
+
+    tests = (repo / "testing" / "python" / "approx.py").read_text(encoding="utf-8")
+    assert "assert td1 == approx(td2, rel=0.01)" in tests
+    assert "def test_timedelta_rel_must_be_number" in tests
+    assert "def test_timedelta_rel_scales_with_expected" in tests
+    assert "def test_timedelta_in_sequence" in tests
+    assert "def test_datetime_in_mapping" in tests
+    assert "assert td1 == approx(td2, rel=timedelta(seconds=1))" not in tests
+    assert "assert td1 != approx(td2, rel=timedelta(seconds=1))" not in tests
+
+
+def test_pytest_timedelta_approx_candidate_plan_only_records_scope(
+    tmp_path: Path,
+) -> None:
+    repo = _write_synthetic_pytest_timedelta_approx_checkout(tmp_path / "pytest")
+
+    attempt = run_pytest_timedelta_approx_issue_pr_candidate_attempt(
+        repo,
+        manifest_path=MANIFEST_PATH,
+        write=False,
+        validate=False,
+    )
+    record = attempt.to_record()
+
+    assert record["status"] == "planned"
+    assert record["mutation_scope"]["files_changed"] == [
+        "src/_pytest/python_api.py",
+        "testing/python/approx.py",
+    ]
+    source = (repo / "src" / "_pytest" / "python_api.py").read_text(encoding="utf-8")
+    tests = (repo / "testing" / "python" / "approx.py").read_text(encoding="utf-8")
+    assert "def _approx_scalar(self, x) -> ApproxScalar:" in source
+    assert "assert td1 == approx(td2, rel=timedelta(seconds=1))" in tests
+
+
+def test_pytest_timedelta_approx_candidate_validation_report_and_cli(
+    tmp_path: Path,
+) -> None:
+    repo = _write_synthetic_pytest_timedelta_approx_checkout(tmp_path / "pytest")
+    out_path = tmp_path / "candidate.json"
+    report_path = tmp_path / "candidate.md"
+
+    exit_code = main(
+        [
+            "--manifest",
+            str(MANIFEST_PATH),
+            "--replay-id",
+            PYTEST_TIMEDELTA_APPROX_REPLAY_ID,
+            "--repo-path",
+            str(repo),
+            "--setup-command",
+            "python -c 'print(\"setup ok\")'",
+            "--validation-command",
+            "python -c 'print(\"validation ok\")'",
+            "--validate",
+            "--out",
+            str(out_path),
+            "--report",
+            str(report_path),
+        ]
+    )
+
+    assert exit_code == 0
+    record = json.loads(out_path.read_text(encoding="utf-8"))
+    assert record["status"] == "validated"
+    assert record["validation"]["status"] == "passed"
+    assert record["residual_labels"] == ["candidate_validation_passed"]
+    assert "DATA-029 Pytest #14462" in report_path.read_text(encoding="utf-8")
+
+
 def _write_synthetic_requests_checkout(repo: Path) -> Path:
     (repo / "src" / "requests").mkdir(parents=True)
     (repo / "tests").mkdir(parents=True)
@@ -717,6 +842,210 @@ def test_strict_prohibits_unregistered_markers(
     result.stdout.fnmatch_lines(
         ["'unregisteredmark' not found in `markers` configuration option"]
     )
+""",
+        encoding="utf-8",
+    )
+    return repo
+
+
+def _write_synthetic_pytest_timedelta_approx_checkout(repo: Path) -> Path:
+    (repo / "src" / "_pytest").mkdir(parents=True)
+    (repo / "testing" / "python").mkdir(parents=True)
+    (repo / "src" / "_pytest" / "python_api.py").write_text(
+        """from __future__ import annotations
+
+import builtins
+from collections.abc import Collection
+from collections.abc import Mapping
+from collections.abc import Sized
+from datetime import datetime
+from datetime import timedelta
+from decimal import Decimal
+import math
+from typing import Any
+
+
+class ApproxBase:
+    def __init__(self, expected, rel=None, abs=None, nan_ok: bool = False) -> None:
+        self.expected = expected
+        self.abs = abs
+        self.rel = rel
+        self.nan_ok = nan_ok
+
+    def _approx_scalar(self, x) -> ApproxScalar:
+        if isinstance(x, Decimal):
+            return ApproxDecimal(x, rel=self.rel, abs=self.abs, nan_ok=self.nan_ok)
+        return ApproxScalar(x, rel=self.rel, abs=self.abs, nan_ok=self.nan_ok)
+
+
+class ApproxScalar(ApproxBase):
+    pass
+
+
+class ApproxDecimal(ApproxScalar):
+    pass
+
+
+class ApproxTimedelta(ApproxBase):
+    \"\"\"Perform approximate comparisons where the expected value is a
+    datetime or timedelta.
+
+    Requires an explicit tolerance as a timedelta.
+    Relative tolerance is not supported for datetime comparisons.
+    \"\"\"
+
+    def __init__(self, expected, rel=None, abs=None, nan_ok: bool = False) -> None:
+        if isinstance(expected, datetime) and rel is not None:
+            raise TypeError(
+                "pytest.approx() does not support relative tolerance for "
+                "datetime comparisons. Use abs=timedelta(...) instead."
+            )
+        if nan_ok:
+            raise TypeError(
+                "pytest.approx() does not support nan_ok for "
+                "datetime/timedelta comparisons."
+            )
+        if abs is None and rel is None:
+            raise TypeError(
+                "pytest.approx() requires an explicit tolerance for "
+                "datetime/timedelta comparisons: "
+                "e.g. approx(expected, abs=timedelta(seconds=1))"
+            )
+        if abs is not None and not isinstance(abs, timedelta):
+            raise TypeError(
+                f"absolute tolerance for datetime/timedelta must be a "
+                f"timedelta, got {type(abs).__name__}"
+            )
+        if rel is not None and not isinstance(rel, timedelta):
+            raise TypeError(
+                f"relative tolerance for timedelta must be a "
+                f"timedelta, got {type(rel).__name__}"
+            )
+        tolerance = max(t for t in (abs, rel) if t is not None)
+        super().__init__(expected, rel=None, abs=tolerance, nan_ok=False)
+
+    def __repr__(self) -> str:
+        return f"{self.expected} ± {self.abs}"
+
+
+def _is_sequence_like(expected: object) -> bool:
+    return (
+        hasattr(expected, "__getitem__")
+        and isinstance(expected, Sized)
+        and not isinstance(expected, str | bytes)
+    )
+
+
+def _is_numpy_array(obj: object) -> bool:
+    return False
+
+
+def _as_numpy_array(obj: object) -> object:
+    return obj
+
+
+def approx(
+    expected: Any,
+    rel: float | Decimal | timedelta | None = None,
+    abs: float | Decimal | timedelta | None = None,
+    nan_ok: bool = False,
+) -> ApproxBase:
+    \"\"\"Assert that two numbers are equal to each other within some tolerance.
+
+    **datetime and timedelta**
+
+    You can also use ``approx`` to compare :class:`~datetime.datetime` and
+    :class:`~datetime.timedelta` objects by specifying an absolute tolerance
+    as a :class:`~datetime.timedelta`::
+
+        >>> from datetime import datetime, timedelta
+        >>> dt1 = datetime(2024, 1, 1, 12, 0, 0)
+        >>> dt2 = datetime(2024, 1, 1, 12, 0, 0, 500000)
+        >>> dt1 == approx(dt2, abs=timedelta(seconds=1))
+        True
+
+    Note that ``rel`` is not supported for datetime comparisons,
+    and ``abs`` or ``rel`` must be explicitly provided as a ``timedelta`` object.
+    \"\"\"
+    if isinstance(expected, Decimal):
+        cls: type[ApproxBase] = ApproxDecimal
+    elif isinstance(expected, Mapping):
+        cls = ApproxBase
+    elif _is_numpy_array(expected):
+        expected = _as_numpy_array(expected)
+        cls = ApproxBase
+    elif _is_sequence_like(expected):
+        cls = ApproxBase
+    elif isinstance(expected, Collection) and not isinstance(expected, str | bytes):
+        msg = f"pytest.approx() only supports ordered sequences, but got: {expected!r}"
+        raise TypeError(msg)
+    elif isinstance(expected, (datetime, timedelta)):
+        cls = ApproxTimedelta
+    else:
+        cls = ApproxScalar
+    return cls(expected, rel, abs, nan_ok)
+""",
+        encoding="utf-8",
+    )
+    (repo / "testing" / "python" / "approx.py").write_text(
+        """import pytest
+from pytest import approx
+
+
+class TestApproxDatetime:
+    \"\"\"Tests for datetime/timedelta support in approx (issue #8395).\"\"\"
+
+    def test_timedelta_rel_within_tolerance(self):
+        from datetime import timedelta
+
+        td1 = timedelta(seconds=100)
+        td2 = timedelta(seconds=100.5)
+        assert td1 == approx(td2, rel=timedelta(seconds=1))
+
+    def test_timedelta_rel_outside_tolerance(self):
+        from datetime import timedelta
+
+        td1 = timedelta(seconds=100)
+        td2 = timedelta(seconds=102)
+        assert td1 != approx(td2, rel=timedelta(seconds=1))
+
+    def test_datetime_rejects_rel(self):
+        from datetime import datetime
+        from datetime import timedelta
+
+        with pytest.raises(TypeError, match="does not support relative tolerance"):
+            approx(datetime(2024, 1, 1), rel=0.1, abs=timedelta(seconds=1))
+
+        with pytest.raises(TypeError, match="does not support relative tolerance"):
+            approx(datetime(2024, 1, 1), rel=timedelta(seconds=1))
+
+    def test_abs_must_be_timedelta(self):
+        from datetime import datetime
+
+        with pytest.raises(TypeError, match="must be a timedelta"):
+            approx(datetime(2024, 1, 1), abs=1.0)
+
+    def test_timedelta_rel_must_be_timedelta(self):
+        from datetime import timedelta
+
+        with pytest.raises(TypeError, match="must be a timedelta"):
+            approx(timedelta(seconds=1), rel=0.1)
+
+    def test_rejects_nan_ok(self):
+        from datetime import datetime
+        from datetime import timedelta
+
+        with pytest.raises(TypeError, match="does not support nan_ok"):
+            approx(datetime(2024, 1, 1), abs=timedelta(seconds=1), nan_ok=True)
+
+    def test_repr_compare_with_incompatible_type(self):
+        result = ["comparison failed", "Obtained: x", "Expected: y", "N/A"]
+        assert "comparison failed" in result[0]
+        assert "N/A" in result[3]
+
+
+class MyVec3:
+    pass
 """,
         encoding="utf-8",
     )
@@ -1009,6 +1338,52 @@ def _pytest_strict_addopts_audit_row(path: str) -> dict[str, object]:
         "record_kind": "issue_pr_materialization_audit",
         "audit_id": f"DATA-023/{PYTEST_STRICT_ADDOPTS_REPLAY_ID}/{path}",
         "replay_id": PYTEST_STRICT_ADDOPTS_REPLAY_ID,
+        "path": path,
+        "classification": "requiring_constrained_local_generator_or_source_region_action",
+    }
+
+
+def _pytest_timedelta_approx_ready_row() -> dict[str, object]:
+    return {
+        "record_kind": "issue_pr_candidate_readiness",
+        "replay_id": PYTEST_TIMEDELTA_APPROX_REPLAY_ID,
+        "ready_for_candidate_attempt": True,
+        "validation_command": "pytest testing/python/approx.py -q",
+    }
+
+
+def _pytest_timedelta_approx_prompt_spec_row() -> dict[str, object]:
+    return {
+        "record_kind": "issue_pr_prompt_spec",
+        "replay_id": PYTEST_TIMEDELTA_APPROX_REPLAY_ID,
+        "status": "normalized",
+        "prompt_spec_kind": "pytest_timedelta_approx_relative_tolerance",
+    }
+
+
+def _pytest_timedelta_approx_validation_row() -> dict[str, object]:
+    return {
+        "record_kind": "issue_pr_replay_preflight_outcome",
+        "replay_id": PYTEST_TIMEDELTA_APPROX_REPLAY_ID,
+        "status": "passed",
+        "validation_command": "pytest testing/python/approx.py -q",
+    }
+
+
+def _pytest_timedelta_approx_knowledge_row(category: str) -> dict[str, object]:
+    return {
+        "record_type": "pytest_pattern_record",
+        "id": f"pytest-14462:{category}",
+        "links": {"task_ids": [PYTEST_TIMEDELTA_APPROX_REPLAY_ID]},
+        "data": {"knowledge_category": category},
+    }
+
+
+def _pytest_timedelta_approx_audit_row(path: str) -> dict[str, object]:
+    return {
+        "record_kind": "issue_pr_materialization_audit",
+        "audit_id": f"DATA-028/{PYTEST_TIMEDELTA_APPROX_REPLAY_ID}/{path}",
+        "replay_id": PYTEST_TIMEDELTA_APPROX_REPLAY_ID,
         "path": path,
         "classification": "requiring_constrained_local_generator_or_source_region_action",
     }

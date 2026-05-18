@@ -44,22 +44,7 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-### `DATA-029`: Pytest #14462 source/test candidate attempt
-
-- Status: active
-- Owner: worker Kuhn (`019e3c81-4427-7613-9735-b1b1548e15a1`).
-- Write scope: `j3/issue_pr_candidate_attempt.py`,
-  `tests/test_issue_pr_candidate_attempt.py`, generated outputs under `/tmp`,
-  optional compact report under `docs/`, and planning updates.
-- Acceptance: attempt exactly `pytest-dev__pytest-issue-14462-pr-14466` in
-  source/test scope, changing only `src/_pytest/python_api.py` and
-  `testing/python/approx.py` in the live pinned checkout. Implement the
-  DATA-028 source-region materializer and `TestApproxDatetime` refiner, record
-  actions, candidate diff, mutation scope, validation command/runtime/pass-fail,
-  residual labels, DATA-018/026/027/028 provenance, and structured-action
-  coverage. Validate with `python -m py_compile src/_pytest/python_api.py` and
-  `pytest testing/python/approx.py -q`, or record the exact materialization or
-  validation blocker.
+No active worker tasks are currently recorded.
 
 ## Ready Queue
 
@@ -92,6 +77,21 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `DATA-029`: added a bounded source/test candidate attempt for exactly
+  `pytest-dev__pytest-issue-14462-pr-14466`. The live pinned pytest checkout
+  at `fbab7c5dfe63a22f545207e8dc163ed61ad51d98` changed only
+  `src/_pytest/python_api.py` and `testing/python/approx.py`; the generated
+  diff matches accepted PR commit
+  `2c555d62fa2c51ccb0c4c1cdd6243149ce4ffa97` for both touched paths
+  (`31`/`12` and `95`/`5`). Focused validation passed with
+  `python -m py_compile src/_pytest/python_api.py && pytest
+  testing/python/approx.py -q` in `2.601s` (`130 passed`). Candidate JSON
+  records actions, candidate diff, mutation scope, DATA-018/026/027/028
+  provenance, residual label `candidate_validation_passed`, structured-action
+  coverage, and `accepted_edit_covered = true`. Artifacts:
+  `/tmp/j3-data-029-pytest-14462-source-test/candidate.json`,
+  `/tmp/j3-data-029-pytest-14462-source-test/report.md`, and
+  `docs/DATA_029_PYTEST_14462_SOURCE_TEST_CANDIDATE_2026-05-18.md`.
 - `DATA-030`: ran validation-split issue/PR preflight for
   `pypa__pip-issue-12018-pr-13886` and
   `scrapy__scrapy-issue-7293-pr-7351` with no candidate edits. Pip checkout

@@ -95,6 +95,19 @@ PYTEST_STRICT_ADDOPTS_VALIDATION_COMMAND = (
     "pytest testing/test_config.py testing/test_mark.py -q"
 )
 PYTEST_STRICT_ADDOPTS_SETUP_COMMAND = "python -m pip install -e . pytest"
+PYTEST_TIMEDELTA_APPROX_REPLAY_ID = "pytest-dev__pytest-issue-14462-pr-14466"
+PYTEST_TIMEDELTA_APPROX_ACTION_FAMILY = "pytest_timedelta_approx_source_test_candidate"
+PYTEST_TIMEDELTA_APPROX_SOURCE_PATH = "src/_pytest/python_api.py"
+PYTEST_TIMEDELTA_APPROX_TEST_PATH = "testing/python/approx.py"
+PYTEST_TIMEDELTA_APPROX_ACCEPTED_PATHS = [
+    PYTEST_TIMEDELTA_APPROX_SOURCE_PATH,
+    PYTEST_TIMEDELTA_APPROX_TEST_PATH,
+]
+PYTEST_TIMEDELTA_APPROX_SETUP_COMMAND = "python -m pip install -e . pytest"
+PYTEST_TIMEDELTA_APPROX_VALIDATION_COMMAND = (
+    "python -m py_compile src/_pytest/python_api.py && "
+    "pytest testing/python/approx.py -q"
+)
 
 
 class IssuePrCandidateAttemptError(ValueError):
@@ -1475,6 +1488,281 @@ def run_pytest_strict_addopts_issue_pr_candidate_attempt(
     )
 
 
+def run_pytest_timedelta_approx_issue_pr_candidate_attempt(
+    repo_path: Path,
+    *,
+    manifest_path: Path = Path("examples/issue_pr_mini_replay/manifest.json"),
+    replay_id: str = PYTEST_TIMEDELTA_APPROX_REPLAY_ID,
+    readiness_records: Sequence[Mapping[str, object]] = (),
+    prompt_spec_records: Sequence[Mapping[str, object]] = (),
+    validation_records: Sequence[Mapping[str, object]] = (),
+    local_knowledge_records: Sequence[Mapping[str, object]] = (),
+    materialization_audit_records: Sequence[Mapping[str, object]] = (),
+    setup_command: str | None = None,
+    validation_command: str | None = None,
+    write: bool = True,
+    validate: bool = False,
+    validation_timeout_seconds: int = 120,
+) -> IssuePrCandidateAttempt:
+    """Attempt the pytest #14462/#14466 timedelta approx source/test candidate."""
+
+    if replay_id != PYTEST_TIMEDELTA_APPROX_REPLAY_ID:
+        raise IssuePrCandidateAttemptError(
+            f"unsupported replay id: {replay_id}",
+            blocker={
+                "field": "replay_id",
+                "reason": "unsupported_issue_pr_candidate",
+                "message": (
+                    "DATA-029 may attempt only "
+                    "pytest-dev__pytest-issue-14462-pr-14466"
+                ),
+            },
+        )
+    resolved_repo = repo_path.expanduser().resolve()
+    if not resolved_repo.is_dir():
+        raise IssuePrCandidateAttemptError(
+            f"repo does not exist: {resolved_repo}",
+            blocker={
+                "field": "repo_path",
+                "reason": "missing_repo_before_checkout",
+                "message": f"repo does not exist: {resolved_repo}",
+            },
+        )
+
+    manifest_path = manifest_path.expanduser().resolve()
+    manifest = load_issue_pr_replay_manifest(manifest_path)
+    replay_record = select_issue_pr_replay_record(manifest, replay_id)
+    repo = _required_str(replay_record, "repo")
+    prompt = _required_str(replay_record, "prompt_text")
+    repo_before_ref = _mapping(replay_record["repo_before_ref"])
+    expected_sha = _required_str(repo_before_ref, "sha")
+    accepted_change = _mapping(replay_record["accepted_change"])
+    accepted_paths = _string_sequence(accepted_change.get("changed_files"))
+    if accepted_paths != PYTEST_TIMEDELTA_APPROX_ACCEPTED_PATHS:
+        raise IssuePrCandidateAttemptError(
+            "pytest timedelta approx candidate allowlist changed unexpectedly",
+            blocker={
+                "field": "accepted_change.changed_files",
+                "reason": "unexpected_allowed_write_scope",
+                "message": "DATA-029 expects exactly the pytest #14466 source/test paths",
+            },
+        )
+
+    blockers: list[dict[str, str]] = []
+    allowed_write_paths = list(PYTEST_TIMEDELTA_APPROX_ACCEPTED_PATHS)
+    planned_write_files = list(PYTEST_TIMEDELTA_APPROX_ACCEPTED_PATHS)
+    actions: list[dict[str, object]] = [
+        {
+            "kind": "select_replay_row",
+            "target": replay_id,
+            "payload": {
+                "manifest_path": str(manifest_path),
+                "repo": repo,
+                "repo_before_ref": expected_sha,
+            },
+        },
+        {
+            "kind": "declare_source_test_only_scope",
+            "target": replay_id,
+            "payload": {
+                "planned_write_files": planned_write_files,
+                "provenance": ["DATA-018", "DATA-026", "DATA-027", "DATA-028"],
+            },
+        },
+    ]
+    head = _git_stdout(resolved_repo, ("rev-parse", "HEAD"))
+    if head:
+        actions.append(
+            {
+                "kind": "verify_repo_before_ref",
+                "target": ".",
+                "payload": {"expected": expected_sha, "actual": head},
+            }
+        )
+        if head != expected_sha:
+            blockers.append(
+                {
+                    "field": "repo_before_ref",
+                    "reason": "repo_before_ref_mismatch",
+                    "message": f"expected {expected_sha}, got {head}",
+                }
+            )
+
+    source_materialization: dict[str, object] = {}
+    test_materialization: dict[str, object] = {}
+    if not blockers:
+        try:
+            source_materialization = _materialize_pytest_timedelta_approx_source(
+                resolved_repo,
+                write=write,
+            )
+            actions.extend(_pytest_timedelta_approx_source_actions())
+        except IssuePrCandidateAttemptError as error:
+            source_materialization = {
+                "status": "blocked",
+                "target_source_file": PYTEST_TIMEDELTA_APPROX_SOURCE_PATH,
+            }
+            blockers.append(error.blocker)
+
+    if not blockers:
+        try:
+            test_materialization = _materialize_pytest_timedelta_approx_tests(
+                resolved_repo,
+                write=write,
+            )
+            actions.append(_pytest_timedelta_approx_test_action())
+        except IssuePrCandidateAttemptError as error:
+            test_materialization = {
+                "status": "blocked",
+                "target_test_file": PYTEST_TIMEDELTA_APPROX_TEST_PATH,
+            }
+            blockers.append(error.blocker)
+
+    candidate_diff = _candidate_diff(resolved_repo, PYTEST_TIMEDELTA_APPROX_ACCEPTED_PATHS)
+    changed_files = _string_sequence(candidate_diff.get("changed_files"))
+    planned_changed_files = _unique(
+        [
+            *_source_planned_changed_files(
+                source_materialization, PYTEST_TIMEDELTA_APPROX_SOURCE_PATH
+            ),
+            *_string_sequence(test_materialization.get("planned_changed_files")),
+        ]
+    )
+    files_changed = changed_files or planned_changed_files
+    writes_outside_allowed_scope = _paths_outside_allowlist(
+        files_changed,
+        allowed_write_paths,
+    )
+    if writes_outside_allowed_scope:
+        blockers.append(
+            {
+                "field": "mutation_scope",
+                "reason": "writes_outside_source_test_scope",
+                "message": "DATA-029 candidate wrote outside the explicit source/test scope",
+            }
+        )
+    missing_allowed_paths = [
+        path for path in allowed_write_paths if path not in files_changed
+    ]
+    if not blockers and missing_allowed_paths:
+        blockers.append(
+            {
+                "field": "candidate_diff",
+                "reason": "source_test_edit_not_fully_materialized",
+                "message": "candidate did not materialize required source/test paths: "
+                + ", ".join(missing_allowed_paths),
+            }
+        )
+
+    selected_setup = setup_command or PYTEST_TIMEDELTA_APPROX_SETUP_COMMAND
+    selected_validation = validation_command or _selected_validation_command(
+        validation_records=validation_records,
+        readiness_records=readiness_records,
+        replay_id=PYTEST_TIMEDELTA_APPROX_REPLAY_ID,
+        default_command=PYTEST_TIMEDELTA_APPROX_VALIDATION_COMMAND,
+    )
+    validation = _deferred_validation_record(
+        setup_command=selected_setup,
+        validation_command=selected_validation,
+    )
+    if validate and not blockers:
+        validation = validate_issue_pr_candidate(
+            resolved_repo,
+            setup_command=selected_setup,
+            validation_command=selected_validation,
+            timeout_seconds=validation_timeout_seconds,
+        )
+
+    if validation.get("status") == "failed":
+        blockers.append(
+            {
+                "field": "validation",
+                "reason": "candidate_validation_failed",
+                "message": "focused pytest #14462 validation command failed",
+            }
+        )
+    elif validation.get("status") == "timeout":
+        blockers.append(
+            {
+                "field": "validation",
+                "reason": "candidate_validation_timeout",
+                "message": "focused pytest #14462 validation command timed out",
+            }
+        )
+
+    structured_action_coverage = _pytest_timedelta_approx_structured_action_coverage(
+        blockers=blockers,
+        files_changed=files_changed,
+        validation=validation,
+    )
+    residual_labels = [blocker["reason"] for blocker in blockers]
+    if not residual_labels:
+        if validation.get("status") == "passed":
+            residual_labels = ["candidate_validation_passed"]
+        elif validate:
+            residual_labels = [f"candidate_validation_{validation.get('status')}"]
+        else:
+            residual_labels = ["candidate_validation_deferred"]
+
+    status = "blocked" if blockers else "materialized"
+    if not blockers and validation.get("status") == "passed":
+        status = "validated"
+    elif not blockers and not write:
+        status = "planned"
+
+    evidence = _evidence_summary(
+        readiness_records=readiness_records,
+        prompt_spec_records=prompt_spec_records,
+        validation_records=validation_records,
+        local_knowledge_records=local_knowledge_records,
+        materialization_audit_records=materialization_audit_records,
+        replay_id=PYTEST_TIMEDELTA_APPROX_REPLAY_ID,
+    )
+    candidate_id = _candidate_id(
+        replay_id=replay_id,
+        repo_before_ref=expected_sha,
+        candidate_diff=str(candidate_diff.get("diff", "")),
+        validation_status=str(validation.get("status", "")),
+    )
+    mutation_scope = {
+        "mode": "issue_pr_candidate_attempt_source_test_only",
+        "accepted_write_paths": list(accepted_paths),
+        "allowed_write_paths": list(allowed_write_paths),
+        "planned_write_files": planned_write_files,
+        "included_auxiliary_paths": [],
+        "excluded_auxiliary_paths": [],
+        "files_changed": files_changed,
+        "writes_outside_allowlist": writes_outside_allowed_scope,
+        "allowed_write_path_check_passed": not writes_outside_allowed_scope,
+        "missing_allowed_write_paths": missing_allowed_paths,
+        "materialization_gap_paths": [],
+        "accepted_missing_paths": missing_allowed_paths,
+        "full_accepted_edit_coverage_expressible": (
+            not missing_allowed_paths and not blockers
+        ),
+    }
+    return IssuePrCandidateAttempt(
+        candidate_id=candidate_id,
+        replay_id=replay_id,
+        repo=repo,
+        repo_before_ref=expected_sha,
+        prompt=prompt,
+        status=status,
+        action_family=PYTEST_TIMEDELTA_APPROX_ACTION_FAMILY,
+        allowed_write_paths=list(allowed_write_paths),
+        evidence=evidence,
+        actions=actions,
+        source_materialization=source_materialization,
+        test_materialization=test_materialization,
+        candidate_diff=candidate_diff,
+        mutation_scope=mutation_scope,
+        validation=validation,
+        structured_action_coverage=structured_action_coverage,
+        blockers=blockers,
+        residual_labels=_unique(residual_labels),
+    )
+
+
 def run_issue_pr_candidate_attempt(
     repo_path: Path,
     *,
@@ -1556,6 +1844,22 @@ def run_issue_pr_candidate_attempt(
             include_auxiliary_paths=include_pytest_auxiliaries,
             validation_timeout_seconds=validation_timeout_seconds,
         )
+    if replay_id == PYTEST_TIMEDELTA_APPROX_REPLAY_ID:
+        return run_pytest_timedelta_approx_issue_pr_candidate_attempt(
+            repo_path,
+            manifest_path=manifest_path,
+            replay_id=replay_id,
+            readiness_records=readiness_records,
+            prompt_spec_records=prompt_spec_records,
+            validation_records=validation_records,
+            local_knowledge_records=local_knowledge_records,
+            materialization_audit_records=materialization_audit_records,
+            setup_command=setup_command,
+            validation_command=validation_command,
+            write=write,
+            validate=validate,
+            validation_timeout_seconds=validation_timeout_seconds,
+        )
     raise IssuePrCandidateAttemptError(
         f"unsupported replay id: {replay_id}",
         blocker={
@@ -1564,7 +1868,7 @@ def run_issue_pr_candidate_attempt(
             "message": (
                 "supported candidate attempts are DATA-012 Requests, DATA-014 "
                 "Click default_map, DATA-016 Click semver default, and DATA-024 "
-                "pytest strict addopts"
+                "pytest strict addopts, and DATA-029 pytest timedelta approx"
             ),
         },
     )
@@ -1658,6 +1962,8 @@ def write_issue_pr_candidate_attempt_report(
         if record.get("action_family") == PYTEST_STRICT_ADDOPTS_FULL_SCOPE_ACTION_FAMILY
         else "DATA-024 Pytest #14442 Source/Test Candidate Attempt"
         if record.get("replay_id") == PYTEST_STRICT_ADDOPTS_REPLAY_ID
+        else "DATA-029 Pytest #14462 Source/Test Candidate Attempt"
+        if record.get("replay_id") == PYTEST_TIMEDELTA_APPROX_REPLAY_ID
         else "DATA-012 Requests Issue/PR Candidate Attempt"
     )
     lines = [
@@ -1771,6 +2077,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             setup_command = PYTEST_STRICT_ADDOPTS_SETUP_COMMAND
         if validation_command == REQUESTS_VALIDATION_COMMAND:
             validation_command = PYTEST_STRICT_ADDOPTS_VALIDATION_COMMAND
+    elif args.replay_id == PYTEST_TIMEDELTA_APPROX_REPLAY_ID:
+        if setup_command == REQUESTS_SETUP_COMMAND:
+            setup_command = PYTEST_TIMEDELTA_APPROX_SETUP_COMMAND
+        if validation_command == REQUESTS_VALIDATION_COMMAND:
+            validation_command = PYTEST_TIMEDELTA_APPROX_VALIDATION_COMMAND
 
     attempt = run_issue_pr_candidate_attempt(
         args.repo_path,
@@ -2610,6 +2921,469 @@ def _materialize_pytest_strict_markers_addopts_test(
     )
 
 
+def _pytest_timedelta_approx_source_actions() -> list[dict[str, object]]:
+    return [
+        {
+            "kind": "python_dispatch_branch_insert",
+            "target": PYTEST_TIMEDELTA_APPROX_SOURCE_PATH,
+            "payload": {
+                "class_name": "ApproxBase",
+                "method_name": "_approx_scalar",
+                "branch": "datetime_or_timedelta_to_ApproxTimedelta",
+                "provenance": ["DATA-026", "DATA-028", "DATA-029"],
+            },
+        },
+        {
+            "kind": "pytest_approx_timedelta_source_region_update",
+            "target": PYTEST_TIMEDELTA_APPROX_SOURCE_PATH,
+            "payload": {
+                "class_name": "ApproxTimedelta",
+                "method_name": "__init__",
+                "rel_semantics": "numeric_fraction_times_abs_expected",
+                "preserve_datetime_rel_rejection": True,
+                "provenance": ["DATA-026", "DATA-028", "DATA-029"],
+            },
+        },
+        {
+            "kind": "python_docstring_region_update",
+            "target": PYTEST_TIMEDELTA_APPROX_SOURCE_PATH,
+            "payload": {
+                "function_name": "approx",
+                "topic": "datetime_timedelta_rel_abs_policy",
+                "provenance": ["DATA-028", "DATA-029"],
+            },
+        },
+    ]
+
+
+def _pytest_timedelta_approx_test_action() -> dict[str, object]:
+    return {
+        "kind": "pytest_existing_class_method_refine_and_insert",
+        "target": PYTEST_TIMEDELTA_APPROX_TEST_PATH,
+        "payload": {
+            "class_name": "TestApproxDatetime",
+            "refined_methods": [
+                "test_timedelta_rel_within_tolerance",
+                "test_timedelta_rel_outside_tolerance",
+                "test_timedelta_rel_must_be_timedelta",
+            ],
+            "inserted_methods": [
+                "test_timedelta_rel_must_be_non_negative",
+                "test_timedelta_rel_must_not_be_nan",
+                "test_timedelta_abs_must_be_non_negative",
+                "test_timedelta_rel_with_abs",
+                "test_timedelta_rel_zero",
+                "test_timedelta_rel_scales_with_expected",
+                "test_timedelta_in_sequence",
+                "test_timedelta_in_mapping",
+                "test_datetime_in_sequence",
+                "test_datetime_in_mapping",
+            ],
+            "provenance": ["DATA-026", "DATA-028", "DATA-029"],
+        },
+    }
+
+
+def _materialize_pytest_timedelta_approx_source(
+    repo_path: Path,
+    *,
+    write: bool,
+) -> dict[str, object]:
+    source_path = _repo_file(repo_path, PYTEST_TIMEDELTA_APPROX_SOURCE_PATH)
+    before_text = source_path.read_text(encoding="utf-8")
+    after_text = before_text
+    accepted_markers = [
+        "    def _approx_scalar(self, x) -> ApproxBase:",
+        "        if isinstance(x, (datetime, timedelta)):",
+        "    Requires an explicit tolerance as a timedelta for abs, or a float for rel.",
+        '                    f"number, got {type(rel).__name__}"',
+        "        rel_tolerance = rel * builtins.abs(expected) if rel is not None else None",
+        "        super().__init__(expected, rel=rel, abs=tolerance, nan_ok=False)",
+        "    For timedelta comparisons, ``rel`` is a number (not a timedelta) that",
+    ]
+    if all(marker in after_text for marker in accepted_markers):
+        return _python_source_candidate_after(
+            before_text=before_text,
+            after_text=before_text,
+            source_file=PYTEST_TIMEDELTA_APPROX_SOURCE_PATH,
+            planned_changed_files=[],
+            wrote_file=False,
+            status="already_applied",
+        )
+
+    old_scalar = "\n".join(
+        [
+            "    def _approx_scalar(self, x) -> ApproxScalar:",
+            "        if isinstance(x, Decimal):",
+            "            return ApproxDecimal(x, rel=self.rel, abs=self.abs, nan_ok=self.nan_ok)",
+            "        return ApproxScalar(x, rel=self.rel, abs=self.abs, nan_ok=self.nan_ok)",
+        ]
+    )
+    new_scalar = "\n".join(
+        [
+            "    def _approx_scalar(self, x) -> ApproxBase:",
+            "        if isinstance(x, Decimal):",
+            "            return ApproxDecimal(x, rel=self.rel, abs=self.abs, nan_ok=self.nan_ok)",
+            "        if isinstance(x, (datetime, timedelta)):",
+            "            return ApproxTimedelta(x, rel=self.rel, abs=self.abs, nan_ok=self.nan_ok)",
+            "        return ApproxScalar(x, rel=self.rel, abs=self.abs, nan_ok=self.nan_ok)",
+        ]
+    )
+    if old_scalar not in after_text:
+        raise IssuePrCandidateAttemptError(
+            "pytest timedelta approx _approx_scalar anchor not found",
+            blocker={
+                "field": "source_materialization",
+                "reason": "source_dispatch_anchor_not_found",
+                "message": "could not find ApproxBase._approx_scalar Decimal branch",
+            },
+        )
+    after_text = after_text.replace(old_scalar, new_scalar, 1)
+
+    old_class_doc_line = "    Requires an explicit tolerance as a timedelta."
+    new_class_doc_line = (
+        "    Requires an explicit tolerance as a timedelta for abs, or a float for rel."
+    )
+    if old_class_doc_line not in after_text:
+        raise IssuePrCandidateAttemptError(
+            "pytest timedelta approx class doc anchor not found",
+            blocker={
+                "field": "source_materialization",
+                "reason": "source_doc_anchor_not_found",
+                "message": "could not find ApproxTimedelta tolerance docstring line",
+            },
+        )
+    after_text = after_text.replace(old_class_doc_line, new_class_doc_line, 1)
+
+    old_requires_message = "\n".join(
+        [
+            '                "pytest.approx() requires an explicit tolerance for "',
+            '                "datetime/timedelta comparisons: "',
+            '                "e.g. approx(expected, abs=timedelta(seconds=1))"',
+        ]
+    )
+    new_requires_message = "\n".join(
+        [
+            '                "pytest.approx() requires an explicit tolerance for "',
+            '                "datetime/timedelta comparisons: "',
+            '                "e.g. approx(expected, abs=timedelta(seconds=1)) "',
+            '                "or approx(expected, rel=0.01)"',
+        ]
+    )
+    if old_requires_message not in after_text:
+        raise IssuePrCandidateAttemptError(
+            "pytest timedelta approx explicit-tolerance message anchor not found",
+            blocker={
+                "field": "source_materialization",
+                "reason": "source_error_message_anchor_not_found",
+                "message": "could not find ApproxTimedelta requires-tolerance message",
+            },
+        )
+    after_text = after_text.replace(old_requires_message, new_requires_message, 1)
+
+    old_rel_block = "\n".join(
+        [
+            "        if rel is not None and not isinstance(rel, timedelta):",
+            "            raise TypeError(",
+            "                f\"relative tolerance for timedelta must be a \"",
+            "                f\"timedelta, got {type(rel).__name__}\"",
+            "            )",
+            "        tolerance = max(t for t in (abs, rel) if t is not None)",
+            "        super().__init__(expected, rel=None, abs=tolerance, nan_ok=False)",
+        ]
+    )
+    new_rel_block = "\n".join(
+        [
+            "        if abs is not None and abs < timedelta(0):",
+            "            raise ValueError(f\"absolute tolerance can't be negative: {abs}\")",
+            "        if rel is not None:",
+            "            if not isinstance(rel, (int, float)):",
+            "                raise TypeError(",
+            "                    f\"relative tolerance for timedelta must be a \"",
+            "                    f\"number, got {type(rel).__name__}\"",
+            "                )",
+            "            if rel < 0:",
+            "                raise ValueError(f\"relative tolerance can't be negative: {rel}\")",
+            "            if math.isnan(rel):",
+            "                raise ValueError(\"relative tolerance can't be NaN.\")",
+            "        # Compute the effective tolerance. abs_tolerance is a timedelta, rel * expected",
+            "        # gives a timedelta (timedelta * float works in Python).",
+            "        abs_tolerance = abs",
+            "        rel_tolerance = rel * builtins.abs(expected) if rel is not None else None",
+            "        if abs_tolerance is not None and rel_tolerance is not None:",
+            "            tolerance = max(abs_tolerance, rel_tolerance)",
+            "        else:",
+            "            tolerance = abs_tolerance if abs_tolerance is not None else rel_tolerance",
+            "        super().__init__(expected, rel=rel, abs=tolerance, nan_ok=False)",
+        ]
+    )
+    if old_rel_block not in after_text:
+        raise IssuePrCandidateAttemptError(
+            "pytest timedelta approx relative-tolerance source anchor not found",
+            blocker={
+                "field": "source_materialization",
+                "reason": "source_region_anchor_not_found",
+                "message": "could not find ApproxTimedelta old rel validation block",
+            },
+        )
+    after_text = after_text.replace(old_rel_block, new_rel_block, 1)
+
+    old_approx_doc = "\n".join(
+        [
+            "    Note that ``rel`` is not supported for datetime comparisons,",
+            "    and ``abs`` or ``rel`` must be explicitly provided as a ``timedelta`` object.",
+        ]
+    )
+    new_approx_doc = "\n".join(
+        [
+            "    Note that ``rel`` is not supported for datetime comparisons.",
+            "    For timedelta comparisons, ``rel`` is a number (not a timedelta) that",
+            "    represents a relative tolerance -- a fraction of the expected value.",
+            "    ``abs`` must be a ``timedelta`` object in both cases.",
+        ]
+    )
+    if old_approx_doc not in after_text:
+        raise IssuePrCandidateAttemptError(
+            "pytest timedelta approx function doc anchor not found",
+            blocker={
+                "field": "source_materialization",
+                "reason": "source_doc_anchor_not_found",
+                "message": "could not find approx() datetime/timedelta docstring note",
+            },
+        )
+    after_text = after_text.replace(old_approx_doc, new_approx_doc, 1)
+
+    planned_changed_files = (
+        [PYTEST_TIMEDELTA_APPROX_SOURCE_PATH] if after_text != before_text else []
+    )
+    if write and planned_changed_files:
+        source_path.write_text(after_text, encoding="utf-8")
+    return _python_source_candidate_after(
+        before_text=before_text,
+        after_text=after_text,
+        source_file=PYTEST_TIMEDELTA_APPROX_SOURCE_PATH,
+        planned_changed_files=planned_changed_files,
+        wrote_file=write and bool(planned_changed_files),
+        status="materialized" if planned_changed_files else "unchanged",
+    )
+
+
+def _materialize_pytest_timedelta_approx_tests(
+    repo_path: Path,
+    *,
+    write: bool,
+) -> dict[str, object]:
+    test_path = _repo_file(repo_path, PYTEST_TIMEDELTA_APPROX_TEST_PATH)
+    before_text = test_path.read_text(encoding="utf-8")
+    after_text = before_text
+    if "class TestApproxDatetime:" not in after_text:
+        raise IssuePrCandidateAttemptError(
+            "pytest approx TestApproxDatetime class not found",
+            blocker={
+                "field": "test_materialization",
+                "reason": "test_class_anchor_not_found",
+                "message": "could not find TestApproxDatetime in testing/python/approx.py",
+            },
+        )
+    accepted_markers = [
+        "        assert td1 == approx(td2, rel=0.01)",
+        "    def test_timedelta_rel_must_be_number(self):",
+        "    def test_timedelta_rel_scales_with_expected(self):",
+        "    def test_timedelta_in_sequence(self):",
+        "    def test_datetime_in_mapping(self):",
+    ]
+    if all(marker in after_text for marker in accepted_markers):
+        return _test_candidate_after(
+            before_text=before_text,
+            after_text=before_text,
+            target_test_file=PYTEST_TIMEDELTA_APPROX_TEST_PATH,
+            planned_changed_files=[],
+            wrote_file=False,
+            status="already_applied",
+        )
+
+    rel_replacements = [
+        (
+            "        assert td1 == approx(td2, rel=timedelta(seconds=1))",
+            "        assert td1 == approx(td2, rel=0.01)",
+        ),
+        (
+            "        assert td1 != approx(td2, rel=timedelta(seconds=1))",
+            "        assert td1 != approx(td2, rel=0.01)",
+        ),
+    ]
+    for old, new in rel_replacements:
+        if old not in after_text:
+            raise IssuePrCandidateAttemptError(
+                "pytest timedelta rel assertion anchor not found",
+                blocker={
+                    "field": "test_materialization",
+                    "reason": "test_assertion_anchor_not_found",
+                    "message": f"could not find old assertion: {old.strip()}",
+                },
+            )
+        after_text = after_text.replace(old, new, 1)
+
+    old_type_test = "\n".join(
+        [
+            "    def test_timedelta_rel_must_be_timedelta(self):",
+            "        from datetime import timedelta",
+            "",
+            "        with pytest.raises(TypeError, match=\"must be a timedelta\"):",
+            "            approx(timedelta(seconds=1), rel=0.1)",
+        ]
+    )
+    new_type_and_validation_tests = "\n".join(
+        [
+            "    def test_timedelta_rel_must_be_number(self):",
+            "        from datetime import timedelta",
+            "",
+            "        with pytest.raises(TypeError, match=\"must be a number\"):",
+            "            approx(timedelta(seconds=1), rel=timedelta(seconds=1))",
+            "",
+            "    def test_timedelta_rel_must_be_non_negative(self):",
+            "        from datetime import timedelta",
+            "",
+            "        with pytest.raises(ValueError, match=\"relative tolerance can't be negative\"):",
+            "            approx(timedelta(seconds=1), rel=-0.1)",
+            "",
+            "    def test_timedelta_rel_must_not_be_nan(self):",
+            "        from datetime import timedelta",
+            "",
+            "        with pytest.raises(ValueError, match=\"relative tolerance can't be NaN\"):",
+            "            approx(timedelta(seconds=1), rel=float(\"nan\"))",
+            "",
+            "    def test_timedelta_abs_must_be_non_negative(self):",
+            "        from datetime import timedelta",
+            "",
+            "        with pytest.raises(ValueError, match=\"absolute tolerance can't be negative\"):",
+            "            approx(timedelta(seconds=1), abs=timedelta(seconds=-1))",
+            "",
+            "    def test_timedelta_rel_with_abs(self):",
+            "        from datetime import timedelta",
+            "",
+            "        # rel=0.05 gives 5s tolerance, abs=timedelta(seconds=1) gives 1s.",
+            "        # max(1s, 5s) = 5s tolerance.",
+            "        td1 = timedelta(seconds=100)",
+            "        td2 = timedelta(seconds=104)",
+            "        assert td1 == approx(td2, rel=0.05, abs=timedelta(seconds=1))",
+            "",
+            "    def test_timedelta_rel_zero(self):",
+            "        from datetime import timedelta",
+            "",
+            "        # rel=0 means exact match required (0 * expected = 0)",
+            "        td1 = timedelta(seconds=100)",
+            "        assert td1 == approx(td1, rel=0.0, abs=timedelta(seconds=0))",
+            "        assert td1 != approx(timedelta(seconds=101), rel=0.0, abs=timedelta(seconds=0))",
+            "",
+            "    def test_timedelta_rel_scales_with_expected(self):",
+            "        from datetime import timedelta",
+            "",
+            "        # Same rel=0.1, but different expected values.",
+            "        # 10% of 100s = 10s, 10% of 200s = 20s.",
+            "        assert timedelta(seconds=109) == approx(timedelta(seconds=100), rel=0.1)",
+            "        assert timedelta(seconds=218) == approx(timedelta(seconds=200), rel=0.1)",
+            "        # 11s is > 10% of 100s, but < 10% of 200s",
+            "        assert timedelta(seconds=111) != approx(timedelta(seconds=100), rel=0.1)",
+            "        assert timedelta(seconds=211) == approx(timedelta(seconds=200), rel=0.1)",
+        ]
+    )
+    if old_type_test not in after_text:
+        raise IssuePrCandidateAttemptError(
+            "pytest timedelta rel type test anchor not found",
+            blocker={
+                "field": "test_materialization",
+                "reason": "test_method_anchor_not_found",
+                "message": "could not find test_timedelta_rel_must_be_timedelta body",
+            },
+        )
+    after_text = after_text.replace(old_type_test, new_type_and_validation_tests, 1)
+
+    container_tests = "\n".join(
+        [
+            "    def test_timedelta_in_sequence(self):",
+            "        from datetime import timedelta",
+            "",
+            "        assert [timedelta(seconds=105)] == approx([timedelta(seconds=100)], rel=0.05)",
+            "        assert [timedelta(seconds=110)] != approx([timedelta(seconds=100)], rel=0.05)",
+            "        assert [timedelta(seconds=105)] == approx(",
+            "            [timedelta(seconds=100)], abs=timedelta(seconds=10)",
+            "        )",
+            "",
+            "    def test_timedelta_in_mapping(self):",
+            "        from datetime import timedelta",
+            "",
+            "        assert {\"x\": timedelta(seconds=105)} == approx(",
+            "            {\"x\": timedelta(seconds=100)}, rel=0.05",
+            "        )",
+            "        assert {\"x\": timedelta(seconds=110)} != approx(",
+            "            {\"x\": timedelta(seconds=100)}, rel=0.05",
+            "        )",
+            "        assert {\"x\": timedelta(seconds=105)} == approx(",
+            "            {\"x\": timedelta(seconds=100)}, abs=timedelta(seconds=10)",
+            "        )",
+            "",
+            "    def test_datetime_in_sequence(self):",
+            "        from datetime import datetime",
+            "        from datetime import timedelta",
+            "",
+            "        assert [datetime(2024, 1, 1, 12, 0, 0, 500_000)] == approx(",
+            "            [datetime(2024, 1, 1, 12, 0, 0)], abs=timedelta(seconds=1)",
+            "        )",
+            "        assert [datetime(2024, 1, 1, 12, 0, 5)] != approx(",
+            "            [datetime(2024, 1, 1, 12, 0, 0)], abs=timedelta(seconds=1)",
+            "        )",
+            "",
+            "    def test_datetime_in_mapping(self):",
+            "        from datetime import datetime",
+            "        from datetime import timedelta",
+            "",
+            "        assert {\"t\": datetime(2024, 1, 1, 12, 0, 0, 500_000)} == approx(",
+            "            {\"t\": datetime(2024, 1, 1, 12, 0, 0)}, abs=timedelta(seconds=1)",
+            "        )",
+            "        assert {\"t\": datetime(2024, 1, 1, 12, 0, 5)} != approx(",
+            "            {\"t\": datetime(2024, 1, 1, 12, 0, 0)}, abs=timedelta(seconds=1)",
+            "        )",
+        ]
+    )
+    class_anchor = "\n\nclass MyVec3:"
+    if "    def test_timedelta_in_sequence(self):" not in after_text:
+        if class_anchor not in after_text:
+            raise IssuePrCandidateAttemptError(
+                "pytest approx TestApproxDatetime insertion boundary not found",
+                blocker={
+                    "field": "test_materialization",
+                    "reason": "test_insertion_anchor_not_found",
+                    "message": "could not find class MyVec3 boundary after TestApproxDatetime",
+                },
+            )
+        after_text = after_text.replace(
+            class_anchor, "\n" + container_tests + "\n" + class_anchor, 1
+        )
+
+    planned_changed_files = (
+        [PYTEST_TIMEDELTA_APPROX_TEST_PATH] if after_text != before_text else []
+    )
+    if write and planned_changed_files:
+        test_path.write_text(after_text, encoding="utf-8")
+    result = _test_candidate_after(
+        before_text=before_text,
+        after_text=after_text,
+        target_test_file=PYTEST_TIMEDELTA_APPROX_TEST_PATH,
+        planned_changed_files=planned_changed_files,
+        wrote_file=write and bool(planned_changed_files),
+        status="materialized" if planned_changed_files else "unchanged",
+    )
+    result["metadata"] = {
+        "target_class": "TestApproxDatetime",
+        "obsolete_assertions_replaced": 2,
+        "container_dispatch_methods_inserted": 4,
+        "invalid_tolerance_methods_inserted": 3,
+        "expected_value_scaling_methods_inserted": 3,
+    }
+    return result
+
+
 def _python_source_candidate_after(
     *,
     before_text: str,
@@ -2954,6 +3728,52 @@ def _pytest_strict_addopts_structured_action_coverage(
             "refinements. Full accepted-edit parity remains false because AUTHORS "
             "and changelog/14442.bugfix.rst are deliberately excluded auxiliary "
             "paths in this slice."
+        ),
+    }
+
+
+def _pytest_timedelta_approx_structured_action_coverage(
+    *,
+    blockers: Sequence[Mapping[str, str]],
+    files_changed: Sequence[str],
+    validation: Mapping[str, object],
+) -> dict[str, object]:
+    accepted_paths = set(PYTEST_TIMEDELTA_APPROX_ACCEPTED_PATHS)
+    changed = set(files_changed)
+    source_covered = PYTEST_TIMEDELTA_APPROX_SOURCE_PATH in changed
+    test_covered = PYTEST_TIMEDELTA_APPROX_TEST_PATH in changed
+    accepted_edit_covered = not blockers and accepted_paths == changed
+    labels = []
+    if source_covered:
+        labels.extend(
+            [
+                "python_dispatch_branch_insert_datetime_timedelta_covered",
+                "pytest_approx_timedelta_numeric_rel_source_region_covered",
+                "approx_datetime_timedelta_doc_region_covered",
+            ]
+        )
+    if test_covered:
+        labels.append("pytest_testapproxdatetime_method_refine_insert_covered")
+    if validation.get("status") == "passed":
+        labels.append("focused_validation_covered")
+    return {
+        "accepted_edit_covered": accepted_edit_covered,
+        "behavior_edit_covered": accepted_edit_covered,
+        "source_test_only_scope": True,
+        "full_accepted_scope": True,
+        "coverage_labels": labels,
+        "materialization_gap": (
+            None
+            if accepted_edit_covered
+            else "pytest_timedelta_approx_source_test_candidate_gap"
+        ),
+        "provenance_task_ids": ["DATA-018", "DATA-026", "DATA-027", "DATA-028", "DATA-029"],
+        "note": (
+            "The DATA-029 candidate covers the full accepted pytest #14462 "
+            "source/test scope with a bounded ApproxBase dispatch insertion, "
+            "ApproxTimedelta numeric relative-tolerance source-region update, "
+            "and constrained TestApproxDatetime refiner. This is local "
+            "issue/PR replay evidence, not a general source generator."
         ),
     }
 

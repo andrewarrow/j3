@@ -3121,3 +3121,40 @@ meaningful work. Do not replace this file with a daily reset.
 - Blockers: pip validation recipe is blocked on missing `installer`;
   candidate materialization/ranking remain deferred for both validation-split
   rows.
+
+### 2026-05-18 - DATA-029 - Pytest #14462 source/test candidate attempt
+
+- Owner: worker Kuhn (`019e3c81-4427-7613-9735-b1b1548e15a1`).
+- Files changed: `j3/issue_pr_candidate_attempt.py`,
+  `tests/test_issue_pr_candidate_attempt.py`,
+  `docs/DATA_029_PYTEST_14462_SOURCE_TEST_CANDIDATE_2026-05-18.md`,
+  `plans/active.md`, `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `python -m py_compile j3/issue_pr_candidate_attempt.py
+  tests/test_issue_pr_candidate_attempt.py` -> passed; `pytest
+  tests/test_issue_pr_candidate_attempt.py -q` -> 18 passed; live candidate
+  `python -m j3.issue_pr_candidate_attempt --replay-id
+  pytest-dev__pytest-issue-14462-pr-14466 ... --validation-command "python -m
+  py_compile src/_pytest/python_api.py && pytest testing/python/approx.py -q"
+  --validate` -> validated; accepted parity check against
+  `2c555d62fa2c51ccb0c4c1cdd6243149ce4ffa97` -> no diff for both touched
+  paths; `pytest tests/test_plan_consistency.py -q` -> passed; `git diff
+  --check` -> passed.
+- Result: materialized the accepted pytest #14462/#14466 source/test edit in a
+  fresh live checkout at `fbab7c5dfe63a22f545207e8dc163ed61ad51d98`, changing
+  only `src/_pytest/python_api.py` and `testing/python/approx.py`. The source
+  materializer covers `ApproxBase._approx_scalar` datetime/timedelta dispatch
+  plus `ApproxTimedelta.__init__` numeric relative-tolerance semantics while
+  preserving datetime `rel` rejection. The test materializer refines only
+  `TestApproxDatetime` and adds numeric timedelta `rel`, invalid tolerance,
+  expected-value scaling, and sequence/mapping dispatch coverage. Validation
+  passed in `2.601s`; the focused pytest module reported `130 passed in
+  0.21s`. Candidate JSON records actions, candidate diff, mutation scope,
+  DATA-018/026/027/028 provenance, residual label
+  `candidate_validation_passed`, structured-action coverage, and
+  `accepted_edit_covered = true`.
+- Commit: pending.
+- Push: pending.
+- Next: review DATA-029 with DATA-030; remaining issue/PR replay work is
+  ranking/decoy evidence for the validated pytest #14462 candidate or
+  prompt/spec/local-knowledge acquisition for the DATA-030 Scrapy row.
+- Blockers: none.

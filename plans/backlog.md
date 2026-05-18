@@ -1759,7 +1759,7 @@ Long-term target:
 
 ### DATA-029: Pytest #14462 source/test candidate attempt
 
-- Status: active
+- Status: done
 - Why: DATA-027 says pytest #14462 is ready for a candidate attempt and
   DATA-028 identifies the exact materialization gap. The next hard proof is
   whether j3 can turn those constrained source/test materializers into an
@@ -1783,6 +1783,21 @@ Long-term target:
   blocker instead of broadening scope silently.
 - Tests: focused candidate-attempt tests, plan consistency, `git diff
   --check`, and live focused validation when feasible.
+- Completion note: added a bounded pytest #14462 source/test candidate
+  materializer for exactly `pytest-dev__pytest-issue-14462-pr-14466`. The live
+  pinned checkout at `fbab7c5dfe63a22f545207e8dc163ed61ad51d98` changed only
+  `src/_pytest/python_api.py` and `testing/python/approx.py`, with exact
+  accepted-commit parity against
+  `2c555d62fa2c51ccb0c4c1cdd6243149ce4ffa97` for both touched paths. Focused
+  validation passed with `python -m py_compile src/_pytest/python_api.py &&
+  pytest testing/python/approx.py -q` in `2.601s`; the pytest module reported
+  `130 passed in 0.21s`. Candidate JSON records actions, candidate diff,
+  mutation scope, DATA-018/026/027/028 provenance, residual label
+  `candidate_validation_passed`, structured-action coverage, and
+  `accepted_edit_covered = true`. Artifacts:
+  `/tmp/j3-data-029-pytest-14462-source-test/candidate.json`,
+  `/tmp/j3-data-029-pytest-14462-source-test/report.md`, and
+  `docs/DATA_029_PYTEST_14462_SOURCE_TEST_CANDIDATE_2026-05-18.md`.
 
 ### DATA-030: Validation-split issue/PR preflight
 
@@ -1824,7 +1839,7 @@ Long-term target:
 
 Start with these unless fresh evidence changes the order:
 
-1. `DATA-029`: attempt pytest #14462 source/test materialization and
-   validation.
-2. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.
-3. `MODEL-004`: distinguish mapping key and value targets.
+1. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.
+2. `MODEL-004`: distinguish mapping key and value targets.
+3. `KNOW-003`: broaden knowledge-use attribution where scoring shows missing
+   local-knowledge evidence.

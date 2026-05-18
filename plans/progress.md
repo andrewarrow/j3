@@ -3642,8 +3642,8 @@ meaningful work. Do not replace this file with a daily reset.
   resolved and replaced with `decoy_candidate_after_unavailable`. Ranking
   remains shadow-only and blocked on missing decoy after-state/live validation,
   no guarded issue/PR ranker, and weak issue-specific semantic features.
-- Commit: pending.
-- Push: pending.
+- Commit: 3a09e5c.
+- Push: succeeded.
 - Next: materialize or live-validate decoys if ranking evidence remains the
   priority; otherwise continue MAT-008 to test held-out reusable
   source-region materialization.

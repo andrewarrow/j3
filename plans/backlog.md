@@ -1209,27 +1209,63 @@ Long-term target:
 
 ### DATA-012: First issue/PR candidate attempt
 
-- Status: ready
+- Status: active
 - Why: once `DATA-010` identifies a replay row that is ready for candidate
   attempts, the project must immediately test the hard materialization and
   ranking path on a real accepted issue/PR task.
-- Write scope: to be set by the coordinator from the `DATA-010` readiness
-  report; likely a bounded candidate materializer or candidate-attempt runner,
-  focused tests, compact report, and plan updates.
-- Acceptance: attempt exactly one readiness-approved row; record generated
-  candidate actions, source/test materialization result, allowed-write-path
-  checks, validation command/runtime, pass/fail, residual labels, and whether
-  the existing structured-action surface covered the accepted edit. If no row
-  is ready, keep this blocked with the exact missing evidence.
+- Write scope: a bounded issue/PR candidate-attempt runner or materializer,
+  focused tests, compact report, generated outputs under `/tmp`, and plan
+  updates.
+- Acceptance: attempt exactly `psf__requests-issue-7432-pr-7433`, the narrower
+  DATA-010 ready row with DATA-008 validation and KNOW-005 local knowledge.
+  Record generated candidate actions, source/test materialization result,
+  allowed-write-path checks, validation command/runtime, pass/fail, residual
+  labels, and whether the existing structured-action surface covered the
+  accepted edit. If materialization is not expressible, keep this honest with
+  the exact action/materialization gap.
 - Tests: focused candidate-attempt tests, plan consistency, `git diff
   --check`, and the live focused validation command when feasible.
+
+### DATA-013: Click semver prompt/spec normalization
+
+- Status: active
+- Why: `DATA-010` blocked `pallets__click-issue-3298-pr-3299` only on missing
+  prompt/spec evidence. KNOW-004 already acquired the required local
+  knowledge, so the next blocker-removal step is a normalized spec.
+- Write scope: `j3/issue_pr_prompt_spec.py`,
+  `tests/test_issue_pr_prompt_spec.py`, optional compact report, and plan
+  updates.
+- Acceptance: build a structured spec for
+  `pallets__click-issue-3298-pr-3299` that records minimal reproduction,
+  observed behavior, expected behavior, affected API symbol, input shape,
+  acceptance test shape, non-string default behavior, type-conversion
+  semantics, empty-string check scope, third-party `semver.Version`
+  reproduction context, provenance, and any fields still blocked on
+  unavailable source text. The task must not attempt candidate code edits.
+- Tests: focused prompt/spec tests, plan consistency, `git diff --check`, and
+  a CLI smoke proving the Click semver spec can be emitted.
+
+### DATA-014: Second issue/PR candidate attempt
+
+- Status: ready
+- Why: after `DATA-012`, the loop should immediately test whether the
+  candidate-attempt surface generalizes to the other DATA-010 ready row instead
+  of overfitting Requests.
+- Write scope: to be set after reviewing `DATA-012`; likely the same
+  candidate-attempt runner/materializer, focused tests, compact report,
+  generated outputs under `/tmp`, and plan updates.
+- Acceptance: attempt exactly `pallets__click-issue-2745-pr-3364` or another
+  DATA-010 ready row chosen from fresh evidence; record candidate actions,
+  materialization result, allowed-write-path checks, validation runtime,
+  pass/fail, residual labels, and structured-action coverage.
+- Tests: focused candidate-attempt tests, plan consistency, `git diff
+  --check`, and live focused validation when feasible.
 
 ## Next Recommended Queue
 
 Start with these unless fresh evidence changes the order:
 
-1. `DATA-012`: first readiness-approved issue/PR candidate attempt after
-   `DATA-010` identifies the safest row.
+1. `DATA-014`: second readiness-approved issue/PR candidate attempt.
 2. `KNOW-003`: broaden knowledge-use attribution where scoring shows missing
    local-knowledge evidence.
 3. `MODEL-006`: candidate-after or AST-delta observation for ranking evidence.

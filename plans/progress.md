@@ -2074,3 +2074,25 @@ meaningful work. Do not replace this file with a daily reset.
   Click #3298 deferred until prompt/spec normalization exists.
 - Blockers: none for DATA-010; Click #3298 candidate attempt remains blocked
   by missing prompt/spec evidence.
+
+### 2026-05-18 - Coordinator Review And Dispatch - DATA-012 / DATA-013
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, `plans/progress.md`.
+- Tests: `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff
+  --check` -> passed.
+- Result: reviewed DATA-010 and DATA-011. Focused checks passed:
+  `python -m py_compile j3/issue_pr_readiness.py
+  tests/test_issue_pr_readiness.py`, `pytest
+  tests/test_issue_pr_readiness.py -q`, combined prompt-spec/readiness tests,
+  the `j3.issue_pr_readiness` CLI smoke over the first three replay rows,
+  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`. The
+  first candidate attempt will use the narrower ready Requests row because it
+  has two accepted-change paths and a hermetic DATA-008 validation recipe.
+  In parallel, `DATA-013` will remove the Click #3298 prompt/spec blocker
+  exposed by the readiness gate.
+- Commit: pending.
+- Push: pending.
+- Next: run plan checks, commit this dispatch, then assign one worker to
+  `DATA-012` and one worker to `DATA-013` with disjoint write scopes.
+- Blockers: none.

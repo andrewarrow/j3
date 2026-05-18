@@ -44,15 +44,56 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-No active worker tasks are recorded. The coordinator should dispatch the next
-ready task unless it is intentionally pausing for review.
+### `DATA-012`: Requests issue/PR candidate attempt
+
+- Status: active
+- Owner: coordinator dispatch pending.
+- Why: `DATA-010` says `psf__requests-issue-7432-pr-7433` is ready for a
+  candidate attempt. This is the next hard falsification point: can the
+  structured stack materialize and validate a real accepted issue/PR edit?
+- Write scope: a bounded issue/PR candidate-attempt runner or materializer,
+  focused tests, compact report, generated outputs under `/tmp`, and plan
+  updates. Do not edit `j3/issue_pr_prompt_spec.py` or
+  `j3/local_knowledge.py`; consume DATA-008/DATA-011/KNOW-005 evidence.
+- Acceptance: attempt exactly `psf__requests-issue-7432-pr-7433` on a
+  repo-before checkout. Record candidate actions, source/test materialization
+  result, candidate diff or blocker, allowed-write-path checks, validation
+  command/runtime, pass/fail, residual labels, and whether the current
+  structured-action surface covers the accepted edit. If materialization is
+  not expressible, record the exact action/materialization gap instead of
+  broadening scope silently. No hosted LLM use.
+- Tests: focused candidate-attempt tests, `pytest
+  tests/test_plan_consistency.py -q`, `git diff --check`, and the live
+  DATA-008 focused validation recipe when feasible.
+
+### `DATA-013`: Click semver prompt/spec normalization
+
+- Status: active
+- Owner: coordinator dispatch pending.
+- Why: `DATA-010` blocked `pallets__click-issue-3298-pr-3299` only on missing
+  prompt/spec evidence; KNOW-004 already acquired the local knowledge.
+- Write scope: `j3/issue_pr_prompt_spec.py`,
+  `tests/test_issue_pr_prompt_spec.py`, optional compact report, and plan
+  updates. Do not edit readiness, candidate-attempt, or local-knowledge
+  modules.
+- Acceptance: build a structured spec for
+  `pallets__click-issue-3298-pr-3299` that records minimal reproduction,
+  observed behavior, expected behavior, affected API symbol, input shape,
+  acceptance test shape, non-string default behavior, type-conversion
+  semantics, empty-string check scope, third-party `semver.Version`
+  reproduction context, provenance, and any fields still blocked on
+  unavailable source text. No candidate source edits.
+- Tests: focused prompt/spec tests, `pytest tests/test_plan_consistency.py
+  -q`, `git diff --check`, and a CLI smoke proving the Click semver spec can
+  be emitted.
 
 ## Ready Queue
 
 These are good next assignments for the next loop:
 
-1. `DATA-012`: first readiness-approved issue/PR candidate attempt after
-   `DATA-010` identifies the safest row.
+1. `DATA-014`: second readiness-approved issue/PR candidate attempt,
+   preferably Click #2745 if DATA-012 proves the candidate-attempt runner
+   surface.
 2. `KNOW-003`: broaden knowledge-use attribution where scoring shows missing
    local-knowledge evidence.
 3. `MODEL-006`: add candidate-after or AST-delta observation for ranking

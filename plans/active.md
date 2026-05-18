@@ -44,8 +44,9 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-- `DATA-018`: worker to run a next-batch issue/PR replay preflight on pytest
-  rows beyond the first three (`pytest-dev__pytest-issue-14442-pr-14443`,
+- `DATA-018`: worker Leibniz (`019e3c40-8521-76d0-8a25-3d9d83147738`) to run
+  a next-batch issue/PR replay preflight on pytest rows beyond the first three
+  (`pytest-dev__pytest-issue-14442-pr-14443`,
   `pytest-dev__pytest-issue-14462-pr-14466`, and
   `pytest-dev__pytest-issue-14381-pr-14382`). Ownership:
   issue/PR preflight report artifacts under `/tmp`, optional focused
@@ -54,8 +55,9 @@ This is the live coordinator board. Keep it current and compact.
   Acceptance: no candidate edits, exact setup/baseline/prompt-spec/local
   knowledge/materialization blockers, validation runtime, and a recommendation
   for the first candidate-ready pytest row or the blocker preventing that.
-- `DATA-019`: worker to attempt the hardest DATA-017 auxiliary materialization
-  gap: a constrained Click `docs/commands.md` section generator/inserter for
+- `DATA-019`: worker Russell (`019e3c40-8544-7cf2-be80-dc987b70a98e`) to
+  attempt the hardest DATA-017 auxiliary materialization gap: a constrained
+  Click `docs/commands.md` section generator/inserter for
   `pallets__click-issue-2745-pr-3364`. Ownership:
   `j3/issue_pr_docs_materializer.py`,
   `tests/test_issue_pr_docs_materializer.py`, generated `/tmp` artifacts,

@@ -7,26 +7,19 @@ This is the live coordinator board. Keep it current and compact.
 - Coordinator mode: persistent multi-week execution.
 - Parallel worker default: 2.
 - Parallel worker maximum: 3, only with disjoint write scopes.
-- Current review state: planning-system migration complete; ready to assign the
-  first evidence and baseline tasks.
-- Current product gate stance: transition ranking remains shadow-only until a
-  full matrix decision says otherwise.
+- Current review state: planning-system migration complete; `TRANS-001` and
+  `GS7-001` evidence runs complete; ready for follow-up triage.
+- Current product gate stance: transition ranking remains shadow-only; the
+  2026-05-18 `TRANS-001` matrix decision was `remain_shadow_only`.
 
 ## Active Tasks
 
-### `TRANS-001`: Run full transition shadow matrix
-
-- Owner: worker Parfit (`019e3949-895a-7111-93a4-6218aba860fb`)
-- Status: active
-- Write scope: generated outputs under `/tmp`, `plans/progress.md`,
-  `plans/active.md`; small bug fixes only if the runner fails.
-- Acceptance: matrix summary, residual report, evidence bundle, and
-  guarded-trial decision recorded with exact commands and gate result.
-- Tests: matrix command, residual command, bundle command, guarded decision.
+No worker tasks are active at this moment.
 
 ## Ready Queue
 
-These are good next assignments after the current active tasks complete:
+These are good next assignments after the completed `TRANS-001` and `GS7-001`
+evidence runs:
 
 1. `DATA-001`: audit expanded prompt corpus quality.
 2. `OPS-002`: add a lightweight plan consistency check.
@@ -55,6 +48,11 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `TRANS-001`: ran the full transition shadow matrix on 2026-05-18. Gate
+  result: `remain_shadow_only`; guarded opt-in trial eligibility `false`.
+  Matrix totals: 5 suites, 56 tasks, 55 ranked solved, 7 matrix residuals,
+  14 residual report failures, zero hosted usage. Evidence under
+  `/tmp/j3-trans-001-shadow-matrix` and `/tmp/j3-trans-001-matrix-evidence`.
 - `GS7-001`: refreshed the current GreenShot-7 baseline. Result: 10 fixture
   tasks, 8 built and validation-passed, 2 intentionally blocked for
   clarification, no prompt-spec failures, missing-action failures, ranking

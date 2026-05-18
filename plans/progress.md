@@ -60,9 +60,55 @@ meaningful work. Do not replace this file with a daily reset.
   with `blocking_clarification` records. No missing action failures, ranking
   failures, prompt-spec mismatches, or generated pytest failures were visible in
   the current fixture run.
-- Commit: pending until this entry is committed
-- Push: pending until commit is pushed
+- Commit: abae85d80120304bf5126b328ae0ba3aa196e0ab
+- Push: succeeded
 - Next: use this as the baseline before `GS7-002`; new non-calculator fixtures
   should expose whether gaps are action coverage, prompt/spec parsing, or
   ranking rather than calculator generation.
 - Blockers: none
+
+### 2026-05-18 - TRANS-001 - Transition shadow matrix evidence
+
+- Owner: worker TRANS-001
+- Files changed: `plans/active.md`, `plans/progress.md`; generated artifacts
+  under `/tmp/j3-trans-001-shadow-matrix`,
+  `/tmp/j3-trans-001-matrix-evidence`,
+  `/tmp/j3-trans-001-residual-report.json`, and
+  `/tmp/j3-trans-001-guarded-decision.json`.
+- Tests: `pytest tests/test_transition_shadow_matrix.py -q` -> 6 passed;
+  `pytest tests/test_transition_residuals.py -q` -> 4 passed;
+  `pytest tests/test_transition_evidence_bundle.py -q` -> 7 passed;
+  `pytest tests/test_transition_guarded_trial.py -q` -> 4 passed.
+- Commands: `python cli.py run-transition-shadow-matrix --matrix
+  examples/transition_shadow_matrix.json --out
+  /tmp/j3-trans-001-shadow-matrix --force --json`; `python -m json.tool
+  /tmp/j3-trans-001-shadow-matrix/matrix-summary.json >/dev/null`; `shasum -a
+  256 -c /tmp/j3-trans-001-shadow-matrix/evidence/checksums.sha256`;
+  `python cli.py report-transition-residuals --matrix
+  /tmp/j3-trans-001-shadow-matrix --out
+  /tmp/j3-trans-001-residual-report.json --json`; `python cli.py
+  build-transition-evidence-bundle --matrix
+  /tmp/j3-trans-001-shadow-matrix --out
+  /tmp/j3-trans-001-matrix-evidence --force --json`; `shasum -a 256 -c
+  /tmp/j3-trans-001-matrix-evidence/checksums.sha256`; `python cli.py
+  decide-transition-guarded-trial --matrix
+  /tmp/j3-trans-001-shadow-matrix --out
+  /tmp/j3-trans-001-guarded-decision.json --json`.
+- Result: matrix summary is current and remains shadow-only. Totals: 5 suites,
+  56 tasks, 55 ranked solved, 12,413 candidates, 19 held-out groups, 4 baseline
+  residuals, 7 matrix residuals, zero hosted usage. Suite gates:
+  `greenshot_bugs` and `greenshot_4` were `ready_for_shadow_mode`;
+  `greenshot_3`, `greenshot_5_subset`, and `greenshot_6_subset` were
+  `not_ready_underperforms_existing_rank_order`. Residual report found 14
+  failures: 13 `scorer_ranking_gap` and 1 `candidate_generation_gap`.
+  Evidence bundle checksums passed. Guarded-trial decision:
+  `remain_shadow_only`, `eligible_for_guarded_opt_in_trial: false`; blockers
+  are that all suite V3 gates must be `ready_for_guarded_opt_in` and matrix plus
+  per-suite residual counts must be zero.
+- Commit: pending until this entry is committed
+- Push: pending until commit is pushed
+- Next: start `TRANS-002` to diagnose the matrix blockers, prioritizing the 13
+  scorer-ranking gaps in `greenshot_3`, `greenshot_5_subset`, and
+  `greenshot_6_subset`, plus the one generation gap.
+- Blockers: guarded transition ranking remains blocked by the recorded matrix
+  gate; no workflow command blockers.

@@ -3832,3 +3832,20 @@ meaningful work. Do not replace this file with a daily reset.
 - Push: pending.
 - Next: continue non-overlapping coordinator review while both workers run.
 - Blockers: none.
+
+### 2026-05-18 - Replacement Worker IDs - DATA-040 / MAT-010
+
+- Owner: coordinator.
+- Files changed: `plans/active.md` and `plans/progress.md`.
+- Tests: `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff
+  --check` -> passed.
+- Result: initial workers Faraday and Jason correctly stopped because the
+  coordinator was still recording plan metadata. After committing a clean tree
+  at `84a99d5`, relaunched `DATA-040` with worker Arendt
+  (`019e3ce3-e9b5-7b13-a7b9-b9c07d778150`) and `MAT-010` with worker Lovelace
+  (`019e3ce3-e9da-7863-bb91-b68423ca8388`).
+- Commit: pending.
+- Push: pending.
+- Next: continue non-overlapping coordinator review while both replacement
+  workers run.
+- Blockers: none.

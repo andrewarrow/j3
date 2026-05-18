@@ -1277,3 +1277,35 @@ meaningful work. Do not replace this file with a daily reset.
   scorer. Keep `GS7-011`, `REAL-008`, and `MAT-004` ready for the following
   loop.
 - Blockers: none
+
+### 2026-05-18 - GS7-010 - Held-out humanize tests-only materializer
+
+- Owner: worker Bernoulli (`019e3bad-47d0-7093-9398-8105cdffc6f0`)
+- Files changed: `j3/real_repo_tests_planner.py`,
+  `tests/test_real_repo_tests_planner.py`, `plans/active.md`,
+  `plans/backlog.md`, `plans/progress.md`
+- Tests: `python -m py_compile j3/real_repo_tests_planner.py
+  tests/test_real_repo_tests_planner.py` -> passed;
+  `pytest tests/test_real_repo_tests_planner.py -q` -> 4 passed; live setup
+  against `/tmp/j3-gs7-010-humanize-live.GzeTMj/humanize` with
+  `python -m pip install -e '.[tests]'` -> passed; live materializer run
+  wrote `/tmp/j3-gs7-010-humanize-live.GzeTMj/candidate.json` and changed only
+  `tests/test_filesize.py`; live candidate check
+  `python -m pytest tests/test_filesize.py -q --benchmark-disable` -> 79
+  passed in 0.03s; `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check` -> passed.
+- Result: materialized the next held-out tests-only candidate for
+  `humanize-tests-naturalsize-negative-strings`. The planner selects
+  `tests/test_filesize.py` from repo-state plus local-knowledge evidence,
+  requires the existing public `import humanize` style, appends pytest coverage
+  for negative numeric strings, GNU suffixes, and binary suffixes, records
+  candidate-after metadata and validation command, emits residual and
+  knowledge-use records, and preserves production files byte-for-byte. The live
+  candidate protected 7 production files, reported zero production-file
+  changes, and had zero writes outside the allowlist.
+- Commit: pending
+- Push: pending
+- Next: run `REAL-008` after integrating `GS7-010`, or continue with
+  `GS7-011` first if the coordinator wants all remaining held-out tests-only
+  materializers before scoring.
+- Blockers: none

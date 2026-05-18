@@ -23,6 +23,9 @@ REAL_REPO_TESTS_ACTION_FAMILY = "tests_only_existing_repo_pytest"
 TEST_CASE_MATERIALIZATION_BLOCKER = "test_case_materialization_gap"
 INICONFIG_PARSE_COMMENTS_TASK_ID = "iniconfig-tests-parse-comments"
 H11_BYTESIFY_MEMORYVIEW_TASK_ID = "h11-tests-bytesify-memoryview"
+HUMANIZE_NATURALSIZE_NEGATIVE_STRINGS_TASK_ID = (
+    "humanize-tests-naturalsize-negative-strings"
+)
 CANDIDATE_VALIDATION_DEFERRED = "candidate_validation_deferred"
 
 
@@ -152,9 +155,9 @@ def plan_real_repo_tests_only_candidate(
     """Plan and optionally materialize a tests-only candidate from repo state.
 
     This slice remains deliberately narrow. It can materialize pytest cases for
-    the calibration ``iniconfig-tests-parse-comments`` task after selecting the
-    local test file and import style from repo-state and local-knowledge
-    evidence. Other real-repo tests-only tasks still receive an explicit
+    a small set of proven real-repo tests-only tasks after selecting the local
+    test file and import style from repo-state and local-knowledge evidence.
+    Unsupported real-repo tests-only tasks still receive an explicit
     materialization blocker instead of a repo-specific guess.
     """
 
@@ -459,6 +462,16 @@ def _materialize_pytest_cases_for_task(
             import_style_evidence=import_style_evidence,
             write=write,
         )
+    if (
+        repo_id == "humanize"
+        and task_id == HUMANIZE_NATURALSIZE_NEGATIVE_STRINGS_TASK_ID
+    ):
+        return _materialize_humanize_naturalsize_negative_strings_tests(
+            repo,
+            target_test_file=target_test_file,
+            import_style_evidence=import_style_evidence,
+            write=write,
+        )
 
     blocker = {
         "field": "test_case_materialization",
@@ -466,7 +479,8 @@ def _materialize_pytest_cases_for_task(
         "message": (
             "behavior-specific pytest case materialization is only "
             "implemented for iniconfig-tests-parse-comments and "
-            "h11-tests-bytesify-memoryview"
+            "h11-tests-bytesify-memoryview and "
+            "humanize-tests-naturalsize-negative-strings"
         ),
     }
     return _blocked_materialization(target_test_file, blocker)
@@ -558,6 +572,49 @@ def _materialize_h11_bytesify_memoryview_tests(
     }
 
 
+def _materialize_humanize_naturalsize_negative_strings_tests(
+    repo: Path,
+    *,
+    target_test_file: str,
+    import_style_evidence: Mapping[str, object],
+    write: bool,
+) -> dict[str, object]:
+    api_blocker = _humanize_naturalsize_api_blocker(import_style_evidence)
+    if api_blocker is not None:
+        return _blocked_materialization(target_test_file, api_blocker)
+
+    target_path = _repo_path(repo, target_test_file)
+    before_text = (
+        target_path.read_text(encoding="utf-8") if target_path.exists() else ""
+    )
+    after_text = _merge_humanize_naturalsize_negative_strings_tests(before_text)
+    planned_changed_files = [target_test_file] if after_text != before_text else []
+    if write and planned_changed_files:
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        target_path.write_text(after_text, encoding="utf-8")
+
+    status = "already_applied"
+    files_changed: list[str] = []
+    if planned_changed_files:
+        status = "materialized" if write else "planned"
+        files_changed = list(planned_changed_files) if write else []
+
+    case_records = _humanize_naturalsize_negative_strings_case_records()
+    return {
+        "status": status,
+        "files_changed": files_changed,
+        "cases": case_records,
+        "candidate_after": _candidate_after_record(
+            target_test_file=target_test_file,
+            before_text=before_text,
+            after_text=after_text,
+            planned_changed_files=planned_changed_files,
+            wrote_file=write and bool(planned_changed_files),
+            case_records=case_records,
+        ),
+    }
+
+
 def _blocked_materialization(
     target_test_file: str,
     blocker: Mapping[str, str],
@@ -622,6 +679,29 @@ def _h11_bytesify_api_blocker(
         "message": (
             "h11 bytesify test materialization requires the selected test file "
             "to import bytesify from .._util"
+        ),
+    }
+
+
+def _humanize_naturalsize_api_blocker(
+    import_style_evidence: Mapping[str, object],
+) -> dict[str, str] | None:
+    selected = {
+        (str(item.get("module", "")), item.get("imported"))
+        for item_value in _sequence(
+            import_style_evidence.get("selected_public_imports", []),
+            field="selected_public_imports",
+        )
+        for item in [_mapping(item_value, field="selected_public_import")]
+    }
+    if ("humanize", None) in selected:
+        return None
+    return {
+        "field": "public_api",
+        "reason": "unsupported_public_api",
+        "message": (
+            "humanize naturalsize test materialization requires the selected "
+            "test file to import the public humanize module"
         ),
     }
 
@@ -748,6 +828,72 @@ def _render_h11_bytesify_memoryview_tests_append_block() -> str:
     )
 
 
+def _merge_humanize_naturalsize_negative_strings_tests(existing_text: str) -> str:
+    required_functions = [
+        "test_naturalsize_accepts_negative_numeric_strings",
+        "test_naturalsize_formats_negative_gnu_suffixes",
+        "test_naturalsize_formats_negative_binary_suffixes",
+    ]
+    if all(f"def {name}" in existing_text for name in required_functions):
+        return existing_text
+
+    append_block = _render_humanize_naturalsize_negative_strings_tests_append_block()
+    if not existing_text.strip():
+        return (
+            "from __future__ import annotations\n"
+            "\n"
+            "import pytest\n"
+            "\n"
+            "import humanize\n"
+            "\n\n"
+            + append_block
+        )
+    return existing_text.rstrip() + "\n\n\n" + append_block
+
+
+def _render_humanize_naturalsize_negative_strings_tests_append_block() -> str:
+    return (
+        "@pytest.mark.parametrize(\n"
+        '    ("value", "expected"),\n'
+        "    [\n"
+        '        ("-300", "-300 Bytes"),\n'
+        '        ("-1000", "-1.0 kB"),\n'
+        '        ("-1000000", "-1.0 MB"),\n'
+        "    ],\n"
+        ")\n"
+        "def test_naturalsize_accepts_negative_numeric_strings(\n"
+        "    value: str, expected: str\n"
+        ") -> None:\n"
+        "    assert humanize.naturalsize(value) == expected\n"
+        "\n\n"
+        "@pytest.mark.parametrize(\n"
+        '    ("value", "expected"),\n'
+        "    [\n"
+        '        ("-1024", "-1.0K"),\n'
+        '        ("-1048576", "-1.0M"),\n'
+        '        ("-1073741824", "-1.0G"),\n'
+        "    ],\n"
+        ")\n"
+        "def test_naturalsize_formats_negative_gnu_suffixes(\n"
+        "    value: str, expected: str\n"
+        ") -> None:\n"
+        "    assert humanize.naturalsize(value, gnu=True) == expected\n"
+        "\n\n"
+        "@pytest.mark.parametrize(\n"
+        '    ("value", "expected"),\n'
+        "    [\n"
+        '        ("-1024", "-1.0 KiB"),\n'
+        '        ("-1048576", "-1.0 MiB"),\n'
+        '        ("-1073741824", "-1.0 GiB"),\n'
+        "    ],\n"
+        ")\n"
+        "def test_naturalsize_formats_negative_binary_suffixes(\n"
+        "    value: str, expected: str\n"
+        ") -> None:\n"
+        "    assert humanize.naturalsize(value, binary=True) == expected\n"
+    )
+
+
 def _h11_bytesify_memoryview_case_records() -> list[dict[str, object]]:
     return [
         {
@@ -779,6 +925,38 @@ def _h11_bytesify_memoryview_case_records() -> list[dict[str, object]]:
             "behavior": "int input preserves TypeError behavior",
             "function": "test_bytesify_rejects_int",
             "assertions": ["int input raises TypeError mentioning int"],
+        },
+    ]
+
+
+def _humanize_naturalsize_negative_strings_case_records() -> list[dict[str, object]]:
+    return [
+        {
+            "id": "humanize_naturalsize_negative_numeric_strings",
+            "behavior": "negative numeric strings keep their sign in decimal mode",
+            "function": "test_naturalsize_accepts_negative_numeric_strings",
+            "assertions": [
+                "negative string bytes below base stay negative",
+                "negative string decimal suffixes keep the leading minus sign",
+            ],
+        },
+        {
+            "id": "humanize_naturalsize_negative_gnu_suffixes",
+            "behavior": "negative numeric strings use compact GNU suffixes",
+            "function": "test_naturalsize_formats_negative_gnu_suffixes",
+            "assertions": [
+                "negative string KiB-scale values render with K",
+                "negative string MiB/GiB-scale values render with M/G",
+            ],
+        },
+        {
+            "id": "humanize_naturalsize_negative_binary_suffixes",
+            "behavior": "negative numeric strings use binary suffix labels",
+            "function": "test_naturalsize_formats_negative_binary_suffixes",
+            "assertions": [
+                "negative string KiB-scale values render with KiB",
+                "negative string MiB/GiB-scale values render with MiB/GiB",
+            ],
         },
     ]
 

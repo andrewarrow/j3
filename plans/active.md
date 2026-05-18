@@ -20,32 +20,13 @@ This is the live coordinator board. Keep it current and compact.
   `REAL-007` scored the materialized calibration candidate plus the first
   held-out h11 candidate at `pass@1 = 2/4` and `pass@3 = 2/4`; calibration
   pass rate is `1/1`, held-out pass rate is `1/3`, and tests-only guarded
-  opt-in remains shadow-only. `MAT-003` now materializes and live-validates the
-  first real one-file source feature candidate on held-out `h11`; `REAL-009`
-  must score it before source-feature gate claims are made.
+  opt-in remains shadow-only until the next scorer run. `GS7-010` now
+  materializes and live-validates the held-out `humanize` tests-only candidate.
+  `MAT-003` now materializes and live-validates the first real one-file source
+  feature candidate on held-out `h11`; `REAL-009` must score it before
+  source-feature gate claims are made.
 
 ## Active Tasks
-
-### `GS7-010`: Materialize held-out humanize tests-only candidate
-
-- Status: active
-- Owner: worker Bernoulli (`019e3bad-47d0-7093-9398-8105cdffc6f0`).
-- Goal: attack `humanize-tests-naturalsize-negative-strings` as the next
-  held-out tests-only generalization proof after the h11 pass.
-- Write scope: `j3/real_repo_tests_planner.py`,
-  `tests/test_real_repo_tests_planner.py`, optional generated outputs under
-  `/tmp`, and plan updates.
-- Do not touch: feature scorer/materializer files for `REAL-009`.
-- Acceptance: select `tests/test_filesize.py` from repo-state and
-  local-knowledge evidence; materialize pytest coverage for negative numeric
-  strings, GNU suffixes, and binary suffixes; preserve production files; emit
-  candidate-after, mutation-scope, validation-command, residual, and
-  knowledge-use metadata; and live-validate the pinned checkout if setup
-  succeeds. Record precise blockers for API, setup, or validation failures.
-- Tests: focused planner/materializer tests,
-  `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and a live
-  `python -m pytest tests/test_filesize.py -q --benchmark-disable` candidate
-  check when available.
 
 ### `REAL-009`: One-file feature shadow score after h11 materializer
 
@@ -111,6 +92,17 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `GS7-010`: materialized the next held-out tests-only candidate for
+  `humanize-tests-naturalsize-negative-strings`. The planner selects
+  `tests/test_filesize.py` from repo-state plus local-knowledge evidence,
+  requires the selected test file to import the public `humanize` module,
+  appends pytest coverage for negative numeric strings, GNU suffix mode, and
+  binary suffix mode, records candidate-after metadata and validation command,
+  emits residual and knowledge-use records, and preserves production files
+  byte-for-byte. Live validation against the pinned humanize checkout under
+  `/tmp/j3-gs7-010-humanize-live.GzeTMj/humanize` passed with
+  `79 passed in 0.03s`, changing only `tests/test_filesize.py` and no
+  production files.
 - `MAT-003`: materialized the first real one-file source feature candidate for
   `h11-feature-bytesify-object-message`. The new
   `j3.real_repo_feature_materializer` applies one bounded source-region edit to

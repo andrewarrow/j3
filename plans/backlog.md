@@ -226,7 +226,7 @@ Long-term target:
 
 ### GS7-010: Materialize held-out humanize tests-only candidate
 
-- Status: active
+- Status: done
 - Why: after h11, the tests-only gate still needs another held-out repo before
   guarded opt-in can be considered.
 - Write scope: `j3/real_repo_tests_planner.py`,
@@ -243,6 +243,14 @@ Long-term target:
   `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and a live
   `python -m pytest tests/test_filesize.py -q --benchmark-disable` candidate
   check when available.
+- Completion note: added the second held-out tests-only materializer for
+  `humanize-tests-naturalsize-negative-strings`. The planner selects
+  `tests/test_filesize.py` from repo-state plus local-knowledge evidence,
+  appends pytest coverage for negative numeric strings, GNU suffixes, and
+  binary suffixes, preserves production hashes, and emits candidate-after,
+  mutation-scope, validation-command, residual, and knowledge-use metadata.
+  Live validation against the pinned humanize checkout passed with
+  `79 passed in 0.03s`, changing only `tests/test_filesize.py`.
 
 ### GS7-011: Materialize held-out boltons tests-only candidate
 

@@ -643,9 +643,12 @@ meaningful work. Do not replace this file with a daily reset.
   `DATA-004` exposed validation/setup, local knowledge, ranking, and
   materialization blockers in 10 issue/PR replay rows. The next active batch is
   `MAT-002`, `KNOW-001`, and `WEDGE-001`.
-- Commit: pending coordinator commit
-- Push: pending coordinator push
+- Commit: 343e10430cc1709ab89cdb5f2e50b7fa8580320b
+- Push: succeeded
 - Next: `MAT-002` will probe constrained source-region materialization,
   `KNOW-001` will define local knowledge as data, and `WEDGE-001` will lock the
-  six-month wedge and failure criteria.
+  six-month wedge and failure criteria. Workers: Sartre
+  (`019e3b50-c9b1-7cc0-9e2e-9230f72ae46e`), Beauvoir
+  (`019e3b50-fe48-7980-8df3-2a2575e815da`), and Boyle
+  (`019e3b51-328a-7c62-adc9-ba8cbf1055ba`).
 - Blockers: none

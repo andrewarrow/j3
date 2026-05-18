@@ -19,7 +19,7 @@ This is the live coordinator board. Keep it current and compact.
 ### `MAT-002`: Constrained source-region materialization probe
 
 - Status: active
-- Owner: pending spawn
+- Owner: worker Sartre (`019e3b50-c9b1-7cc0-9e2e-9230f72ae46e`)
 - Started: 2026-05-18
 - Goal: turn the largest `MAT-001` bucket into an executable probe by adding a
   bounded source-region materializer contract and focused tests.
@@ -38,7 +38,7 @@ This is the live coordinator board. Keep it current and compact.
 ### `KNOW-001`: Local knowledge inventory for the wedge
 
 - Status: active
-- Owner: pending spawn
+- Owner: worker Beauvoir (`019e3b50-fe48-7980-8df3-2a2575e815da`)
 - Started: 2026-05-18
 - Goal: define exactly what local pytest, packaging, and small-library
   knowledge j3 needs for the wedge and how it becomes data rather than
@@ -53,7 +53,7 @@ This is the live coordinator board. Keep it current and compact.
 ### `WEDGE-001`: Product wedge decision
 
 - Status: active
-- Owner: pending spawn
+- Owner: worker Boyle (`019e3b51-328a-7c62-adc9-ba8cbf1055ba`)
 - Started: 2026-05-18
 - Goal: choose the first usable product path and make its gates/failure
   criteria concrete enough to stop vague Codex-replacement drift.

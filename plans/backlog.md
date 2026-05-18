@@ -1380,6 +1380,55 @@ Long-term target:
   covered by small proposed deterministic actions, while the command docs
   section requires a constrained local generator.
 
+### DATA-018: Pytest issue/PR replay preflight batch
+
+- Status: active
+- Why: the first three issue/PR candidates are now either validated or have a
+  precise auxiliary gap, but they are still a small Requests/Click comfort
+  zone. The next falsification pressure is whether the same replay pipeline can
+  even reach candidate readiness on new pytest rows with different repo setup,
+  validation shape, changelog paths, and source/test surfaces.
+- Write scope: issue/PR preflight generated outputs under `/tmp`,
+  `docs/DATA_018_PYTEST_ISSUE_PR_PREFLIGHT_2026-05-18.md`, optional focused
+  `j3/issue_pr_preflight.py` and `tests/test_issue_pr_preflight.py` fixes if
+  the existing runner cannot express the bounded batch, and plan updates.
+- Acceptance: run pre-edit replay preflight for
+  `pytest-dev__pytest-issue-14442-pr-14443`,
+  `pytest-dev__pytest-issue-14462-pr-14466`, and
+  `pytest-dev__pytest-issue-14381-pr-14382` without attempting candidate
+  edits. Record checkout/setup/baseline validation status, runtime, command
+  output classification, prompt/spec gaps, local-knowledge requirements,
+  materialization/ranking residuals, and the first pytest row that is ready
+  for prompt/spec normalization or candidate attempt. If setup or validation
+  blocks, classify it as environment/setup/validation rather than edit quality.
+- Tests: focused preflight tests if code changes, plan consistency,
+  `git diff --check`, and the live bounded preflight command or an exact
+  blocker if live preflight cannot complete.
+
+### DATA-019: Constrained Click command-docs materializer spike
+
+- Status: active
+- Why: DATA-017 identified `docs/commands.md` as the largest accepted-edit
+  coverage hole for the validated Click #2745 source/test candidate. The hard
+  question is whether a local constrained generator can produce useful repo
+  docs without a frontier LLM runtime, not whether deterministic config or
+  changelog inserts are easy.
+- Write scope: `j3/issue_pr_docs_materializer.py`,
+  `tests/test_issue_pr_docs_materializer.py`, generated outputs under `/tmp`,
+  optional compact report under `docs/`, and plan updates. Do not edit
+  `j3/issue_pr_candidate_attempt.py`.
+- Acceptance: for `pallets__click-issue-2745-pr-3364`, generate and insert
+  only the bounded `docs/commands.md` Multi-value parameters section identified
+  by DATA-017. The generated section must have the expected heading, mention
+  `nargs > 1` and `Tuple` behavior, include at least one whitespace-splitting
+  example, preserve unrelated docs content, and record candidate diff,
+  mutation scope, validation command/runtime, residual labels, provenance, and
+  whether a docs build passes. If docs build or content generation blocks,
+  record the exact blocker.
+- Tests: focused docs materializer tests, plan consistency, `git diff
+  --check`, and a live pinned Click checkout smoke with docs validation when
+  feasible.
+
 ## Next Recommended Queue
 
 Start with these unless fresh evidence changes the order:

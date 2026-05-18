@@ -44,6 +44,26 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
+- `DATA-018`: worker to run a next-batch issue/PR replay preflight on pytest
+  rows beyond the first three (`pytest-dev__pytest-issue-14442-pr-14443`,
+  `pytest-dev__pytest-issue-14462-pr-14466`, and
+  `pytest-dev__pytest-issue-14381-pr-14382`). Ownership:
+  issue/PR preflight report artifacts under `/tmp`, optional focused
+  preflight code/test fixes if the existing runner cannot express the batch,
+  `docs/DATA_018_PYTEST_ISSUE_PR_PREFLIGHT_2026-05-18.md`, and plan updates.
+  Acceptance: no candidate edits, exact setup/baseline/prompt-spec/local
+  knowledge/materialization blockers, validation runtime, and a recommendation
+  for the first candidate-ready pytest row or the blocker preventing that.
+- `DATA-019`: worker to attempt the hardest DATA-017 auxiliary materialization
+  gap: a constrained Click `docs/commands.md` section generator/inserter for
+  `pallets__click-issue-2745-pr-3364`. Ownership:
+  `j3/issue_pr_docs_materializer.py`,
+  `tests/test_issue_pr_docs_materializer.py`, generated `/tmp` artifacts,
+  optional compact report under `docs/`, and plan updates. Acceptance: write
+  the bounded Multi-value parameters docs section into a pinned Click checkout
+  without source/test/changelog/config edits, record candidate diff and
+  residuals, and run docs validation or record the exact docs-build blocker.
+
 ## Ready Queue
 
 These are good next assignments for the next loop:

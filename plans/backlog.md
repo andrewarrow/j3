@@ -454,7 +454,7 @@ Long-term target:
 
 ### REAL-003: Run first tests-only wedge shadow score
 
-- Status: active
+- Status: done
 - Why: the wedge should move to guarded opt-in only after held-out real-repo
   shadow scoring proves tests-only generalization, validation runtime, and
   hidden-like agreement.
@@ -465,6 +465,12 @@ Long-term target:
   scope, hidden-like agreement, residual labels, zero hosted usage, and a
   gate decision against `docs/PRODUCT_WEDGE_DECISION.md`.
 - Tests: shadow-score command, plan consistency, and `git diff --check`.
+- Completion note: first shadow score recorded `pass@1 = 0/4`,
+  `pass@3 = 0/4`, no generated candidates, no first passing ranks, hidden-like
+  checks not run, zero hosted usage, and `remain_shadow_only`. The current
+  tests-only builder cannot target the real-repo ladder beyond the one-file
+  `slugify.py` fixture shape, so generic repo-state test placement and pytest
+  authoring is the next repair target.
 
 ### DATA-005: Issue/PR replay preflight runner
 

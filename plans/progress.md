@@ -850,9 +850,37 @@ meaningful work. Do not replace this file with a daily reset.
   adds a `knowledge_use_record` builder so tests-only planning can cite local
   records by purpose and validation result without checking in raw source
   blobs.
-- Commit: pending
+- Commit: 04b35ff
 - Push: pending
 - Next: wire these records into tests-only planning attribution and mark
   `knowledge_not_used` when a wedge candidate lacks layout, import, or
   validation citations.
 - Blockers: none
+
+### 2026-05-18 - REAL-003 - First tests-only wedge shadow score
+
+- Owner: worker Hilbert (`019e3b6c-6a4a-7f21-a931-7485ef54404a`)
+- Files changed: `j3/real_repo_shadow_score.py`,
+  `tests/test_real_repo_shadow_score.py`,
+  `docs/REAL_003_TESTS_ONLY_SHADOW_SCORE_2026-05-18.md`,
+  `plans/active.md`, `plans/backlog.md`, `plans/progress.md`
+- Tests: `python -m j3.real_repo_shadow_score --manifest
+  examples/real_repo_eval_ladder.json --out
+  /tmp/j3-real-003-tests-only-shadow-score/score.json --report
+  /tmp/j3-real-003-tests-only-shadow-score/report.md` -> passed;
+  `pytest tests/test_real_repo_shadow_score.py -q` -> 3 passed;
+  `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check` -> passed.
+- Result: ran the first tests-only product-wedge shadow score against the four
+  `REAL-001` tests-only ladder tasks with max three candidates. Current
+  results are `pass@1 = 0/4`, `pass@3 = 0/4`, no first passing ranks, no
+  generated candidates, no candidate validation runtime, zero production-file
+  modifications, zero actual writes outside allowlists, hidden-like agreement
+  not run, and zero hosted usage. Gate 2 remains `remain_shadow_only`.
+- Commit: pending
+- Push: pending
+- Next: add a generic repo-state-aware tests-only planner that can select the
+  accepted test file, import style, and behavior-specific pytest cases from
+  real repository evidence and local knowledge records.
+- Blockers: the current `GS7-005` tests-only builder only supports the root
+  `slugify.py` fixture shape, so it cannot target the real-repo ladder yet.

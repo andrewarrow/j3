@@ -12,27 +12,10 @@ This is the live coordinator board. Keep it current and compact.
   dispatched rather than leaving the board idle.
 - Current product gate stance: transition ranking remains shadow-only; the
   2026-05-18 `TRANS-001` full matrix and `TRANS-004` targeted subset decisions
-  were `remain_shadow_only`.
+  were `remain_shadow_only`. Tests-only wedge guarded opt-in also remains
+  blocked after `REAL-003` scored `pass@3 = 0/4` with no real-repo candidates.
 
 ## Active Tasks
-
-### `REAL-003`: First tests-only wedge shadow score
-
-- Status: active
-- Owner: worker Hilbert (`019e3b6c-6a4a-7f21-a931-7485ef54404a`)
-- Started: 2026-05-18
-- Goal: run the first shadow score for the tests-only product wedge against the
-  real-repo ladder and record what breaks before guarded opt-in.
-- Write scope: eval command/report docs, generated outputs under `/tmp`, small
-  harness fixes only if directly required, and plan updates.
-- Acceptance: run or simulate the tests-only tasks from the real-repo ladder
-  with max three candidates, record `pass@1`, `pass@3`, first passing rank,
-  runtime, mutation scope, hidden-like agreement, residual labels, zero hosted
-  usage, and a gate decision against `docs/PRODUCT_WEDGE_DECISION.md`. If the
-  current tests-only builder cannot target the real repos, record that as the
-  falsifiable residual instead of papering it over.
-- Tests: shadow-score command or report smoke,
-  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
 
 ### `GS7-006`: Repo-state-aware library convention edits
 
@@ -83,6 +66,16 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `REAL-003`: added `j3/real_repo_shadow_score.py`, focused tests, and
+  `docs/REAL_003_TESTS_ONLY_SHADOW_SCORE_2026-05-18.md`. The first tests-only
+  wedge shadow score used the four `REAL-001` tests-only ladder tasks with max
+  three candidates and recorded `pass@1 = 0/4`, `pass@3 = 0/4`, no first
+  passing ranks, no candidate validation runtime because no candidates were
+  generated, zero production-file modifications, zero actual writes outside
+  allowlists, hidden-like checks not run, zero hosted usage, and a
+  `remain_shadow_only` gate decision. The falsifiable residual is that the
+  current `GS7-005` tests-only builder is still a root `slugify.py` fixture
+  slice and cannot target real-repo package/test layouts.
 - `KNOW-002`: added `j3/local_knowledge.py` and focused tests for compact
   local knowledge records. The extractor emits JSONL-ready pytest layout,
   packaging layout, public API/import, validation recipe, and AST-backed pytest

@@ -2067,8 +2067,8 @@ meaningful work. Do not replace this file with a daily reset.
   `missing_prompt_spec` plus the exact missing prompt-field labels.
   Materialization and ranking gaps remain explicit next-stage challenges for
   all three rows and are not readiness blockers.
-- Commit: pending.
-- Push: pending.
+- Commit: 3f83080.
+- Push: succeeded.
 - Next: coordinator can assign `DATA-012` against the safer ready row; the
   readiness report exposes both Requests and Click #2745 as candidates, with
   Click #3298 deferred until prompt/spec normalization exists.

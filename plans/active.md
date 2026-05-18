@@ -29,38 +29,20 @@ This is the live coordinator board. Keep it current and compact.
   `h11`; `MAT-004` now materializes and live-validates the second one-file
   source feature candidate for calibration `iniconfig`. `MAT-005` now
   materializes and live-validates the next held-out one-file source feature
-  candidate for `humanize`. `REAL-011` scores the iniconfig, h11, and
-  humanize one-file feature candidates at `pass@1 = 3/4` and
-  `pass@3 = 3/4`; calibration pass@3 is `1/1`, held-out pass@3 is `2/3`,
-  three distinct repos pass, and guarded one-file feature opt-in is allowed
-  only for `iniconfig-feature-section-default`,
-  `h11-feature-bytesify-object-message`, and
-  `humanize-feature-naturalsize-zero-format` when candidate validation passes,
+  candidate for `humanize`. `MAT-006` materialized and live-validated the
+  remaining held-out boltons one-file source feature candidate. `REAL-012`
+  now scores all four one-file feature candidates at `pass@1 = 4/4` and
+  `pass@3 = 4/4`; calibration pass@3 is `1/1`, held-out pass@3 is `3/3`,
+  four distinct repos pass, candidate validation is `passed = 4`,
+  hidden-like agreement is `4/4`, and guarded one-file feature opt-in is
+  allowed only for `iniconfig-feature-section-default`,
+  `h11-feature-bytesify-object-message`,
+  `humanize-feature-naturalsize-zero-format`, and
+  `boltons-feature-slugify-max-length` when candidate validation passes,
   writes stay inside task allowlists, only the task's single allowlisted
-  production file changes, and hidden-like checks do not disagree. `MAT-006`
-  now materializes and live-validates the remaining held-out boltons one-file
-  source feature candidate; the full one-file feature gate still needs to be
-  rescored before expanding guarded opt-in scope to boltons.
+  production file changes, and hidden-like checks do not disagree.
 
 ## Active Tasks
-
-### REAL-012: Full One-File Feature Gate After Boltons
-
-- Status: active
-- Owner: worker Peirce (`019e3bec-9cd7-7a73-9bed-b8314105d6ee`).
-- Write scope: `j3/real_repo_feature_shadow_score.py`,
-  `tests/test_real_repo_feature_shadow_score.py`, optional compact report
-  under `docs/`, generated live artifacts under `/tmp`, and plan updates.
-- Acceptance: rerun the one-file feature gate after `MAT-006`, counting all
-  four real-repo feature ladder candidates through
-  `j3.real_repo_feature_materializer`; report calibration versus held-out
-  pass rates, total pass@1/pass@3, distinct repos passing, first passing
-  ranks, candidate validation statuses, production-file constraint,
-  mutation-scope violations, hidden-like agreement, zero hosted usage, and the
-  guarded one-file feature opt-in scope.
-- Required checks: focused feature-score tests, `pytest
-  tests/test_plan_consistency.py -q`, `git diff --check`, and a live
-  score/report smoke command with all four pinned repos when feasible.
 
 ## Ready Queue
 
@@ -95,6 +77,21 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `REAL-012`: reran the full one-file feature shadow score after `MAT-006`,
+  counting `iniconfig-feature-section-default`,
+  `h11-feature-bytesify-object-message`,
+  `humanize-feature-naturalsize-zero-format`, and
+  `boltons-feature-slugify-max-length` through
+  `j3.real_repo_feature_materializer`. The live `/tmp` run against all four
+  pinned checkouts scored `pass@1 = 4/4` and `pass@3 = 4/4`; calibration
+  pass@3 is `1/1`, held-out pass@3 is `3/3`, first passing ranks are
+  `[1, 1, 1, 1]`, candidate validation is `passed = 4`, four distinct repos
+  pass, mutation-scope violations are zero, hidden-like agreement is `4/4`,
+  and zero hosted usage is confirmed. The guarded one-file feature opt-in
+  scope is limited to those four task ids under task allowlists, one
+  allowlisted production file, passing validation, and no hidden-like
+  disagreement. Report:
+  `docs/REAL_012_ONE_FILE_FEATURE_SHADOW_SCORE_2026-05-18.md`.
 - `DATA-007`: added issue/PR replay blocker drilldown support to the preflight
   outcome schema, JSONL reprocessing mode, summary counts, and compact report.
   The DATA-006 first batch now classifies Requests

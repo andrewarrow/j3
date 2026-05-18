@@ -9,10 +9,11 @@ from pathlib import Path
 from time import perf_counter
 from typing import Mapping, Sequence
 
-from j3 import real_repo_feature_materializer as feature_materializer
 from j3.real_repo_feature_materializer import (
+    BOLTONS_SLUGIFY_MAX_LENGTH_TASK_ID,
     CANDIDATE_VALIDATION_DEFERRED,
     H11_BYTESIFY_OBJECT_MESSAGE_TASK_ID,
+    HUMANIZE_NATURALSIZE_ZERO_FORMAT_TASK_ID,
     INICONFIG_SECTION_DEFAULT_TASK_ID,
     REAL_REPO_FEATURE_ACTION_FAMILY,
     RealRepoFeatureMaterializerError,
@@ -27,11 +28,10 @@ from j3.request_spec import parse_request_to_spec
 
 REAL_REPO_FEATURE_SHADOW_SCORE_SCHEMA_VERSION = "real-repo-feature-shadow-score-v1"
 REAL_REPO_FEATURE_SHADOW_SCORE_KIND = "real_repo_one_file_feature_shadow_score"
-DEFAULT_REPORT_PATH = Path("/tmp/j3-real-011-feature-shadow-score/report.md")
-DEFAULT_SCORE_PATH = Path("/tmp/j3-real-011-feature-shadow-score/score.json")
+DEFAULT_REPORT_PATH = Path("/tmp/j3-real-012-feature-shadow-score/report.md")
+DEFAULT_SCORE_PATH = Path("/tmp/j3-real-012-feature-shadow-score/score.json")
 DEFAULT_VALIDATION_TIMEOUT_SECONDS = 120
 FEATURE_MATERIALIZATION_BLOCKER = "one_file_materialization_gap"
-HUMANIZE_NATURALSIZE_ZERO_FORMAT_TASK_ID = "humanize-feature-naturalsize-zero-format"
 
 
 def run_real_repo_feature_shadow_score(
@@ -269,7 +269,7 @@ def format_real_repo_feature_shadow_score(score: Mapping[str, object]) -> str:
     gate = _mapping(score.get("gate_decision"), field="gate_decision")
     rows = _sequence(score.get("task_results"), field="task_results")
     lines = [
-        "# REAL-011 One-File Feature Shadow Score",
+        "# REAL-012 One-File Feature Shadow Score",
         "",
         f"- Schema: `{score.get('schema_version')}`",
         f"- Manifest: `{score.get('manifest_path')}`",
@@ -363,7 +363,7 @@ def write_real_repo_feature_shadow_report(
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Run the REAL-011 one-file feature shadow score."
+        description="Run the REAL-012 one-file feature shadow score."
     )
     parser.add_argument(
         "--manifest",
@@ -449,36 +449,49 @@ def _score_one_file_feature_task(
 
 
 def _materialized_feature_task_ids() -> frozenset[str]:
-    task_ids = {
-        H11_BYTESIFY_OBJECT_MESSAGE_TASK_ID,
-        INICONFIG_SECTION_DEFAULT_TASK_ID,
-    }
-    if hasattr(feature_materializer, "HUMANIZE_NATURALSIZE_ZERO_FORMAT_TASK_ID"):
-        task_ids.add(HUMANIZE_NATURALSIZE_ZERO_FORMAT_TASK_ID)
-    return frozenset(task_ids)
+    return frozenset(
+        {
+            BOLTONS_SLUGIFY_MAX_LENGTH_TASK_ID,
+            H11_BYTESIFY_OBJECT_MESSAGE_TASK_ID,
+            HUMANIZE_NATURALSIZE_ZERO_FORMAT_TASK_ID,
+            INICONFIG_SECTION_DEFAULT_TASK_ID,
+        }
+    )
 
 
 def _supported_action_surface() -> dict[str, object]:
-    heldout_materializers = [H11_BYTESIFY_OBJECT_MESSAGE_TASK_ID]
+    calibration_materializers = [INICONFIG_SECTION_DEFAULT_TASK_ID]
+    heldout_materializers = [
+        H11_BYTESIFY_OBJECT_MESSAGE_TASK_ID,
+        HUMANIZE_NATURALSIZE_ZERO_FORMAT_TASK_ID,
+        BOLTONS_SLUGIFY_MAX_LENGTH_TASK_ID,
+    ]
+    supported_task_ids = [*calibration_materializers, *heldout_materializers]
     scope_note = (
         "MAT-003 materializes the held-out h11 bytesify object-message "
         "one-file feature candidate. MAT-004 materializes the iniconfig "
-        "section-default calibration one-file feature candidate. Humanize and "
-        "boltons remain explicit blockers until implemented and live validated."
+        "section-default calibration one-file feature candidate. MAT-005 "
+        "materializes the held-out humanize zero-format one-file feature "
+        "candidate. MAT-006 materializes the held-out boltons slugify "
+        "max-length one-file feature candidate."
     )
-    if HUMANIZE_NATURALSIZE_ZERO_FORMAT_TASK_ID in _materialized_feature_task_ids():
-        heldout_materializers.append(HUMANIZE_NATURALSIZE_ZERO_FORMAT_TASK_ID)
-        scope_note = (
-            "MAT-003 materializes the held-out h11 bytesify object-message "
-            "one-file feature candidate. MAT-004 materializes the iniconfig "
-            "section-default calibration one-file feature candidate. MAT-005 "
-            "materializes the held-out humanize zero-format one-file feature "
-            "candidate. Boltons remains an explicit blocker until implemented "
-            "and live validated."
-        )
     return {
-        "calibration_materializers": [INICONFIG_SECTION_DEFAULT_TASK_ID],
+        "calibration_materializers": calibration_materializers,
         "heldout_materializers": heldout_materializers,
+        "supported_task_ids": supported_task_ids,
+        "path_constraints": "task allowlisted source and test files only",
+        "production_file_constraint": (
+            "at most one production file may change, and it must be the "
+            "task's allowlisted production file"
+        ),
+        "validation_requirements": [
+            "candidate validation passes before applying",
+            "selected validation command succeeds without hosted network usage",
+        ],
+        "hidden_like_requirements": [
+            "hidden-like checks do not disagree with public validation",
+            "task-specific source signals and pytest case ids are present",
+        ],
         "scope_note": scope_note,
     }
 
@@ -947,6 +960,19 @@ def _feature_hidden_like_agreement(
                 "naturalsize(0, zero_format=" in test_diff
                 and "naturalsize(-0.0, zero_format=" in test_diff
             ),
+        }
+    elif task_id == BOLTONS_SLUGIFY_MAX_LENGTH_TASK_ID:
+        required_production_files = ["boltons/strutils.py"]
+        required_case_ids = {
+            "boltons_slugify_max_length_truncates_final_slug",
+            "boltons_slugify_max_length_strips_configured_delimiter",
+            "boltons_slugify_max_length_default_behavior_unchanged",
+        }
+        source_signals = {
+            "adds_max_length_argument": "max_length=None" in source_diff,
+            "truncates_slug": "ret = ret[:max_length]" in source_diff,
+            "strips_configured_delimiter": "ret.rstrip(trim_delim)" in source_diff,
+            "tests_multichar_delimiter": 'delim="--", max_length=12' in test_diff,
         }
     else:
         return {

@@ -943,7 +943,7 @@ Long-term target:
 
 ### REAL-012: Full one-file feature gate after boltons materializer
 
-- Status: active
+- Status: done
 - Why: `MAT-006` removed the final one-file feature materialization blocker, so
   the gate must be rescored across all four real repos before broadening any
   guarded opt-in scope.
@@ -958,6 +958,22 @@ Long-term target:
   usage, and the exact one-file feature guarded opt-in scope.
 - Tests: focused feature-score tests, plan consistency, `git diff --check`, and
   the live score/report smoke command.
+
+- Completion note: reran the full one-file feature gate after `MAT-006`,
+  counting iniconfig, h11, humanize, and boltons through
+  `j3.real_repo_feature_materializer`. The live score against all four pinned
+  checkouts passed at `pass@1 = 4/4` and `pass@3 = 4/4`; calibration pass@3 is
+  `1/1`, held-out pass@3 is `3/3`, first passing ranks are `[1, 1, 1, 1]`,
+  candidate validation is `passed = 4`, four distinct repos pass,
+  mutation-scope violations are zero, hidden-like agreement is `4/4`, and zero
+  hosted usage is confirmed. Guarded one-file feature opt-in is allowed only
+  for `iniconfig-feature-section-default`,
+  `h11-feature-bytesify-object-message`,
+  `humanize-feature-naturalsize-zero-format`, and
+  `boltons-feature-slugify-max-length` inside task allowlists with one
+  allowlisted production file changed, passing validation, and no hidden-like
+  disagreement. Report:
+  `docs/REAL_012_ONE_FILE_FEATURE_SHADOW_SCORE_2026-05-18.md`.
 
 ### DATA-005: Issue/PR replay preflight runner
 
@@ -1035,8 +1051,7 @@ Long-term target:
 
 Start with these unless fresh evidence changes the order:
 
-1. `REAL-012`: rerun the full one-file feature gate after boltons.
-2. `KNOW-003`: broaden knowledge-use attribution where scoring shows missing
+1. `KNOW-003`: broaden knowledge-use attribution where scoring shows missing
    local-knowledge evidence.
-3. `MODEL-006`: candidate-after or AST-delta observation for ranking evidence.
-4. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.
+2. `MODEL-006`: candidate-after or AST-delta observation for ranking evidence.
+3. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.

@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from j3 import real_repo_feature_materializer as feature_materializer
 from j3.real_repo_feature_shadow_score import (
     format_real_repo_feature_shadow_score,
     run_real_repo_feature_shadow_score,
@@ -14,13 +13,10 @@ from j3.real_repo_feature_shadow_score import (
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 MANIFEST_PATH = REPO_ROOT / "examples" / "real_repo_eval_ladder.json"
+BOLTONS_SLUGIFY_MAX_LENGTH_TASK_ID = "boltons-feature-slugify-max-length"
 HUMANIZE_NATURALSIZE_ZERO_FORMAT_TASK_ID = (
     "humanize-feature-naturalsize-zero-format"
 )
-
-
-def _humanize_feature_materializer_supported() -> bool:
-    return hasattr(feature_materializer, "HUMANIZE_NATURALSIZE_ZERO_FORMAT_TASK_ID")
 
 
 def _write_synthetic_h11_checkout(repo: Path) -> None:
@@ -300,19 +296,81 @@ def test_naturalsize() -> None:
     )
 
 
-def test_feature_shadow_score_counts_h11_and_iniconfig_candidates(
+def _write_synthetic_boltons_checkout(repo: Path) -> None:
+    (repo / "boltons").mkdir(parents=True)
+    (repo / "tests").mkdir()
+    (repo / "boltons" / "__init__.py").write_text(
+        """from __future__ import annotations
+
+from . import strutils
+
+__all__ = ["strutils"]
+""",
+        encoding="utf-8",
+    )
+    (repo / "boltons" / "strutils.py").write_text(
+        """import re
+import string
+import unicodedata
+
+_punct_ws_str = string.punctuation + string.whitespace
+_punct_re = re.compile('[' + _punct_ws_str + ']+')
+
+
+def slugify(text, delim='_', lower=True, ascii=False):
+    ret = delim.join(split_punct_ws(text)) or delim if text else ''
+    if ascii:
+        ret = asciify(ret)
+    if lower:
+        ret = ret.lower()
+    return ret
+
+
+def split_punct_ws(text):
+    return [w for w in _punct_re.split(text) if w]
+
+
+def asciify(text, ignore=False):
+    text = text.replace("\\u00f6", "oe")
+    return unicodedata.normalize("NFKD", text).encode("ascii", "ignore")
+""",
+        encoding="utf-8",
+    )
+    (repo / "boltons" / "iterutils.py").write_text("", encoding="utf-8")
+    (repo / "tests" / "test_strutils.py").write_text(
+        """from boltons import strutils
+
+
+def test_slugify_existing_behavior() -> None:
+    assert strutils.slugify("First post! Hi!!!!~1    ") == "first_post_hi_1"
+    assert strutils.slugify(
+        "MiXeD Case Input", delim="-", lower=False
+    ) == "MiXeD-Case-Input"
+    assert strutils.slugify(
+        "Kurt G\\u00f6del's pretty cool.", ascii=True
+    ) == b"kurt_goedel_s_pretty_cool"
+""",
+        encoding="utf-8",
+    )
+
+
+def test_feature_shadow_score_counts_all_four_feature_candidates(
     tmp_path: Path,
 ) -> None:
     h11_path = tmp_path / "h11"
     iniconfig_path = tmp_path / "iniconfig"
     humanize_path = tmp_path / "humanize"
+    boltons_path = tmp_path / "boltons"
     _write_synthetic_h11_checkout(h11_path)
     _write_synthetic_iniconfig_checkout(iniconfig_path)
-    repo_paths = {"h11": h11_path, "iniconfig": iniconfig_path}
-    humanize_supported = _humanize_feature_materializer_supported()
-    if humanize_supported:
-        _write_synthetic_humanize_checkout(humanize_path)
-        repo_paths["humanize"] = humanize_path
+    _write_synthetic_humanize_checkout(humanize_path)
+    _write_synthetic_boltons_checkout(boltons_path)
+    repo_paths = {
+        "h11": h11_path,
+        "iniconfig": iniconfig_path,
+        "humanize": humanize_path,
+        "boltons": boltons_path,
+    }
 
     score = run_real_repo_feature_shadow_score(
         MANIFEST_PATH,
@@ -328,26 +386,22 @@ def test_feature_shadow_score_counts_h11_and_iniconfig_candidates(
 
     metrics = score["metrics"]
     assert isinstance(metrics, dict)
-    expected_count = 3 if humanize_supported else 2
-    expected_pass = "3/4" if humanize_supported else "2/4"
-    expected_heldout = "2/3" if humanize_supported else "1/3"
-    expected_first_ranks = [1, 1, 1, None] if humanize_supported else [1, 1, None, None]
-    expected_repos = (
-        ["h11", "humanize", "iniconfig"]
-        if humanize_supported
-        else ["h11", "iniconfig"]
-    )
     assert metrics["tasks_scored"] == 4
-    assert metrics["candidate_count"] == expected_count
-    assert metrics["candidates_tested"] == expected_count
+    assert metrics["candidate_count"] == 4
+    assert metrics["candidates_tested"] == 4
     assert metrics["calibration"]["pass@3"] == "1/1"
-    assert metrics["heldout"]["pass@3"] == expected_heldout
-    assert metrics["pass@1"] == expected_pass
-    assert metrics["pass@3"] == expected_pass
-    assert metrics["first_passing_ranks"] == expected_first_ranks
-    assert metrics["distinct_repos_passing"] == expected_repos
-    assert metrics["distinct_repos_passing_count"] == expected_count
-    assert metrics["production_files_changed"] == expected_count
+    assert metrics["heldout"]["pass@3"] == "3/3"
+    assert metrics["pass@1"] == "4/4"
+    assert metrics["pass@3"] == "4/4"
+    assert metrics["first_passing_ranks"] == [1, 1, 1, 1]
+    assert metrics["distinct_repos_passing"] == [
+        "boltons",
+        "h11",
+        "humanize",
+        "iniconfig",
+    ]
+    assert metrics["distinct_repos_passing_count"] == 4
+    assert metrics["production_files_changed"] == 4
     assert metrics["production_file_constraint"] == {
         "maximum_production_files_changed": 1,
         "violations": 0,
@@ -358,26 +412,43 @@ def test_feature_shadow_score_counts_h11_and_iniconfig_candidates(
         "production_file_constraint_violations": 0,
         "writes_outside_allowlist": 0,
     }
-    assert metrics["candidate_validation_statuses"]["passed"] == expected_count
-    assert metrics["candidate_validation_statuses"]["blocked"] == 4 - expected_count
-    assert metrics["hidden_like_agreement"]["agreeing"] == expected_count
-    assert metrics["hidden_like_agreement"]["not_run"] == 4 - expected_count
+    assert metrics["candidate_validation_statuses"]["passed"] == 4
+    assert metrics["candidate_validation_statuses"]["failed"] == 0
+    assert metrics["candidate_validation_statuses"]["blocked"] == 0
+    assert metrics["candidate_validation_statuses"]["deferred"] == 0
+    assert metrics["hidden_like_agreement"] == {
+        "agreeing": 4,
+        "disagreeing": 0,
+        "not_run": 0,
+    }
+
+    surface = score["supported_action_surface"]
+    assert surface["supported_task_ids"] == [
+        "iniconfig-feature-section-default",
+        "h11-feature-bytesify-object-message",
+        HUMANIZE_NATURALSIZE_ZERO_FORMAT_TASK_ID,
+        BOLTONS_SLUGIFY_MAX_LENGTH_TASK_ID,
+    ]
+    assert surface["path_constraints"] == "task allowlisted source and test files only"
+    assert "candidate validation passes before applying" in (
+        surface["validation_requirements"]
+    )
+    assert "hidden-like checks do not disagree with public validation" in (
+        surface["hidden_like_requirements"]
+    )
 
     gate = score["gate_decision"]
     assert isinstance(gate, dict)
     assert gate["decision"] == "allow_guarded_one_file_feature_opt_in"
     assert gate["passed"] is True
     assert gate["guarded_opt_in_allowed"] is True
-    expected_blocked = ["boltons-feature-slugify-max-length"]
     expected_allowed_tasks = [
         "iniconfig-feature-section-default",
         "h11-feature-bytesify-object-message",
+        HUMANIZE_NATURALSIZE_ZERO_FORMAT_TASK_ID,
+        BOLTONS_SLUGIFY_MAX_LENGTH_TASK_ID,
     ]
-    if humanize_supported:
-        expected_allowed_tasks.append(HUMANIZE_NATURALSIZE_ZERO_FORMAT_TASK_ID)
-    else:
-        expected_blocked.insert(0, HUMANIZE_NATURALSIZE_ZERO_FORMAT_TASK_ID)
-    assert gate["blocked_rows"] == expected_blocked
+    assert gate["blocked_rows"] == []
     assert gate["guarded_opt_in_scope"]["allowed_task_ids"] == expected_allowed_tasks
     assert gate["guarded_opt_in_scope"]["path_scope"] == (
         "task allowlisted source and test files only"
@@ -412,22 +483,37 @@ def test_feature_shadow_score_counts_h11_and_iniconfig_candidates(
         "src/iniconfig/__init__.py"
     ]
 
-    if humanize_supported:
-        humanize = next(row for row in rows if row["repo_id"] == "humanize")
-        assert humanize["candidate_count"] == 1
-        assert humanize["candidates_tested"] == 1
-        assert humanize["pass@1"] is True
-        assert humanize["pass@3"] is True
-        assert humanize["first_passing_rank"] == 1
-        assert humanize["candidate_validation"]["status"] == "passed"
-        assert humanize["candidate_validation"]["result"]["returncode"] == 0
-        assert humanize["hidden_like_agreement"] == "agrees"
-        assert humanize["residual_labels"] == []
-        assert humanize["blockers"] == []
-        assert humanize["candidate_record"]["status"] == "materialized"
-        assert humanize["mutation_scope"]["production_files_changed"] == [
-            "src/humanize/filesize.py"
-        ]
+    humanize = next(row for row in rows if row["repo_id"] == "humanize")
+    assert humanize["candidate_count"] == 1
+    assert humanize["candidates_tested"] == 1
+    assert humanize["pass@1"] is True
+    assert humanize["pass@3"] is True
+    assert humanize["first_passing_rank"] == 1
+    assert humanize["candidate_validation"]["status"] == "passed"
+    assert humanize["candidate_validation"]["result"]["returncode"] == 0
+    assert humanize["hidden_like_agreement"] == "agrees"
+    assert humanize["residual_labels"] == []
+    assert humanize["blockers"] == []
+    assert humanize["candidate_record"]["status"] == "materialized"
+    assert humanize["mutation_scope"]["production_files_changed"] == [
+        "src/humanize/filesize.py"
+    ]
+
+    boltons = next(row for row in rows if row["repo_id"] == "boltons")
+    assert boltons["candidate_count"] == 1
+    assert boltons["candidates_tested"] == 1
+    assert boltons["pass@1"] is True
+    assert boltons["pass@3"] is True
+    assert boltons["first_passing_rank"] == 1
+    assert boltons["candidate_validation"]["status"] == "passed"
+    assert boltons["candidate_validation"]["result"]["returncode"] == 0
+    assert boltons["hidden_like_agreement"] == "agrees"
+    assert boltons["residual_labels"] == []
+    assert boltons["blockers"] == []
+    assert boltons["candidate_record"]["status"] == "materialized"
+    assert boltons["mutation_scope"]["production_files_changed"] == [
+        "boltons/strutils.py"
+    ]
 
     h11 = next(row for row in rows if row["repo_id"] == "h11")
     assert h11["candidate_count"] == 1
@@ -451,18 +537,8 @@ def test_feature_shadow_score_counts_h11_and_iniconfig_candidates(
     assert mutation_scope["writes_outside_allowlist"] == []
     assert mutation_scope["one_production_file_constraint_preserved"] is True
 
-    supported_repos = {"h11", "iniconfig"}
-    if humanize_supported:
-        supported_repos.add("humanize")
-    blocked_rows = [row for row in rows if row["repo_id"] not in supported_repos]
-    assert all(row["pass@1"] is False for row in blocked_rows)
-    assert all(row["pass@3"] is False for row in blocked_rows)
-    assert all(row["first_passing_rank"] is None for row in blocked_rows)
-    assert all(row["candidate_validation"]["status"] == "blocked" for row in blocked_rows)
-    assert all(
-        "one_file_materialization_gap" in row["residual_labels"]
-        for row in blocked_rows
-    )
+    assert all(row["pass@1"] is True for row in rows)
+    assert all(row["pass@3"] is True for row in rows)
 
 
 def test_feature_shadow_score_does_not_count_unvalidated_materialization(
@@ -471,13 +547,17 @@ def test_feature_shadow_score_does_not_count_unvalidated_materialization(
     h11_path = tmp_path / "h11"
     iniconfig_path = tmp_path / "iniconfig"
     humanize_path = tmp_path / "humanize"
+    boltons_path = tmp_path / "boltons"
     _write_synthetic_h11_checkout(h11_path)
     _write_synthetic_iniconfig_checkout(iniconfig_path)
-    repo_paths = {"h11": h11_path, "iniconfig": iniconfig_path}
-    humanize_supported = _humanize_feature_materializer_supported()
-    if humanize_supported:
-        _write_synthetic_humanize_checkout(humanize_path)
-        repo_paths["humanize"] = humanize_path
+    _write_synthetic_humanize_checkout(humanize_path)
+    _write_synthetic_boltons_checkout(boltons_path)
+    repo_paths = {
+        "h11": h11_path,
+        "iniconfig": iniconfig_path,
+        "humanize": humanize_path,
+        "boltons": boltons_path,
+    }
 
     score = run_real_repo_feature_shadow_score(
         MANIFEST_PATH,
@@ -488,27 +568,31 @@ def test_feature_shadow_score_does_not_count_unvalidated_materialization(
     rows = score["task_results"]
     h11 = next(row for row in rows if row["repo_id"] == "h11")
     iniconfig = next(row for row in rows if row["repo_id"] == "iniconfig")
-    expected_count = 3 if humanize_supported else 2
+    humanize = next(row for row in rows if row["repo_id"] == "humanize")
+    boltons = next(row for row in rows if row["repo_id"] == "boltons")
 
-    assert score["metrics"]["candidate_count"] == expected_count
+    assert score["metrics"]["candidate_count"] == 4
     assert score["metrics"]["candidates_tested"] == 0
     assert score["metrics"]["pass@1"] == "0/4"
     assert score["metrics"]["pass@3"] == "0/4"
     assert h11["candidate_validation"]["status"] == "deferred"
     assert iniconfig["candidate_validation"]["status"] == "deferred"
+    assert humanize["candidate_validation"]["status"] == "deferred"
+    assert boltons["candidate_validation"]["status"] == "deferred"
     assert h11["pass@1"] is False
     assert h11["pass@3"] is False
     assert iniconfig["pass@1"] is False
     assert iniconfig["pass@3"] is False
+    assert humanize["pass@1"] is False
+    assert humanize["pass@3"] is False
+    assert boltons["pass@1"] is False
+    assert boltons["pass@3"] is False
     assert h11["first_passing_rank"] is None
     assert iniconfig["first_passing_rank"] is None
-    if humanize_supported:
-        humanize = next(row for row in rows if row["repo_id"] == "humanize")
-        assert humanize["candidate_validation"]["status"] == "deferred"
-        assert humanize["pass@1"] is False
-        assert humanize["pass@3"] is False
-        assert humanize["first_passing_rank"] is None
-        assert "deferred" in humanize["residual_labels"]
+    assert humanize["first_passing_rank"] is None
+    assert boltons["first_passing_rank"] is None
+    assert "deferred" in humanize["residual_labels"]
+    assert "deferred" in boltons["residual_labels"]
     assert "candidate_validation_deferred" not in h11["residual_labels"]
     assert "deferred" in h11["residual_labels"]
     assert "deferred" in iniconfig["residual_labels"]
@@ -519,13 +603,17 @@ def test_feature_shadow_score_writes_json_and_markdown_reports(tmp_path: Path) -
     h11_path = tmp_path / "h11"
     iniconfig_path = tmp_path / "iniconfig"
     humanize_path = tmp_path / "humanize"
+    boltons_path = tmp_path / "boltons"
     _write_synthetic_h11_checkout(h11_path)
     _write_synthetic_iniconfig_checkout(iniconfig_path)
-    repo_paths = {"h11": h11_path, "iniconfig": iniconfig_path}
-    humanize_supported = _humanize_feature_materializer_supported()
-    if humanize_supported:
-        _write_synthetic_humanize_checkout(humanize_path)
-        repo_paths["humanize"] = humanize_path
+    _write_synthetic_humanize_checkout(humanize_path)
+    _write_synthetic_boltons_checkout(boltons_path)
+    repo_paths = {
+        "h11": h11_path,
+        "iniconfig": iniconfig_path,
+        "humanize": humanize_path,
+        "boltons": boltons_path,
+    }
     score = run_real_repo_feature_shadow_score(
         MANIFEST_PATH,
         created_at="2026-05-18T00:00:00+00:00",
@@ -542,21 +630,18 @@ def test_feature_shadow_score_writes_json_and_markdown_reports(tmp_path: Path) -
         tmp_path / "report.md",
     )
 
-    expected_pass = "3/4" if humanize_supported else "2/4"
-    expected_heldout = "2/3" if humanize_supported else "1/3"
-    expected_repos = "3" if humanize_supported else "2"
-    assert json.loads(score_path.read_text(encoding="utf-8"))["metrics"]["pass@3"] == expected_pass
+    assert json.loads(score_path.read_text(encoding="utf-8"))["metrics"]["pass@3"] == "4/4"
     report = report_path.read_text(encoding="utf-8")
-    assert "REAL-011 One-File Feature Shadow Score" in report
+    assert "REAL-012 One-File Feature Shadow Score" in report
     assert "Calibration pass@3: `1/1`" in report
-    assert f"Held-out pass@3: `{expected_heldout}`" in report
-    assert f"pass@1: `{expected_pass}`" in report
-    assert f"pass@3: `{expected_pass}`" in report
-    assert f"Distinct repos passing: `{expected_repos}`" in report
+    assert "Held-out pass@3: `3/3`" in report
+    assert "pass@1: `4/4`" in report
+    assert "pass@3: `4/4`" in report
+    assert "Distinct repos passing: `4`" in report
     assert "Production-file constraint preserved: `true`" in report
     assert "| `iniconfig-feature-section-default` | calibration | passed | True | True | 1 |" in report
     assert "| `h11-feature-bytesify-object-message` | heldout | passed | True | True | 1 |" in report
-    if humanize_supported:
-        assert "| `humanize-feature-naturalsize-zero-format` | heldout | passed | True | True | 1 |" in report
+    assert "| `humanize-feature-naturalsize-zero-format` | heldout | passed | True | True | 1 |" in report
+    assert "| `boltons-feature-slugify-max-length` | heldout | passed | True | True | 1 |" in report
     assert "allow_guarded_one_file_feature_opt_in" in report
     assert format_real_repo_feature_shadow_score(score) == report

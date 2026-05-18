@@ -1767,3 +1767,38 @@ meaningful work. Do not replace this file with a daily reset.
   structured prompt/spec; acquire Click local-knowledge records for #3298
   before candidate generation.
 - Blockers: none for DATA-007; candidate edits remain intentionally unstarted.
+
+### 2026-05-18 - REAL-012 - Full one-file feature gate after boltons
+
+- Owner: worker Peirce (`019e3bec-9cd7-7a73-9bed-b8314105d6ee`)
+- Files changed: `j3/real_repo_feature_shadow_score.py`,
+  `tests/test_real_repo_feature_shadow_score.py`,
+  `docs/REAL_012_ONE_FILE_FEATURE_SHADOW_SCORE_2026-05-18.md`,
+  `plans/active.md`, `plans/backlog.md`, `plans/progress.md`
+- Tests: `pytest tests/test_real_repo_feature_shadow_score.py -q` -> 3
+  passed; live preflight
+  `python -m j3.real_repo_preflight --manifest examples/real_repo_eval_ladder.json --repo iniconfig --repo h11 --repo humanize --repo boltons --work-root /tmp/j3-real-012-feature-shadow-score-live/repos --outcome /tmp/j3-real-012-feature-shadow-score-live/preflight.jsonl`
+  -> passed with 8 rows and `blocker_labels = ["none"]`; live shadow score
+  `python -m j3.real_repo_feature_shadow_score --manifest examples/real_repo_eval_ladder.json --repo-path iniconfig=/tmp/j3-real-012-feature-shadow-score-live/repos/iniconfig --repo-path h11=/tmp/j3-real-012-feature-shadow-score-live/repos/h11 --repo-path humanize=/tmp/j3-real-012-feature-shadow-score-live/repos/humanize --repo-path boltons=/tmp/j3-real-012-feature-shadow-score-live/repos/boltons --validate-candidates --out /tmp/j3-real-012-feature-shadow-score-live/score.json --report /tmp/j3-real-012-feature-shadow-score-live/report.md`
+  -> passed with `pass@1 = 4/4`, `pass@3 = 4/4`, and
+  `gate_decision = allow_guarded_one_file_feature_opt_in`; `pytest
+  tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check` ->
+  passed.
+- Result: counted `iniconfig-feature-section-default`,
+  `h11-feature-bytesify-object-message`,
+  `humanize-feature-naturalsize-zero-format`, and
+  `boltons-feature-slugify-max-length` through
+  `j3.real_repo_feature_materializer`. Calibration pass@3 is `1/1`; held-out
+  pass@3 is `3/3`; first passing ranks are `[1, 1, 1, 1]`. Candidate
+  validation passed for all four rows, with zero writes outside allowlists,
+  zero production-file constraint violations, zero mutation-scope violations,
+  hidden-like agreement for all four rows, no blocked rows, and zero hosted
+  usage. Guarded one-file feature opt-in is allowed only for the four
+  materialized, validation-passing task ids inside task allowlists with one
+  allowlisted production file changed and no hidden-like disagreement.
+- Commit: pending
+- Push: pending
+- Next: coordinator can review REAL-012 with DATA-007; the one-file feature
+  gate now supports guarded opt-in across all four materialized ladder task
+  ids.
+- Blockers: none

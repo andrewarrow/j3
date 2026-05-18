@@ -254,7 +254,7 @@ Long-term target:
 
 ### GS7-011: Materialize held-out boltons tests-only candidate
 
-- Status: ready
+- Status: active
 - Why: the tests-only gate needs broad held-out evidence and boltons is the
   remaining ladder repo whose baseline has not yet been exercised by candidate
   scoring.
@@ -756,16 +756,34 @@ Long-term target:
 
 ### REAL-008: Tests-only gate after next held-out materializer batch
 
-- Status: ready
+- Status: active
 - Why: `REAL-007` can count h11, but the guarded tests-only gate requires at
   least three passing tasks. The gate should be rerun after the next held-out
   materializer batch instead of inferred from standalone live checks.
 - Write scope: shadow-score command/report updates, generated outputs under
   `/tmp`, compact docs if useful, and plan updates.
-- Acceptance: rerun the tests-only gate with all available materialized
-  candidates, report calibration versus held-out pass rates, pass@1/pass@3,
-  first passing ranks, runtime, mutation-scope violations, hidden-like
-  agreement, zero hosted usage, and the guarded-use decision.
+- Acceptance: rerun the tests-only gate with the `iniconfig`, `h11`, and
+  `humanize` materialized candidates counted; report calibration versus
+  held-out pass rates, pass@1/pass@3, first passing ranks, runtime,
+  mutation-scope violations, hidden-like agreement, zero hosted usage, and the
+  guarded-use decision. Leave boltons as an explicit blocker unless the
+  materializer is already available.
+- Tests: focused shadow-score tests, plan consistency, `git diff --check`, and
+  the score/report smoke command.
+
+### REAL-010: Full tests-only gate after boltons materializer
+
+- Status: ready
+- Why: `REAL-008` can decide whether the three-candidate threshold is reached,
+  but boltons should be counted after `GS7-011` to prove or falsify full ladder
+  coverage.
+- Write scope: shadow-score command/report updates, generated outputs under
+  `/tmp`, compact docs if useful, and plan updates.
+- Acceptance: rerun the tests-only gate with every available materialized
+  tests-only candidate, report calibration versus held-out pass rates, total
+  pass@1/pass@3, first passing ranks, runtime, mutation-scope violations,
+  hidden-like agreement, zero hosted usage, and whether guarded tests-only
+  opt-in is allowed.
 - Tests: focused shadow-score tests, plan consistency, `git diff --check`, and
   the score/report smoke command.
 
@@ -816,12 +834,10 @@ Long-term target:
 
 Start with these unless fresh evidence changes the order:
 
-1. `GS7-011`: materialize held-out `boltons` tests-only coverage for
-   `strutils.slugify` delimiter behavior.
-2. `REAL-008`: rerun the tests-only gate after the next held-out
-   materializer batch.
-3. `MAT-004`: attempt a second real one-file feature materialization probe.
-4. `KNOW-003`: broaden knowledge-use attribution where scoring shows missing
+1. `REAL-010`: rerun the full tests-only gate after the boltons materializer
+   result is integrated.
+2. `MAT-004`: attempt a second real one-file feature materialization probe.
+3. `KNOW-003`: broaden knowledge-use attribution where scoring shows missing
    local-knowledge evidence.
-5. `MODEL-006`: candidate-after or AST-delta observation for ranking evidence.
-6. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.
+4. `MODEL-006`: candidate-after or AST-delta observation for ranking evidence.
+5. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.

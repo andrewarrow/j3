@@ -1344,3 +1344,22 @@ meaningful work. Do not replace this file with a daily reset.
 - Blockers: one-file feature gate remains shadow-only at `pass@3 = 1/4` across
   one distinct repo; unsupported `iniconfig`, `humanize`, and `boltons`
   one-file feature materializers are still missing.
+
+### 2026-05-18 - COORD - Tests-only gate and boltons dispatch
+
+- Owner: coordinator
+- Files changed: `plans/active.md`, `plans/backlog.md`, `plans/progress.md`
+- Tests: `pytest tests/test_real_repo_tests_planner.py -q` -> 4 passed;
+  `pytest tests/test_real_repo_feature_shadow_score.py -q` -> 3 passed;
+  `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check` -> passed.
+- Result: reviewed `GS7-010` and `REAL-009`. The next falsifiable test is
+  whether `REAL-008` moves tests-only from shadow-only to guarded opt-in now
+  that `iniconfig`, `h11`, and `humanize` have live-validated materializers.
+  In parallel, `GS7-011` attacks the remaining held-out `boltons` tests-only
+  row so the full four-task ladder can be scored next.
+- Commit: pending
+- Push: pending
+- Next: dispatch workers for `REAL-008` and `GS7-011`; keep `REAL-010` ready
+  for the full tests-only gate after boltons.
+- Blockers: none

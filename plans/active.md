@@ -20,33 +20,74 @@ This is the live coordinator board. Keep it current and compact.
   `REAL-007` scored the materialized calibration candidate plus the first
   held-out h11 candidate at `pass@1 = 2/4` and `pass@3 = 2/4`; calibration
   pass rate is `1/1`, held-out pass rate is `1/3`, and tests-only guarded
-  opt-in remains shadow-only until the next scorer run. `GS7-010` now
-  materializes and live-validates the held-out `humanize` tests-only candidate.
-  `MAT-003` now materializes and live-validates the first real one-file source
-  feature candidate on held-out `h11`; `REAL-009` scores it at
+  opt-in remains shadow-only until `REAL-008` counts the held-out `humanize`
+  materializer. `GS7-010` now materializes and live-validates the held-out
+  `humanize` tests-only candidate, and `GS7-011` is active for the remaining
+  boltons tests-only row. `MAT-003` now materializes and live-validates the
+  first real one-file source feature candidate on held-out `h11`; `REAL-009`
+  scores it at
   `pass@1 = 1/4` and `pass@3 = 1/4` across one distinct passing repo, so the
   one-file feature gate remains shadow-only.
 
 ## Active Tasks
 
-No active tasks recorded by this worker.
+### `REAL-008`: Tests-only gate after humanize materializer
+
+- Status: active
+- Owner: pending worker dispatch.
+- Goal: rerun the tests-only gate with the `GS7-010` humanize materializer
+  counted, separating calibration and held-out evidence.
+- Write scope: `j3/real_repo_shadow_score.py`,
+  `tests/test_real_repo_shadow_score.py`, one compact `docs/REAL_008_*.md`
+  report if useful, generated outputs under `/tmp`, and plan updates.
+- Do not touch: `j3/real_repo_tests_planner.py` or
+  `tests/test_real_repo_tests_planner.py`; those belong to `GS7-011`.
+- Acceptance: score iniconfig, h11, and humanize through materialized
+  candidates; leave boltons as an explicit blocker unless a materializer is
+  already available; report calibration pass rate, held-out pass rate, total
+  pass@1/pass@3, first passing ranks, runtime, mutation-scope violations,
+  hidden-like agreement, zero hosted usage, and guarded-use gate decision.
+- Tests: `pytest tests/test_real_repo_shadow_score.py -q`,
+  `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and a live
+  score/report smoke with pinned `iniconfig`, `h11`, and `humanize` checkout
+  paths.
+
+### `GS7-011`: Materialize held-out boltons tests-only candidate
+
+- Status: active
+- Owner: pending worker dispatch.
+- Goal: attack `boltons-tests-slugify-delimiter` as the remaining held-out
+  tests-only ladder task.
+- Write scope: `j3/real_repo_tests_planner.py`,
+  `tests/test_real_repo_tests_planner.py`, optional generated outputs under
+  `/tmp`, and plan updates.
+- Do not touch: `j3/real_repo_shadow_score.py` or
+  `tests/test_real_repo_shadow_score.py`; those belong to `REAL-008`.
+- Acceptance: select `tests/test_strutils.py` from repo-state and
+  local-knowledge evidence; materialize pytest coverage for custom delimiters,
+  empty strings, ascii output, and `lower=False`; preserve production files;
+  emit candidate-after, mutation-scope, validation-command, residual, and
+  knowledge-use metadata; and live-validate the pinned checkout if setup
+  succeeds. If setup or validation fails, classify environment versus agent
+  failure.
+- Tests: focused planner/materializer tests,
+  `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and a live
+  `python -m pytest tests/test_strutils.py -q` candidate check when available.
 
 ## Ready Queue
 
 These are good next assignments for the next loop:
 
-1. `GS7-011`: materialize held-out `boltons` tests-only coverage for
-   `strutils.slugify` delimiter behavior.
-2. `REAL-008`: rerun the tests-only gate after the next held-out
-   materializer batch.
-3. `MAT-004`: attempt a second real one-file feature materializer if
+1. `REAL-010`: rerun the full tests-only gate after the boltons materializer
+   result is integrated.
+2. `MAT-004`: attempt a second real one-file feature materializer if
    `REAL-009` shows the h11 source scorer path is sound.
-4. `KNOW-003`: broaden knowledge-use attribution where scoring shows missing
+3. `KNOW-003`: broaden knowledge-use attribution where scoring shows missing
    local-knowledge evidence.
-5. `MODEL-006`: add candidate-after or AST-delta observation for ranking
+4. `MODEL-006`: add candidate-after or AST-delta observation for ranking
    evidence.
-6. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.
-7. `MODEL-004`: distinguish mapping key and value targets.
+5. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.
+6. `MODEL-004`: distinguish mapping key and value targets.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 

@@ -9,6 +9,7 @@ from j3.issue_pr_readiness import (
     PYTEST_STRICT_ADDOPTS_REPLAY_ID,
     PYTEST_TIMEDELTA_APPROX_REPLAY_ID,
     REQUESTS_REPLAY_ID,
+    SCRAPY_DOWNLOADER_AWARE_REPLAY_ID,
     build_issue_pr_readiness_rows,
     main,
     summarize_issue_pr_readiness_rows,
@@ -24,6 +25,7 @@ from j3.local_knowledge import (
     PYTEST_STRICT_ADDOPTS_REQUIRED_KNOWLEDGE_CATEGORIES,
     PYTEST_TIMEDELTA_APPROX_REQUIRED_KNOWLEDGE_CATEGORIES,
     REQUESTS_REPLAY_REQUIRED_KNOWLEDGE_CATEGORIES,
+    SCRAPY_DOWNLOADER_AWARE_REQUIRED_KNOWLEDGE_CATEGORIES,
 )
 
 
@@ -267,6 +269,77 @@ def test_pytest_timedelta_approx_readiness_consumes_data_026_categories() -> Non
     assert {
         evidence["knowledge_category"] for evidence in knowledge_evidence
     } == set(PYTEST_TIMEDELTA_APPROX_REQUIRED_KNOWLEDGE_CATEGORIES)
+
+
+def test_scrapy_downloader_aware_readiness_consumes_data_031_categories() -> None:
+    rows = build_issue_pr_readiness_rows(
+        manifest_path=MANIFEST_PATH,
+        replay_ids=[SCRAPY_DOWNLOADER_AWARE_REPLAY_ID],
+        preflight_records=[
+            _passed_preflight(
+                SCRAPY_DOWNLOADER_AWARE_REPLAY_ID,
+                "pytest tests/test_pqueues.py -q",
+                required_knowledge_categories=(
+                    "repo_changed_file_context",
+                    "repo_test_pattern",
+                    "focused_validation_recipe",
+                    "scrapy_downloader_aware_priority_queue",
+                    "scrapy_slot_active_download_accounting",
+                    "scrapy_pqueue_test_patterns",
+                ),
+            )
+        ],
+        prompt_specs=[_normalized_prompt_spec(SCRAPY_DOWNLOADER_AWARE_REPLAY_ID)],
+        local_knowledge_records=_knowledge_records(
+            SCRAPY_DOWNLOADER_AWARE_REPLAY_ID,
+            SCRAPY_DOWNLOADER_AWARE_REQUIRED_KNOWLEDGE_CATEGORIES,
+        ),
+    )
+
+    row = rows[0]
+
+    assert row["ready_for_candidate_attempt"] is True
+    assert row["blocker_recommendation"] == (
+        "ready_for_candidate_attempt; "
+        "next_stage_challenge=materialization_gap,ranking_gap"
+    )
+    assert row["missing_evidence_labels"] == []
+    assert row["validation_command"] == "pytest tests/test_pqueues.py -q"
+    assert row["evidence_counts"] == {
+        "local_knowledge": 6,
+        "prompt_spec": 1,
+        "validation": 1,
+    }
+    assert row["required_local_knowledge_categories"] == list(
+        SCRAPY_DOWNLOADER_AWARE_REQUIRED_KNOWLEDGE_CATEGORIES
+    )
+    assert row["local_knowledge_categories_present"] == sorted(
+        SCRAPY_DOWNLOADER_AWARE_REQUIRED_KNOWLEDGE_CATEGORIES
+    )
+    assert row["allowed_write_scope"]["python_source_paths"] == ["scrapy/pqueues.py"]
+    assert row["allowed_write_scope"]["test_paths"] == ["tests/test_pqueues.py"]
+    assert row["allowed_write_scope"]["auxiliary_paths"] == []
+    assert "matches the full accepted edit scope" in row["accepted_edit_scope_note"]
+    assert row["residual_labels"] == ["materialization_gap", "ranking_gap"]
+    assert row["next_stage_challenge_labels"] == [
+        "materialization_gap",
+        "ranking_gap",
+    ]
+    materialization_challenge = row["next_stage_challenges"][0]
+    assert materialization_challenge["label"] == "materialization_gap"
+    assert materialization_challenge["source_test_paths"] == [
+        "scrapy/pqueues.py",
+        "tests/test_pqueues.py",
+    ]
+    assert materialization_challenge["auxiliary_paths"] == []
+    knowledge_evidence = [
+        evidence
+        for evidence in row["evidence_sources"]
+        if evidence["evidence_type"] == "local_knowledge"
+    ]
+    assert {
+        evidence["knowledge_category"] for evidence in knowledge_evidence
+    } == set(SCRAPY_DOWNLOADER_AWARE_REQUIRED_KNOWLEDGE_CATEGORIES)
 
 
 def test_readiness_jsonl_summary_report_and_cli(tmp_path: Path) -> None:

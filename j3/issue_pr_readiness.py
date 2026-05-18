@@ -15,6 +15,7 @@ from j3.issue_pr_preflight import (
 from j3.issue_pr_prompt_spec import (
     PYTEST_STRICT_ADDOPTS_REPLAY_ID as PROMPT_SPEC_PYTEST_STRICT_ADDOPTS_REPLAY_ID,
     PYTEST_TIMEDELTA_APPROX_REPLAY_ID as PROMPT_SPEC_PYTEST_TIMEDELTA_APPROX_REPLAY_ID,
+    SCRAPY_DOWNLOADER_AWARE_REPLAY_ID as PROMPT_SPEC_SCRAPY_DOWNLOADER_AWARE_REPLAY_ID,
     build_issue_pr_prompt_specs,
 )
 from j3.local_knowledge import (
@@ -22,6 +23,7 @@ from j3.local_knowledge import (
     PYTEST_STRICT_ADDOPTS_REQUIRED_KNOWLEDGE_CATEGORIES,
     PYTEST_TIMEDELTA_APPROX_REQUIRED_KNOWLEDGE_CATEGORIES,
     REQUESTS_REPLAY_REQUIRED_KNOWLEDGE_CATEGORIES,
+    SCRAPY_DOWNLOADER_AWARE_REQUIRED_KNOWLEDGE_CATEGORIES,
 )
 
 
@@ -31,6 +33,7 @@ CLICK_DEFAULT_MAP_REPLAY_ID = "pallets__click-issue-2745-pr-3364"
 CLICK_SEMVER_REPLAY_ID = "pallets__click-issue-3298-pr-3299"
 PYTEST_STRICT_ADDOPTS_REPLAY_ID = PROMPT_SPEC_PYTEST_STRICT_ADDOPTS_REPLAY_ID
 PYTEST_TIMEDELTA_APPROX_REPLAY_ID = PROMPT_SPEC_PYTEST_TIMEDELTA_APPROX_REPLAY_ID
+SCRAPY_DOWNLOADER_AWARE_REPLAY_ID = PROMPT_SPEC_SCRAPY_DOWNLOADER_AWARE_REPLAY_ID
 NEXT_STAGE_CHALLENGE_LABELS = ("materialization_gap", "ranking_gap")
 REQUIRED_KNOWLEDGE_BY_REPLAY_ID = {
     REQUESTS_REPLAY_ID: REQUESTS_REPLAY_REQUIRED_KNOWLEDGE_CATEGORIES,
@@ -38,6 +41,9 @@ REQUIRED_KNOWLEDGE_BY_REPLAY_ID = {
     PYTEST_STRICT_ADDOPTS_REPLAY_ID: PYTEST_STRICT_ADDOPTS_REQUIRED_KNOWLEDGE_CATEGORIES,
     PYTEST_TIMEDELTA_APPROX_REPLAY_ID: (
         PYTEST_TIMEDELTA_APPROX_REQUIRED_KNOWLEDGE_CATEGORIES
+    ),
+    SCRAPY_DOWNLOADER_AWARE_REPLAY_ID: (
+        SCRAPY_DOWNLOADER_AWARE_REQUIRED_KNOWLEDGE_CATEGORIES
     ),
 }
 
@@ -382,6 +388,9 @@ def _build_readiness_row(
         + validation_evidence
         + knowledge_evidence
     )
+    evidence_counts = Counter(
+        str(evidence.get("evidence_type")) for evidence in evidence_sources
+    )
     return {
         "schema_version": ISSUE_PR_READINESS_SCHEMA_VERSION,
         "record_kind": "issue_pr_candidate_readiness",
@@ -394,6 +403,7 @@ def _build_readiness_row(
             next_stage_labels=next_stage,
         ),
         "evidence_ids": [str(evidence.get("id")) for evidence in evidence_sources],
+        "evidence_counts": dict(sorted(evidence_counts.items())),
         "evidence_sources": evidence_sources,
         "missing_evidence_labels": sorted(missing_labels),
         "allowed_write_scope": allowed_write_scope,

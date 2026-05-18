@@ -44,21 +44,6 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-### `DATA-033`: Scrapy validation-split readiness refresh
-
-- Status: active
-- Owner: worker Wegener (`019e3c9c-48a4-7523-ab7f-1c71b29ddd80`).
-- Write scope: `j3/issue_pr_readiness.py`,
-  `tests/test_issue_pr_readiness.py`, generated outputs under `/tmp`,
-  optional compact report under `docs/`, and planning updates.
-- Acceptance: consume DATA-030 preflight evidence plus DATA-031 prompt/spec and
-  local-knowledge evidence for exactly `scrapy__scrapy-issue-7293-pr-7351`.
-  Emit one readiness row with missing-evidence labels, allowed write scope,
-  validation command, evidence counts/sources, residual labels, and
-  recommendation. If ready, allowed source/test scope must be exactly
-  `scrapy/pqueues.py` and `tests/test_pqueues.py`; if blocked, record the
-  concrete evidence gap.
-
 ### `DATA-034`: Scrapy materialization coverage audit
 
 - Status: active
@@ -107,6 +92,16 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `DATA-033`: refreshed candidate-readiness for exactly
+  `scrapy__scrapy-issue-7293-pr-7351` using DATA-030 preflight evidence and
+  DATA-031 prompt/spec plus local-knowledge evidence. The row is
+  `ready_for_candidate_attempt` with no missing-evidence labels, validation
+  command `pytest tests/test_pqueues.py -q`, evidence counts
+  `{"prompt_spec":1,"validation":1,"local_knowledge":6}`, and residual labels
+  `materialization_gap` and `ranking_gap`. Allowed write scope is exactly
+  `scrapy/pqueues.py` and `tests/test_pqueues.py`, with no auxiliary paths.
+  Artifacts: `/tmp/j3-data-033-scrapy-readiness/readiness.jsonl` and
+  `/tmp/j3-data-033-scrapy-readiness/report.md`.
 - `DATA-031`: added normalized prompt/spec and local-knowledge evidence for
   exactly `scrapy__scrapy-issue-7293-pr-7351` with no candidate edits. The
   prompt/spec row covers the `_active_downloads` issue framing, observed versus

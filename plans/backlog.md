@@ -1906,7 +1906,7 @@ Long-term target:
 
 ### DATA-033: Scrapy validation-split readiness refresh
 
-- Status: active
+- Status: done
 - Why: DATA-030 proved the validation-split Scrapy row has a working checkout,
   setup, and baseline validation, and DATA-031 supplied prompt/spec plus local
   knowledge. The next gate must say whether the row is candidate-ready, and if
@@ -1923,6 +1923,17 @@ Long-term target:
   blocked, record the concrete evidence gap.
 - Tests: focused readiness tests, plan consistency, `git diff --check`, and a
   CLI smoke for the single Scrapy row.
+- Completion note: refreshed candidate-readiness for exactly
+  `scrapy__scrapy-issue-7293-pr-7351` using DATA-030 preflight evidence and
+  DATA-031 prompt/spec plus local-knowledge evidence. The emitted row is
+  `ready_for_candidate_attempt` with no missing-evidence labels, validation
+  command `pytest tests/test_pqueues.py -q`, evidence counts
+  `{"local_knowledge":6,"prompt_spec":1,"validation":1}`, and residual labels
+  `materialization_gap` and `ranking_gap`. Allowed write scope is exactly
+  `scrapy/pqueues.py` and `tests/test_pqueues.py`, with no auxiliary paths; no
+  candidate source edits were attempted. Artifacts:
+  `/tmp/j3-data-033-scrapy-readiness/readiness.jsonl` and
+  `/tmp/j3-data-033-scrapy-readiness/report.md`.
 
 ### DATA-034: Scrapy materialization coverage audit
 

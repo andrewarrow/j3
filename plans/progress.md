@@ -3302,3 +3302,60 @@ meaningful work. Do not replace this file with a daily reset.
 - Push: pending.
 - Next: continue non-overlapping coordinator review while both workers run.
 - Blockers: none.
+
+### 2026-05-18 - DATA-034 - Scrapy materialization coverage audit
+
+- Owner: worker James (`019e3c9c-48d6-7e32-804c-beb42f62bb01`).
+- Files changed: `j3/issue_pr_materialization_audit.py`,
+  `tests/test_issue_pr_materialization_audit.py`,
+  `docs/DATA_034_SCRAPY_7293_MATERIALIZATION_COVERAGE_AUDIT_2026-05-18.md`,
+  `plans/active.md`, `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `python -m py_compile j3/issue_pr_materialization_audit.py
+  tests/test_issue_pr_materialization_audit.py` -> passed; `pytest
+  tests/test_issue_pr_materialization_audit.py -q` -> 9 passed; CLI smoke
+  `python -m j3.issue_pr_materialization_audit --replay-id
+  scrapy__scrapy-issue-7293-pr-7351 ...` -> emitted two audit rows and a
+  compact report; `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check` -> passed.
+- Result: classified the accepted validation-split Scrapy diff before any
+  candidate attempt. `scrapy/pqueues.py` and `tests/test_pqueues.py` both
+  require constrained local generator/source-region action coverage; neither
+  path is covered by current structured actions. The audit records manifest,
+  DATA-030, and DATA-031 provenance, accepted diff stats (`30`/`2` and
+  `49`/`0`), action-family recommendations, validation costs, likely failure
+  modes, and next falsifiable materializer tasks for the source slot-rotation
+  update and pqueue test inserter.
+- Commit: pending.
+- Push: pending.
+- Next: implement the smallest Scrapy source-region materializer only after
+  coordinator review; candidate edits remain deferred.
+- Blockers: none.
+
+### 2026-05-18 - DATA-033 - Scrapy validation-split readiness refresh
+
+- Owner: worker Wegener (`019e3c9c-48a4-7523-ab7f-1c71b29ddd80`).
+- Files changed: `j3/issue_pr_readiness.py`,
+  `tests/test_issue_pr_readiness.py`, `plans/active.md`,
+  `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `python -m py_compile j3/issue_pr_readiness.py
+  tests/test_issue_pr_readiness.py` -> passed; `pytest
+  tests/test_issue_pr_readiness.py -q` -> 7 passed; CLI smoke
+  `python -m j3.issue_pr_readiness --replay-id
+  scrapy__scrapy-issue-7293-pr-7351 ...` -> emitted one readiness row and
+  report; `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff
+  --check` -> passed.
+- Result: consumed DATA-030 preflight evidence and DATA-031 prompt/spec plus
+  local-knowledge evidence for exactly
+  `scrapy__scrapy-issue-7293-pr-7351`. The row is
+  `ready_for_candidate_attempt` with no missing-evidence labels, validation
+  command `pytest tests/test_pqueues.py -q`, evidence counts
+  `{"local_knowledge":6,"prompt_spec":1,"validation":1}`, evidence sources
+  from the required DATA-030 and DATA-031 JSONL files, and residual labels
+  `materialization_gap` and `ranking_gap`. Allowed write scope is exactly
+  `scrapy/pqueues.py` and `tests/test_pqueues.py`, with no auxiliary paths.
+  No candidate source edits were attempted.
+- Commit: pending.
+- Push: pending.
+- Next: use DATA-034 materialization audit before any Scrapy candidate attempt;
+  ranking evidence remains a next-stage gap.
+- Blockers: none.

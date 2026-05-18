@@ -2955,8 +2955,30 @@ meaningful work. Do not replace this file with a daily reset.
   scope, DATA-021/023/024 provenance, residual label
   `candidate_validation_passed`, structured-action coverage, and full
   accepted-edit coverage as expressible for this bounded replay.
-- Commit: this DATA-025 commit.
-- Push: pending at commit time.
+- Commit: 6bf65e2.
+- Push: succeeded.
 - Next: coordinator can review DATA-025 and DATA-026, then dispatch the next
   ready task.
+- Blockers: none.
+
+### 2026-05-18 - Coordinator Review And Dispatch - DATA-027 / DATA-028
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, `plans/progress.md`.
+- Tests: `python -m py_compile j3/issue_pr_candidate_attempt.py
+  tests/test_issue_pr_candidate_attempt.py` -> passed; `pytest
+  tests/test_issue_pr_candidate_attempt.py -q` -> 15 passed; `python -m
+  py_compile j3/issue_pr_prompt_spec.py j3/local_knowledge.py
+  tests/test_issue_pr_prompt_spec.py tests/test_local_knowledge.py` -> passed;
+  `pytest tests/test_issue_pr_prompt_spec.py tests/test_local_knowledge.py -q`
+  -> 19 passed; `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git
+  diff --check` -> passed.
+- Result: reviewed DATA-025 and DATA-026. Full accepted-edit materialization is
+  now expressible and validated for bounded pytest #14442. The next loop moves
+  pytest #14462 through the same pre-candidate gates: readiness refresh
+  (`DATA-027`) and materialization coverage audit (`DATA-028`) before any
+  source edit attempt.
+- Commit: pending coordinator dispatch commit.
+- Push: pending.
+- Next: workers dispatched for `DATA-027` and `DATA-028`.
 - Blockers: none.

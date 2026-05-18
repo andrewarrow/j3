@@ -1696,6 +1696,46 @@ Long-term target:
   `/tmp/j3-data-026-pytest-14462-evidence/knowledge.jsonl`, and
   `docs/DATA_026_PYTEST_14462_PROMPT_SPEC_KNOWLEDGE_2026-05-18.md`.
 
+### DATA-027: Pytest #14462 readiness refresh
+
+- Status: active
+- Why: DATA-026 supplied prompt/spec and local-knowledge evidence for pytest
+  #14462 after DATA-018 proved checkout/setup/baseline validation. The next
+  gate must say whether the row is candidate-ready and what materialization or
+  ranking blockers remain.
+- Write scope: `j3/issue_pr_readiness.py`,
+  `tests/test_issue_pr_readiness.py`, generated outputs under `/tmp`,
+  optional compact report under `docs/`, and plan updates.
+- Acceptance: consume DATA-018 preflight evidence plus DATA-026 prompt/spec
+  and local-knowledge evidence for exactly
+  `pytest-dev__pytest-issue-14462-pr-14466`. Emit one readiness row with
+  missing-evidence labels, allowed write scope, validation command, residual
+  labels, evidence sources, and recommendation. If ready, identify
+  materialization/ranking as next-stage challenges; if blocked, record the
+  concrete evidence gap.
+- Tests: focused readiness tests, plan consistency, `git diff --check`, and a
+  CLI smoke for the single pytest row.
+
+### DATA-028: Pytest #14462 materialization coverage audit
+
+- Status: active
+- Why: before attempting another pytest candidate, classify whether the
+  accepted timedelta `approx` diff is expressible with the current action
+  surface or requires a new constrained source/test materializer.
+- Write scope: `j3/issue_pr_materialization_audit.py`,
+  `tests/test_issue_pr_materialization_audit.py`, generated outputs under
+  `/tmp`, optional compact report under `docs/`, and plan updates. Do not
+  attempt candidate edits.
+- Acceptance: inspect accepted paths `src/_pytest/python_api.py` and
+  `testing/python/approx.py`; classify each as covered by current structured
+  actions, covered by a small proposed deterministic action, requiring a
+  constrained local generator/source-region action, or not currently
+  expressible. Record provenance, accepted diff stats, action-family
+  recommendation, validation cost, likely failure mode, and smallest next
+  falsifiable materializer task.
+- Tests: focused audit tests, plan consistency, `git diff --check`, and a CLI
+  smoke that emits machine-readable audit rows plus a compact report.
+
 ## Next Recommended Queue
 
 Start with these unless fresh evidence changes the order:

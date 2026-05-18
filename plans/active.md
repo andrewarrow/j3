@@ -44,7 +44,22 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-- None.
+- `DATA-027`: worker to refresh candidate-readiness for
+  `pytest-dev__pytest-issue-14462-pr-14466` using DATA-018 preflight and
+  DATA-026 prompt/spec/local-knowledge evidence. Ownership:
+  `j3/issue_pr_readiness.py`, `tests/test_issue_pr_readiness.py`, generated
+  `/tmp` readiness artifacts, optional compact report under `docs/`, and plan
+  updates. Acceptance: one readiness row with exact missing-evidence labels,
+  allowed write scope, validation command, residual labels, evidence sources,
+  and recommendation.
+- `DATA-028`: worker to audit materialization coverage for
+  `pytest-dev__pytest-issue-14462-pr-14466` before any candidate edit.
+  Ownership: `j3/issue_pr_materialization_audit.py`,
+  `tests/test_issue_pr_materialization_audit.py`, generated `/tmp` artifacts,
+  optional compact report under `docs/`, and plan updates. Acceptance:
+  classify `src/_pytest/python_api.py` and `testing/python/approx.py` by
+  current/proposed action coverage, validation cost, likely failure mode, and
+  smallest next falsifiable materializer task.
 
 ## Ready Queue
 

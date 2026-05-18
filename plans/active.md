@@ -44,14 +44,45 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-No active worker tasks are currently recorded.
+### `DATA-031`: Scrapy validation-split prompt/spec and local knowledge
+
+- Status: active
+- Owner: worker pending assignment.
+- Write scope: `j3/issue_pr_prompt_spec.py`, `j3/local_knowledge.py`,
+  `tests/test_issue_pr_prompt_spec.py`, `tests/test_local_knowledge.py`,
+  generated outputs under `/tmp`, optional compact report under `docs/`, and
+  planning updates. Do not attempt candidate source edits.
+- Acceptance: acquire machine-readable prompt/spec and local-knowledge evidence
+  for exactly `scrapy__scrapy-issue-7293-pr-7351`, the DATA-030
+  validation-split row whose checkout/setup/baseline validation passed.
+  Evidence must cover `DownloaderAwarePriorityQueue` tie-breaking,
+  `_active_downloads` semantics, changed-file context for `scrapy/pqueues.py`
+  and `tests/test_pqueues.py`, the DATA-030 focused validation recipe,
+  priority-queue test patterns, provenance, split labels, and remaining
+  readiness blockers. No candidate edits.
+
+### `DATA-032`: Pip validation recipe isolation
+
+- Status: active
+- Owner: worker pending assignment.
+- Write scope: `j3/issue_pr_preflight.py`, `tests/test_issue_pr_preflight.py`,
+  generated outputs under `/tmp`, optional compact report under `docs/`, and
+  planning updates. Do not attempt candidate source edits.
+- Acceptance: isolate whether `pypa__pip-issue-12018-pr-13886` is blocked by
+  a fixable validation dependency recipe or by a deeper validation problem.
+  Start from the DATA-030 failure (`ModuleNotFoundError: installer` during
+  `tests/conftest.py` import), try the smallest hermetic setup adjustment that
+  makes the pre-edit baseline command meaningful, rerun the bounded preflight,
+  and record runtime, dependencies added, command classification, first failed
+  stage, and whether the row is ready for evidence acquisition or remains
+  blocked. No candidate edits.
 
 ## Ready Queue
 
 These are good next assignments for the next loop:
 
-1. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.
-2. `MODEL-004`: distinguish mapping key and value targets.
+1. `MODEL-004`: distinguish mapping key and value targets.
+2. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.
 3. `KNOW-003`: broaden knowledge-use attribution where scoring shows missing
    local-knowledge evidence.
 

@@ -1835,11 +1835,55 @@ Long-term target:
   `/tmp/j3-data-030-validation-preflight/report-data-030.md`, and
   `docs/DATA_030_VALIDATION_SPLIT_PREFLIGHT_2026-05-18.md`.
 
+### DATA-031: Scrapy validation-split prompt/spec and local knowledge
+
+- Status: active
+- Why: DATA-030 found a validation-split Scrapy row whose checkout, setup, and
+  focused baseline validation pass. The next hard proof is whether local
+  evidence acquisition generalizes outside train-split pytest/Click rows into
+  a new framework and queueing subsystem.
+- Write scope: `j3/issue_pr_prompt_spec.py`, `j3/local_knowledge.py`,
+  `tests/test_issue_pr_prompt_spec.py`, `tests/test_local_knowledge.py`,
+  generated outputs under `/tmp`, optional compact report under `docs/`, and
+  plan updates. Do not attempt candidate source edits.
+- Acceptance: emit machine-readable evidence for exactly
+  `scrapy__scrapy-issue-7293-pr-7351`: normalized prompt/spec fields for the
+  `_active_downloads` bug, changed-file context for `scrapy/pqueues.py` and
+  `tests/test_pqueues.py`, DATA-030 focused validation recipe, Scrapy
+  downloader-aware priority queue behavior, slot active-download accounting,
+  repo pqueue test patterns, provenance, stable split labels, and remaining
+  readiness blockers.
+- Tests: focused prompt/spec/local-knowledge tests, plan consistency,
+  `git diff --check`, and CLI smoke that emits the Scrapy evidence rows.
+
+### DATA-032: Pip validation recipe isolation
+
+- Status: active
+- Why: DATA-030 showed pip checkout and setup pass, but the baseline validation
+  command fails before tests run because `tests/conftest.py` imports missing
+  dependency `installer`. Validation must stay cheap and trustworthy; a row
+  whose baseline cannot import is not a candidate-quality signal.
+- Write scope: `j3/issue_pr_preflight.py`, `tests/test_issue_pr_preflight.py`,
+  generated outputs under `/tmp`, optional compact report under `docs/`, and
+  plan updates. Do not attempt candidate source edits.
+- Acceptance: starting from `pypa__pip-issue-12018-pr-13886`, try the
+  smallest hermetic setup adjustment that addresses the DATA-030
+  `ModuleNotFoundError: installer` failure, rerun pre-edit validation for
+  `pytest tests/functional/test_install_reqs.py -q`, and record the complete
+  command sequence, dependencies added, runtime, first failed stage, command
+  classification, and evidence-acquisition status. If installing `installer`
+  exposes a new blocker, classify it precisely. If the row passes baseline,
+  mark it ready for prompt/spec and local-knowledge acquisition. No candidate
+  edits.
+- Tests: focused preflight tests if code changes, plan consistency,
+  `git diff --check`, and live bounded preflight command or exact blocker if
+  live preflight cannot complete.
+
 ## Next Recommended Queue
 
 Start with these unless fresh evidence changes the order:
 
-1. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.
-2. `MODEL-004`: distinguish mapping key and value targets.
+1. `MODEL-004`: distinguish mapping key and value targets.
+2. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.
 3. `KNOW-003`: broaden knowledge-use attribution where scoring shows missing
    local-knowledge evidence.

@@ -3086,7 +3086,7 @@ meaningful work. Do not replace this file with a daily reset.
 - Result: recorded worker Kuhn
   (`019e3c81-4427-7613-9735-b1b1548e15a1`) for `DATA-029` and worker Halley
   (`019e3c81-444a-70a2-ae76-02773780452d`) for `DATA-030`.
-- Commit: 7f40dae.
+- Commit: 26a32aa.
 - Push: succeeded.
 - Next: continue non-overlapping coordinator review while both workers run.
 - Blockers: none.
@@ -3114,7 +3114,7 @@ meaningful work. Do not replace this file with a daily reset.
   recipe/dependency setup rather than edit quality. Scrapy checkout, setup, and
   baseline validation passed with `11 passed, 2 skipped`; it is the next
   validation-split row ready for prompt/spec and local-knowledge acquisition.
-- Commit: 9861158.
+- Commit: 7f40dae; push-record commit `8a263da`.
 - Push: succeeded.
 - Next: acquire Scrapy prompt/spec and local-knowledge evidence, or isolate a
   pip validation recipe that installs the missing functional-test dependency.
@@ -3152,9 +3152,32 @@ meaningful work. Do not replace this file with a daily reset.
   DATA-018/026/027/028 provenance, residual label
   `candidate_validation_passed`, structured-action coverage, and
   `accepted_edit_covered = true`.
-- Commit: pending.
-- Push: pending.
+- Commit: 9861158; push-record commit `9e913fb`.
+- Push: succeeded.
 - Next: review DATA-029 with DATA-030; remaining issue/PR replay work is
   ranking/decoy evidence for the validated pytest #14462 candidate or
   prompt/spec/local-knowledge acquisition for the DATA-030 Scrapy row.
+- Blockers: none.
+
+### 2026-05-18 - Coordinator Review And Dispatch - DATA-031 / DATA-032
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, `plans/progress.md`.
+- Tests: `python -m py_compile j3/issue_pr_preflight.py
+  tests/test_issue_pr_preflight.py` -> passed; `pytest
+  tests/test_issue_pr_preflight.py -q` -> 18 passed; `python -m py_compile
+  j3/issue_pr_candidate_attempt.py tests/test_issue_pr_candidate_attempt.py`
+  -> passed; `pytest tests/test_issue_pr_candidate_attempt.py -q` -> 18
+  passed; `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff
+  --check` -> passed.
+- Result: reviewed DATA-029 and DATA-030. The loop now has one validated
+  pytest #14462 source/test materialization proof and one validation-split
+  Scrapy row that reached clean baseline validation, while pip exposes a
+  concrete validation-recipe dependency blocker. The next dispatch assigns
+  `DATA-031` to acquire Scrapy prompt/spec and local-knowledge evidence, and
+  `DATA-032` to isolate whether the pip validation recipe can be made
+  hermetic and cheap enough for later evidence acquisition.
+- Commit: pending.
+- Push: pending.
+- Next: dispatch workers for `DATA-031` and `DATA-032`.
 - Blockers: none.

@@ -1936,8 +1936,8 @@ meaningful work. Do not replace this file with a daily reset.
   string-splitting semantics, and provenance back to issue #2745, PR #3364,
   and the PR diff. Required prompt fields are complete and
   `source_text_blockers` is empty.
-- Commit: pending.
-- Push: pending.
+- Commit: ed839e3.
+- Push: succeeded.
 - Next: `DATA-010` can consume this prompt/spec record with DATA-008,
   KNOW-004, and KNOW-005 evidence to decide which first-batch replay rows are
   ready for candidate generation.

@@ -44,6 +44,40 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
+### DATA-008: Requests Replay Validation Recipe Isolation
+
+- Status: active
+- Owner: worker to be spawned by coordinator.
+- Write scope: `j3/issue_pr_preflight.py`,
+  `tests/test_issue_pr_preflight.py`, optional compact report under `docs/`,
+  generated live artifacts under `/tmp`, and plan updates.
+- Acceptance: for `psf__requests-issue-7432-pr-7433`, attempt to isolate a
+  hermetic focused validation recipe or prove that the row remains blocked by
+  dependency/fixture setup; record tried commands, setup changes, runtime,
+  first failed stage, fixture/dependency evidence, and the recommended next
+  validation action. Do not attempt candidate code edits.
+- Required checks: focused issue/PR preflight tests, `pytest
+  tests/test_plan_consistency.py -q`, `git diff --check`, and the live
+  validation-recipe smoke command when feasible.
+
+### KNOW-004: Click Replay Local Knowledge Records
+
+- Status: active
+- Owner: worker to be spawned by coordinator.
+- Write scope: `j3/local_knowledge.py`, `tests/test_local_knowledge.py`,
+  optional example/report files, generated artifacts under `/tmp`, and plan
+  updates.
+- Acceptance: produce compact local-knowledge records for the Click #3298 row
+  before candidate generation: repo changed-file context, repo test pattern,
+  focused validation recipe, Click parameter default handling, type-conversion
+  semantics, non-string default handling, empty-string check semantics, and
+  third-party `semver.Version` reproduction context, with provenance and split
+  labels. If the existing schema cannot express a category, add the smallest
+  schema extension and tests.
+- Required checks: focused local-knowledge tests, `pytest
+  tests/test_plan_consistency.py -q`, `git diff --check`, and a smoke command
+  or fixture proving the records can be emitted.
+
 ## Ready Queue
 
 These are good next assignments for the next loop:

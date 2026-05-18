@@ -682,6 +682,23 @@ Long-term target:
 - Tests: focused existing-repo/local-knowledge tests, plan consistency, and
   `git diff --check`.
 
+### KNOW-004: Click replay local knowledge records
+
+- Status: active
+- Why: `DATA-007` shows the Click #3298 issue/PR replay row cannot move to
+  candidate generation until local knowledge exists for Click default handling,
+  type conversion, non-string defaults, and repo test conventions.
+- Write scope: `j3/local_knowledge.py`, focused tests, optional example/report
+  files, generated outputs under `/tmp`, and plan updates.
+- Acceptance: emit compact, provenance-bearing local-knowledge records for the
+  Click #3298 row: repo changed-file context, repo test pattern, focused
+  validation recipe, Click parameter default handling, type-conversion
+  semantics, non-string default handling, empty-string check semantics, and
+  third-party `semver.Version` reproduction context. Add the smallest schema
+  extension if these categories cannot be represented honestly.
+- Tests: focused local-knowledge tests, plan consistency, `git diff --check`,
+  and a smoke command or fixture proving records can be emitted.
+
 ### WEDGE-001: Product wedge decision
 
 - Status: done
@@ -1047,11 +1064,29 @@ Long-term target:
   row. Report: `docs/DATA_007_ISSUE_PR_BLOCKER_DRILLDOWN_2026-05-18.md`;
   enhanced JSONL: `/tmp/j3-data-007-blocker-drilldown/outcomes.jsonl`.
 
+### DATA-008: Requests replay validation recipe isolation
+
+- Status: active
+- Why: `DATA-007` identifies the Requests row as a validation/dependency
+  blocker, not an edit-quality signal. The replay path needs a hermetic
+  focused validation recipe or an explicit reason the row must stay blocked.
+- Write scope: `j3/issue_pr_preflight.py`, focused tests, one compact report
+  under `docs/` if useful, generated outputs under `/tmp`, and plan updates.
+- Acceptance: for `psf__requests-issue-7432-pr-7433`, try bounded validation
+  recipe alternatives or setup fixes before any edit attempt; record every
+  attempted command, setup delta, runtime, first failed stage, fixture or
+  dependency evidence, and the recommended next validation action.
+- Tests: focused issue/PR preflight tests, plan consistency,
+  `git diff --check`, and the live validation-recipe smoke command when
+  feasible.
+
 ## Next Recommended Queue
 
 Start with these unless fresh evidence changes the order:
 
-1. `KNOW-003`: broaden knowledge-use attribution where scoring shows missing
+1. `DATA-008`: isolate or repair the Requests issue/PR validation recipe.
+2. `KNOW-004`: emit Click replay local-knowledge records required by DATA-007.
+3. `KNOW-003`: broaden knowledge-use attribution where scoring shows missing
    local-knowledge evidence.
-2. `MODEL-006`: candidate-after or AST-delta observation for ranking evidence.
-3. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.
+4. `MODEL-006`: candidate-after or AST-delta observation for ranking evidence.
+5. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.

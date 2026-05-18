@@ -44,22 +44,9 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-### `DATA-034`: Scrapy materialization coverage audit
-
-- Status: active
-- Owner: worker James (`019e3c9c-48d6-7e32-804c-beb42f62bb01`).
-- Write scope: `j3/issue_pr_materialization_audit.py`,
-  `tests/test_issue_pr_materialization_audit.py`, generated outputs under
-  `/tmp`, optional compact report under `docs/`, and planning updates. Do not
-  attempt candidate edits.
-- Acceptance: inspect the accepted `scrapy__scrapy-issue-7293-pr-7351` diff
-  against the repo-before checkout and classify accepted paths
-  `scrapy/pqueues.py` and `tests/test_pqueues.py` as covered by current
-  structured actions, covered by a small proposed deterministic action,
-  requiring constrained local generator/source-region action, or not currently
-  expressible. Record provenance, action-family recommendation, validation
-  cost, likely failure mode, and smallest next falsifiable materializer task
-  for each path.
+No active worker tasks are recorded after `DATA-033` and `DATA-034` completed.
+The coordinator should dispatch the next ready task unless a review chooses a
+different bounded slice.
 
 ## Ready Queue
 
@@ -92,6 +79,17 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `DATA-034`: added a machine-readable materialization coverage audit for
+  exactly `scrapy__scrapy-issue-7293-pr-7351` with no candidate edits. Both
+  accepted paths, `scrapy/pqueues.py` and `tests/test_pqueues.py`, require
+  constrained local generator/source-region action coverage before candidate
+  generation; no path is covered by the current structured-action surface.
+  The audit records manifest, DATA-030, and DATA-031 provenance; accepted diff
+  stats (`30`/`2` and `49`/`0`); validation costs; likely failure modes; and
+  smallest next falsifiable materializer tasks. Artifacts:
+  `/tmp/j3-data-034-scrapy-materialization-audit/audit.jsonl`,
+  `/tmp/j3-data-034-scrapy-materialization-audit/report.md`, and
+  `docs/DATA_034_SCRAPY_7293_MATERIALIZATION_COVERAGE_AUDIT_2026-05-18.md`.
 - `DATA-033`: refreshed candidate-readiness for exactly
   `scrapy__scrapy-issue-7293-pr-7351` using DATA-030 preflight evidence and
   DATA-031 prompt/spec plus local-knowledge evidence. The row is

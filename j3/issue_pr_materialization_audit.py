@@ -19,6 +19,7 @@ from j3.issue_pr_preflight import (
 MATERIALIZATION_AUDIT_SCHEMA_VERSION = "issue-pr-materialization-audit-v1"
 PYTEST_STRICT_ADDOPTS_REPLAY_ID = "pytest-dev__pytest-issue-14442-pr-14443"
 PYTEST_TIMEDELTA_APPROX_REPLAY_ID = "pytest-dev__pytest-issue-14462-pr-14466"
+SCRAPY_DOWNLOADER_AWARE_REPLAY_ID = "scrapy__scrapy-issue-7293-pr-7351"
 
 COVERED_BY_CURRENT_STRUCTURED_ACTION = "covered_by_current_structured_action"
 COVERED_BY_SMALL_PROPOSED_DETERMINISTIC_ACTION = (
@@ -428,6 +429,136 @@ PYTEST_TIMEDELTA_APPROX_FINDINGS = (
 )
 
 
+SCRAPY_DOWNLOADER_AWARE_FINDINGS = (
+    MaterializationPathFinding(
+        path="scrapy/pqueues.py",
+        accepted_diff_summary={
+            "change_kind": "python_queue_slot_rotation_state_and_helper_insert",
+            "accepted_numstat": {"added": 30, "removed": 2},
+            "anchors": [
+                "DownloaderAwarePriorityQueue.__init__",
+                "DownloaderAwarePriorityQueue._next_slot",
+                "DownloaderAwarePriorityQueue.pop",
+                "DownloaderAwarePriorityQueue.peek",
+            ],
+            "semantic_payload": (
+                "track the last selected downloader slot, add a helper that rotates "
+                "among equal active-download counts without starving later slots, "
+                "update pop state when selecting, and keep peek non-mutating"
+            ),
+        },
+        classification=REQUIRING_CONSTRAINED_LOCAL_GENERATOR,
+        current_action_family=(
+            "source_region_replace_v1 exists, but the accepted edit spans state "
+            "initialization, a new helper method, and two call-site replacements "
+            "with peek/pop state differences"
+        ),
+        proposed_action_family=(
+            "scrapy_downloader_slot_rotation_source_region_v1 + "
+            "python_method_insert_and_callsite_replace_v1"
+        ),
+        action_family_recommendation=(
+            "Use a constrained source-region materializer for "
+            "DownloaderAwarePriorityQueue that inserts _last_selected_slot, adds "
+            "_next_slot, and replaces only pop/peek slot selection based on "
+            "DATA-031 downloader-aware queue facts."
+        ),
+        validation_cost={
+            "tier": "moderate",
+            "commands": [
+                "python -m py_compile scrapy/pqueues.py",
+                "pytest tests/test_pqueues.py -q",
+            ],
+            "notes": (
+                "Syntax is cheap; focused pqueue validation is needed because the "
+                "same helper must mutate state for pop while leaving peek stable."
+            ),
+        },
+        likely_failure_mode_if_attempted=(
+            "using min(stats) tie-breaking unchanged, mutating rotation state during "
+            "peek, resetting rotation when a selected slot is deleted, mishandling "
+            "slot ordering after the last slot, or touching unrelated priority-queue "
+            "behavior"
+        ),
+        smallest_next_falsifiable_materializer_task={
+            "task_id": "DATA-034-next-scrapy-slot-rotation-source",
+            "description": (
+                "Materialize only DownloaderAwarePriorityQueue slot-rotation source "
+                "changes in the repo-before checkout, without editing tests first."
+            ),
+            "target_path": "scrapy/pqueues.py",
+            "expected_mutation_scope": ["scrapy/pqueues.py"],
+            "acceptance_probe": (
+                "py_compile passes, the diff adds _last_selected_slot and _next_slot, "
+                "pop calls update_state=True, peek calls update_state=False, and no "
+                "unrelated queue methods change"
+            ),
+        },
+    ),
+    MaterializationPathFinding(
+        path="tests/test_pqueues.py",
+        accepted_diff_summary={
+            "change_kind": "pytest_downloader_aware_queue_test_insert",
+            "accepted_numstat": {"added": 49, "removed": 0},
+            "anchors": [
+                "from scrapy.core.downloader import Downloader",
+                "TestDownloaderAwarePriorityQueue.test_tie_breaking_rotates_slots",
+                (
+                    "TestDownloaderAwarePriorityQueue."
+                    "test_tie_breaking_keeps_rotation_after_selected_slot_is_deleted"
+                ),
+            ],
+            "semantic_payload": (
+                "import Downloader for DOWNLOAD_SLOT metadata and add two focused "
+                "DownloaderAwarePriorityQueue tests covering equal-active slot "
+                "rotation and continued rotation after a selected slot is removed"
+            ),
+        },
+        classification=REQUIRING_CONSTRAINED_LOCAL_GENERATOR,
+        current_action_family=(
+            "deterministic pytest insertion exists only for prior bounded fixtures "
+            "and cannot yet synthesize Scrapy request-slot setup inside the existing "
+            "TestDownloaderAwarePriorityQueue class"
+        ),
+        proposed_action_family="scrapy_pqueue_pytest_class_method_insert_v1",
+        action_family_recommendation=(
+            "Use a constrained pytest class-method inserter that can add the "
+            "Downloader import, build Request objects with DOWNLOAD_SLOT metadata, "
+            "and assert the accepted slot sequences under existing pqueue fixtures."
+        ),
+        validation_cost={
+            "tier": "moderate",
+            "commands": ["pytest tests/test_pqueues.py -q"],
+            "notes": (
+                "The focused module command is cheap in DATA-030 and covers both "
+                "new behavior tests plus existing priority-queue regressions."
+            ),
+        },
+        likely_failure_mode_if_attempted=(
+            "adding generic queue-order tests without Downloader.DOWNLOAD_SLOT "
+            "metadata, placing methods outside TestDownloaderAwarePriorityQueue, "
+            "asserting URLs instead of slot rotation, or missing the deleted-slot "
+            "continuation case"
+        ),
+        smallest_next_falsifiable_materializer_task={
+            "task_id": "DATA-034-next-scrapy-pqueue-test-inserter",
+            "description": (
+                "Implement a constrained TestDownloaderAwarePriorityQueue method "
+                "inserter that adds the accepted Downloader import and the two "
+                "slot-rotation tests without changing unrelated pqueue tests."
+            ),
+            "target_path": "tests/test_pqueues.py",
+            "expected_mutation_scope": ["tests/test_pqueues.py"],
+            "acceptance_probe": (
+                "only the Downloader import and two accepted test methods are added, "
+                "slot sequences match the accepted PR, and pytest tests/test_pqueues.py "
+                "-q passes with the source edit"
+            ),
+        },
+    ),
+)
+
+
 AUDIT_DEFINITIONS = {
     PYTEST_STRICT_ADDOPTS_REPLAY_ID: MaterializationAuditDefinition(
         task_id="DATA-023",
@@ -452,6 +583,18 @@ AUDIT_DEFINITIONS = {
             "path is not part of the DATA-028 pytest #14462 audit scope"
         ),
         findings=PYTEST_TIMEDELTA_APPROX_FINDINGS,
+    ),
+    SCRAPY_DOWNLOADER_AWARE_REPLAY_ID: MaterializationAuditDefinition(
+        task_id="DATA-034",
+        report_title="DATA-034 Scrapy #7293 Materialization Coverage Audit",
+        report_description=(
+            "Machine-readable audit over the accepted Scrapy #7293/#7351 changed "
+            "paths. No candidate source edits were attempted."
+        ),
+        out_of_scope_failure_mode=(
+            "path is not part of the DATA-034 Scrapy #7293 audit scope"
+        ),
+        findings=SCRAPY_DOWNLOADER_AWARE_FINDINGS,
     ),
 }
 
@@ -951,6 +1094,8 @@ def _unknown_path_row(
 
 
 def _audit_provenance(task_id: str) -> list[str]:
+    if task_id == "DATA-034":
+        return ["DATA-030", "DATA-031", "DATA-034"]
     if task_id == "DATA-028":
         return ["DATA-018", "DATA-026", "DATA-028"]
     if task_id == "DATA-023":

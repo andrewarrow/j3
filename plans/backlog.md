@@ -1937,7 +1937,7 @@ Long-term target:
 
 ### DATA-034: Scrapy materialization coverage audit
 
-- Status: active
+- Status: done
 - Why: before attempting a validation-split candidate, classify whether the
   accepted Scrapy queue diff is expressible with the current action surface or
   needs new constrained materializers. This directly tests structured-action
@@ -1956,6 +1956,18 @@ Long-term target:
   smallest next falsifiable materializer task for each path.
 - Tests: focused audit tests, plan consistency, `git diff --check`, and a CLI
   smoke that emits machine-readable audit rows plus a compact report.
+- Completion note: added a DATA-034 materialization coverage audit for exactly
+  `scrapy__scrapy-issue-7293-pr-7351` with no candidate edits. Both accepted
+  paths, `scrapy/pqueues.py` and `tests/test_pqueues.py`, require constrained
+  local generator/source-region action coverage before candidate generation;
+  no path is currently expressible by the existing structured-action surface.
+  The audit records manifest, DATA-030, and DATA-031 provenance; accepted diff
+  stats (`30`/`2` and `49`/`0`); action-family recommendations; validation
+  cost; likely failure modes; and the smallest next falsifiable materializer
+  task for each path. Artifacts:
+  `/tmp/j3-data-034-scrapy-materialization-audit/audit.jsonl`,
+  `/tmp/j3-data-034-scrapy-materialization-audit/report.md`, and
+  `docs/DATA_034_SCRAPY_7293_MATERIALIZATION_COVERAGE_AUDIT_2026-05-18.md`.
 
 ## Next Recommended Queue
 

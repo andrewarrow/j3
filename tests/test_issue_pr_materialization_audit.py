@@ -8,6 +8,7 @@ from j3.issue_pr_materialization_audit import (
     PYTEST_STRICT_ADDOPTS_REPLAY_ID,
     PYTEST_TIMEDELTA_APPROX_REPLAY_ID,
     REQUIRING_CONSTRAINED_LOCAL_GENERATOR,
+    SCRAPY_DOWNLOADER_AWARE_REPLAY_ID,
     build_issue_pr_materialization_audit_rows,
     main,
     summarize_issue_pr_materialization_audit_rows,
@@ -103,6 +104,56 @@ def test_materialization_audit_classifies_all_pytest_14462_paths() -> None:
     assert (
         tests["smallest_next_falsifiable_materializer_task"]["task_id"]
         == "DATA-028-next-approx-test-class-refiner"
+    )
+
+
+def test_materialization_audit_classifies_all_scrapy_7293_paths() -> None:
+    rows = build_issue_pr_materialization_audit_rows(
+        manifest_path=MANIFEST_PATH,
+        replay_id=SCRAPY_DOWNLOADER_AWARE_REPLAY_ID,
+    )
+
+    assert [row["path"] for row in rows] == [
+        "scrapy/pqueues.py",
+        "tests/test_pqueues.py",
+    ]
+    by_path = {row["path"]: row for row in rows}
+    source = by_path["scrapy/pqueues.py"]
+    assert source["audit_id"] == (
+        "DATA-034/scrapy__scrapy-issue-7293-pr-7351/scrapy/pqueues.py"
+    )
+    assert source["audit_task_id"] == "DATA-034"
+    assert source["classification"] == REQUIRING_CONSTRAINED_LOCAL_GENERATOR
+    assert source["accepted_diff_summary"]["accepted_numstat"] == {
+        "added": 30,
+        "removed": 2,
+    }
+    assert source["proposed_action_family"] == (
+        "scrapy_downloader_slot_rotation_source_region_v1 + "
+        "python_method_insert_and_callsite_replace_v1"
+    )
+    assert source["validation_cost"]["commands"] == [
+        "python -m py_compile scrapy/pqueues.py",
+        "pytest tests/test_pqueues.py -q",
+    ]
+    assert source["audit_provenance"] == ["DATA-030", "DATA-031", "DATA-034"]
+    assert (
+        source["smallest_next_falsifiable_materializer_task"]["task_id"]
+        == "DATA-034-next-scrapy-slot-rotation-source"
+    )
+
+    tests = by_path["tests/test_pqueues.py"]
+    assert tests["classification"] == REQUIRING_CONSTRAINED_LOCAL_GENERATOR
+    assert tests["accepted_diff_summary"]["accepted_numstat"] == {
+        "added": 49,
+        "removed": 0,
+    }
+    assert tests["proposed_action_family"] == (
+        "scrapy_pqueue_pytest_class_method_insert_v1"
+    )
+    assert (
+        tests["smallest_next_falsifiable_materializer_task"]["task_id"]
+        == "DATA-034-next-scrapy-pqueue-test-inserter"
     )
 
 
@@ -253,6 +304,101 @@ def test_materialization_audit_includes_pytest_14462_data_026_provenance(
     ]
 
 
+def test_materialization_audit_includes_scrapy_data_030_031_provenance(
+    tmp_path: Path,
+) -> None:
+    preflight_path = tmp_path / "preflight.jsonl"
+    prompt_spec_path = tmp_path / "spec.jsonl"
+    knowledge_path = tmp_path / "knowledge.jsonl"
+    preflight_path.write_text(
+        json.dumps(
+            {
+                "schema_version": "issue-pr-replay-preflight-v1",
+                "record_kind": "issue_pr_replay_preflight_outcome",
+                "replay_id": SCRAPY_DOWNLOADER_AWARE_REPLAY_ID,
+                "status": "blocked",
+                "validation_command": "pytest tests/test_pqueues.py -q",
+                "first_failed_stage": "none",
+                "command_results": [
+                    {
+                        "name": "baseline_validation",
+                        "passed": True,
+                        "runtime_seconds": 0.2,
+                    }
+                ],
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    prompt_spec_path.write_text(
+        json.dumps(
+            {
+                "schema_version": "issue-pr-prompt-spec-v1",
+                "record_kind": "issue_pr_prompt_spec",
+                "replay_id": SCRAPY_DOWNLOADER_AWARE_REPLAY_ID,
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    knowledge_path.write_text(
+        "\n".join(
+            [
+                json.dumps(
+                    {
+                        "schema_version": "local-knowledge-record-v1",
+                        "record_type": "validation_recipe_record",
+                        "data": {"replay_id": SCRAPY_DOWNLOADER_AWARE_REPLAY_ID},
+                        "id": "data-031-validation",
+                    }
+                ),
+                json.dumps(
+                    {
+                        "schema_version": "local-knowledge-record-v1",
+                        "record_type": "pytest_pattern_record",
+                        "links": {
+                            "task_ids": [SCRAPY_DOWNLOADER_AWARE_REPLAY_ID],
+                        },
+                        "id": "data-031-pqueue-tests",
+                    }
+                ),
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    rows = build_issue_pr_materialization_audit_rows(
+        manifest_path=MANIFEST_PATH,
+        replay_id=SCRAPY_DOWNLOADER_AWARE_REPLAY_ID,
+        preflight_outcome_path=preflight_path,
+        prompt_spec_evidence_path=prompt_spec_path,
+        local_knowledge_evidence_path=knowledge_path,
+    )
+    row = rows[0]
+
+    assert row["manifest_provenance"]["accepted_change"]["changed_files"] == [
+        "scrapy/pqueues.py",
+        "tests/test_pqueues.py",
+    ]
+    evidence = row["evidence_provenance"]
+    assert evidence["preflight_outcome"]["validation_command"] == (
+        "pytest tests/test_pqueues.py -q"
+    )
+    assert evidence["prompt_spec_evidence"]["record_kinds"] == [
+        "issue_pr_prompt_spec"
+    ]
+    assert evidence["local_knowledge_evidence"]["record_kinds"] == [
+        "pytest_pattern_record",
+        "validation_recipe_record",
+    ]
+    assert evidence["local_knowledge_evidence"]["ids"] == [
+        "data-031-validation",
+        "data-031-pqueue-tests",
+    ]
+
+
 def test_materialization_audit_jsonl_report_and_cli(tmp_path: Path) -> None:
     out_path = tmp_path / "audit.jsonl"
     report_path = tmp_path / "audit.md"
@@ -327,3 +473,38 @@ def test_materialization_audit_pytest_14462_cli_report(tmp_path: Path) -> None:
     report_text = report_path.read_text(encoding="utf-8")
     assert "DATA-028 Pytest #14462 Materialization Coverage Audit" in report_text
     assert "testing/python/approx.py" in report_text
+
+
+def test_materialization_audit_scrapy_7293_cli_report(tmp_path: Path) -> None:
+    out_path = tmp_path / "audit.jsonl"
+    report_path = tmp_path / "audit.md"
+
+    exit_code = main(
+        [
+            "--manifest",
+            str(MANIFEST_PATH),
+            "--replay-id",
+            SCRAPY_DOWNLOADER_AWARE_REPLAY_ID,
+            "--out",
+            str(out_path),
+            "--report",
+            str(report_path),
+        ]
+    )
+
+    assert exit_code == 0
+    loaded = [
+        json.loads(line) for line in out_path.read_text(encoding="utf-8").splitlines()
+    ]
+    assert [row["path"] for row in loaded] == [
+        "scrapy/pqueues.py",
+        "tests/test_pqueues.py",
+    ]
+    summary = summarize_issue_pr_materialization_audit_rows(loaded)
+    assert summary["classification_counts"] == {
+        REQUIRING_CONSTRAINED_LOCAL_GENERATOR: 2,
+    }
+    assert summary["accepted_paths_fully_expressible_now"] is False
+    report_text = report_path.read_text(encoding="utf-8")
+    assert "DATA-034 Scrapy #7293 Materialization Coverage Audit" in report_text
+    assert "scrapy/pqueues.py" in report_text

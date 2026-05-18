@@ -1084,3 +1084,21 @@ meaningful work. Do not replace this file with a daily reset.
   (`019e3b97-88c5-7ab3-ba40-5e2ea3b8f4bc`) owns the held-out `h11`
   materializer. Continue local coordinator review while they run.
 - Blockers: none
+
+### 2026-05-18 - COORD - Hard-proof instruction cleanup
+
+- Owner: coordinator
+- Files changed: `AGENTS.md`, `plans/operating-model.md`,
+  `plans/strategy.md`, `plans/progress.md`
+- Tests: `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check` -> passed.
+- Result: tightened the standing instructions so future coordinators and
+  workers prioritize falsifiable real-repo questions over synthetic GreenShot
+  progress. The docs now name the six hard questions directly and update the
+  immediate strategic queue toward shadow scoring, held-out materialization,
+  real one-file materialization, issue/PR replay, local knowledge, and
+  held-out ranking evidence.
+- Commit: pending
+- Push: pending
+- Next: verify docs, commit, push, and continue monitoring the active workers.
+- Blockers: none

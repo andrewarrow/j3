@@ -286,6 +286,21 @@ The planner chooses bounded next actions:
 
 Every planner decision should leave an outcome row suitable for training.
 
+## Hard Falsifiable Questions
+
+The next tasks should prove or disprove these before expanding demos:
+
+1. Can `j3` generalize outside its own fixtures?
+2. Can structured actions cover enough real Python edits?
+3. Can repo-state expose conventions well enough to plan?
+4. Can local knowledge records replace frontier-LLM runtime intuition for the
+   selected Python wedge?
+5. Can validation stay cheap and trustworthy?
+6. Can ranking and transition gains survive held-out real repositories?
+
+Every GreenShot, model, data, or documentation task should attach to at least
+one of these questions. If it cannot, it belongs below the hard-proof queue.
+
 ## Real-Repo Eval Ladder
 
 Do not claim broad progress from local fixtures alone. Move through these gates.
@@ -594,13 +609,21 @@ Pivot the product wedge when:
 Execution details belong in `plans/backlog.md`, but the next strategic slices
 should stay aligned with this queue:
 
-1. Finish repo-state coverage and make it visible to planners.
-2. Implement first-class clarification outcomes.
-3. Add existing-repo tests-only support for a small library.
-4. Add repo-state-aware package convention edits.
-5. Build a reviewed real-repo eval ladder with issue/PR provenance.
-6. Keep transition ranking shadow-only while fixing residual clusters.
-7. Draft the local pretraining and knowledge-acquisition inventory.
+1. Rerun tests-only real-repo shadow scoring with actual candidate
+   materialization, separating calibration from held-out results.
+2. Attempt the first held-out tests-only materializer and record whether the
+   failure is repo-state planning, local knowledge, materialization, or
+   validation.
+3. Start a real one-file feature materialization probe for the largest
+   `MAT-001` gap.
+4. Convert issue/PR mini replay rows into executable preflight and replay
+   attempts with residual labels.
+5. Grow local knowledge records only where planners cite them or scoring shows
+   missing knowledge residuals.
+6. Keep transition ranking and learned models shadow-only until gains survive
+   held-out real-repo gates.
+7. Reassess the product wedge after each real-repo gate failure instead of
+   adding more synthetic fixture variants.
 
 The project should always be able to answer: what real task class became more
 reliable, what evidence proves it, and what blocker is next?

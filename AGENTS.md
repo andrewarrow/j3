@@ -199,16 +199,25 @@ production use.
 
 ## Current Technical Priorities
 
-Keep the work pointed at durable capability:
+Keep the work pointed at falsifiable capability, not fixture comfort:
 
-- GreenShot-7 request-to-repo growth with hidden-like tests.
-- Prompt/spec/action/outcome records suitable for learned prompt and transition
-  models.
-- Repair/ranking regression gates from GreenShot-5/6.
-- Transition shadow matrix evidence before guarded production ranking.
-- Data quality over raw dataset size.
-- Issue/PR and prompt/repo transition mining with provenance and stable splits.
-- Structured greenfield actions before broad free-form generation.
+- Prove whether `j3` generalizes outside owned fixtures with held-out real
+  repositories and issue/PR replay before optimizing more synthetic GreenShot
+  progress.
+- Measure structured-action coverage against real Python edits; if a predicted
+  repo-after state cannot be materialized into source, record the exact
+  materialization gap.
+- Make repo-state evidence visible to planners: package layout, imports,
+  public APIs, tests, configs, validation commands, and local conventions.
+- Acquire pytest, packaging, library, and tooling knowledge as local records
+  with provenance and stable splits instead of hardcoded intuition.
+- Keep validation cheap, explicit, and trustworthy: selected tests, hidden-like
+  checks, mutation scope, runtime, flaky/setup labels, and rollback readiness.
+- Keep ranking and transition models shadow-only until gains survive held-out
+  real-repo evidence, not just fixtures.
+- Continue GreenShot work only when it is attached to one of these hard
+  questions: action coverage, repo-state planning, local knowledge,
+  materialization, validation, or held-out ranking.
 
 ## Verification Cadence
 

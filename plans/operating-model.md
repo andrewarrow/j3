@@ -165,6 +165,24 @@ Keep the frontier target visible:
 Do not pretend the realistic target proves the frontier target. Use it to create
 the data and system discipline needed to climb.
 
+## Falsifiable Task Selection
+
+Do not replace fixture comfort with a giant vague mandate. The coordinator
+should prefer tasks that answer a hard yes/no question quickly:
+
+- Can `j3` generalize outside its own fixtures?
+- Can structured actions cover enough real Python edits?
+- Can repo-state expose conventions well enough to plan?
+- Can local knowledge records replace frontier-LLM runtime intuition for the
+  chosen wedge?
+- Can validation stay cheap and trustworthy on real checkouts?
+- Can ranking or transition gains survive held-out real repositories?
+
+A worker task is high leverage when it can prove one of those questions, fail
+one of those questions with a precise residual, or reduce the blocker that
+prevents the next proof. GreenShot progress is useful only when it is attached
+to that kind of falsifiable question.
+
 ## Rabbit-Hole Controls
 
 - If a task fails twice for the same reason, record the residual and escalate to

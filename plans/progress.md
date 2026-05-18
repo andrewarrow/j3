@@ -3426,8 +3426,8 @@ meaningful work. Do not replace this file with a daily reset.
   `dependency_fixture_setup_failure`, and evidence acquisition status
   `blocked_on_validation_recipe`. The row is not ready for prompt/spec or
   local-knowledge acquisition.
-- Commit: pending.
-- Push: pending.
+- Commit: c87a7ad.
+- Push: succeeded.
 - Next: either run a separately bounded recipe probe that adds `pytest-socket`,
   or park the pip row as too dependency-heavy while prioritizing other
   validation-split rows.

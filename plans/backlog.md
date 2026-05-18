@@ -615,6 +615,25 @@ Long-term target:
   metadata, protects production hashes, and live-validates the pinned checkout
   under `/tmp/j3-mat-005-live.WXA9PU/humanize` with `73 passed in 0.03s`.
 
+### MAT-006: Remaining boltons one-file feature materialization probe
+
+- Status: active
+- Why: the one-file feature gate now passes at `3/4`, but the remaining
+  `boltons-feature-slugify-max-length` blocker is the direct test of whether
+  the source-region approach can finish the held-out feature ladder instead of
+  stopping at the first passing gate.
+- Write scope: a focused materializer for
+  `boltons-feature-slugify-max-length`, focused tests, optional docs,
+  generated outputs under `/tmp`, and plan updates.
+- Acceptance: attempt the pinned boltons one-file feature task with a bounded
+  source-region or typed-builder action; preserve the production-file
+  constraint for `boltons/strutils.py`; add focused tests in
+  `tests/test_strutils.py`; record candidate-after diff/AST metadata,
+  mutation scope, validation result, runtime, zero hosted usage, and the first
+  blocker if the edit cannot be expressed.
+- Tests: focused materializer tests, plan consistency, `git diff --check`, and
+  live targeted validation when a candidate is materialized.
+
 ### KNOW-001: Local knowledge inventory for the wedge
 
 - Status: done
@@ -928,13 +947,31 @@ Long-term target:
 - Tests: focused preflight tests with mocked subprocess or tiny fixtures, plan
   consistency, and `git diff --check`.
 
+### DATA-006: Live issue/PR mini replay preflight batch
+
+- Status: active
+- Why: the real-repo ladder is still curated; issue/PR replay is the next
+  pressure test for real user-like prompts, setup cost, validation trust, and
+  local-knowledge blockers.
+- Write scope: issue/PR replay preflight batch/report support, focused tests,
+  one compact report under `docs/` if useful, generated outputs under `/tmp`,
+  and plan updates.
+- Acceptance: run at least a bounded first batch of `DATA-004` replay rows
+  through checkout, setup, and focused validation before any edit attempt;
+  record runtime, command outcomes, blocker labels, residual categories,
+  deferred agent residuals, and what failed first. If live setup is too slow or
+  incompatible, classify that as evidence rather than broadening scope.
+- Tests: focused issue/PR preflight tests, plan consistency,
+  `git diff --check`, and the live preflight/report smoke command when
+  feasible.
+
 ## Next Recommended Queue
 
 Start with these unless fresh evidence changes the order:
 
-1. `REAL-011`: rerun the one-file feature gate after the iniconfig
+1. `MAT-006`: attempt the remaining held-out boltons one-file feature
    materializer.
-2. `MAT-005`: attempt the held-out humanize one-file feature materializer.
+2. `DATA-006`: run a live issue/PR mini replay preflight batch.
 3. `KNOW-003`: broaden knowledge-use attribution where scoring shows missing
    local-knowledge evidence.
 4. `MODEL-006`: candidate-after or AST-delta observation for ranking evidence.

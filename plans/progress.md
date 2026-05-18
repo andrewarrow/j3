@@ -1575,7 +1575,7 @@ meaningful work. Do not replace this file with a daily reset.
   production hashes before/after, mutation scope, validation runtime 0.256
   seconds, zero writes outside the task allowlist, residual label
   `candidate_validation_passed`, and zero hosted usage.
-- Commit: 7405a14
+- Commits: 897041b, c6fea18
 - Push: succeeded
 - Next: rerun or extend the one-file feature shadow scorer so it can count
   `humanize-feature-naturalsize-zero-format` alongside h11 and iniconfig.
@@ -1609,9 +1609,27 @@ meaningful work. Do not replace this file with a daily reset.
   one-file feature opt-in is allowed only for the three materialized,
   validation-passing task ids inside task allowlists with one allowlisted
   production file changed and no hidden-like disagreement.
-- Commit: pending
-- Push: pending
+- Commits: 7405a14, d26b7d0
+- Push: succeeded
 - Next: coordinator can review REAL-011 with MAT-005; boltons remains the only
   unmaterialized one-file feature ladder row.
 - Blockers: `boltons-feature-slugify-max-length` remains an explicit
   `one_file_materialization_gap` blocker.
+
+### 2026-05-18 - Coordinator Review And Dispatch - MAT-006 / DATA-006
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, `plans/progress.md`.
+- Tests: focused verification pending before worker spawn.
+- Result: reviewed `MAT-005` and `REAL-011` worker results. The one-file
+  feature gate now passes at `3/4`, but `boltons-feature-slugify-max-length`
+  remains a materialization blocker, and the broader issue/PR replay path still
+  needs live preflight evidence. The next batch therefore keeps one worker on
+  the remaining held-out source materializer and sends the other into
+  `DATA-006` to classify what breaks first on real issue/PR replay rows before
+  any edit attempt.
+- Commit: pending
+- Push: pending
+- Next: dispatch workers for `MAT-006` and `DATA-006`, then review both before
+  selecting the next hard proof.
+- Blockers: none

@@ -42,9 +42,40 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-No active worker tasks are currently recorded. The coordinator should review
-recent results and dispatch the next bounded ready task unless a blocker is
-recorded.
+### MAT-006: Remaining Boltons One-File Feature Materializer
+
+- Status: active
+- Owner: worker to be spawned by coordinator.
+- Write scope: `j3/real_repo_feature_materializer.py`,
+  `tests/test_real_repo_feature_materializer.py`, optional compact docs,
+  generated live artifacts under `/tmp`, and plan updates.
+- Target task: `boltons-feature-slugify-max-length`.
+- Acceptance: attempt the pinned `boltons` one-file feature task with a
+  bounded source-region or typed-builder action; preserve the one-production-
+  file constraint for `boltons/strutils.py`; add focused validation coverage
+  in `tests/test_strutils.py`; record candidate-after diff/AST metadata,
+  mutation scope, validation result, runtime, zero hosted usage, and a
+  machine-readable blocker if the edit cannot be expressed.
+- Required checks: focused feature materializer tests, `pytest
+  tests/test_plan_consistency.py -q`, `git diff --check`, and live targeted
+  validation when a candidate is materialized.
+
+### DATA-006: Live Issue/PR Mini Replay Preflight
+
+- Status: active
+- Owner: worker to be spawned by coordinator.
+- Write scope: `j3/issue_pr_preflight.py`,
+  `tests/test_issue_pr_preflight.py`, optional compact report under `docs/`,
+  generated live artifacts under `/tmp`, and plan updates.
+- Acceptance: run the `DATA-004` mini replay rows through a live or live-like
+  pre-edit preflight path for at least the first bounded batch of records;
+  record checkout/setup/focused-validation status, runtime, blocker labels,
+  residual categories, and whether failures are environment, validation,
+  prompt/spec, ranking, materialization, or local-knowledge blockers before
+  any edit attempt. Add small batch/report support if needed.
+- Required checks: focused issue/PR preflight tests, `pytest
+  tests/test_plan_consistency.py -q`, `git diff --check`, and the live
+  preflight/report smoke command when feasible.
 
 ## Ready Queue
 

@@ -16,22 +16,6 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-### `MAT-001`: Probe the code materialization gap
-
-- Owner: worker Meitner (`019e3b45-2fff-73d3-890d-a02d8262237b`)
-- Status: active
-- Write scope: `docs/CODE_MATERIALIZATION_GAP.md`, optional small
-  materialization gap fixtures/checker under `examples/` or `j3/`, focused
-  tests if code is added, and plan updates. Do not touch prompt-intent model
-  code.
-- Acceptance: inventories how current structured actions become source files,
-  identifies representative repo-after targets that current builders cannot
-  materialize, classifies each as AST/config transform, typed builder,
-  repo-convention builder, or constrained local generation need, and defines
-  the smallest executable probe that would prove progress.
-- Tests: `pytest tests/test_plan_consistency.py -q`, any focused tests for a
-  checker if added, and `git diff --check`.
-
 ### `DATA-004`: Issue/PR mini replay
 
 - Owner: worker Copernicus (`019e3b45-301a-7a41-8138-3d139d4506b4`)
@@ -77,6 +61,13 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `MAT-001`: added `docs/CODE_MATERIALIZATION_GAP.md`, classifying 25 merged
+  Python PR diffs by the weakest materialization layer needed. Result: 4 fit
+  current structured actions, 7 need general typed builders, 4 need
+  repo-convention builders, 8 need constrained local generation, and 2 are
+  out of current scope. The audit concludes the structured-action thesis is
+  useful for tiny local repairs but cracking at source materialization unless
+  typed builders and bounded local generators are added.
 - `REAL-001`: added `docs/REAL_REPO_EVAL_LADDER.md`,
   `examples/real_repo_eval_ladder.json`, and a manifest schema test. The ladder
   pins four permissively licensed Python repos, defines tests-only and one-file

@@ -579,3 +579,27 @@ meaningful work. Do not replace this file with a daily reset.
   validation, applies one candidate within the allowed write paths, and emits
   JSONL outcome rows.
 - Blockers: none
+
+### 2026-05-18 - MAT-001 - Code materialization audit
+
+- Owner: worker Meitner (`019e3b45-2fff-73d3-890d-a02d8262237b`)
+- Files changed: `docs/CODE_MATERIALIZATION_GAP.md`, `plans/active.md`,
+  `plans/progress.md`
+- Tests: `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check` -> passed.
+- Result: classified 25 merged Python PR diffs from Click, Flask, Requests,
+  and pytest by materialization layer. Counts: 4 current structured actions,
+  7 general typed builders, 4 repo-convention builders, 8 constrained local
+  generators, and 2 not currently expressible. The audit concludes the
+  structured-action thesis works for tiny local repairs but is cracking at
+  normal accepted PR source materialization without typed builders and bounded
+  local generators. The smallest proposed executable probe is a
+  `psf/requests#7427` constrained function-region materializer plus a
+  repo-convention pytest builder.
+- Commit: pending worker commit
+- Push: pending worker push
+- Next: implement the `requests#7427` materialization probe or split the
+  middle-layer work into typed annotation/config builders,
+  repo-convention-aware pytest builders, and constrained source-region
+  generation.
+- Blockers: none

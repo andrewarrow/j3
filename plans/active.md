@@ -11,22 +11,10 @@ This is the live coordinator board. Keep it current and compact.
   while the coordinator is recording the next assignments; ready work should be
   dispatched rather than leaving the board idle.
 - Current product gate stance: transition ranking remains shadow-only; the
-  2026-05-18 `TRANS-001` matrix decision was `remain_shadow_only`.
+  2026-05-18 `TRANS-001` full matrix and `TRANS-004` targeted subset decisions
+  were `remain_shadow_only`.
 
 ## Active Tasks
-
-### `TRANS-004`: Rerun targeted matrix evidence after subscript-key fix
-
-- Owner: worker Herschel (`019e3b15-7b18-7e51-af93-2c64da4243b8`)
-- Status: active
-- Write scope: generated outputs under `/tmp`, `plans/progress.md`,
-  `plans/active.md`; small runner bug fixes only if local and necessary.
-- Acceptance: rerun `greenshot_6_subset` with the standard matrix runner,
-  record whether `http_no_store_directive_subscript_key` is solved within the
-  matrix cap, and update residual/gate counts for that subset.
-- Tests: targeted matrix command with `--only greenshot_6_subset`,
-  `report-transition-residuals --matrix`, guarded decision if applicable, and
-  focused transition tests if command behavior changes.
 
 ### `OPS-002`: Add a lightweight plan consistency check
 
@@ -72,6 +60,14 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `TRANS-004`: reran targeted `greenshot_6_subset` transition matrix evidence
+  after the `ACT-002` subscript-key fix. The
+  `http_no_store_directive_subscript_key` production and shadow candidates now
+  solve within the matrix cap at rank 1 via `change_subscript_key`, eliminating
+  the candidate-generation gap. Targeted subset totals: 12 tasks, 12 ranked
+  solved, 4 matrix residuals, 8 residual-report failures, all
+  `scorer_ranking_gap`; targeted guarded decision remains
+  `remain_shadow_only`.
 - `DATA-002`: added repeatable prompt/spec corpus schema validation on top of
   the `inspect-prompt-corpus` profile path. The validator accepts the seed,
   expanded, and GreenShot-7 intent corpora with zero errors while reporting

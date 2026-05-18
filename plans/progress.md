@@ -262,3 +262,43 @@ meaningful work. Do not replace this file with a daily reset.
 - Push: pending
 - Next: dispatch the next ready tasks instead of ending at the review state.
 - Blockers: none
+
+### 2026-05-18 - TRANS-004 - Targeted post-fix matrix evidence
+
+- Owner: worker TRANS-004
+- Files changed: `plans/active.md`, `plans/progress.md`; generated artifacts
+  under `/tmp/j3-trans-004-greenshot6-subset`,
+  `/tmp/j3-trans-004-greenshot6-subset-residual-report.json`, and
+  `/tmp/j3-trans-004-guarded-decision.json`.
+- Tests: `python cli.py run-transition-shadow-matrix --matrix
+  examples/transition_shadow_matrix.json --out
+  /tmp/j3-trans-004-greenshot6-subset --only greenshot_6_subset --force
+  --json` -> 12 tasks, 12 ranked solved, 4 matrix residuals;
+  `python -m json.tool
+  /tmp/j3-trans-004-greenshot6-subset/matrix-summary.json >/dev/null`;
+  `shasum -a 256 -c
+  /tmp/j3-trans-004-greenshot6-subset/evidence/checksums.sha256` -> OK;
+  `python cli.py report-transition-residuals --matrix
+  /tmp/j3-trans-004-greenshot6-subset --out
+  /tmp/j3-trans-004-greenshot6-subset-residual-report.json --json` -> 8
+  failures, all `scorer_ranking_gap`; `python -m json.tool
+  /tmp/j3-trans-004-greenshot6-subset-residual-report.json >/dev/null`;
+  `python cli.py decide-transition-guarded-trial --matrix
+  /tmp/j3-trans-004-greenshot6-subset --out
+  /tmp/j3-trans-004-guarded-decision.json --json` -> `remain_shadow_only`.
+- Result: `http_no_store_directive_subscript_key` is now solved within the
+  matrix cap: production and shadow both select passing `change_subscript_key`
+  `"no-store"` -> `"no_store"` at rank 1. The remaining targeted residual
+  report for `greenshot_6_subset` has zero `candidate_generation_gap` examples,
+  8 `scorer_ranking_gap` examples, and suite gate
+  `not_ready_underperforms_existing_rank_order`. Matrix totals are
+  `baseline_residual_count=3`, `residual_count=4`,
+  `held_out_group_count=7`, `candidate_count=9696`, and zero hosted usage.
+  The single-suite guarded decision CLI accepted the output and kept
+  `eligible_for_guarded_opt_in_trial=false` because suite gates are not
+  `ready_for_guarded_opt_in` and matrix residuals are nonzero.
+- Commit: this TRANS-004 commit
+- Push: pushed by worker after commit creation
+- Next: keep `TRANS-003` blocked until the remaining scorer-ranking gaps are
+  addressed or explicitly accepted for a broader matrix run.
+- Blockers: none

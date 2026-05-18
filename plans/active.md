@@ -19,7 +19,7 @@ This is the live coordinator board. Keep it current and compact.
 ### `REAL-003`: First tests-only wedge shadow score
 
 - Status: active
-- Owner: pending spawn
+- Owner: worker Hilbert (`019e3b6c-6a4a-7f21-a931-7485ef54404a`)
 - Started: 2026-05-18
 - Goal: run the first shadow score for the tests-only product wedge against the
   real-repo ladder and record what breaks before guarded opt-in.
@@ -37,7 +37,7 @@ This is the live coordinator board. Keep it current and compact.
 ### `KNOW-002`: Extract first wedge knowledge records
 
 - Status: active
-- Owner: pending spawn
+- Owner: worker Hegel (`019e3b6c-9764-7082-a180-4704cc0ce894`)
 - Started: 2026-05-18
 - Goal: turn `KNOW-001` from an inventory into compact local knowledge records
   that tests-only planning can cite.
@@ -53,7 +53,7 @@ This is the live coordinator board. Keep it current and compact.
 ### `GS7-006`: Repo-state-aware library convention edits
 
 - Status: active
-- Owner: pending spawn
+- Owner: worker Nietzsche (`019e3b6c-ce65-79f2-abd3-755b259ed56e`)
 - Started: 2026-05-18
 - Goal: add the adjacent shadow source-convention slice for small libraries
   using repo-state coverage rather than hard-coded calculator assumptions.

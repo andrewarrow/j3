@@ -44,14 +44,47 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
+### `DATA-040`: Live pytest issue/PR decoy validation slice
+
+- Status: active
+- Owner: pending.
+- Write scope: issue/PR decoy validation and ranking-evidence modules/tests
+  only (`j3/issue_pr_decoy_validation.py`,
+  `j3/issue_pr_candidate_ranking.py`, their focused tests, optional
+  `docs/DATA_040_*`, and generated artifacts under `/tmp`). Do not edit
+  typed-builder or held-out materialization modules.
+- Acceptance: materialize and live-validate realistic decoys for the
+  validated DATA-029 `pytest-dev/pytest#14462/#14466` row, using the existing
+  DATA-037 decoy definitions as the target negative set. Record candidate-after
+  snapshots, touched files, validation command/runtime/status, residual
+  labels, and rerun the DATA-037 ranking report with DATA-038 accepted
+  snapshots plus DATA-039/DATA-040 decoy validation evidence. The result should
+  either remove the pytest row's `decoys_not_live_validated` and
+  `decoy_candidate_after_unavailable` blockers, or record the exact
+  materialization/validation blocker.
+
+### `MAT-010`: First held-out typed-builder materialization probe
+
+- Status: active
+- Owner: pending.
+- Write scope: new typed-builder materialization module/tests/docs only
+  (`j3/heldout_typed_builder_candidate.py`,
+  `tests/test_heldout_typed_builder_candidate.py`, optional `docs/MAT_010_*`,
+  and generated artifacts under `/tmp`). Avoid issue/PR ranking and decoy
+  modules.
+- Acceptance: attempt the MAT-007 `general_typed_builder` row
+  `pallets/click#3422` using reusable typed action records, not a PR-named
+  action kind. Determine and record the pinned base ref, accepted changed
+  files, mutation scope, candidate-after diff/AST metadata, accepted-diff
+  comparison, validation command/result if feasible, and the exact blocker if
+  the row needs source synthesis beyond typed import/annotation builders.
+
 ## Ready Queue
 
 These are good next assignments for the next loop:
 
-1. `KNOW-003`: broaden knowledge-use attribution where scoring shows missing
-   local-knowledge evidence.
-2. `MODEL-004`: distinguish mapping key and value targets.
-3. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.
+1. `VAL-001`: strengthen validation for Scrapy passing decoys without leaking
+   accepted labels.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 

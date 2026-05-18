@@ -3800,3 +3800,21 @@ meaningful work. Do not replace this file with a daily reset.
   materialization row from MAT-007.
 - Blockers: issue/PR ranking remains shadow-only because at least one row still
   has unvalidated decoys and the Scrapy row has passing decoys.
+
+### 2026-05-18 - Coordinator Dispatch - DATA-040 / MAT-010
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, and
+  `plans/progress.md`.
+- Tests: `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff
+  --check` -> passed.
+- Result: selected the next two hard falsification probes from the DATA-039
+  and MAT-007 residuals. `DATA-040` attacks ranking generalization by
+  materializing and live-validating the remaining pytest #14462 decoys instead
+  of scoring label-only negatives. `MAT-010` attacks the typed-builder gap by
+  attempting the MAT-007 held-out `pallets/click#3422` row with reusable typed
+  action records, not a PR-named materializer.
+- Commit: pending.
+- Push: pending.
+- Next: spawn one worker for `DATA-040` and one worker for `MAT-010`.
+- Blockers: none.

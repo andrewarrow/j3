@@ -756,6 +756,27 @@ Long-term target:
   `/tmp/j3-mat-009-pytest-14475-final/accepted.diff`, and
   `docs/MAT_009_PYTEST_14475_SOURCE_REGION_CANDIDATE_2026-05-18.md`.
 
+### MAT-010: First held-out typed-builder materialization probe
+
+- Status: active
+- Why: MAT-007 still has `general_typed_builder = 7`; more source-region wins
+  do not prove the type/import/annotation middle layer. `pallets/click#3422`
+  is a compact held-out row that should force reusable typed action records
+  without requiring a broad feature synthesis.
+- Write scope: new typed-builder materialization module/tests/docs only
+  (`j3/heldout_typed_builder_candidate.py`,
+  `tests/test_heldout_typed_builder_candidate.py`, optional `docs/MAT_010_*`,
+  and generated artifacts under `/tmp`). Avoid issue/PR ranking and decoy
+  modules.
+- Acceptance: attempt `pallets/click#3422` using reusable typed action
+  records, not a PR-named action kind. Determine and record the pinned base
+  ref, accepted changed files, mutation scope, candidate-after diff/AST
+  metadata, accepted-diff comparison, validation command/result if feasible,
+  and exact blocker if the row needs source synthesis beyond typed
+  import/annotation builders.
+- Tests: focused typed-builder materializer tests, plan consistency,
+  `git diff --check`, and live validation or a recorded validation blocker.
+
 ### KNOW-001: Local knowledge inventory for the wedge
 
 - Status: done
@@ -2273,11 +2294,53 @@ Long-term target:
   `/tmp/j3-data-039-ranking-with-live-decoys/ranking-report.md`, and
   `docs/DATA_039_LIVE_ISSUE_PR_DECOY_VALIDATION_2026-05-18.md`.
 
+### DATA-040: Live pytest issue/PR decoy validation slice
+
+- Status: active
+- Why: DATA-039 proved the Scrapy row can receive live decoy outcomes, but the
+  pytest #14462 row still has label-only decoys. Ranking gains on issue/PR
+  rows remain unclaimable until pytest decoys are materialized, snapshotted,
+  and live-validated too.
+- Write scope: issue/PR decoy validation and ranking-evidence modules/tests
+  only (`j3/issue_pr_decoy_validation.py`,
+  `j3/issue_pr_candidate_ranking.py`, their focused tests, optional
+  `docs/DATA_040_*`, and generated artifacts under `/tmp`). Do not edit
+  typed-builder or held-out materialization modules.
+- Acceptance: materialize and live-validate realistic decoys for the validated
+  DATA-029 `pytest-dev/pytest#14462/#14466` row, using the DATA-037 decoy
+  definitions as the target negative set. Record candidate-after snapshots,
+  touched files, validation command/runtime/status, residual labels, and rerun
+  the DATA-037 ranking report with DATA-038 accepted snapshots plus
+  DATA-039/DATA-040 decoy validation evidence. The result should either remove
+  the pytest row's `decoys_not_live_validated` and
+  `decoy_candidate_after_unavailable` blockers, or record the exact
+  materialization/validation blocker.
+- Tests: focused decoy validation/ranking tests, plan consistency,
+  `git diff --check`, and live focused validation when decoys are materialized.
+
+### VAL-001: Strengthen Scrapy passing-decoy validation without label leakage
+
+- Status: ready
+- Why: DATA-039 found two Scrapy decoys that pass the current focused
+  validation command. That means the validation signal is not yet trustworthy
+  enough to support issue/PR ranking claims for the row.
+- Write scope: focused validation recipe docs or validation helper code/tests,
+  optional `docs/VAL_001_*`, and generated artifacts under `/tmp`. Do not tune
+  the ranker to prefer the accepted candidate; prove or disprove validation
+  adequacy first.
+- Acceptance: propose and run at least one stronger, label-safe Scrapy
+  validation recipe against the accepted DATA-035 candidate and the DATA-039
+  passing decoys. Record whether the recipe converts the passing decoys into
+  failures while preserving accepted-candidate pass status, runtime, and exact
+  leakage risks. If no label-safe validation exists, record that blocker.
+- Tests: focused validation helper tests, plan consistency, `git diff --check`,
+  and live validation recipe runs when feasible.
+
 ## Next Recommended Queue
 
 Start with these unless fresh evidence changes the order:
 
-1. `KNOW-003`: broaden knowledge-use attribution where scoring shows missing
-   local-knowledge evidence.
-2. `MODEL-004`: distinguish mapping key and value targets.
-3. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.
+1. `DATA-040`: live pytest #14462 decoy validation.
+2. `MAT-010`: first held-out typed-builder materialization probe.
+3. `VAL-001`: strengthen validation for Scrapy passing decoys without leaking
+   accepted labels.

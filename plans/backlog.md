@@ -566,7 +566,7 @@ Long-term target:
 
 ### MAT-004: Second real one-file feature materialization probe
 
-- Status: ready
+- Status: active
 - Why: one h11 source-region success is useful but not enough to prove the
   materialization thesis across real repos.
 - Write scope: a focused materializer for one remaining one-file feature ladder
@@ -795,7 +795,7 @@ Long-term target:
 
 ### REAL-010: Full tests-only gate after boltons materializer
 
-- Status: ready
+- Status: active
 - Why: `REAL-008` can decide whether the three-candidate threshold is reached,
   but boltons should be counted after `GS7-011` to prove or falsify full ladder
   coverage.

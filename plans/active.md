@@ -34,20 +34,51 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
+### REAL-010: Full Tests-Only Gate After Boltons
+
+- Status: active
+- Owner: worker to be spawned by coordinator.
+- Write scope: `j3/real_repo_shadow_score.py`,
+  `tests/test_real_repo_shadow_score.py`, optional compact report under
+  `docs/`, generated live artifacts under `/tmp`, and plan updates.
+- Acceptance: count every materialized tests-only ladder candidate, including
+  `boltons-tests-slugify-delimiter`, through the real-repo tests planner and
+  live validation path; report calibration versus held-out pass rates,
+  total pass@1/pass@3, first passing ranks, runtime, mutation-scope
+  violations, hidden-like agreement, zero hosted usage, and guarded opt-in
+  decision.
+- Required checks: focused shadow-score tests, `pytest
+  tests/test_plan_consistency.py -q`, `git diff --check`, and a live
+  score/report smoke command with all four pinned repos when feasible.
+
+### MAT-004: Second Real One-File Feature Materialization Probe
+
+- Status: active
+- Owner: worker to be spawned by coordinator.
+- Write scope: `j3/real_repo_feature_materializer.py`,
+  `tests/test_real_repo_feature_materializer.py`, optional compact docs,
+  generated live artifacts under `/tmp`, and plan updates.
+- Target task: `iniconfig-feature-section-default`.
+- Acceptance: attempt the pinned `iniconfig` one-file feature task with a
+  bounded source-region or typed-builder action; preserve the one-production-
+  file constraint for `src/iniconfig/__init__.py`; add focused validation
+  coverage in `testing/test_iniconfig.py`; record candidate-after diff/AST
+  metadata, mutation scope, validation result, runtime, zero hosted usage, and
+  a machine-readable blocker if the edit cannot be expressed.
+- Required checks: focused feature materializer tests, `pytest
+  tests/test_plan_consistency.py -q`, `git diff --check`, and live targeted
+  validation when a candidate is materialized.
+
 ## Ready Queue
 
 These are good next assignments for the next loop:
 
-1. `REAL-010`: rerun the full tests-only gate after the boltons materializer
-   result is integrated.
-2. `MAT-004`: attempt a second real one-file feature materializer if
-   `REAL-009` shows the h11 source scorer path is sound.
-3. `KNOW-003`: broaden knowledge-use attribution where scoring shows missing
+1. `KNOW-003`: broaden knowledge-use attribution where scoring shows missing
    local-knowledge evidence.
-4. `MODEL-006`: add candidate-after or AST-delta observation for ranking
+2. `MODEL-006`: add candidate-after or AST-delta observation for ranking
    evidence.
-5. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.
-6. `MODEL-004`: distinguish mapping key and value targets.
+3. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.
+4. `MODEL-004`: distinguish mapping key and value targets.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 

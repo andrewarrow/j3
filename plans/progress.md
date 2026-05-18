@@ -1303,8 +1303,8 @@ meaningful work. Do not replace this file with a daily reset.
   knowledge-use records, and preserves production files byte-for-byte. The live
   candidate protected 7 production files, reported zero production-file
   changes, and had zero writes outside the allowlist.
-- Commit: pending
-- Push: pending
+- Commit: c428124
+- Push: succeeded
 - Next: run `REAL-008` after integrating `GS7-010`, or continue with
   `GS7-011` first if the coordinator wants all remaining held-out tests-only
   materializers before scoring.
@@ -1430,9 +1430,28 @@ meaningful work. Do not replace this file with a daily reset.
   materialized, validation-passing tests-only candidates inside task
   allowlists. `boltons-tests-slugify-delimiter` remains an explicit
   `test_case_materialization_gap` blocker in this score.
-- Commit: ba47014
+- Commits: ba47014, dee938f
 - Push: succeeded
 - Next: run `REAL-010` to count the `GS7-011` boltons materializer through the
   full tests-only gate.
 - Blockers: boltons remains blocked in `REAL-008`; guarded opt-in scope excludes
   boltons until `REAL-010` scores its materialized candidate.
+
+### 2026-05-18 - Coordinator Review And Dispatch - REAL-010 / MAT-004
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, `plans/progress.md`.
+- Tests: focused verification pending before worker spawn.
+- Result: reviewed `GS7-011` and `REAL-008` worker results. Coordinator checks
+  passed for `pytest tests/test_real_repo_tests_planner.py -q`, `pytest
+  tests/test_real_repo_shadow_score.py -q`, `pytest
+  tests/test_plan_consistency.py -q`, and `git diff --check`. The next active
+  batch is tied directly to the hard falsifiable questions: `REAL-010` must
+  prove whether the tests-only gate still holds after counting boltons, and
+  `MAT-004` must test whether the source-materialization approach generalizes
+  beyond the first h11 one-file feature.
+- Commit: pending
+- Push: pending
+- Next: dispatch two workers with disjoint core write scopes for `REAL-010` and
+  `MAT-004`; update the board with worker ids immediately after spawn.
+- Blockers: none

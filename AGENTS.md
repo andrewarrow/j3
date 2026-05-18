@@ -45,6 +45,11 @@ stable and append or narrowly edit the parts that changed.
 The parent agent is the coordinator. It owns direction, task selection, review,
 and integration.
 
+Recommended model level: run the coordinator at `xhigh`. The coordinator makes
+the higher-order decisions: direction, task selection, worker scope, integration
+review, parallelism, and when to pause. That reasoning budget is worth spending
+there.
+
 Coordinator flow:
 
 1. Read `plans/active.md`, `plans/backlog.md`, and recent `plans/progress.md`.
@@ -65,6 +70,31 @@ Coordinator flow:
 Parallelism is allowed, but only when it helps. Do not keep workers busy with
 low-value work. It is better to pause briefly and choose the right next task
 than to create parallel churn.
+
+When selecting worker model level, use the smallest level that fits the task:
+
+- `high`: default for bounded implementation, tests, evidence runs, and focused
+  docs.
+- `medium`: mechanical tasks such as formatting docs, recording command output,
+  or adding straightforward fixtures with clear patterns.
+- `xhigh`: hard architecture or research tasks, such as designing a structured
+  action family, diagnosing residual clusters across subsystems, changing
+  planner/model interfaces, or making training/data strategy decisions.
+
+Do not use stronger workers as a substitute for clear task boundaries. A
+well-scoped `high` worker is preferable to an underspecified `xhigh` worker.
+
+Normal setup:
+
+```text
+Coordinator: xhigh
+Workers: high
+Mechanical workers: medium
+Hard architecture/research worker: xhigh
+```
+
+If the runtime does not expose model-level selection, keep the same logic as a
+task-complexity guide.
 
 ## Worker Role
 

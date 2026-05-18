@@ -17,6 +17,10 @@ This file defines the persistent coordinator/worker loop. It replaces the old
 
 The coordinator is responsible for direction, not just dispatch.
 
+Recommended model level: `xhigh`. The coordinator is the agent in charge and
+must spend its reasoning budget on task selection, worker scoping, integration
+review, strategic drift detection, and deciding when to pause.
+
 1. Re-read `plans/active.md`, `plans/backlog.md`, and the latest
    `plans/progress.md` entries.
 2. Choose one to three bounded tasks whose results would materially advance the
@@ -36,6 +40,29 @@ The coordinator is responsible for direction, not just dispatch.
 
 The coordinator may pause all workers. A short pause for choosing the right next
 task is better than parallel work that does not move the project.
+
+## Model Selection
+
+Use this policy when the runtime supports model-level selection:
+
+- Coordinator: `xhigh`.
+- Default worker: `high`.
+- Mechanical worker: `medium`.
+- Architecture/research worker: `xhigh`.
+
+Use `high` for most bounded worker slices: implementation, focused tests,
+evidence runs, small docs updates, and command/report plumbing.
+
+Use `medium` only for low-risk mechanical tasks with clear patterns, such as
+recording command output, formatting docs, or adding straightforward fixtures.
+
+Use `xhigh` for workers only when the task itself demands deeper reasoning:
+planner/model interface changes, structured action family design, residual
+clusters spanning subsystems, training-objective decisions, or data strategy
+with long-term consequences.
+
+Do not compensate for vague assignments by raising the worker model level. Split
+the task until a `high` worker can usually execute it cleanly.
 
 ## Parallelism Policy
 

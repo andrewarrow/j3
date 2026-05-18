@@ -16,19 +16,66 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-No active worker tasks are recorded after the `GS7-005` completion. The
-coordinator should dispatch the next ready task or record a blocker.
+### `REAL-003`: First tests-only wedge shadow score
+
+- Status: active
+- Owner: pending spawn
+- Started: 2026-05-18
+- Goal: run the first shadow score for the tests-only product wedge against the
+  real-repo ladder and record what breaks before guarded opt-in.
+- Write scope: eval command/report docs, generated outputs under `/tmp`, small
+  harness fixes only if directly required, and plan updates.
+- Acceptance: run or simulate the tests-only tasks from the real-repo ladder
+  with max three candidates, record `pass@1`, `pass@3`, first passing rank,
+  runtime, mutation scope, hidden-like agreement, residual labels, zero hosted
+  usage, and a gate decision against `docs/PRODUCT_WEDGE_DECISION.md`. If the
+  current tests-only builder cannot target the real repos, record that as the
+  falsifiable residual instead of papering it over.
+- Tests: shadow-score command or report smoke,
+  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+
+### `KNOW-002`: Extract first wedge knowledge records
+
+- Status: active
+- Owner: pending spawn
+- Started: 2026-05-18
+- Goal: turn `KNOW-001` from an inventory into compact local knowledge records
+  that tests-only planning can cite.
+- Write scope: a small extractor or manifest for calibration repo knowledge
+  records, focused tests, docs if needed, and plan updates.
+- Acceptance: emit compact JSONL records for test layout, package layout,
+  public imports, validation recipe, and at least one pytest pattern from a
+  calibration repo, with provenance hashes, split labels, and an example
+  knowledge-use link suitable for tests-only planning.
+- Tests: focused extractor/schema tests,
+  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+
+### `GS7-006`: Repo-state-aware library convention edits
+
+- Status: active
+- Owner: pending spawn
+- Started: 2026-05-18
+- Goal: add the adjacent shadow source-convention slice for small libraries
+  using repo-state coverage rather than hard-coded calculator assumptions.
+- Write scope: repo-state-driven existing-repo planning for a small library
+  convention fixture, focused tests, GreenShot fixture updates if needed, and
+  plan updates.
+- Acceptance: the `slugify_existing_src_convention` GreenShot-7 task should no
+  longer be a generic `existing_repo_support` block. It should either plan and
+  validate a minimal `src/` package export edit using repo-state coverage, or
+  emit a precise blocker naming the missing repo-state, source materialization,
+  or validation layer.
+- Tests: focused repo-state/existing-repo/GreenShot tests,
+  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
 
 ## Ready Queue
 
 These are good next assignments for the next loop:
 
-1. `KNOW-002`: extract first wedge knowledge records.
-2. `GS7-006`: add repo-state-aware library convention edits.
-3. `MODEL-006`: add candidate-after or AST-delta observation for ranking
+1. `MODEL-006`: add candidate-after or AST-delta observation for ranking
    evidence.
-4. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.
-5. `MODEL-004`: distinguish mapping key and value targets.
+2. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.
+3. `MODEL-004`: distinguish mapping key and value targets.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
@@ -37,8 +84,6 @@ Run at most two tasks in parallel unless write scopes are plainly disjoint.
 - `TRANS-003`: blocked until the `TRANS-002` generation and ranking residuals
   have focused fixes or regression evidence; do not expand the full matrix
   until targeted `TRANS-004` evidence is recorded.
-- `REAL-003`: blocked until `REAL-002` proves baseline real-repo validation and
-  `GS7-005` adds tests-only existing-repo support.
 - `MODEL-002`: superseded by bounded scorer subtasks in the backlog, beginning
   with `MODEL-003` through `MODEL-006`.
 

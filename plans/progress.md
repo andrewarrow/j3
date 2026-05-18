@@ -807,8 +807,26 @@ meaningful work. Do not replace this file with a daily reset.
   writes only `tests/test_slugify.py`, records target test files, changed
   files, production file hashes, and no production-file modifications, and
   emits a structured `greenshot_7_existing_repo_tests_attempt` row.
-- Commit: pending
-- Push: pending
-- Next: commit and push. `REAL-003` can use this as the tests-only action
-  slice once the coordinator chooses the next shadow scoring task.
+- Commit: a9fbc78d0cee87e0918bca9c125d4202bdd46735
+- Push: succeeded
+- Next: `REAL-003` can use this as the tests-only action slice for the first
+  shadow scoring task.
+- Blockers: none
+
+### 2026-05-18 - COORD - Shadow score and knowledge dispatch
+
+- Owner: coordinator
+- Files changed: `plans/active.md`, `plans/backlog.md`, `plans/progress.md`
+- Tests: `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check` -> passed.
+- Result: reviewed `REAL-002`, `DATA-005`, and `GS7-005`. The real-repo and
+  issue/PR preflight runners now separate setup and validation blockers before
+  edits, and the first tests-only existing-repo slice builds for the slugify
+  fixture. `REAL-003` is no longer blocked, so the next active batch is
+  `REAL-003`, `KNOW-002`, and `GS7-006`.
+- Commit: pending coordinator commit
+- Push: pending coordinator push
+- Next: dispatch workers to score the tests-only wedge on real-repo tasks,
+  extract first local knowledge records, and add the repo-state convention edit
+  slice.
 - Blockers: none

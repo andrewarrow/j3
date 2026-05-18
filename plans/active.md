@@ -68,32 +68,12 @@ This is the live coordinator board. Keep it current and compact.
   tests/test_plan_consistency.py -q`, `git diff --check`, and live
   `pytest tests/test_defaults.py -q` validation when feasible.
 
-### `DATA-015`: Issue/PR readiness refresh after Click semver spec
-
-- Status: active
-- Owner: worker Franklin (`019e3c28-a586-7660-8c51-f007c53d052a`).
-- Why: `DATA-013` removed the prompt/spec blocker for
-  `pallets__click-issue-3298-pr-3299`; the readiness gate must be rerun before
-  any candidate attempt can use that row.
-- Write scope: readiness evidence/report generation, optional focused
-  readiness tests if behavior changes, compact report under `docs/`, generated
-  outputs under `/tmp`, and plan updates. Do not edit
-  `j3/issue_pr_candidate_attempt.py` or prompt/local-knowledge modules.
-- Acceptance: rerun the first-batch readiness gate with DATA-013 prompt/spec
-  evidence included. Record status for all three rows, missing-evidence
-  labels, validation commands, residual labels, and next recommended candidate
-  attempt. If Click #3298 becomes ready, make that explicit; if not, record the
-  exact remaining blocker.
-- Tests: focused readiness tests if code changes, `pytest
-  tests/test_plan_consistency.py -q`, `git diff --check`, and a CLI smoke over
-  the first three replay rows.
-
 ## Ready Queue
 
 These are good next assignments for the next loop:
 
-1. `DATA-016`: third issue/PR candidate attempt, preferably Click #3298 if
-   `DATA-015` marks it ready.
+1. `DATA-016`: third issue/PR candidate attempt against Click #3298 after the
+   in-flight DATA-014 result is reviewed.
 2. `KNOW-003`: broaden knowledge-use attribution where scoring shows missing
    local-knowledge evidence.
 3. `MODEL-006`: add candidate-after or AST-delta observation for ranking
@@ -123,6 +103,17 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `DATA-015`: reran the first-three issue/PR readiness gate with DATA-013
+  Click semver prompt/spec evidence included. All three rows are now
+  `ready_for_candidate_attempt` with no missing-evidence labels. Validation
+  commands are the DATA-008 Requests focused command, `pytest
+  tests/test_defaults.py -q` for Click #2745, and `pytest
+  tests/test_options.py -q` for Click #3298. Residual labels remain
+  `materialization_gap` and `ranking_gap` for all three rows, so the next
+  recommended candidate attempt is `pallets__click-issue-3298-pr-3299` after
+  DATA-014 is reviewed. Report:
+  `docs/DATA_015_ISSUE_PR_READINESS_REFRESH_2026-05-18.md`; smoke JSONL:
+  `/tmp/j3-data-015-readiness-smoke.jsonl`.
 - `DATA-012`: added a bounded Requests issue/PR candidate-attempt runner for
   exactly `psf__requests-issue-7432-pr-7433`. The live `/tmp` attempt
   materialized the accepted source-region edit in `src/requests/models.py`,

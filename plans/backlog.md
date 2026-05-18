@@ -1288,7 +1288,7 @@ Long-term target:
 
 ### DATA-015: Issue/PR readiness refresh after Click semver spec
 
-- Status: active
+- Status: done
 - Why: `DATA-013` removed the prompt/spec blocker for
   `pallets__click-issue-3298-pr-3299`; the readiness gate must be rerun with
   that evidence before assigning a candidate attempt.
@@ -1302,6 +1302,16 @@ Long-term target:
   the exact blocker; if it is ready, make that explicit.
 - Tests: focused readiness tests if code changes, plan consistency,
   `git diff --check`, and a CLI smoke over the first three replay rows.
+- Completion note: reran the readiness gate over the first three DATA-006 replay
+  rows with DATA-013 semver prompt/spec evidence included. Requests #7432/#7433,
+  Click #2745/#3364, and Click #3298/#3299 are all
+  `ready_for_candidate_attempt`; missing-evidence labels are empty for all
+  three rows. Validation commands are the DATA-008 Requests focused command,
+  `pytest tests/test_defaults.py -q`, and `pytest tests/test_options.py -q`.
+  Residual labels remain `materialization_gap` and `ranking_gap` for all three
+  rows. Report:
+  `docs/DATA_015_ISSUE_PR_READINESS_REFRESH_2026-05-18.md`; smoke JSONL:
+  `/private/tmp/j3-data-015-readiness-smoke.jsonl`.
 
 ### DATA-016: Third issue/PR candidate attempt
 
@@ -1324,7 +1334,8 @@ Long-term target:
 
 Start with these unless fresh evidence changes the order:
 
-1. `DATA-016`: third issue/PR candidate attempt if readiness-approved.
+1. `DATA-016`: third issue/PR candidate attempt against readiness-approved
+   Click #3298 after DATA-014 is reviewed.
 2. `KNOW-003`: broaden knowledge-use attribution where scoring shows missing
    local-knowledge evidence.
 3. `MODEL-006`: candidate-after or AST-delta observation for ranking evidence.

@@ -66,10 +66,11 @@ def test_first_batch_readiness_separates_ready_and_blocked_rows() -> None:
         "-k 'prepare_body or rewind_body or getattr_proxy_stream_follows_redirect'"
     )
 
-    semver_missing = by_id[CLICK_SEMVER_REPLAY_ID]["missing_evidence_labels"]
-    assert "missing_prompt_spec" in semver_missing
-    assert not any(label == "missing_validation_evidence" for label in semver_missing)
-    assert not any(label.startswith("missing_local_knowledge:") for label in semver_missing)
+    assert by_id[CLICK_SEMVER_REPLAY_ID]["ready_for_candidate_attempt"] is True
+    assert by_id[CLICK_SEMVER_REPLAY_ID]["missing_evidence_labels"] == []
+    assert by_id[CLICK_SEMVER_REPLAY_ID]["validation_command"] == (
+        "pytest tests/test_options.py -q"
+    )
 
 
 def test_ready_row_keeps_materialization_and_ranking_as_next_stage() -> None:

@@ -2199,3 +2199,37 @@ meaningful work. Do not replace this file with a daily reset.
   attempt, and Franklin (`019e3c28-a586-7660-8c51-f007c53d052a`) owns the
   readiness refresh after DATA-013.
 - Blockers: none.
+
+### 2026-05-18 - DATA-015 - Issue/PR readiness refresh
+
+- Owner: worker Franklin (`019e3c28-a586-7660-8c51-f007c53d052a`).
+- Files changed: `tests/test_issue_pr_readiness.py`,
+  `docs/DATA_015_ISSUE_PR_READINESS_REFRESH_2026-05-18.md`,
+  `plans/active.md`, `plans/backlog.md`, `plans/progress.md`.
+- Tests: `pytest tests/test_issue_pr_readiness.py -q` -> 4 passed; CLI smoke
+  `python -m j3.issue_pr_readiness --manifest
+  examples/issue_pr_mini_replay/manifest.json --limit 3 --preflight-evidence
+  /tmp/j3-data-007-blocker-drilldown/outcomes.jsonl --validation-evidence
+  /tmp/j3-data-008-live/attempts.jsonl --prompt-spec-evidence
+  /tmp/j3-data-009-click-default-map-spec.jsonl --prompt-spec-evidence
+  /tmp/j3-data-011-requests-prepare-body-spec.jsonl --prompt-spec-evidence
+  /tmp/j3-data-013-click-semver-spec.jsonl --local-knowledge-evidence
+  /tmp/j3-know-004-click-records.jsonl --local-knowledge-evidence
+  /tmp/j3-know-005-requests-records.jsonl --out
+  /tmp/j3-data-015-readiness-smoke.jsonl --report
+  /tmp/j3-data-015-readiness-smoke.md` -> passed with
+  `status_counts = {"ready": 3}`; `pytest tests/test_plan_consistency.py -q`
+  -> 6 passed; `git diff --check` -> passed.
+- Result: reran the first-three issue/PR readiness gate with DATA-013 Click
+  semver prompt/spec evidence included. Requests #7432/#7433, Click
+  #2745/#3364, and Click #3298/#3299 are all
+  `ready_for_candidate_attempt`; missing-evidence labels are empty for all
+  three rows. Validation commands are the DATA-008 Requests focused command,
+  `pytest tests/test_defaults.py -q`, and `pytest tests/test_options.py -q`.
+  Residual labels remain `materialization_gap` and `ranking_gap` for all three
+  rows. No candidate code edits were attempted.
+- Commit: pending in worker commit.
+- Push: pending.
+- Next: after DATA-014 is reviewed, assign `DATA-016` against
+  `pallets__click-issue-3298-pr-3299`.
+- Blockers: none.

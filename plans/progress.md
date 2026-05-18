@@ -2456,8 +2456,8 @@ meaningful work. Do not replace this file with a daily reset.
   prompt/spec normalization. Manifest residuals still include prompt/spec,
   validation, materialization, and ranking gaps as recorded in the checked-in
   DATA-018 report.
-- Commit: pending.
-- Push: pending.
+- Commit: 3eb4059.
+- Push: succeeded.
 - Next: normalize/acquire local knowledge for
   `pytest-dev__pytest-issue-14442-pr-14443` first; no pytest row is ready for
   candidate attempt yet.
@@ -2498,10 +2498,33 @@ meaningful work. Do not replace this file with a daily reset.
   new `options.md` heading link requires the separate DATA-017
   `docs/conf.py` `myst_heading_anchors = 3` auxiliary edit, which DATA-019 did
   not write.
-- Commit: pending.
-- Push: pending.
+- Commit: faa4282.
+- Push: succeeded.
 - Next: the smallest follow-up for full docs validation is the DATA-017
   `docs/conf.py` Sphinx config assignment materializer, followed by rerunning
   the DATA-019 docs build.
 - Blockers: docs validation remains blocked until the separate `docs/conf.py`
   heading-anchor auxiliary edit is materialized.
+
+### 2026-05-18 - Coordinator Review And Dispatch - DATA-020 / DATA-021
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, `plans/progress.md`.
+- Tests: `python -m py_compile j3/issue_pr_preflight.py
+  tests/test_issue_pr_preflight.py` -> passed; `pytest
+  tests/test_issue_pr_preflight.py -q` -> 17 passed; `python -m py_compile
+  j3/issue_pr_docs_materializer.py tests/test_issue_pr_docs_materializer.py`
+  -> passed; `pytest tests/test_issue_pr_docs_materializer.py -q` -> 4
+  passed; `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff
+  --check` -> passed.
+- Result: reviewed DATA-018 and DATA-019. Pytest live preflight now reaches
+  baseline validation on three new rows, but #14442/#14443 needs prompt/spec
+  and local-knowledge evidence before candidate generation. The Click docs
+  materializer writes the hardest auxiliary docs section but Sphinx validation
+  exposed the separate `docs/conf.py` heading-anchor dependency. The next loop
+  assigns `DATA-020` to close that docs validation dependency and `DATA-021`
+  to make the first pytest row candidate-ready.
+- Commit: pending coordinator dispatch commit.
+- Push: pending.
+- Next: workers dispatched for `DATA-020` and `DATA-021`.
+- Blockers: none.

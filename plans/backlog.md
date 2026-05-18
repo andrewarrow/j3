@@ -1456,6 +1456,48 @@ Long-term target:
   `/tmp/j3-data-019-live/candidate.json` and
   `/tmp/j3-data-019-live/report.md`.
 
+### DATA-020: Click docs conf assignment and integrated docs validation
+
+- Status: active
+- Why: DATA-019 proved the hardest Click docs section can be generated, but
+  docs validation failed on a discovered cross-path dependency: the accepted
+  PR's `docs/conf.py` `myst_heading_anchors = 3` edit. The next proof is
+  whether a small deterministic config action closes the validation loop when
+  combined with the generated docs section.
+- Write scope: `j3/issue_pr_docs_materializer.py`,
+  `tests/test_issue_pr_docs_materializer.py`, generated outputs under `/tmp`,
+  optional compact report under `docs/`, and plan updates.
+- Acceptance: in a live pinned Click checkout for
+  `pallets__click-issue-2745-pr-3364`, materialize the DATA-019
+  `docs/commands.md` section plus exactly one `docs/conf.py`
+  `myst_heading_anchors = 3` assignment. Record actions, candidate diff,
+  mutation scope, validation command/runtime, residual labels, provenance to
+  DATA-017 and DATA-019, and whether the Sphinx docs build passes. If it still
+  fails, record the exact remaining blocker.
+- Tests: focused docs materializer tests, plan consistency, `git diff
+  --check`, and a live pinned Click docs validation smoke when feasible.
+
+### DATA-021: Pytest #14442 prompt/spec and local knowledge evidence
+
+- Status: active
+- Why: DATA-018 showed pytest checkout/setup/baseline validation works, but no
+  pytest row is candidate-ready because prompt/spec and local knowledge are
+  missing. The first row, #14442/#14443, is a direct test of local knowledge
+  acquisition for pytest config parsing, strict markers/config behavior, repo
+  tests, changelog fragments, and AUTHORS convention.
+- Write scope: focused issue/PR prompt/spec and/or local-knowledge modules and
+  tests, generated outputs under `/tmp`, optional compact report under
+  `docs/`, and plan updates. Do not attempt candidate source edits.
+- Acceptance: emit machine-readable evidence for
+  `pytest-dev__pytest-issue-14442-pr-14443`: normalized prompt/spec fields,
+  changed-file context for `AUTHORS`, `changelog/14442.bugfix.rst`,
+  `src/_pytest/config/__init__.py`, `testing/test_config.py`, and
+  `testing/test_mark.py`, focused validation recipe from DATA-018, strict
+  `addopts` behavior, strict markers/config semantics, repo test patterns,
+  auxiliary path conventions, provenance, and remaining readiness blockers.
+- Tests: focused prompt/spec/local-knowledge tests, plan consistency,
+  `git diff --check`, and CLI smoke that emits the evidence rows.
+
 ## Next Recommended Queue
 
 Start with these unless fresh evidence changes the order:

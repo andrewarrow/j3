@@ -3284,7 +3284,21 @@ meaningful work. Do not replace this file with a daily reset.
   `installer` exposed missing `scripttest`. The next dispatch keeps pressure on
   validation-split Scrapy by assigning readiness (`DATA-033`) and
   materialization coverage audit (`DATA-034`) before any candidate attempt.
+- Commit: 78fc5f9.
+- Push: succeeded.
+- Next: workers dispatched for `DATA-033` and `DATA-034`.
+- Blockers: none.
+
+### 2026-05-18 - Worker IDs - DATA-033 / DATA-034
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/progress.md`.
+- Tests: `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff
+  --check` -> passed.
+- Result: recorded worker Wegener
+  (`019e3c9c-48a4-7523-ab7f-1c71b29ddd80`) for `DATA-033` and worker James
+  (`019e3c9c-48d6-7e32-804c-beb42f62bb01`) for `DATA-034`.
 - Commit: pending.
 - Push: pending.
-- Next: dispatch workers for `DATA-033` and `DATA-034`.
+- Next: continue non-overlapping coordinator review while both workers run.
 - Blockers: none.

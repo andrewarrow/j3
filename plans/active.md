@@ -47,7 +47,7 @@ This is the live coordinator board. Keep it current and compact.
 ### `DATA-033`: Scrapy validation-split readiness refresh
 
 - Status: active
-- Owner: worker pending assignment.
+- Owner: worker Wegener (`019e3c9c-48a4-7523-ab7f-1c71b29ddd80`).
 - Write scope: `j3/issue_pr_readiness.py`,
   `tests/test_issue_pr_readiness.py`, generated outputs under `/tmp`,
   optional compact report under `docs/`, and planning updates.
@@ -62,7 +62,7 @@ This is the live coordinator board. Keep it current and compact.
 ### `DATA-034`: Scrapy materialization coverage audit
 
 - Status: active
-- Owner: worker pending assignment.
+- Owner: worker James (`019e3c9c-48d6-7e32-804c-beb42f62bb01`).
 - Write scope: `j3/issue_pr_materialization_audit.py`,
   `tests/test_issue_pr_materialization_audit.py`, generated outputs under
   `/tmp`, optional compact report under `docs/`, and planning updates. Do not

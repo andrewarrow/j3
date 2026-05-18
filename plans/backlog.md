@@ -1458,7 +1458,7 @@ Long-term target:
 
 ### DATA-020: Click docs conf assignment and integrated docs validation
 
-- Status: active
+- Status: done
 - Why: DATA-019 proved the hardest Click docs section can be generated, but
   docs validation failed on a discovered cross-path dependency: the accepted
   PR's `docs/conf.py` `myst_heading_anchors = 3` edit. The next proof is
@@ -1476,6 +1476,14 @@ Long-term target:
   fails, record the exact remaining blocker.
 - Tests: focused docs materializer tests, plan consistency, `git diff
   --check`, and a live pinned Click docs validation smoke when feasible.
+- Completion note: added the integrated Click docs materializer path for
+  `docs/commands.md` plus `docs/conf.py`. The live pinned checkout changed
+  only those two files, inserted exactly one `myst_heading_anchors = 3`
+  assignment with duplicate detection and compile validation, and passed the
+  Sphinx `dirhtml` docs build in `3.068s`. Artifacts:
+  `/tmp/j3-data-020-live/candidate.json`,
+  `/tmp/j3-data-020-live/report.md`, and
+  `docs/DATA_020_CLICK_DOCS_CONF_INTEGRATED_VALIDATION_2026-05-18.md`.
 
 ### DATA-021: Pytest #14442 prompt/spec and local knowledge evidence
 

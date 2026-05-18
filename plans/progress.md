@@ -2542,3 +2542,40 @@ meaningful work. Do not replace this file with a daily reset.
 - Push: succeeded.
 - Next: continue non-overlapping coordinator review while both workers run.
 - Blockers: none.
+
+### 2026-05-18 - DATA-020 - Click docs conf integrated validation
+
+- Owner: worker Einstein (`019e3c4b-0b2b-7761-9c59-281afdde9486`).
+- Files changed: `j3/issue_pr_docs_materializer.py`,
+  `tests/test_issue_pr_docs_materializer.py`,
+  `docs/DATA_020_CLICK_DOCS_CONF_INTEGRATED_VALIDATION_2026-05-18.md`,
+  `plans/active.md`, `plans/backlog.md`, `plans/progress.md`.
+- Tests: `python -m py_compile j3/issue_pr_docs_materializer.py
+  tests/test_issue_pr_docs_materializer.py` -> passed; `pytest
+  tests/test_issue_pr_docs_materializer.py -q` -> 5 passed; live CLI smoke
+  `python -m j3.issue_pr_docs_materializer --repo-path
+  /tmp/j3-data-020-live/click --manifest
+  examples/issue_pr_mini_replay/manifest.json --candidate-artifact
+  /tmp/j3-data-014-live/candidate.json --auxiliary-gap-audit
+  /tmp/j3-data-017-aux-gap/audit.jsonl --data019-candidate-artifact
+  /tmp/j3-data-019-live/candidate.json --out
+  /tmp/j3-data-020-live/candidate.json --report
+  /tmp/j3-data-020-live/report.md --validate --validation-command
+  ".venv-docs/bin/python -m sphinx -W -b dirhtml docs
+  /tmp/j3-data-020-live/docs-dirhtml" --validation-timeout-seconds 240` ->
+  passed; `python -m py_compile /tmp/j3-data-020-live/click/docs/conf.py` ->
+  passed; `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff
+  --check` -> passed.
+- Result: integrated the DATA-019 generated `docs/commands.md` section with
+  the DATA-017 `docs/conf.py` Sphinx config assignment action. The config
+  action inserts exactly one `myst_heading_anchors = 3`, blocks duplicates, and
+  compile-validates the resulting `docs/conf.py` text. The live pinned Click
+  checkout at `8a2b48901a08b3d2ec3a9bbd151948a9765368c6` changed only
+  `docs/commands.md` and `docs/conf.py`. The candidate record includes actions,
+  diff, mutation scope, validation command/runtime, residual labels, DATA-017
+  and DATA-019 provenance, and Sphinx `docs_build_passed = true`.
+- Commit: pending.
+- Push: pending.
+- Next: review DATA-021 when it lands; no further Click docs validation
+  blocker remains for the `docs/commands.md` plus `docs/conf.py` slice.
+- Blockers: none.

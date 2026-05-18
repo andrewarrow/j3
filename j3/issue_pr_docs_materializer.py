@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import difflib
 import hashlib
 import json
@@ -25,10 +26,16 @@ CLICK_COMMANDS_DOCS_PATH = "docs/commands.md"
 CLICK_COMMANDS_DOCS_ACTION_FAMILY = (
     "click_default_map_docs_section_generator_v1+myst_markdown_section_insert_v1"
 )
+CLICK_DOCS_CONF_PATH = "docs/conf.py"
+CLICK_DOCS_CONF_ACTION_FAMILY = "sphinx_conf_scalar_assignment_insert_v1"
+CLICK_DOCS_CONF_ASSIGNMENT = "myst_heading_anchors = 3"
+CLICK_INTEGRATED_DOCS_ACTION_FAMILY = (
+    f"{CLICK_COMMANDS_DOCS_ACTION_FAMILY}+{CLICK_DOCS_CONF_ACTION_FAMILY}"
+)
 CLICK_COMMANDS_DOCS_SECTION_HEADING = "### Multi-value parameters"
 CLICK_COMMANDS_DOCS_INSERT_ANCHOR = "\n## Context Defaults\n"
 DEFAULT_DOCS_VALIDATION_COMMAND = (
-    "python -m sphinx -W -b dirhtml docs /tmp/j3-data-019-docs-dirhtml"
+    "python -m sphinx -W -b dirhtml docs /tmp/j3-data-020-docs-dirhtml"
 )
 
 
@@ -134,12 +141,306 @@ def run_click_commands_docs_materializer(
     replay_id: str = CLICK_DEFAULT_MAP_REPLAY_ID,
     candidate_artifact_path: Path | None = Path("/tmp/j3-data-014-live/candidate.json"),
     auxiliary_gap_audit_path: Path | None = Path("/tmp/j3-data-017-aux-gap/audit.jsonl"),
+    data019_candidate_artifact_path: Path | None = Path(
+        "/tmp/j3-data-019-live/candidate.json"
+    ),
     write: bool = True,
     validate: bool = False,
     validation_command: str | None = DEFAULT_DOCS_VALIDATION_COMMAND,
     validation_timeout_seconds: int = 180,
 ) -> IssuePrDocsMaterialization:
-    """Generate and insert only the Click commands.md multi-value section."""
+    """Generate and insert the Click commands docs plus Sphinx config edit."""
+
+    if replay_id != CLICK_DEFAULT_MAP_REPLAY_ID:
+        raise IssuePrDocsMaterializerError(
+            f"unsupported replay id: {replay_id}",
+            blocker={
+                "field": "replay_id",
+                "reason": "unsupported_issue_pr_docs_materializer",
+                "message": "DATA-019 may materialize only Click #2745/#3364 docs.",
+            },
+        )
+
+    resolved_repo = repo_path.expanduser().resolve()
+    if not resolved_repo.is_dir():
+        raise IssuePrDocsMaterializerError(
+            f"repo does not exist: {resolved_repo}",
+            blocker={
+                "field": "repo_path",
+                "reason": "missing_repo_before_checkout",
+                "message": f"repo does not exist: {resolved_repo}",
+            },
+        )
+
+    manifest_path = manifest_path.expanduser().resolve()
+    manifest = load_issue_pr_replay_manifest(manifest_path)
+    replay_record = select_issue_pr_replay_record(manifest, replay_id)
+    repo = _required_str(replay_record, "repo")
+    prompt = _required_str(replay_record, "prompt_text")
+    repo_before_ref = _mapping(replay_record.get("repo_before_ref"))
+    expected_sha = _required_str(repo_before_ref, "sha")
+    accepted_change = _mapping(replay_record.get("accepted_change"))
+    accepted_paths = _string_sequence(accepted_change.get("changed_files"))
+
+    actions: list[dict[str, object]] = [
+        {
+            "kind": "select_replay_row",
+            "target": replay_id,
+            "payload": {
+                "manifest_path": str(manifest_path),
+                "repo": repo,
+                "repo_before_ref": expected_sha,
+            },
+        }
+    ]
+    blockers: list[dict[str, str]] = []
+    pre_existing_changed_files = _git_changed_files(resolved_repo)
+    head = _git_stdout(resolved_repo, ("rev-parse", "HEAD"))
+    if head:
+        actions.append(
+            {
+                "kind": "verify_repo_before_ref",
+                "target": ".",
+                "payload": {"expected": expected_sha, "actual": head},
+            }
+        )
+        if head != expected_sha:
+            blockers.append(
+                {
+                    "field": "repo_before_ref",
+                    "reason": "repo_before_ref_mismatch",
+                    "message": f"expected {expected_sha}, got {head}",
+                }
+            )
+
+    commands_file = resolved_repo / CLICK_COMMANDS_DOCS_PATH
+    conf_file = resolved_repo / CLICK_DOCS_CONF_PATH
+    before_by_path: dict[str, str] = {}
+    after_by_path: dict[str, str] = {}
+    generated_section = build_click_default_map_commands_docs_section()
+    materialization: dict[str, object] = {
+        "status": "not_attempted",
+        "target_paths": [CLICK_COMMANDS_DOCS_PATH, CLICK_DOCS_CONF_PATH],
+    }
+
+    content_blocker = validate_click_default_map_commands_docs_section(generated_section)
+    if content_blocker is not None:
+        blockers.append(content_blocker)
+
+    if not blockers:
+        try:
+            before_by_path[CLICK_COMMANDS_DOCS_PATH] = commands_file.read_text(
+                encoding="utf-8"
+            )
+            before_by_path[CLICK_DOCS_CONF_PATH] = conf_file.read_text(encoding="utf-8")
+            after_by_path[CLICK_COMMANDS_DOCS_PATH] = (
+                insert_click_default_map_commands_docs_section(
+                    before_by_path[CLICK_COMMANDS_DOCS_PATH],
+                    generated_section,
+                )
+            )
+            after_by_path[CLICK_DOCS_CONF_PATH] = insert_sphinx_conf_scalar_assignment(
+                before_by_path[CLICK_DOCS_CONF_PATH],
+            )
+            if write:
+                commands_file.write_text(
+                    after_by_path[CLICK_COMMANDS_DOCS_PATH],
+                    encoding="utf-8",
+                )
+                conf_file.write_text(
+                    after_by_path[CLICK_DOCS_CONF_PATH],
+                    encoding="utf-8",
+                )
+            conf_compile = validate_sphinx_conf_assignment_text(
+                after_by_path[CLICK_DOCS_CONF_PATH]
+            )
+            if conf_compile is not None:
+                blockers.append(conf_compile)
+            materialization = {
+                "status": "materialized" if conf_compile is None else "blocked",
+                "target_paths": [CLICK_COMMANDS_DOCS_PATH, CLICK_DOCS_CONF_PATH],
+                "insert_anchor": "before ## Context Defaults",
+                "section_heading": CLICK_COMMANDS_DOCS_SECTION_HEADING,
+                "sphinx_conf_assignment": CLICK_DOCS_CONF_ASSIGNMENT,
+                "sphinx_conf_assignment_count": _sphinx_conf_assignment_count(
+                    after_by_path[CLICK_DOCS_CONF_PATH]
+                ),
+                "sphinx_conf_compile_check_passed": conf_compile is None,
+                "wrote_files": write,
+                "generated_line_count": len(generated_section.splitlines()),
+                "preserved_unrelated_content": _unrelated_content_preserved(
+                    before_by_path[CLICK_COMMANDS_DOCS_PATH],
+                    after_by_path[CLICK_COMMANDS_DOCS_PATH],
+                    generated_section,
+                ),
+            }
+            actions.append(
+                {
+                    "kind": "generate_click_default_map_docs_section",
+                    "target": CLICK_COMMANDS_DOCS_PATH,
+                    "payload": {
+                        "generator": "local_template_from_DATA_009_prompt_spec_facts",
+                        "section_heading": CLICK_COMMANDS_DOCS_SECTION_HEADING,
+                        "mentions": ["nargs > 1", "{class}`Tuple`"],
+                        "includes_whitespace_splitting_example": True,
+                    },
+                }
+            )
+            actions.append(
+                {
+                    "kind": "myst_markdown_section_insert",
+                    "target": CLICK_COMMANDS_DOCS_PATH,
+                    "payload": {"anchor": "before ## Context Defaults"},
+                }
+            )
+            actions.append(
+                {
+                    "kind": "sphinx_conf_scalar_assignment_insert",
+                    "target": CLICK_DOCS_CONF_PATH,
+                    "payload": {
+                        "assignment": CLICK_DOCS_CONF_ASSIGNMENT,
+                        "anchor": "after intersphinx_mapping",
+                        "duplicate_detection": "block_if_assignment_exists",
+                        "compile_check_passed": conf_compile is None,
+                    },
+                }
+            )
+        except OSError as error:
+            blockers.append(
+                {
+                    "field": "materialization",
+                    "reason": "target_file_unavailable",
+                    "message": str(error),
+                }
+            )
+            materialization = {
+                "status": "blocked",
+                "target_paths": [CLICK_COMMANDS_DOCS_PATH, CLICK_DOCS_CONF_PATH],
+                "not_available_reason": "target_file_unavailable",
+            }
+        except IssuePrDocsMaterializerError as error:
+            blockers.append(error.blocker)
+            materialization = {
+                "status": "blocked",
+                "target_paths": [CLICK_COMMANDS_DOCS_PATH, CLICK_DOCS_CONF_PATH],
+                "not_available_reason": error.blocker.get("reason"),
+            }
+
+    candidate_diff = _candidate_diff_for_paths(before_by_path, after_by_path)
+    post_changed_files = _git_changed_files(resolved_repo)
+    files_changed = post_changed_files if write else []
+    allowed_paths = [CLICK_COMMANDS_DOCS_PATH, CLICK_DOCS_CONF_PATH]
+    writes_outside_target = sorted(path for path in files_changed if path not in allowed_paths)
+    mutation_scope = {
+        "mode": "issue_pr_integrated_docs_materializer",
+        "target_paths": allowed_paths,
+        "planned_write_files": allowed_paths,
+        "files_changed": files_changed,
+        "pre_existing_changed_files": pre_existing_changed_files,
+        "accepted_change_paths": accepted_paths,
+        "allowed_docs_write_path_check_passed": set(files_changed).issubset(
+            set(allowed_paths)
+        ),
+        "writes_outside_target": writes_outside_target,
+        "source_test_changelog_paths_changed": [
+            path
+            for path in files_changed
+            if path not in {CLICK_COMMANDS_DOCS_PATH, CLICK_DOCS_CONF_PATH}
+        ],
+        "non_docs_accepted_paths_not_materialized": [
+            path for path in accepted_paths if path not in set(allowed_paths)
+        ],
+    }
+    if writes_outside_target:
+        blockers.append(
+            {
+                "field": "mutation_scope",
+                "reason": "unexpected_non_docs_mutation",
+                "message": (
+                    "docs materializer changed files outside docs/commands.md "
+                    "and docs/conf.py: "
+                    + ", ".join(writes_outside_target)
+                ),
+            }
+        )
+
+    validation = _validation_not_run(validation_command)
+    if validate and not blockers:
+        validation = _run_validation_command(
+            repo_path=resolved_repo,
+            command=validation_command,
+            timeout_seconds=validation_timeout_seconds,
+        )
+        if validation.get("status") == "blocked":
+            blockers.append(
+                {
+                    "field": "docs_validation",
+                    "reason": str(validation.get("failure_family") or "docs_build_blocked"),
+                    "message": str(validation.get("failure_summary") or ""),
+                }
+            )
+
+    residual_labels = _residual_labels(blockers=blockers, validation=validation)
+    if materialization.get("status") == "materialized":
+        residual_labels.insert(0, "sphinx_conf_assignment_materialized")
+        residual_labels.insert(0, "docs_commands_section_materialized")
+    status = (
+        "validated"
+        if materialization.get("status") == "materialized"
+        and validation.get("status") == "passed"
+        and not writes_outside_target
+        else "blocked"
+        if blockers
+        else "materialized"
+    )
+
+    evidence = _build_evidence(
+        manifest_path=manifest_path,
+        manifest=manifest,
+        replay_record=replay_record,
+        candidate_artifact_path=candidate_artifact_path,
+        auxiliary_gap_audit_path=auxiliary_gap_audit_path,
+        data019_candidate_artifact_path=data019_candidate_artifact_path,
+    )
+    candidate_id = _candidate_id(
+        replay_id=replay_id,
+        generated_section=generated_section,
+        candidate_diff=candidate_diff,
+    )
+    return IssuePrDocsMaterialization(
+        candidate_id=candidate_id,
+        replay_id=replay_id,
+        repo=repo,
+        repo_before_ref=expected_sha,
+        prompt=prompt,
+        status=status,
+        action_family=CLICK_INTEGRATED_DOCS_ACTION_FAMILY,
+        target_path=",".join(allowed_paths),
+        generated_section=generated_section,
+        evidence=evidence,
+        actions=actions,
+        materialization=materialization,
+        candidate_diff=candidate_diff,
+        mutation_scope=mutation_scope,
+        validation=validation,
+        residual_labels=residual_labels,
+        blockers=blockers,
+    )
+
+
+def run_click_commands_docs_section_materializer(
+    repo_path: Path,
+    *,
+    manifest_path: Path = Path("examples/issue_pr_mini_replay/manifest.json"),
+    replay_id: str = CLICK_DEFAULT_MAP_REPLAY_ID,
+    candidate_artifact_path: Path | None = Path("/tmp/j3-data-014-live/candidate.json"),
+    auxiliary_gap_audit_path: Path | None = Path("/tmp/j3-data-017-aux-gap/audit.jsonl"),
+    write: bool = True,
+    validate: bool = False,
+    validation_command: str | None = DEFAULT_DOCS_VALIDATION_COMMAND,
+    validation_timeout_seconds: int = 180,
+) -> IssuePrDocsMaterialization:
+    """Generate and insert only the DATA-019 commands.md section."""
 
     if replay_id != CLICK_DEFAULT_MAP_REPLAY_ID:
         raise IssuePrDocsMaterializerError(
@@ -425,6 +726,87 @@ def insert_click_default_map_commands_docs_section(
     return commands_md_text.replace(CLICK_COMMANDS_DOCS_INSERT_ANCHOR, insertion + CLICK_COMMANDS_DOCS_INSERT_ANCHOR, 1)
 
 
+def insert_sphinx_conf_scalar_assignment(conf_py_text: str) -> str:
+    """Insert the heading-anchor assignment after intersphinx_mapping."""
+
+    if _sphinx_conf_assignment_count(conf_py_text) > 0:
+        raise IssuePrDocsMaterializerError(
+            "docs conf already contains myst_heading_anchors assignment",
+            blocker={
+                "field": CLICK_DOCS_CONF_PATH,
+                "reason": "duplicate_sphinx_conf_assignment",
+                "message": "docs/conf.py already contains myst_heading_anchors",
+            },
+        )
+    try:
+        tree = ast.parse(conf_py_text, filename=CLICK_DOCS_CONF_PATH)
+    except SyntaxError as error:
+        raise IssuePrDocsMaterializerError(
+            "docs conf cannot be parsed before insertion",
+            blocker={
+                "field": CLICK_DOCS_CONF_PATH,
+                "reason": "sphinx_conf_syntax_invalid_before_insert",
+                "message": str(error),
+            },
+        ) from error
+
+    anchor_lineno = None
+    for node in tree.body:
+        if not isinstance(node, ast.Assign):
+            continue
+        if any(
+            isinstance(target, ast.Name) and target.id == "intersphinx_mapping"
+            for target in node.targets
+        ):
+            anchor_lineno = node.end_lineno
+            break
+    if anchor_lineno is None:
+        raise IssuePrDocsMaterializerError(
+            "docs conf insertion anchor not found",
+            blocker={
+                "field": CLICK_DOCS_CONF_PATH,
+                "reason": "missing_intersphinx_mapping_anchor",
+                "message": "expected top-level intersphinx_mapping assignment",
+            },
+        )
+
+    lines = conf_py_text.splitlines(keepends=True)
+    after_text = "".join(
+        [*lines[:anchor_lineno], f"{CLICK_DOCS_CONF_ASSIGNMENT}\n", *lines[anchor_lineno:]]
+    )
+    blocker = validate_sphinx_conf_assignment_text(after_text)
+    if blocker is not None:
+        raise IssuePrDocsMaterializerError(
+            "docs conf assignment validation failed",
+            blocker=blocker,
+        )
+    return after_text
+
+
+def validate_sphinx_conf_assignment_text(conf_py_text: str) -> dict[str, str] | None:
+    """Return a blocker if the generated docs/conf.py text is invalid."""
+
+    assignment_count = _sphinx_conf_assignment_count(conf_py_text)
+    if assignment_count != 1:
+        return {
+            "field": CLICK_DOCS_CONF_PATH,
+            "reason": "invalid_sphinx_conf_assignment_count",
+            "message": (
+                "expected exactly one myst_heading_anchors assignment, "
+                f"found {assignment_count}"
+            ),
+        }
+    try:
+        compile(conf_py_text, CLICK_DOCS_CONF_PATH, "exec")
+    except SyntaxError as error:
+        return {
+            "field": CLICK_DOCS_CONF_PATH,
+            "reason": "sphinx_conf_syntax_invalid_after_insert",
+            "message": str(error),
+        }
+    return None
+
+
 def write_issue_pr_docs_materialization_json(record: Mapping[str, object], path: Path) -> Path:
     """Write one docs materialization record as JSON."""
 
@@ -446,22 +828,23 @@ def write_issue_pr_docs_materialization_report(
     validation = _mapping(record.get("validation"))
     candidate_diff = _mapping(record.get("candidate_diff"))
     lines = [
-        "# DATA-019 Click Commands Docs Materializer",
+        "# DATA-020 Click Integrated Docs Materializer",
         "",
-        "Bounded materialization attempt for the Click #2745/#3364 `docs/commands.md` auxiliary gap.",
+        "Bounded materialization attempt for the Click #2745/#3364 docs auxiliary gap.",
         "",
         "## Summary",
         "",
         f"- Replay: `{record.get('replay_id')}`",
         f"- Status: `{record.get('status')}`",
-        f"- Target path: `{record.get('target_path')}`",
+        f"- Target path(s): `{record.get('target_path')}`",
         f"- Action family: `{record.get('action_family')}`",
         f"- Files changed: `{_json_inline(mutation_scope.get('files_changed', []))}`",
-        "- Writes outside `docs/commands.md`: "
+        "- Writes outside `docs/commands.md` and `docs/conf.py`: "
         f"`{_json_inline(mutation_scope.get('writes_outside_target', []))}`",
         f"- Residual labels: `{_json_inline(record.get('residual_labels', []))}`",
         f"- Validation command: `{validation.get('command')}`",
         f"- Validation status: `{validation.get('status')}`",
+        f"- Sphinx docs build passed: `{validation.get('docs_build_passed')}`",
         f"- Validation runtime seconds: `{validation.get('runtime_seconds')}`",
         "",
         "## Section Contract",
@@ -470,6 +853,7 @@ def write_issue_pr_docs_materialization_report(
         "- Mentions: `nargs > 1` and the `{class}` role for `Tuple`",
         "- Whitespace-splitting example: `\"point\": \"3 4\"`",
         "- Insertion anchor: before `## Context Defaults`",
+        "- Sphinx config: exactly one `myst_heading_anchors = 3` assignment",
         "",
         "## Candidate Diff",
         "",
@@ -494,7 +878,7 @@ def write_issue_pr_docs_materialization_report(
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    """CLI entrypoint for DATA-019 Click docs materialization."""
+    """CLI entrypoint for DATA-020 Click docs materialization."""
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo-path", type=Path, required=True)
@@ -506,6 +890,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--replay-id", default=CLICK_DEFAULT_MAP_REPLAY_ID)
     parser.add_argument("--candidate-artifact", type=Path, default=Path("/tmp/j3-data-014-live/candidate.json"))
     parser.add_argument("--auxiliary-gap-audit", type=Path, default=Path("/tmp/j3-data-017-aux-gap/audit.jsonl"))
+    parser.add_argument(
+        "--data019-candidate-artifact",
+        type=Path,
+        default=Path("/tmp/j3-data-019-live/candidate.json"),
+    )
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--report", type=Path)
     parser.add_argument("--dry-run", action="store_true")
@@ -520,6 +909,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         replay_id=args.replay_id,
         candidate_artifact_path=args.candidate_artifact,
         auxiliary_gap_audit_path=args.auxiliary_gap_audit,
+        data019_candidate_artifact_path=args.data019_candidate_artifact,
         write=not args.dry_run,
         validate=args.validate,
         validation_command=args.validation_command,
@@ -556,6 +946,7 @@ def _build_evidence(
     replay_record: Mapping[str, object],
     candidate_artifact_path: Path | None,
     auxiliary_gap_audit_path: Path | None,
+    data019_candidate_artifact_path: Path | None = None,
 ) -> dict[str, object]:
     evidence: dict[str, object] = {
         "manifest": {
@@ -567,12 +958,11 @@ def _build_evidence(
             "accepted_change": replay_record.get("accepted_change"),
             "stable_split": replay_record.get("stable_split"),
         },
-        "data019_scope": {
-            "source": "DATA-017 docs/commands.md auxiliary gap",
-            "target_path": CLICK_COMMANDS_DOCS_PATH,
+        "data020_scope": {
+            "source": "DATA-017 docs/commands.md and docs/conf.py auxiliary gaps",
+            "target_paths": [CLICK_COMMANDS_DOCS_PATH, CLICK_DOCS_CONF_PATH],
             "non_targets_intentionally_not_materialized": [
                 "CHANGES.rst",
-                "docs/conf.py",
                 "src/click/core.py",
                 "tests/test_defaults.py",
             ],
@@ -588,6 +978,12 @@ def _build_evidence(
         evidence["data017_auxiliary_gap"] = _auxiliary_gap_provenance(
             auxiliary_gap_audit_path,
             replay_id=str(replay_record.get("id") or ""),
+        )
+    if data019_candidate_artifact_path is not None:
+        candidate = _load_json_if_available(data019_candidate_artifact_path)
+        evidence["data019_docs_materializer"] = _candidate_provenance(
+            candidate,
+            data019_candidate_artifact_path,
         )
     return evidence
 
@@ -625,6 +1021,8 @@ def _auxiliary_gap_provenance(path: Path, *, replay_id: str) -> dict[str, object
             rows.append(value)
     docs_rows = [row for row in rows if row.get("path") == CLICK_COMMANDS_DOCS_PATH]
     docs_row = docs_rows[0] if docs_rows else {}
+    conf_rows = [row for row in rows if row.get("path") == CLICK_DOCS_CONF_PATH]
+    conf_row = conf_rows[0] if conf_rows else {}
     return {
         "path": str(resolved),
         "status": "loaded",
@@ -632,6 +1030,9 @@ def _auxiliary_gap_provenance(path: Path, *, replay_id: str) -> dict[str, object
         "docs_commands_classification": docs_row.get("classification"),
         "docs_commands_proposed_action_family": docs_row.get("proposed_action_family"),
         "docs_commands_validation_cost": docs_row.get("validation_cost"),
+        "docs_conf_classification": conf_row.get("classification"),
+        "docs_conf_proposed_action_family": conf_row.get("proposed_action_family"),
+        "docs_conf_validation_cost": conf_row.get("validation_cost"),
     }
 
 
@@ -763,8 +1164,61 @@ def _candidate_diff(*, before_text: str, after_text: str, path: str) -> dict[str
     }
 
 
+def _candidate_diff_for_paths(
+    before_by_path: Mapping[str, str],
+    after_by_path: Mapping[str, str],
+) -> dict[str, object]:
+    paths = sorted(set(before_by_path) | set(after_by_path))
+    diff_parts = []
+    changed_files = []
+    added = 0
+    removed = 0
+    hunks = 0
+    for path in paths:
+        before_text = before_by_path.get(path, "")
+        after_text = after_by_path.get(path, "")
+        if before_text == after_text:
+            continue
+        changed_files.append(path)
+        diff_lines = list(
+            difflib.unified_diff(
+                before_text.splitlines(),
+                after_text.splitlines(),
+                fromfile=f"a/{path}",
+                tofile=f"b/{path}",
+                lineterm="",
+            )
+        )
+        added += sum(
+            1 for line in diff_lines if line.startswith("+") and not line.startswith("+++")
+        )
+        removed += sum(
+            1 for line in diff_lines if line.startswith("-") and not line.startswith("---")
+        )
+        hunks += sum(1 for line in diff_lines if line.startswith("@@"))
+        diff_parts.extend(diff_lines)
+    return {
+        "changed_files": changed_files,
+        "diff": "\n".join(diff_parts),
+        "diff_summary": {
+            "added_line_count": added,
+            "removed_line_count": removed,
+            "hunk_count": hunks,
+        },
+    }
+
+
 def _unrelated_content_preserved(before_text: str, after_text: str, section: str) -> bool:
     return after_text.replace("\n" + section, "", 1) == before_text
+
+
+def _sphinx_conf_assignment_count(conf_py_text: str) -> int:
+    count = 0
+    for line in conf_py_text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("myst_heading_anchors") and "=" in stripped:
+            count += 1
+    return count
 
 
 def _git_changed_files(repo_path: Path) -> list[str]:

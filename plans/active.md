@@ -44,16 +44,6 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-- `DATA-020`: worker Einstein (`019e3c4b-0b2b-7761-9c59-281afdde9486`) to
-  materialize the DATA-017 `docs/conf.py` `myst_heading_anchors = 3` Sphinx
-  config assignment and rerun the DATA-019 docs build with both auxiliary docs
-  paths present. Ownership:
-  `j3/issue_pr_docs_materializer.py`,
-  `tests/test_issue_pr_docs_materializer.py`, generated `/tmp` artifacts,
-  optional compact report under `docs/`, and plan updates. Acceptance: live
-  pinned Click checkout changes only `docs/commands.md` plus `docs/conf.py`,
-  records the config assignment action, and either passes Sphinx docs
-  validation or records the exact remaining blocker.
 - `DATA-021`: worker Plato (`019e3c4b-0b56-71e3-8660-a2fff453ca2d`) to acquire
   pytest local-knowledge and prompt/spec evidence for
   `pytest-dev__pytest-issue-14442-pr-14443`, the first DATA-018 next row.
@@ -97,6 +87,18 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `DATA-020`: added the integrated Click docs materializer for exactly
+  `pallets__click-issue-2745-pr-3364`. It materialized the DATA-019
+  `docs/commands.md` section together with the DATA-017 `docs/conf.py`
+  `myst_heading_anchors = 3` assignment, with duplicate detection and compile
+  validation for the config edit. The live pinned checkout changed only
+  `docs/commands.md` and `docs/conf.py`; Sphinx docs validation passed in
+  `3.068s` with residual labels
+  `docs_commands_section_materialized`,
+  `sphinx_conf_assignment_materialized`, and `docs_validation_passed`.
+  Artifacts: `/tmp/j3-data-020-live/candidate.json`,
+  `/tmp/j3-data-020-live/report.md`, and
+  `docs/DATA_020_CLICK_DOCS_CONF_INTEGRATED_VALIDATION_2026-05-18.md`.
 - `DATA-019`: added a bounded Click command-docs materializer for exactly
   `pallets__click-issue-2745-pr-3364`. It generated and inserted only the
   `docs/commands.md` `### Multi-value parameters` section before

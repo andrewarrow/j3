@@ -2698,8 +2698,8 @@ meaningful work. Do not replace this file with a daily reset.
   `testing/test_mark.py`; full accepted-edit parity also needs auxiliary
   materializers or an explicit source/test-only exclusion for `AUTHORS` and
   `changelog/14442.bugfix.rst`, plus ranking against decoys.
-- Commit: pending.
-- Push: pending.
+- Commit: 6864938.
+- Push: succeeded.
 - Next: DATA-023 should finish the materialization coverage audit before any
   candidate source/test edit.
 - Blockers: none for readiness evidence; remaining challenges are

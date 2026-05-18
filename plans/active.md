@@ -45,7 +45,7 @@ This is the live coordinator board. Keep it current and compact.
 ### MAT-006: Remaining Boltons One-File Feature Materializer
 
 - Status: active
-- Owner: worker to be spawned by coordinator.
+- Owner: worker Popper (`019e3bdd-9514-7162-a0bc-6fdad4543684`).
 - Write scope: `j3/real_repo_feature_materializer.py`,
   `tests/test_real_repo_feature_materializer.py`, optional compact docs,
   generated live artifacts under `/tmp`, and plan updates.
@@ -63,7 +63,7 @@ This is the live coordinator board. Keep it current and compact.
 ### DATA-006: Live Issue/PR Mini Replay Preflight
 
 - Status: active
-- Owner: worker to be spawned by coordinator.
+- Owner: worker Laplace (`019e3bdd-953d-7ef0-b1d9-3c832e4c87aa`).
 - Write scope: `j3/issue_pr_preflight.py`,
   `tests/test_issue_pr_preflight.py`, optional compact report under `docs/`,
   generated live artifacts under `/tmp`, and plan updates.

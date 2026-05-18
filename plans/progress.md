@@ -1620,7 +1620,8 @@ meaningful work. Do not replace this file with a daily reset.
 
 - Owner: coordinator.
 - Files changed: `plans/active.md`, `plans/backlog.md`, `plans/progress.md`.
-- Tests: focused verification pending before worker spawn.
+- Tests: `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff
+  --check` -> passed.
 - Result: reviewed `MAT-005` and `REAL-011` worker results. The one-file
   feature gate now passes at `3/4`, but `boltons-feature-slugify-max-length`
   remains a materialization blocker, and the broader issue/PR replay path still
@@ -1628,8 +1629,11 @@ meaningful work. Do not replace this file with a daily reset.
   the remaining held-out source materializer and sends the other into
   `DATA-006` to classify what breaks first on real issue/PR replay rows before
   any edit attempt.
-- Commit: pending
-- Push: pending
-- Next: dispatch workers for `MAT-006` and `DATA-006`, then review both before
-  selecting the next hard proof.
+- Commit: d49da9f
+- Push: succeeded
+- Next: workers dispatched for `MAT-006` and `DATA-006`: Popper
+  (`019e3bdd-9514-7162-a0bc-6fdad4543684`) owns the remaining boltons feature
+  materializer, and Laplace (`019e3bdd-953d-7ef0-b1d9-3c832e4c87aa`) owns the
+  live issue/PR mini replay preflight batch. Review both before selecting the
+  next hard proof.
 - Blockers: none

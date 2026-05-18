@@ -244,6 +244,11 @@ runs/apache-python-git/metrics.json
 runs/apache-python-git/examples.jsonl
 ```
 
+For issue/PR-linked intent records, use the review-first manifest prototype in
+`docs/ISSUE_PR_MINING_MANIFEST.md`. It records issue/PR text, provenance,
+stable splits, before/after repo refs, and license/terms notes without
+committing large harvested artifacts.
+
 ## Evaluate The Corpus Model
 
 Run GreenShot-2 against the trained model:

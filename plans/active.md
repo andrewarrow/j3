@@ -29,16 +29,6 @@ This is the live coordinator board. Keep it current and compact.
 - Tests: `pytest tests/test_greenshot_7.py -q`, focused request-spec tests,
   and `git diff --check`.
 
-### `DATA-003`: Prototype issue/PR mining manifest
-
-- Owner: worker Schrodinger (`019e3b1d-5a4e-7ee0-bac3-a8ce2ab20afc`)
-- Status: active
-- Write scope: docs and a small mining/manifest prototype; no large generated
-  artifacts committed; `plans/progress.md`, `plans/active.md`.
-- Acceptance: one Apache corpus repo can produce candidate issue/PR records
-  with provenance, links, repo-before/repo-after refs, and license/terms notes.
-- Tests: focused unit tests with fixture JSON plus `git diff --check`.
-
 ## Ready Queue
 
 These are good next assignments for the next loop:
@@ -55,8 +45,9 @@ Run at most two tasks in parallel unless write scopes are plainly disjoint.
 - `TRANS-003`: blocked until the `TRANS-002` generation and ranking residuals
   have focused fixes or regression evidence; do not expand the full matrix
   until targeted `TRANS-004` evidence is recorded.
-- `DATA-004`: blocked until issue/PR mining exists; schema validation now
-  exists from `DATA-002`.
+- `DATA-004`: blocked until reviewed real issue/PR export rows are available;
+  the `DATA-003` manifest prototype exists and documents the remaining manual
+  review requirements.
 - `MODEL-002`: waiting for coordinator scoping into bounded scorer tasks based
   on the `TRANS-002` ranking clusters, especially add-keyword decoys and
   mapping key/value target features.
@@ -73,6 +64,10 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `DATA-003`: added a deterministic issue/PR transition manifest prototype
+  backed by a small `apache/airflow` fixture. The manifest records issue/PR
+  text provenance, links, before/after commit refs, stable split buckets, and
+  license/terms notes without committing large harvested artifacts.
 - `OPS-002`: added a lightweight plan consistency parser and focused pytest
   check for `plans/active.md` and `plans/backlog.md`. The check catches
   malformed task headings, invalid status values, active tasks missing from

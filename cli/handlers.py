@@ -37,7 +37,7 @@ from j3.greenfield import (
     plan_calculator_repo,
 )
 from j3.greenshot_7 import run_greenshot_7_tasks, summary_has_failures
-from j3.mining import mine_git_transitions
+from j3.mining import mine_git_transitions, mine_issue_pr_transition_manifest
 from j3.patching import plan_and_maybe_apply_patch
 from j3.prompt_intents import (
     inspect_prompt_corpus,
@@ -1435,6 +1435,20 @@ def handle_mine(args: argparse.Namespace) -> int:
     print(f"out: {result.out_path}")
     print(f"commits scanned: {result.commits_scanned}")
     print(f"transitions written: {result.transitions_written}")
+    return 0
+
+
+def handle_mine_issue_pr_manifest(args: argparse.Namespace) -> int:
+    result = mine_issue_pr_transition_manifest(
+        source_path=args.source,
+        out_path=args.out,
+        source_kind=args.source_kind,
+    )
+    print("j3 mine-issue-pr-manifest complete")
+    print(f"source: {result.source_path}")
+    print(f"repo: {result.repository}")
+    print(f"out: {result.out_path}")
+    print(f"records written: {result.records_written}")
     return 0
 
 

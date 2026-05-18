@@ -321,3 +321,33 @@ meaningful work. Do not replace this file with a daily reset.
 - Next: run `pytest tests/test_plan_consistency.py -q` after coordinator plan
   edits so stale active/backlog task drift is caught before dispatch.
 - Blockers: none
+
+### 2026-05-18 - DATA-003 - Issue/PR mining manifest prototype
+
+- Owner: worker DATA-003
+- Files changed: `j3/mining.py`, `cli/parser.py`, `cli/handlers.py`,
+  `cli/__init__.py`, `tests/test_mining.py`,
+  `tests/fixtures/mining/apache_airflow_issue_pr_fixture.json`,
+  `docs/ISSUE_PR_MINING_MANIFEST.md`, `docs/TRAINING.md`,
+  `plans/active.md`, `plans/backlog.md`, `plans/progress.md`
+- Tests: `pytest tests/test_mining.py -q` -> 3 passed;
+  `python -m py_compile j3/mining.py cli/handlers.py cli/parser.py
+  cli/__init__.py` -> passed; `python cli.py mine-issue-pr-manifest
+  --source tests/fixtures/mining/apache_airflow_issue_pr_fixture.json --out
+  /tmp/j3-data-003-apache-airflow-issue-pr-manifest.json` -> 1 record for
+  `apache/airflow`; `python -m json.tool
+  /tmp/j3-data-003-apache-airflow-issue-pr-manifest.json >/dev/null` ->
+  passed.
+- Result: added a deterministic fixture/export-driven
+  `mine-issue-pr-manifest` prototype. The manifest emits candidate
+  issue/PR-linked transition records with issue and PR text, provenance,
+  source checksums, stable SHA-256 split buckets, source links, PR base and
+  merge commit refs, changed-file hints, and license/terms notes. The checked-in
+  fixture is small and synthetic; generated harvested manifests remain outside
+  git and records are marked `unreviewed_candidate`.
+- Commit: pending worker commit
+- Push: pending worker push
+- Next: collect or export reviewed real issue/PR rows before starting
+  `DATA-004`; keep large harvested manifests out of git.
+- Blockers: `DATA-004` still needs reviewed real issue/PR export rows and
+  license/terms confirmation.

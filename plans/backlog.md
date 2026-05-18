@@ -131,7 +131,7 @@ Long-term target:
 
 ### DATA-003: Prototype issue/PR mining manifest
 
-- Status: active
+- Status: done
 - Why: serious intent data requires issue/PR text linked to accepted repo
   changes, not just commit diffs.
 - Write scope: docs and a small mining/manifest prototype; no large generated
@@ -143,8 +143,8 @@ Long-term target:
 ### DATA-004: Normalize first 25 real prompt/repo transition examples
 
 - Status: blocked
-- Blocker: depends on DATA-003 issue/PR mining; DATA-002 schema validation is
-  now available.
+- Blocker: depends on reviewed real issue/PR export rows; DATA-003 provides the
+  manifest prototype and DATA-002 provides schema validation.
 - Why: trainable prompt understanding needs real user-like task text.
 - Write scope: versioned local data file or external manifest; docs with
   provenance.
@@ -279,9 +279,9 @@ Long-term target:
 Start with these unless fresh evidence changes the order:
 
 1. `GS7-002`: add five non-calculator request-to-repo fixtures.
-2. `DATA-003`: prototype issue/PR mining manifest.
-3. `REPO-001`: summarize repo-state encoder coverage.
-4. `ACT-001`: create action coverage map from residuals.
+2. `REPO-001`: summarize repo-state encoder coverage.
+3. `ACT-001`: create action coverage map from residuals.
+4. `MODEL-001`: re-evaluate learned prompt intent baseline.
 5. Coordinator review: choose between GreenShot-7 fixture expansion, scorer
-   ranking work, or broader data provenance work based on the targeted rerun
-   and schema validation.
+   ranking work, reviewed issue/PR normalization, or broader data provenance
+   work based on the targeted rerun and schema validation.

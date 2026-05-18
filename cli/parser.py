@@ -24,6 +24,7 @@ from cli.handlers import (
     handle_inspect_prompt_corpus,
     handle_inspect_transition_assets,
     handle_mine,
+    handle_mine_issue_pr_manifest,
     handle_normalize_transition_shadow_outcomes,
     handle_outcome_summary,
     handle_patch,
@@ -324,6 +325,34 @@ def build_parser() -> argparse.ArgumentParser:
         help="maximum Python files to record from each commit (default: 20)",
     )
     mine_parser.set_defaults(handler=handle_mine)
+
+    mine_issue_pr_parser = subparsers.add_parser(
+        "mine-issue-pr-manifest",
+        help="build a candidate issue/PR transition manifest from exported JSON",
+        description=(
+            "Consume a small issue/PR export fixture and write candidate "
+            "issue/PR-linked transition records with provenance, before/after "
+            "repo refs, stable splits, and license/terms notes."
+        ),
+    )
+    mine_issue_pr_parser.add_argument(
+        "--source",
+        type=Path,
+        required=True,
+        help="JSON export with repository, issues, and pull_requests fields",
+    )
+    mine_issue_pr_parser.add_argument(
+        "--out",
+        type=Path,
+        required=True,
+        help="manifest JSON output path",
+    )
+    mine_issue_pr_parser.add_argument(
+        "--source-kind",
+        default="github_fixture",
+        help="provenance label for the export source (default: github_fixture)",
+    )
+    mine_issue_pr_parser.set_defaults(handler=handle_mine_issue_pr_manifest)
 
     train_parser = subparsers.add_parser(
         "train",

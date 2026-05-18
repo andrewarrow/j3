@@ -212,7 +212,7 @@ Long-term target:
 
 ### ACT-001: Create action coverage map from residuals
 
-- Status: active
+- Status: done
 - Why: action expansion should be evidence-led.
 - Write scope: docs or command that maps tasks/residuals to supported and
   missing structured actions.

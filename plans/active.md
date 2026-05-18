@@ -29,20 +29,6 @@ This is the live coordinator board. Keep it current and compact.
 - Tests: `pytest tests/test_repo_state.py -q`,
   `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
 
-### `ACT-001`: Create action coverage map from residuals
-
-- Owner: worker Dirac (`019e3b29-533f-7ac0-8618-b7f825bb0649`)
-- Status: active
-- Write scope: `docs/ACTION_COVERAGE_MAP.md`, optional
-  `j3/action_coverage.py` and `tests/test_action_coverage.py`, and plan
-  updates. Do not touch repo-state files or GreenShot request-spec/greenfield
-  files.
-- Acceptance: maps current residuals and classified request-to-repo gaps to
-  supported structured actions, missing actions, and ranking-only gaps, with
-  small fixture-backed tests if code is added.
-- Tests: focused action-coverage tests if code is added,
-  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
-
 ## Ready Queue
 
 These are good next assignments for the next loop:
@@ -78,6 +64,13 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `ACT-001`: added `docs/ACTION_COVERAGE_MAP.md`, separating current
+  transition residuals and GreenShot-7 classified gaps into supported repair
+  actions, new request-to-repo action needs, ranking/scorer gaps, and
+  prompt/spec or existing-repo support gaps. The map recommends tests-only
+  existing-repo support and repo-state-aware library convention slices as new
+  action work, while keeping transition repair residuals focused on scorer and
+  observation improvements.
 - `GS7-002`: added five non-calculator request-to-repo fixtures. The small
   slugify library and key/value parser now build and validate through bounded
   greenfield builders; tests-only and existing-repo convention requests are

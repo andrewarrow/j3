@@ -419,3 +419,25 @@ meaningful work. Do not replace this file with a daily reset.
 - Push: succeeded
 - Next: assign the next ready disjoint worker tasks and keep the loop active.
 - Blockers: none
+
+### 2026-05-18 - ACT-001 - Action coverage map
+
+- Owner: worker ACT-001
+- Files changed: `docs/ACTION_COVERAGE_MAP.md`, `plans/active.md`,
+  `plans/backlog.md`, `plans/progress.md`
+- Tests: `pytest tests/test_plan_consistency.py -q`; `git diff --check`
+- Result: mapped current transition residuals and GreenShot-7 classified gaps
+  to supported repair actions, missing request-to-repo action surfaces,
+  ranking/scorer gaps, and prompt/spec or existing-repo support gaps. The map
+  records that `ACT-002` resolved the only transition candidate-generation gap,
+  recommends tests-only existing-repo and repo-state-aware library convention
+  slices as new action work, and keeps remaining transition failures scoped to
+  scorer and observation improvements.
+- Commit: pending
+- Push: pending
+- Next: coordinator can split follow-up action work into `GS7-005`
+  tests-only existing-repo support, `GS7-006` repo-state-aware library
+  convention edits, and `MODEL-002` scorer slices for add-keyword decoys,
+  mapping key/value targets, boundary/literal ranking, and AST-delta
+  observation.
+- Blockers: none

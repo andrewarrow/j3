@@ -1182,8 +1182,11 @@ meaningful work. Do not replace this file with a daily reset.
   to count h11 in the score with calibration versus held-out metrics, and
   `MAT-003` to attempt the first real one-file source feature materialization
   on `h11-feature-bytesify-object-message`.
-- Commit: pending
-- Push: pending
-- Next: dispatch workers for `REAL-007` and `MAT-003`; keep `GS7-010` and
-  `GS7-011` ready for the following held-out tests-only materializers.
+- Commit: f69affa
+- Push: succeeded
+- Next: workers dispatched for `REAL-007` and `MAT-003`: Hooke
+  (`019e3ba2-e5c6-7503-9c04-a674490288ee`) owns held-out scorer integration,
+  and Harvey (`019e3ba3-1dac-7d23-9968-9769e7f5dc1d`) owns the real h11
+  one-file feature materializer. Keep `GS7-010` and `GS7-011` ready for the
+  following held-out tests-only materializers.
 - Blockers: none

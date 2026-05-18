@@ -29,7 +29,7 @@ This is the live coordinator board. Keep it current and compact.
 ### `REAL-007`: Held-out tests-only score after first h11 materializer
 
 - Status: active
-- Owner: pending worker dispatch.
+- Owner: worker Hooke (`019e3ba2-e5c6-7503-9c04-a674490288ee`).
 - Goal: rerun or extend the tests-only shadow score after `GS7-009`, counting
   the held-out h11 materialized candidate while separating calibration and
   held-out pass rates.
@@ -51,7 +51,7 @@ This is the live coordinator board. Keep it current and compact.
 ### `MAT-003`: Real one-file feature materialization probe
 
 - Status: active
-- Owner: pending worker dispatch.
+- Owner: worker Harvey (`019e3ba3-1dac-7d23-9968-9769e7f5dc1d`).
 - Goal: attempt the first real one-file source feature materialization against
   the ladder task `h11-feature-bytesify-object-message`.
 - Write scope: a focused source feature materializer module such as

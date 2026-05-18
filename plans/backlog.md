@@ -949,7 +949,7 @@ Long-term target:
 
 ### DATA-006: Live issue/PR mini replay preflight batch
 
-- Status: active
+- Status: done
 - Why: the real-repo ladder is still curated; issue/PR replay is the next
   pressure test for real user-like prompts, setup cost, validation trust, and
   local-knowledge blockers.
@@ -965,14 +965,27 @@ Long-term target:
   `git diff --check`, and the live preflight/report smoke command when
   feasible.
 
+- Completion note: added batch preflight/report support and ran the first
+  three mini replay rows live under `/tmp/j3-data-006-live-preflight`.
+  Checkout, setup, and focused baseline validation were reached for all three
+  rows before any edit attempt. The batch produced
+  `status_counts = {"blocked": 3}`, `blocker_label_counts =
+  {"validation_baseline_failed": 1,
+  "prompt_spec_ambiguous_or_incomplete": 1,
+  "local_knowledge_required": 1}`, `residual_category_counts =
+  {"validation": 1, "prompt_spec": 1, "local_knowledge": 1}`, and deferred
+  agent residual counts `{"ranking_gap": 3, "materialization_gap": 1}`.
+  Requests failed focused baseline validation on a recursive `httpbin` fixture
+  dependency; the two Click rows passed baseline validation and remain blocked
+  by prompt/spec and local-knowledge pre-edit residuals.
+
 ## Next Recommended Queue
 
 Start with these unless fresh evidence changes the order:
 
 1. `MAT-006`: attempt the remaining held-out boltons one-file feature
    materializer.
-2. `DATA-006`: run a live issue/PR mini replay preflight batch.
-3. `KNOW-003`: broaden knowledge-use attribution where scoring shows missing
+2. `KNOW-003`: broaden knowledge-use attribution where scoring shows missing
    local-knowledge evidence.
-4. `MODEL-006`: candidate-after or AST-delta observation for ranking evidence.
-5. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.
+3. `MODEL-006`: candidate-after or AST-delta observation for ranking evidence.
+4. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.

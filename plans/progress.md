@@ -1637,3 +1637,44 @@ meaningful work. Do not replace this file with a daily reset.
   live issue/PR mini replay preflight batch. Review both before selecting the
   next hard proof.
 - Blockers: none
+
+### 2026-05-18 - DATA-006 - Live issue/PR mini replay preflight batch
+
+- Owner: worker Laplace (`019e3bdd-953d-7ef0-b1d9-3c832e4c87aa`)
+- Files changed: `j3/issue_pr_preflight.py`,
+  `tests/test_issue_pr_preflight.py`,
+  `docs/DATA_006_ISSUE_PR_PREFLIGHT_2026-05-18.md`,
+  `plans/active.md`, `plans/backlog.md`, `plans/progress.md`
+- Tests: `python -m py_compile j3/issue_pr_preflight.py
+  tests/test_issue_pr_preflight.py` -> passed; `pytest
+  tests/test_issue_pr_preflight.py -q` -> 9 passed; live preflight/report
+  smoke
+  `/tmp/j3-data-006-live-preflight/.venv/bin/python -m j3.issue_pr_preflight
+  --manifest examples/issue_pr_mini_replay/manifest.json --workspace
+  /tmp/j3-data-006-live-preflight/repos --outcome
+  /tmp/j3-data-006-live-preflight/outcomes.jsonl --report
+  /tmp/j3-data-006-live-preflight/report.md --limit 3 --setup-command
+  "python -m pip install -e . pytest" --timeout-seconds 240` -> passed with
+  3 rows; `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check` -> passed.
+- Result: added batch selection, batch preflight orchestration,
+  command-stage/runtime accounting, deterministic JSONL summary, Markdown
+  report support, and a CLI for `examples/issue_pr_mini_replay/manifest.json`.
+  The live first batch ran the first three replay rows pre-edit only. All
+  rows reached checkout, setup, and focused baseline validation. Status counts
+  were `{"blocked": 3}`; blocker labels were
+  `{"validation_baseline_failed": 1,
+  "prompt_spec_ambiguous_or_incomplete": 1,
+  "local_knowledge_required": 1}`; residual categories were
+  `{"validation": 1, "prompt_spec": 1, "local_knowledge": 1}`; first failed
+  stages were `{"baseline_validation": 1, "none": 2}`; deferred agent
+  residual labels were `{"ranking_gap": 3, "materialization_gap": 1}`.
+  Requests failed focused baseline validation on a recursive `httpbin` fixture
+  dependency; both Click rows passed baseline validation and remained blocked
+  by prompt/spec or local-knowledge pre-edit residual labels.
+- Commit: pending
+- Push: pending
+- Next: feed the live preflight rows into local-knowledge and validation
+  recipe work before attempting issue/PR candidate edits.
+- Blockers: none for DATA-006; the Requests row records a validation recipe
+  blocker, not a candidate-edit failure.

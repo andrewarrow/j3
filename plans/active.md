@@ -60,22 +60,6 @@ This is the live coordinator board. Keep it current and compact.
   tests/test_plan_consistency.py -q`, `git diff --check`, and live targeted
   validation when a candidate is materialized.
 
-### DATA-006: Live Issue/PR Mini Replay Preflight
-
-- Status: active
-- Owner: worker Laplace (`019e3bdd-953d-7ef0-b1d9-3c832e4c87aa`).
-- Write scope: `j3/issue_pr_preflight.py`,
-  `tests/test_issue_pr_preflight.py`, optional compact report under `docs/`,
-  generated live artifacts under `/tmp`, and plan updates.
-- Acceptance: run the `DATA-004` mini replay rows through a live or live-like
-  pre-edit preflight path for at least the first bounded batch of records;
-  record checkout/setup/focused-validation status, runtime, blocker labels,
-  residual categories, and whether failures are environment, validation,
-  prompt/spec, ranking, materialization, or local-knowledge blockers before
-  any edit attempt. Add small batch/report support if needed.
-- Required checks: focused issue/PR preflight tests, `pytest
-  tests/test_plan_consistency.py -q`, `git diff --check`, and the live
-  preflight/report smoke command when feasible.
 
 ## Ready Queue
 
@@ -110,6 +94,20 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `DATA-006`: added issue/PR replay batch preflight, JSONL summary, Markdown
+  report support, and command runtime/stage accounting. The live first batch
+  under `/tmp/j3-data-006-live-preflight` ran the first three
+  `DATA-004` rows pre-edit only; all reached baseline validation, with status
+  counts `{"blocked": 3}`, blocker labels
+  `{"validation_baseline_failed": 1,
+  "prompt_spec_ambiguous_or_incomplete": 1,
+  "local_knowledge_required": 1}`, residual categories
+  `{"validation": 1, "prompt_spec": 1, "local_knowledge": 1}`, command-stage
+  counts showing checkout, setup, and baseline validation reached for all
+  three rows, and deferred agent residual labels
+  `{"ranking_gap": 3, "materialization_gap": 1}`. JSONL:
+  `/tmp/j3-data-006-live-preflight/outcomes.jsonl`; compact report:
+  `docs/DATA_006_ISSUE_PR_PREFLIGHT_2026-05-18.md`.
 - `REAL-011`: reran the one-file feature shadow score after `MAT-004` and
   integrated the concurrent `MAT-005` humanize materializer. The live `/tmp`
   run against pinned iniconfig, h11, and humanize checkouts scored

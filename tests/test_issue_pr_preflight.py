@@ -7,10 +7,15 @@ from pathlib import Path
 from j3.issue_pr_preflight import (
     Command,
     classify_pre_edit_residuals,
+    first_failed_stage,
     load_issue_pr_replay_manifest,
+    run_issue_pr_replay_preflight_batch,
     run_issue_pr_replay_preflight,
     select_issue_pr_replay_record,
+    select_issue_pr_replay_records,
+    summarize_issue_pr_preflight_outcomes,
     write_issue_pr_preflight_jsonl,
+    write_issue_pr_preflight_report,
 )
 
 
@@ -27,6 +32,16 @@ def test_loads_manifest_and_selects_replay_row() -> None:
     assert record["repo"] == "psf/requests"
     assert record["repo_before_ref"]["sha"] == "0b401c76b6e80a4eecf3c690085b2553f6e261ca"
     assert record["validation"]["command"] == "pytest tests/test_requests.py -q"
+
+
+def test_selects_bounded_replay_batch_in_manifest_order() -> None:
+    manifest = load_issue_pr_replay_manifest(MANIFEST_PATH)
+    records = select_issue_pr_replay_records(manifest, limit=2)
+
+    assert [record["id"] for record in records] == [
+        REQUESTS_REPLAY_ID,
+        CLICK_REPLAY_ID,
+    ]
 
 
 def test_preflight_records_checkout_setup_validation_and_local_knowledge(
@@ -57,6 +72,15 @@ def test_preflight_records_checkout_setup_validation_and_local_knowledge(
     assert row["repo"] == "psf/requests"
     assert row["validation_command"] == "pytest tests/test_requests.py -q"
     assert row["status"] == "blocked"
+    assert row["runtime_seconds"] >= 0
+    assert row["command_stages_reached"] == [
+        "checkout_clone",
+        "checkout_ref",
+        "checkout_verify",
+        "setup",
+        "baseline_validation",
+    ]
+    assert row["first_failed_stage"] == "none"
     assert row["blocker_labels"] == ["local_knowledge_required"]
     assert row["residual_category"] == "local_knowledge"
     assert [result["name"] for result in row["command_results"]] == [
@@ -149,8 +173,77 @@ def test_validation_failure_is_validation_blocker(tmp_path: Path) -> None:
     assert row["status"] == "blocked"
     assert row["residual_category"] == "validation"
     assert row["blocker_labels"] == ["validation_baseline_failed"]
+    assert row["first_failed_stage"] == "baseline_validation"
     assert row["command_results"][-1]["name"] == "baseline_validation"
     assert row["command_results"][-1]["exit_code"] == 2
+
+
+def test_batch_summary_and_report_include_counts_and_deferred_labels(
+    tmp_path: Path,
+) -> None:
+    manifest = load_issue_pr_replay_manifest(MANIFEST_PATH)
+    records = select_issue_pr_replay_records(manifest, limit=2)
+    sha_by_prefix = {
+        record["repo_before_ref"]["sha"][:12]: record["repo_before_ref"]["sha"]
+        for record in records
+    }
+
+    def runner(command: Command, cwd: Path | None, timeout_seconds: int):
+        command_text = _command_text(command)
+        if command_text == "git rev-parse HEAD":
+            cwd_text = str(cwd)
+            sha = next(
+                full_sha
+                for prefix, full_sha in sha_by_prefix.items()
+                if prefix in cwd_text
+            )
+            return subprocess.CompletedProcess(command, returncode=0, stdout=f"{sha}\n", stderr="")
+        return subprocess.CompletedProcess(command, returncode=0, stdout="", stderr="")
+
+    outcomes = run_issue_pr_replay_preflight_batch(
+        manifest_path=MANIFEST_PATH,
+        workspace=tmp_path / "work",
+        limit=2,
+        runner=runner,
+    )
+    outcome_path = write_issue_pr_preflight_jsonl(
+        outcomes,
+        tmp_path / "outcomes.jsonl",
+    )
+    summary = summarize_issue_pr_preflight_outcomes(
+        outcomes,
+        outcome_path=outcome_path,
+        report_path=tmp_path / "report.md",
+        batch_runtime_seconds=1.25,
+    )
+    report_path = write_issue_pr_preflight_report(
+        outcomes,
+        tmp_path / "report.md",
+        summary=summary,
+    )
+
+    assert len(outcomes) == 2
+    assert summary["row_count"] == 2
+    assert summary["status_counts"] == {"blocked": 2}
+    assert summary["blocker_label_counts"] == {
+        "local_knowledge_required": 1,
+        "prompt_spec_ambiguous_or_incomplete": 1,
+    }
+    assert summary["residual_category_counts"] == {
+        "local_knowledge": 1,
+        "prompt_spec": 1,
+    }
+    assert summary["runtime_seconds"] == 1.25
+    assert summary["command_stage_counts"]["baseline_validation"] == 2
+    assert summary["first_failed_stage_counts"] == {"none": 2}
+    assert summary["deferred_agent_residual_label_counts"] == {
+        "materialization_gap": 1,
+        "ranking_gap": 2,
+    }
+    report = report_path.read_text(encoding="utf-8")
+    assert "Pre-edit replay preflight only" in report
+    assert REQUESTS_REPLAY_ID in report
+    assert CLICK_REPLAY_ID in report
 
 
 def test_writes_preflight_outcomes_as_jsonl(tmp_path: Path) -> None:
@@ -185,6 +278,26 @@ def test_classification_defers_agent_stage_labels() -> None:
 
     assert category == "none"
     assert blockers == []
+
+
+def test_first_failed_stage_returns_none_when_commands_pass() -> None:
+    manifest = load_issue_pr_replay_manifest(MANIFEST_PATH)
+    record = select_issue_pr_replay_record(manifest, REQUESTS_REPLAY_ID)
+    sha = record["repo_before_ref"]["sha"]
+
+    def runner(command: Command, cwd: Path | None, timeout_seconds: int):
+        command_text = _command_text(command)
+        stdout = f"{sha}\n" if command_text == "git rev-parse HEAD" else ""
+        return subprocess.CompletedProcess(command, returncode=0, stdout=stdout, stderr="")
+
+    outcome = run_issue_pr_replay_preflight(
+        manifest_path=MANIFEST_PATH,
+        replay_id=REQUESTS_REPLAY_ID,
+        workspace=Path("/tmp/j3-test-issue-pr-preflight"),
+        runner=runner,
+    )
+
+    assert first_failed_stage(outcome.command_results) == "none"
 
 
 def _command_text(command: Command) -> str:

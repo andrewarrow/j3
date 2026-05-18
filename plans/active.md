@@ -44,7 +44,8 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-- `DATA-024`: worker to attempt a source/test-only pytest #14442 candidate for
+- `DATA-024`: worker Mill (`019e3c60-cfa4-7083-b87d-ab07caff5b22`) to attempt
+  a source/test-only pytest #14442 candidate for
   `pytest-dev__pytest-issue-14442-pr-14443`, explicitly excluding `AUTHORS`
   and `changelog/14442.bugfix.rst` from this slice. Ownership: a bounded
   pytest issue/PR candidate-attempt module/path plus focused tests, generated
@@ -54,12 +55,13 @@ This is the live coordinator board. Keep it current and compact.
   `testing/test_mark.py`, records candidate diff/actions/mutation scope,
   validates with `pytest testing/test_config.py testing/test_mark.py -q`, and
   preserves auxiliary-path residuals honestly.
-- `MODEL-006`: worker to add candidate-after or AST-delta observation for
-  ranking evidence without enabling production ranking. Ownership: focused
-  transition/candidate scoring modules and tests only. Acceptance: scorer
-  inputs expose candidate-after/delta signals for held-out residual families
-  and issue/PR candidate records can feed those signals, with focused tests
-  and no guarded-use decision change.
+- `MODEL-006`: worker Ohm (`019e3c60-cfc9-7862-b421-9644689de2ce`) to add
+  candidate-after or AST-delta observation for ranking evidence without
+  enabling production ranking. Ownership: focused transition/candidate scoring
+  modules and tests only. Acceptance: scorer inputs expose
+  candidate-after/delta signals for held-out residual families and issue/PR
+  candidate records can feed those signals, with focused tests and no
+  guarded-use decision change.
 
 ## Ready Queue
 

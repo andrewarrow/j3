@@ -2764,3 +2764,16 @@ meaningful work. Do not replace this file with a daily reset.
 - Push: succeeded.
 - Next: workers dispatched for `DATA-024` and `MODEL-006`.
 - Blockers: none.
+
+### 2026-05-18 - Worker IDs - DATA-024 / MODEL-006
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/progress.md`.
+- Tests: pending worker-ID checkpoint checks.
+- Result: recorded worker Mill
+  (`019e3c60-cfa4-7083-b87d-ab07caff5b22`) for `DATA-024` and worker Ohm
+  (`019e3c60-cfc9-7862-b421-9644689de2ce`) for `MODEL-006`.
+- Commit: pending coordinator checkpoint commit.
+- Push: pending.
+- Next: continue non-overlapping coordinator review while both workers run.
+- Blockers: none.

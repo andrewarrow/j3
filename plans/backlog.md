@@ -114,7 +114,7 @@ Long-term target:
 
 ### GS7-005: Add tests-only existing-repo support for one-file libraries
 
-- Status: ready
+- Status: active
 - Why: `ACT-001` classified `slugify_tests_only_existing` as a request-to-repo
   action coverage gap, not a repair ranking problem.
 - Write scope: existing-repo request planning/building for tests-only library
@@ -330,7 +330,7 @@ Long-term target:
 
 ### SCALE-001: Draft local pretraining feasibility inventory
 
-- Status: ready
+- Status: active
 - Why: the frontier target needs a sober estimate of data, compute, objectives,
   and model shapes.
 - Write scope: focused doc under `docs/`, with links to current local data

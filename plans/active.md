@@ -16,17 +16,38 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-No active worker tasks are recorded after `MODEL-001` and `GS7-004` completion.
-The coordinator should dispatch the next ready task unless pausing for review.
+### `SCALE-001`: Draft local pretraining feasibility inventory
+
+- Owner: worker pending assignment
+- Status: active
+- Write scope: focused doc under `docs/`, plus minimal plan updates. Do not
+  touch GreenShot implementation files or prompt-intent model code.
+- Acceptance: separates near-term local encoders from frontier-scale
+  language/code pretraining; lists current local data sources, missing data,
+  objective/model-shape options, compute assumptions, and go/no-go gates.
+- Tests: `pytest tests/test_plan_consistency.py -q` and `git diff --check`.
+
+### `GS7-005`: Add tests-only existing-repo support for one-file libraries
+
+- Owner: worker pending assignment
+- Status: active
+- Write scope: existing-repo request planning/building for tests-only one-file
+  library support, fixtures, focused tests, CLI behavior if needed, and plan
+  updates. Do not touch pretraining docs or prompt-intent model code.
+- Acceptance: can inspect an existing one-file library, create a pytest file
+  without changing implementation, validate it, and record a structured
+  request-to-repo outcome for the `slugify_tests_only_existing` gap.
+- Tests: focused existing-repo/GreenShot tests,
+  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
 
 ## Ready Queue
 
 These are good next assignments for the next loop:
 
-1. `SCALE-001`: draft local pretraining feasibility inventory.
-2. `GS7-005`: add tests-only existing-repo support for one-file libraries.
-3. `GS7-006`: add repo-state-aware library convention edits.
-4. `MODEL-003`: scorer residual slice for add-keyword decoys.
+1. `GS7-006`: add repo-state-aware library convention edits.
+2. `MODEL-003`: scorer residual slice for add-keyword decoys.
+3. `MODEL-004`: scorer residual slice for mapping key/value targets.
+4. `SCALE-002`: define data provenance and release policy.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 

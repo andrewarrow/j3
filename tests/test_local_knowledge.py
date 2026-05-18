@@ -7,9 +7,11 @@ import pytest
 
 from j3.local_knowledge import (
     CLICK_REPLAY_REQUIRED_KNOWLEDGE_CATEGORIES,
+    PYTEST_STRICT_ADDOPTS_REQUIRED_KNOWLEDGE_CATEGORIES,
     REQUESTS_REPLAY_REQUIRED_KNOWLEDGE_CATEGORIES,
     build_click_replay_local_knowledge_records,
     build_knowledge_use_record,
+    build_pytest_strict_addopts_local_knowledge_records,
     build_requests_replay_local_knowledge_records,
     extract_local_knowledge_records,
     validate_local_knowledge_record,
@@ -577,6 +579,231 @@ def _requests_replay_row() -> dict[str, object]:
     }
 
 
+def _write_pytest_strict_repo(repo: Path) -> None:
+    (repo / "src" / "_pytest" / "config").mkdir(parents=True)
+    (repo / "testing").mkdir()
+    (repo / "changelog").mkdir()
+    (repo / "pyproject.toml").write_text(
+        """[project]
+name = "pytest"
+version = "9.1.0.dev0"
+
+[tool.pytest.ini_options]
+addopts = [ "-rfEX", "-p", "pytester" ]
+""",
+        encoding="utf-8",
+    )
+    (repo / "AUTHORS").write_text(
+        """Parth Patel
+Patrick Hayes
+Paul Müller
+Peter Gessler
+Prakhar Gurunani
+Prashant Anand
+""",
+        encoding="utf-8",
+    )
+    (repo / "changelog" / "13484.bugfix.rst").write_text(
+        "Fixed ``-W`` option values being duplicated.\n",
+        encoding="utf-8",
+    )
+    (repo / "src" / "_pytest" / "__init__.py").write_text("", encoding="utf-8")
+    (repo / "src" / "_pytest" / "config" / "__init__.py").write_text(
+        '''from __future__ import annotations
+
+import copy
+import os
+import shlex
+
+
+class UsageError(Exception):
+    pass
+
+
+class Config:
+    def __init__(self):
+        self.args = []
+        self.option = object()
+        self._inicfg = {}
+        self._inicache = {}
+        self.known_args_namespace = None
+
+    def getini(self, name):
+        return self._inicfg.get(name)
+
+    def _validate_args(self, args, source):
+        return list(args)
+
+    def _warn_or_fail_if_strict(self, message: str) -> None:
+        strict_config = self.getini("strict_config")
+        if strict_config is None:
+            strict_config = self.getini("strict")
+        if strict_config:
+            raise UsageError(message)
+
+    def _get_unknown_ini_keys(self) -> set[str]:
+        known_keys = {"addopts", "strict", "strict_config", "strict_markers"}
+        return self._inicfg.keys() - known_keys
+
+    def parse(self, args: list[str], addopts: bool = True) -> None:
+        assert self.args == []
+        if addopts:
+            env_addopts = os.environ.get("PYTEST_ADDOPTS", "")
+            if len(env_addopts):
+                args[:] = self._validate_args(
+                    shlex.split(env_addopts), "via PYTEST_ADDOPTS"
+                ) + args
+
+        self._parser.addini("addopts", "Extra command line options", "args")
+        if addopts:
+            args[:] = self._validate_args(
+                self.getini("addopts"), "via addopts config"
+            ) + args
+
+        self.known_args_namespace = self._parser.parse_known_args(
+            args, namespace=copy.copy(self.option)
+        )
+''',
+        encoding="utf-8",
+    )
+    (repo / "testing" / "test_config.py").write_text(
+        '''from __future__ import annotations
+
+import pytest
+
+
+class TestParseIni:
+    @pytest.mark.parametrize("option_name", ["strict_config", "strict"])
+    def test_strict_config_ini_option(
+        self, pytester: pytest.Pytester, option_name: str
+    ) -> None:
+        pytester.makeini(
+            f"""
+            [pytest]
+            unknown_option = 1
+            {option_name} = True
+            """
+        )
+        result = pytester.runpytest()
+        result.stderr.fnmatch_lines("ERROR: Unknown config option: unknown_option")
+        assert result.ret == pytest.ExitCode.USAGE_ERROR
+
+
+class TestInvocationVariants:
+    def test_addopts_from_ini_not_concatenated(
+        self, pytester: pytest.Pytester
+    ) -> None:
+        pytester.makeini(
+            """
+            [pytest]
+            addopts=-o
+            """
+        )
+        with pytest.raises(SystemExit):
+            pytester.parseconfig("cache_dir=ignored")
+''',
+        encoding="utf-8",
+    )
+    (repo / "testing" / "test_mark.py").write_text(
+        '''from __future__ import annotations
+
+import pytest
+
+
+@pytest.mark.parametrize(
+    "option_name", ["--strict-markers", "--strict", "strict_markers", "strict"]
+)
+def test_strict_prohibits_unregistered_markers(
+    pytester: pytest.Pytester, option_name: str
+) -> None:
+    pytester.makepyfile(
+        """
+        import pytest
+        @pytest.mark.unregisteredmark
+        def test_hello():
+            pass
+        """
+    )
+    if option_name in ("strict_markers", "strict"):
+        pytester.makeini(
+            f"""
+            [pytest]
+            {option_name} = true
+            """
+        )
+        result = pytester.runpytest()
+    else:
+        result = pytester.runpytest(option_name)
+    assert result.ret != 0
+    result.stdout.fnmatch_lines(
+        ["'unregisteredmark' not found in `markers` configuration option"]
+    )
+''',
+        encoding="utf-8",
+    )
+
+
+def _pytest_strict_replay_row() -> dict[str, object]:
+    return {
+        "id": "pytest-dev__pytest-issue-14442-pr-14443",
+        "repo": "pytest-dev/pytest",
+        "prompt_text": (
+            "Fix issue #14442: `--strict-markers` and `--strict-config` "
+            "in `addopts` silently stopped working."
+        ),
+        "prompt_source": {
+            "issue_number": 14442,
+            "issue_title": (
+                "`--strict-markers` / `--strict-config` via `addopts` "
+                "silently stopped working (pytest 9 regression)"
+            ),
+            "issue_url": "https://github.com/pytest-dev/pytest/issues/14442",
+            "pull_request_number": 14443,
+            "pull_request_title": "Fix strict options from addopts",
+            "pull_request_url": "https://github.com/pytest-dev/pytest/pull/14443",
+        },
+        "repo_before_ref": {
+            "provider": "github",
+            "repo": "pytest-dev/pytest",
+            "branch": "main",
+            "sha": "8f81c76744daf72d4f77cfc8423f4bdc60733d78",
+        },
+        "accepted_change": {
+            "kind": "merged_pull_request",
+            "pull_request_url": "https://github.com/pytest-dev/pytest/pull/14443",
+            "diff_url": "https://github.com/pytest-dev/pytest/pull/14443.diff",
+            "merge_commit_sha": "a481f264d70ac3d053d5f7408f4ac1ec439d0c2f",
+            "changed_files": [
+                "AUTHORS",
+                "changelog/14442.bugfix.rst",
+                "src/_pytest/config/__init__.py",
+                "testing/test_config.py",
+                "testing/test_mark.py",
+            ],
+        },
+        "validation": {
+            "command": "pytest testing/test_config.py testing/test_mark.py -q",
+            "source": "inferred_from_changed_tests",
+            "availability": "partial",
+        },
+        "provenance_license": {
+            "repository_url": "https://github.com/pytest-dev/pytest",
+            "license_spdx": "MIT",
+        },
+        "stable_split": {
+            "method": "sha256(id) % 100",
+            "bucket": 33,
+            "split": "train",
+        },
+        "initial_residual_labels": [
+            "prompt_spec_parsing_gap",
+            "local_knowledge_gap",
+            "validation_gap",
+            "ranking_gap",
+        ],
+    }
+
+
 def test_extract_local_knowledge_records_emit_wedge_record_families(
     tmp_path: Path,
 ) -> None:
@@ -915,6 +1142,108 @@ def test_requests_replay_local_knowledge_records_cover_required_categories(
     ]
 
     output = write_local_knowledge_jsonl(records, tmp_path / "requests_records.jsonl")
+    output_text = output.read_text(encoding="utf-8")
+    assert "raw_source" not in output_text
+    assert "source_text" not in output_text
+
+
+def test_pytest_strict_addopts_local_knowledge_records_cover_required_categories(
+    tmp_path: Path,
+) -> None:
+    _write_pytest_strict_repo(tmp_path)
+
+    records = build_pytest_strict_addopts_local_knowledge_records(
+        tmp_path,
+        _pytest_strict_replay_row(),
+        retrieved_at="2026-05-18T00:00:00Z",
+        setup_commands=["python -m pip install -e . pytest"],
+        baseline_validation_commands=[
+            "pytest testing/test_config.py testing/test_mark.py -q"
+        ],
+    )
+
+    assert {record["record_type"] for record in records} == {
+        "library_idiom_record",
+        "pytest_pattern_record",
+        "repo_changed_file_context_record",
+        "validation_recipe_record",
+    }
+
+    categories = {
+        record["data"]["knowledge_category"]  # type: ignore[index]
+        for record in records
+        if isinstance(record["data"], dict)
+    }
+    assert categories == set(PYTEST_STRICT_ADDOPTS_REQUIRED_KNOWLEDGE_CATEGORIES)
+
+    for record in records:
+        validate_local_knowledge_record(record)
+        assert record["split"] == "train"
+        assert record["links"]["task_ids"] == [
+            "pytest-dev__pytest-issue-14442-pr-14443"
+        ]
+        assert record["links"]["residual_labels"] == ["local_knowledge_gap"]
+
+    by_category = {
+        record["data"]["knowledge_category"]: record
+        for record in records
+        if isinstance(record["data"], dict)
+    }
+    changed_context = by_category["repo_changed_file_context"]["data"]
+    assert isinstance(changed_context, dict)
+    assert changed_context["changed_files"] == [
+        "AUTHORS",
+        "changelog/14442.bugfix.rst",
+        "src/_pytest/config/__init__.py",
+        "testing/test_config.py",
+        "testing/test_mark.py",
+    ]
+    assert changed_context["auxiliary_files"] == [
+        "AUTHORS",
+        "changelog/14442.bugfix.rst",
+    ]
+
+    validation = by_category["focused_validation_recipe"]["data"]
+    assert isinstance(validation, dict)
+    assert validation["focused_commands"] == [
+        "pytest testing/test_config.py testing/test_mark.py -q"
+    ]
+    assert validation["required_knowledge_categories"] == list(
+        PYTEST_STRICT_ADDOPTS_REQUIRED_KNOWLEDGE_CATEGORIES
+    )
+
+    addopts = by_category["pytest_strict_addopts_behavior"]["data"]
+    assert isinstance(addopts, dict)
+    source_evidence = addopts["source_evidence"]
+    assert isinstance(source_evidence, dict)
+    override_ini = source_evidence["override_ini_handling"]
+    assert isinstance(override_ini, dict)
+    assert override_ini["imports_parse_override_ini"] is False
+    assert override_ini["parse_calls_parse_override_ini"] is False
+
+    semantics = by_category["pytest_strict_markers_config_semantics"]["data"]
+    assert isinstance(semantics, dict)
+    strict_source = semantics["source_evidence"]
+    assert isinstance(strict_source, dict)
+    assert strict_source["strict_ini_gets"] == ["strict", "strict_config"]
+
+    patterns = by_category["pytest_repo_test_patterns"]["data"]
+    assert isinstance(patterns, dict)
+    test_evidence = patterns["test_evidence"]
+    assert isinstance(test_evidence, dict)
+    assert "pytester.runpytest" in test_evidence["pytester_tools"]
+
+    changelog = by_category["pytest_changelog_fragment_convention"]["data"]
+    assert isinstance(changelog, dict)
+    assert changelog["changelog_evidence"]["path"] == "changelog/14442.bugfix.rst"  # type: ignore[index]
+    assert changelog["changelog_evidence"]["exists_in_repo_before"] is False  # type: ignore[index]
+
+    authors = by_category["pytest_authors_convention"]["data"]
+    assert isinstance(authors, dict)
+    assert authors["authors_evidence"]["expected_new_entry"] == "Praneeth Kodumagulla"  # type: ignore[index]
+    assert authors["authors_evidence"]["expected_entry_present_in_repo_before"] is False  # type: ignore[index]
+
+    output = write_local_knowledge_jsonl(records, tmp_path / "pytest_records.jsonl")
     output_text = output.read_text(encoding="utf-8")
     assert "raw_source" not in output_text
     assert "source_text" not in output_text

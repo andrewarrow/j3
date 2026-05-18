@@ -44,15 +44,9 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-- `DATA-021`: worker Plato (`019e3c4b-0b56-71e3-8660-a2fff453ca2d`) to acquire
-  pytest local-knowledge and prompt/spec evidence for
-  `pytest-dev__pytest-issue-14442-pr-14443`, the first DATA-018 next row.
-  Ownership: focused issue/PR prompt/spec and/or local-knowledge modules/tests,
-  generated `/tmp` evidence, optional compact report under `docs/`, and plan
-  updates. Acceptance: emit machine-readable evidence for strict `addopts`,
-  strict markers/config semantics, changed-file context, pytest test patterns,
-  focused validation recipe, changelog/AUTHORS conventions, and remaining
-  readiness blockers without attempting candidate edits.
+None currently recorded. The coordinator should review completed DATA-020 and
+DATA-021 results, then dispatch the next bounded ready task or record a
+concrete blocker.
 
 ## Ready Queue
 
@@ -87,6 +81,23 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `DATA-021`: added normalized prompt/spec evidence and pytest local-knowledge
+  extraction for exactly `pytest-dev__pytest-issue-14442-pr-14443`. The
+  prompt/spec row covers minimal reproduction, observed behavior, expected
+  behavior, affected API/surface, input shape, acceptance test shape, strict
+  addopts behavior, and strict markers/config semantics. The local-knowledge
+  JSONL emits seven records covering changed-file context for `AUTHORS`,
+  `changelog/14442.bugfix.rst`, `src/_pytest/config/__init__.py`,
+  `testing/test_config.py`, and `testing/test_mark.py`, plus DATA-018 focused
+  validation, repo test patterns, changelog/AUTHORS conventions, provenance,
+  and split. No candidate source edits were attempted. Artifacts:
+  `/tmp/j3-data-021-pytest-14442-spec.jsonl`,
+  `/tmp/j3-data-021-pytest-14442-spec.md`,
+  `/tmp/j3-data-021-pytest-14442-knowledge.jsonl`, and
+  `docs/DATA_021_PYTEST_STRICT_ADDOPTS_EVIDENCE_2026-05-18.md`. Remaining
+  blockers are candidate-readiness refresh, ranking evidence, and deciding
+  whether a future attempt is source/test-only or includes auxiliary
+  materializers for `AUTHORS` and `changelog/14442.bugfix.rst`.
 - `DATA-020`: added the integrated Click docs materializer for exactly
   `pallets__click-issue-2745-pr-3364`. It materialized the DATA-019
   `docs/commands.md` section together with the DATA-017 `docs/conf.py`

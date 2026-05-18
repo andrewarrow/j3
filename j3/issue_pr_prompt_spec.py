@@ -19,6 +19,7 @@ ISSUE_PR_PROMPT_SPEC_SCHEMA_VERSION = "issue-pr-prompt-spec-v1"
 CLICK_DEFAULT_MAP_REPLAY_ID = "pallets__click-issue-2745-pr-3364"
 REQUESTS_PREPARE_BODY_REPLAY_ID = "psf__requests-issue-7432-pr-7433"
 CLICK_SEMVER_DEFAULT_REPLAY_ID = "pallets__click-issue-3298-pr-3299"
+PYTEST_STRICT_ADDOPTS_REPLAY_ID = "pytest-dev__pytest-issue-14442-pr-14443"
 DEFAULT_MAP_REQUIRED_FIELDS = (
     "minimal_reproduction",
     "observed_behavior",
@@ -53,6 +54,16 @@ CLICK_SEMVER_DEFAULT_REQUIRED_FIELDS = (
     "empty_string_check_scope",
     "third_party_semver_version_reproduction_context",
 )
+PYTEST_STRICT_ADDOPTS_REQUIRED_FIELDS = (
+    "minimal_reproduction",
+    "observed_behavior",
+    "expected_behavior",
+    "affected_api_symbol",
+    "input_shape",
+    "acceptance_test_shape",
+    "strict_addopts_behavior",
+    "strict_markers_config_semantics",
+)
 
 
 def build_issue_pr_prompt_spec(
@@ -78,6 +89,12 @@ def build_issue_pr_prompt_spec(
         )
     if replay_id == CLICK_SEMVER_DEFAULT_REPLAY_ID:
         return _click_semver_default_prompt_spec(
+            manifest=manifest,
+            manifest_path=manifest_path,
+            record=record,
+        )
+    if replay_id == PYTEST_STRICT_ADDOPTS_REPLAY_ID:
+        return _pytest_strict_addopts_prompt_spec(
             manifest=manifest,
             manifest_path=manifest_path,
             record=record,
@@ -219,6 +236,8 @@ def _prompt_spec_report_title(specs: Sequence[Mapping[str, object]]) -> str:
         return "DATA-011 Requests Prepare Body Prompt Spec"
     if kinds == {"click_semver_non_string_default_help"}:
         return "DATA-013 Click Semver Default Prompt Spec"
+    if kinds == {"pytest_strict_addopts_config"}:
+        return "DATA-021 Pytest Strict Addopts Prompt Spec"
     return "Issue/PR Prompt Spec Report"
 
 
@@ -1027,6 +1046,295 @@ def _click_semver_default_prompt_spec(
     }
 
 
+def _pytest_strict_addopts_prompt_spec(
+    *,
+    manifest: Mapping[str, object],
+    manifest_path: Path | None,
+    record: Mapping[str, object],
+) -> dict[str, object]:
+    prompt_source = _mapping(record.get("prompt_source"))
+    accepted_change = _mapping(record.get("accepted_change"))
+    validation = _mapping(record.get("validation"))
+    issue_url = str(prompt_source.get("issue_url") or "")
+    pr_url = str(prompt_source.get("pull_request_url") or "")
+    diff_url = str(accepted_change.get("diff_url") or "")
+    validation_command = str(
+        validation.get("command") or "pytest testing/test_config.py testing/test_mark.py -q"
+    )
+    knowledge_path = "/tmp/j3-data-021-pytest-14442-knowledge.jsonl"
+    field_provenance = {
+        "minimal_reproduction": [
+            "github_issue_14442_compact_manifest",
+            "github_pr_14443_diff",
+        ],
+        "observed_behavior": [
+            "github_issue_14442_compact_manifest",
+            "data_018_pytest_preflight",
+        ],
+        "expected_behavior": [
+            "github_pr_14443_diff",
+            "know_data_021_pytest_strict_addopts_behavior",
+        ],
+        "affected_api_symbol": [
+            "github_pr_14443_diff",
+            "know_data_021_repo_changed_file_context",
+        ],
+        "input_shape": [
+            "github_issue_14442_compact_manifest",
+            "github_pr_14443_diff",
+        ],
+        "acceptance_test_shape": [
+            "github_pr_14443_diff",
+            "data_018_pytest_preflight",
+            "know_data_021_pytest_repo_test_patterns",
+        ],
+        "strict_addopts_behavior": [
+            "github_pr_14443_diff",
+            "know_data_021_pytest_strict_addopts_behavior",
+        ],
+        "strict_markers_config_semantics": [
+            "github_pr_14443_diff",
+            "know_data_021_pytest_strict_markers_config_semantics",
+        ],
+    }
+    normalized_fields = {
+        "minimal_reproduction": {
+            "kind": "pytest_strict_options_from_addopts",
+            "config_file": {
+                "section": "pytest",
+                "option": "addopts",
+                "values": ["--strict-markers", "--strict-config"],
+            },
+            "strict_config_case": {
+                "ini_body": [
+                    "[pytest]",
+                    "unknown_option = 1",
+                    "addopts = --strict-config",
+                ],
+                "operation": "pytester.runpytest()",
+            },
+            "strict_markers_case": {
+                "ini_body": ["[pytest]", "addopts = --strict-markers"],
+                "test_body_shape": "@pytest.mark.unregisteredmark on a test function",
+                "operation": "pytester.runpytest()",
+            },
+        },
+        "observed_behavior": {
+            "repo_before_ref": "8f81c76744daf72d4f77cfc8423f4bdc60733d78",
+            "failure_mode": "strict_options_from_addopts_silently_ignored",
+            "strict_config_effect_before_fix": (
+                "Unknown configuration keys only warn instead of raising UsageError "
+                "when --strict-config is supplied via addopts."
+            ),
+            "strict_markers_effect_before_fix": (
+                "Unregistered marks are not rejected when --strict-markers is "
+                "supplied via addopts."
+            ),
+            "baseline_validation": {
+                "source": "DATA-018",
+                "command": validation_command,
+                "repo_before_result": "353 passed, 2 xfailed in 3.29s",
+            },
+        },
+        "expected_behavior": {
+            "behavior": "apply_strict_options_declared_in_addopts",
+            "strict_config_result": (
+                "Unknown config option fails with pytest.ExitCode.USAGE_ERROR "
+                "when addopts contains --strict-config."
+            ),
+            "strict_markers_result": (
+                "Unregistered marker collection fails when addopts contains "
+                "--strict-markers."
+            ),
+            "accepted_fix_shape": (
+                "After parsing command-line plus addopts, re-apply override-ini "
+                "values into Config._inicfg and clear Config._inicache once."
+            ),
+            "candidate_constraint": (
+                "Do not attempt candidate edits from this evidence task; a future "
+                "candidate must preserve existing strict_config, strict, "
+                "strict_markers, and strict option behavior."
+            ),
+        },
+        "affected_api_symbol": {
+            "public_surface": "pytest configuration addopts",
+            "option_surfaces": ["--strict-markers", "--strict-config", "-o/--override-ini"],
+            "ini_surfaces": ["addopts", "strict_markers", "strict_config", "strict"],
+            "implementation_symbol": "_pytest.config.Config.parse",
+            "related_symbols": [
+                "_pytest.config.Config._warn_or_fail_if_strict",
+                "_pytest.config.findpaths.parse_override_ini",
+                "_pytest.config.Parser.parse_known_args",
+            ],
+            "changed_file": "src/_pytest/config/__init__.py",
+            "changed_test_files": ["testing/test_config.py", "testing/test_mark.py"],
+            "auxiliary_changed_files": ["AUTHORS", "changelog/14442.bugfix.rst"],
+        },
+        "input_shape": {
+            "source": "pytest ini addopts",
+            "value_kind": "args list from configuration",
+            "examples": [
+                {"addopts": "--strict-config", "bad_ini_key": "unknown_option"},
+                {"addopts": "--strict-markers", "bad_marker": "unregisteredmark"},
+            ],
+            "parse_order_constraint": (
+                "addopts is appended before the known-args namespace used by strict "
+                "checks is finalized."
+            ),
+            "override_ini_interaction": (
+                "Strict options can arrive through OverrideIniAction-compatible "
+                "arguments, so parsed override ini values must update _inicfg before "
+                "strict config checks read cached ini values."
+            ),
+        },
+        "acceptance_test_shape": {
+            "test_files": ["testing/test_config.py", "testing/test_mark.py"],
+            "test_cases": [
+                {
+                    "test_file": "testing/test_config.py",
+                    "test_name": "test_strict_config_ini_option",
+                    "new_case": "addopts = --strict-config",
+                    "assertion": "stderr contains Unknown config option and ret is USAGE_ERROR",
+                },
+                {
+                    "test_file": "testing/test_mark.py",
+                    "test_name": "test_strict_prohibits_unregistered_markers",
+                    "new_case": "addopts = --strict-markers",
+                    "assertion": (
+                        "stdout reports unregisteredmark missing from markers "
+                        "configuration and ret is nonzero"
+                    ),
+                },
+            ],
+            "validation_command": validation_command,
+            "setup_command": "python -m pip install -e . pytest",
+        },
+        "strict_addopts_behavior": {
+            "config_option": "addopts",
+            "parse_method": "_pytest.config.Config.parse",
+            "accepted_sequence": [
+                "validate PYTEST_ADDOPTS and prepend to args",
+                "determine setup and load ini config",
+                "register addopts and core ini options",
+                "validate ini addopts and prepend to args",
+                "parse known args into known_args_namespace",
+                "update _inicfg from parsed override_ini and clear _inicache",
+            ],
+            "fix_scope": "one-level addopts override update, not recursive addopts expansion",
+        },
+        "strict_markers_config_semantics": {
+            "strict_config": {
+                "ini_options": ["strict_config", "strict"],
+                "effect": "unknown config keys become UsageError instead of warnings",
+                "test_file": "testing/test_config.py",
+            },
+            "strict_markers": {
+                "cli_options": ["--strict-markers", "--strict"],
+                "ini_options": ["strict_markers", "strict"],
+                "effect": "unregistered markers are prohibited",
+                "test_file": "testing/test_mark.py",
+            },
+            "candidate_constraint": (
+                "Preserve legacy strict aliases while making addopts-supplied "
+                "strict options observable to the same code paths."
+            ),
+        },
+    }
+    return {
+        "schema_version": ISSUE_PR_PROMPT_SPEC_SCHEMA_VERSION,
+        "record_kind": "issue_pr_prompt_spec",
+        "replay_id": str(record.get("id")),
+        "repo": str(record.get("repo")),
+        "prompt_spec_kind": "pytest_strict_addopts_config",
+        "status": "normalized",
+        "candidate_code_edits_attempted": False,
+        "required_prompt_fields": list(PYTEST_STRICT_ADDOPTS_REQUIRED_FIELDS),
+        "missing_prompt_fields": [],
+        "required_prompt_fields_complete": True,
+        "source_text_blockers": [],
+        "source_text_gaps": [
+            {
+                "source": "github_issue_14442_body",
+                "availability": "not_checked_in",
+                "impact": (
+                    "Exact issue body text is unavailable locally; fields were "
+                    "normalized from compact manifest metadata, accepted PR diff, "
+                    "DATA-018 validation evidence, and DATA-021 local knowledge."
+                ),
+            },
+            {
+                "source": "github_pr_14443_conversation",
+                "availability": "not_checked_in",
+                "impact": (
+                    "PR discussion text is unavailable locally; no required "
+                    "prompt/spec field depends on unretrieved conversation text."
+                ),
+            },
+        ],
+        "normalized_fields": normalized_fields,
+        "field_provenance": field_provenance,
+        "prompt_source": dict(prompt_source),
+        "accepted_change": dict(accepted_change),
+        "provenance": _prompt_spec_provenance(
+            manifest=manifest,
+            manifest_path=manifest_path,
+            record=record,
+            normalized_from=[
+                {
+                    "id": "github_issue_14442_compact_manifest",
+                    "kind": "github_issue_metadata",
+                    "url": issue_url,
+                    "fields": [
+                        "minimal_reproduction",
+                        "observed_behavior",
+                        "input_shape",
+                    ],
+                },
+                {
+                    "id": "github_pr_14443_diff",
+                    "kind": "github_pull_request_diff",
+                    "url": diff_url,
+                    "merge_commit_sha": accepted_change.get("merge_commit_sha"),
+                    "fields": [
+                        "minimal_reproduction",
+                        "expected_behavior",
+                        "affected_api_symbol",
+                        "input_shape",
+                        "acceptance_test_shape",
+                        "strict_addopts_behavior",
+                        "strict_markers_config_semantics",
+                    ],
+                },
+                {
+                    "id": "data_018_pytest_preflight",
+                    "kind": "local_validation_report",
+                    "url": "docs/DATA_018_PYTEST_ISSUE_PR_PREFLIGHT_2026-05-18.md",
+                    "fields": ["observed_behavior", "acceptance_test_shape"],
+                },
+                {
+                    "id": "know_data_021_pytest_local_knowledge",
+                    "kind": "local_knowledge_jsonl",
+                    "url": knowledge_path,
+                    "fields": [
+                        "expected_behavior",
+                        "affected_api_symbol",
+                        "acceptance_test_shape",
+                        "strict_addopts_behavior",
+                        "strict_markers_config_semantics",
+                    ],
+                },
+                {
+                    "id": "github_pr_14443_conversation",
+                    "kind": "github_pull_request",
+                    "url": pr_url,
+                    "fields": [],
+                    "availability": "not_checked_in_not_required",
+                },
+            ],
+        ),
+    }
+
+
 def _blocked_prompt_spec(
     *,
     manifest: Mapping[str, object],
@@ -1098,10 +1406,17 @@ def _prompt_spec_markdown(spec: Mapping[str, object]) -> list[str]:
             f"`{affected.get('public_surface')}` via `{affected.get('implementation_symbol')}`"
         )
     if acceptance:
-        lines.append(
-            "- Acceptance test shape: "
-            f"`{acceptance.get('test_file')}::{acceptance.get('test_name')}`"
-        )
+        test_file = acceptance.get("test_file")
+        if test_file:
+            lines.append(
+                "- Acceptance test shape: "
+                f"`{test_file}::{acceptance.get('test_name')}`"
+            )
+        else:
+            lines.append(
+                "- Acceptance test files: "
+                f"`{_json_inline(acceptance.get('test_files', []))}`"
+            )
     missing = _string_sequence(spec.get("missing_prompt_fields"))
     if missing:
         lines.append(f"- Missing fields: `{_json_inline(list(missing))}`")

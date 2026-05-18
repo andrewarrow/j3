@@ -2579,3 +2579,49 @@ meaningful work. Do not replace this file with a daily reset.
 - Next: review DATA-021 when it lands; no further Click docs validation
   blocker remains for the `docs/commands.md` plus `docs/conf.py` slice.
 - Blockers: none.
+
+### 2026-05-18 - DATA-021 - Pytest strict addopts evidence
+
+- Owner: worker Plato (`019e3c4b-0b56-71e3-8660-a2fff453ca2d`).
+- Files changed: `j3/issue_pr_prompt_spec.py`, `j3/local_knowledge.py`,
+  `tests/test_issue_pr_prompt_spec.py`, `tests/test_local_knowledge.py`,
+  `docs/DATA_021_PYTEST_STRICT_ADDOPTS_EVIDENCE_2026-05-18.md`,
+  `plans/active.md`, `plans/backlog.md`, `plans/progress.md`.
+- Tests: `python -m py_compile j3/issue_pr_prompt_spec.py
+  j3/local_knowledge.py tests/test_issue_pr_prompt_spec.py
+  tests/test_local_knowledge.py` -> passed; `pytest
+  tests/test_issue_pr_prompt_spec.py tests/test_local_knowledge.py -q` -> 16
+  passed; CLI smoke `python -m j3.issue_pr_prompt_spec --manifest
+  examples/issue_pr_mini_replay/manifest.json --replay-id
+  pytest-dev__pytest-issue-14442-pr-14443 --out
+  /tmp/j3-data-021-pytest-14442-spec.jsonl --report
+  /tmp/j3-data-021-pytest-14442-spec.md` -> emitted 1 normalized row; CLI
+  smoke `python -m j3.local_knowledge --manifest
+  examples/issue_pr_mini_replay/manifest.json
+  --pytest-strict-addopts-replay-row
+  pytest-dev__pytest-issue-14442-pr-14443 --repo
+  /tmp/j3-data-018-pytest-preflight/repos/pytest-dev__pytest-pytest-dev__pytest-issue-14442-pr-14443-8f81c76744da
+  --retrieved-at 2026-05-18T00:00:00Z --setup-command
+  "python -m pip install -e . pytest" --baseline-validation-command
+  "pytest testing/test_config.py testing/test_mark.py -q" --out
+  /tmp/j3-data-021-pytest-14442-knowledge.jsonl` -> emitted 7 records;
+  `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check`
+  -> passed.
+- Result: added machine-readable prompt/spec and local-knowledge evidence for
+  `pytest-dev__pytest-issue-14442-pr-14443` without candidate edits. The
+  prompt/spec row covers minimal reproduction, observed behavior, expected
+  behavior, affected API/surface, input shape, acceptance test shape, strict
+  addopts behavior, and strict markers/config semantics. The local-knowledge
+  rows cover changed-file context for `AUTHORS`,
+  `changelog/14442.bugfix.rst`, `src/_pytest/config/__init__.py`,
+  `testing/test_config.py`, and `testing/test_mark.py`, the DATA-018 focused
+  validation recipe, strict addopts behavior, strict marker/config semantics,
+  repo test patterns, changelog/AUTHORS conventions, provenance, and split.
+- Commit: pending.
+- Push: pending.
+- Next: run a readiness refresh for the pytest #14442/#14443 row using the new
+  prompt/spec and local-knowledge evidence, then decide whether the future
+  candidate attempt is source/test-only or includes auxiliary materializers.
+- Blockers: candidate-readiness refresh and ranking evidence remain; accepted
+  auxiliary paths `AUTHORS` and `changelog/14442.bugfix.rst` need explicit
+  scope or materializers before a full accepted-edit attempt.

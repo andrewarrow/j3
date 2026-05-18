@@ -1487,7 +1487,7 @@ Long-term target:
 
 ### DATA-021: Pytest #14442 prompt/spec and local knowledge evidence
 
-- Status: active
+- Status: done
 - Why: DATA-018 showed pytest checkout/setup/baseline validation works, but no
   pytest row is candidate-ready because prompt/spec and local knowledge are
   missing. The first row, #14442/#14443, is a direct test of local knowledge
@@ -1505,6 +1505,19 @@ Long-term target:
   auxiliary path conventions, provenance, and remaining readiness blockers.
 - Tests: focused prompt/spec/local-knowledge tests, plan consistency,
   `git diff --check`, and CLI smoke that emits the evidence rows.
+- Completion note: added a pytest #14442/#14443 prompt/spec normalizer and a
+  narrow local-knowledge extractor. The emitted prompt/spec row is normalized
+  and covers the required reproduction, behavior, affected surface, input, and
+  acceptance-test fields. The local-knowledge smoke emits seven records for
+  changed-file context, DATA-018 validation, strict addopts behavior, strict
+  marker/config semantics, repo test patterns, changelog convention, and
+  AUTHORS convention. No candidate source edits were attempted. Artifacts:
+  `/tmp/j3-data-021-pytest-14442-spec.jsonl`,
+  `/tmp/j3-data-021-pytest-14442-spec.md`,
+  `/tmp/j3-data-021-pytest-14442-knowledge.jsonl`, and
+  `docs/DATA_021_PYTEST_STRICT_ADDOPTS_EVIDENCE_2026-05-18.md`. Remaining
+  blockers are candidate-readiness refresh, ranking evidence, and deciding
+  whether the accepted auxiliary paths are in scope for a future candidate.
 
 ## Next Recommended Queue
 

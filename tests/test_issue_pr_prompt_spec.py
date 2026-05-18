@@ -6,6 +6,7 @@ from pathlib import Path
 from j3.issue_pr_prompt_spec import (
     CLICK_DEFAULT_MAP_REPLAY_ID,
     CLICK_SEMVER_DEFAULT_REPLAY_ID,
+    PYTEST_STRICT_ADDOPTS_REPLAY_ID,
     REQUESTS_PREPARE_BODY_REPLAY_ID,
     build_issue_pr_prompt_spec,
     build_issue_pr_prompt_specs,
@@ -287,6 +288,85 @@ def test_click_semver_default_prompt_spec_records_provenance() -> None:
     assert spec["source_text_gaps"] == []
 
 
+def test_builds_pytest_strict_addopts_prompt_spec() -> None:
+    manifest = load_issue_pr_replay_manifest(MANIFEST_PATH)
+    spec = build_issue_pr_prompt_spec(
+        manifest,
+        PYTEST_STRICT_ADDOPTS_REPLAY_ID,
+        manifest_path=MANIFEST_PATH,
+    )
+
+    assert spec["schema_version"] == "issue-pr-prompt-spec-v1"
+    assert spec["record_kind"] == "issue_pr_prompt_spec"
+    assert spec["prompt_spec_kind"] == "pytest_strict_addopts_config"
+    assert spec["status"] == "normalized"
+    assert spec["candidate_code_edits_attempted"] is False
+    assert spec["required_prompt_fields_complete"] is True
+    assert spec["missing_prompt_fields"] == []
+    assert spec["source_text_blockers"] == []
+
+    fields = spec["normalized_fields"]
+    assert fields["minimal_reproduction"]["config_file"] == {
+        "section": "pytest",
+        "option": "addopts",
+        "values": ["--strict-markers", "--strict-config"],
+    }
+    assert (
+        fields["observed_behavior"]["failure_mode"]
+        == "strict_options_from_addopts_silently_ignored"
+    )
+    assert (
+        fields["expected_behavior"]["behavior"]
+        == "apply_strict_options_declared_in_addopts"
+    )
+    assert (
+        fields["affected_api_symbol"]["implementation_symbol"]
+        == "_pytest.config.Config.parse"
+    )
+    assert fields["input_shape"]["source"] == "pytest ini addopts"
+    assert fields["acceptance_test_shape"]["test_files"] == [
+        "testing/test_config.py",
+        "testing/test_mark.py",
+    ]
+    assert (
+        fields["strict_addopts_behavior"]["fix_scope"]
+        == "one-level addopts override update, not recursive addopts expansion"
+    )
+    assert fields["strict_markers_config_semantics"]["strict_config"][
+        "ini_options"
+    ] == ["strict_config", "strict"]
+
+
+def test_pytest_strict_addopts_prompt_spec_records_provenance() -> None:
+    specs = build_issue_pr_prompt_specs(
+        manifest_path=MANIFEST_PATH,
+        replay_ids=[PYTEST_STRICT_ADDOPTS_REPLAY_ID],
+    )
+    spec = specs[0]
+    provenance = spec["provenance"]
+
+    assert provenance["manifest_schema_version"] == "issue-pr-mini-replay-v0"
+    assert provenance["stable_split"]["split"] == "train"
+    normalized_from = provenance["normalized_from"]
+    assert [source["id"] for source in normalized_from] == [
+        "github_issue_14442_compact_manifest",
+        "github_pr_14443_diff",
+        "data_018_pytest_preflight",
+        "know_data_021_pytest_local_knowledge",
+        "github_pr_14443_conversation",
+    ]
+    assert normalized_from[1]["merge_commit_sha"] == (
+        "a481f264d70ac3d053d5f7408f4ac1ec439d0c2f"
+    )
+    assert normalized_from[1]["url"].endswith("/pull/14443.diff")
+    assert spec["field_provenance"]["acceptance_test_shape"] == [
+        "github_pr_14443_diff",
+        "data_018_pytest_preflight",
+        "know_data_021_pytest_repo_test_patterns",
+    ]
+    assert spec["source_text_gaps"][0]["source"] == "github_issue_14442_body"
+
+
 def test_prompt_spec_jsonl_summary_and_report(tmp_path: Path) -> None:
     specs = build_issue_pr_prompt_specs(
         manifest_path=MANIFEST_PATH,
@@ -312,7 +392,7 @@ def test_prompt_spec_jsonl_summary_and_report(tmp_path: Path) -> None:
 
 def test_unknown_prompt_spec_stays_machine_readable_blocked() -> None:
     manifest = load_issue_pr_replay_manifest(MANIFEST_PATH)
-    spec = build_issue_pr_prompt_spec(manifest, "pytest-dev__pytest-issue-14442-pr-14443")
+    spec = build_issue_pr_prompt_spec(manifest, "pytest-dev__pytest-issue-14462-pr-14466")
 
     assert spec["status"] == "blocked"
     assert spec["required_prompt_fields_complete"] is False

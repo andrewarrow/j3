@@ -59,6 +59,15 @@ REQUESTS_REPLAY_REQUIRED_KNOWLEDGE_CATEGORIES = (
     "requests_pytest_httpbin_fixture_setup",
     "requests_ranking_changed_test_patterns",
 )
+PYTEST_STRICT_ADDOPTS_REQUIRED_KNOWLEDGE_CATEGORIES = (
+    "repo_changed_file_context",
+    "focused_validation_recipe",
+    "pytest_strict_addopts_behavior",
+    "pytest_strict_markers_config_semantics",
+    "pytest_repo_test_patterns",
+    "pytest_changelog_fragment_convention",
+    "pytest_authors_convention",
+)
 
 
 def extract_local_knowledge_records(
@@ -361,6 +370,100 @@ def build_requests_replay_local_knowledge_records(
             prompt_source=prompt_source,
             changed_files=changed_files,
             manifest_validation_command=_required_str(validation, "command"),
+            focused_validation_command=focused_validation_command,
+            links=links,
+        )
+    )
+
+    for record in records:
+        validate_local_knowledge_record(record)
+    return tuple(records)
+
+
+def build_pytest_strict_addopts_local_knowledge_records(
+    repo: Path,
+    replay_row: Mapping[str, object],
+    *,
+    retrieved_at: str = "unknown",
+    setup_commands: Sequence[str] = (),
+    baseline_validation_commands: Sequence[str] = (),
+) -> tuple[dict[str, object], ...]:
+    """Build pytest #14442/#14443 local-knowledge rows from repo-before."""
+
+    resolved = repo.expanduser().resolve()
+    if not resolved.is_dir():
+        raise FileNotFoundError(f"repo does not exist: {resolved}")
+
+    replay_id = _required_str(replay_row, "id")
+    if replay_id != "pytest-dev__pytest-issue-14442-pr-14443":
+        raise ValueError(f"unsupported pytest strict-addopts replay row: {replay_id}")
+
+    repo_id = _required_str(replay_row, "repo")
+    repo_before_ref = _mapping(replay_row.get("repo_before_ref"), field="repo_before_ref")
+    accepted_change = _mapping(replay_row.get("accepted_change"), field="accepted_change")
+    validation = _mapping(replay_row.get("validation"), field="validation")
+    provenance_license = _mapping(
+        replay_row.get("provenance_license"),
+        field="provenance_license",
+    )
+    prompt_source = _mapping(replay_row.get("prompt_source"), field="prompt_source")
+    stable_split = _mapping(replay_row.get("stable_split"), field="stable_split")
+
+    changed_files = _string_sequence(accepted_change.get("changed_files", ()))
+    split = _required_str(stable_split, "split")
+    _validate_split(split)
+    focused_validation_command = _required_str(validation, "command")
+
+    context = {
+        "repo_id": repo_id,
+        "repo_ref": _required_str(repo_before_ref, "sha"),
+        "split": split,
+        "repo_url": _optional_str(provenance_license.get("repository_url")),
+        "license": _optional_str(provenance_license.get("license_spdx")),
+        "retrieved_at": retrieved_at,
+    }
+    links = {
+        "task_ids": [replay_id],
+        "outcome_ids": ["DATA-018/pytest-dev__pytest-issue-14442-pr-14443"],
+        "residual_labels": ["local_knowledge_gap"],
+    }
+    task = {
+        "id": replay_id,
+        "task_type": "issue_pr_replay",
+        "allowed_write_paths": changed_files,
+        "public_validation_commands": [focused_validation_command],
+        "expected_failure_modes": ["local_knowledge_gap"],
+        "required_knowledge_categories": PYTEST_STRICT_ADDOPTS_REQUIRED_KNOWLEDGE_CATEGORIES,
+    }
+
+    records: list[dict[str, object]] = [
+        _pytest_strict_changed_file_context_record(
+            resolved,
+            context,
+            replay_row=replay_row,
+            changed_files=changed_files,
+            links=links,
+        )
+    ]
+    records.extend(
+        _validation_recipe_records(
+            resolved,
+            context,
+            setup_commands=setup_commands,
+            baseline_validation_commands=baseline_validation_commands,
+            tasks=[task],
+            outcome_ids_by_task={
+                replay_id: ["DATA-018/pytest-dev__pytest-issue-14442-pr-14443"]
+            },
+        )
+    )
+    records.extend(
+        _pytest_strict_idiom_records(
+            resolved,
+            context,
+            replay_id=replay_id,
+            prompt_source=prompt_source,
+            changed_files=changed_files,
             focused_validation_command=focused_validation_command,
             links=links,
         )
@@ -1042,6 +1145,193 @@ def _requests_library_idiom_records(
                 row["knowledge_category"],
                 source_path=source_path,
                 test_path=test_path,
+                replay_id=replay_id,
+            ),
+            confidence="observed",
+            links=links,
+            data=row,
+        )
+        for row in rows
+    )
+
+
+def _pytest_strict_changed_file_context_record(
+    repo: Path,
+    context: Mapping[str, str],
+    *,
+    replay_row: Mapping[str, object],
+    changed_files: Sequence[str],
+    links: Mapping[str, Sequence[str]],
+) -> dict[str, object]:
+    python_files = [path for path in changed_files if path.endswith(".py")]
+    source_files = [path for path in python_files if not _is_test_file(path)]
+    test_files = [path for path in python_files if _is_test_file(path)]
+    auxiliary_files = [path for path in changed_files if path not in python_files]
+    data = {
+        "knowledge_category": "repo_changed_file_context",
+        "replay_id": _required_str(replay_row, "id"),
+        "issue_pr": _issue_pr_summary(replay_row),
+        "changed_files": list(changed_files),
+        "source_files": source_files,
+        "test_files": test_files,
+        "auxiliary_files": auxiliary_files,
+        "source_context": [
+            _python_file_context(repo, path, focus_names=("Config",))
+            for path in source_files
+        ],
+        "test_context": [
+            _python_file_context(
+                repo,
+                path,
+                focus_names=("test_", "TestParseIni", "TestInvocationVariants"),
+            )
+            for path in test_files
+        ],
+        "auxiliary_context": [
+            _pytest_auxiliary_file_context(repo, path) for path in auxiliary_files
+        ],
+    }
+    return _source_record(
+        record_type="repo_changed_file_context_record",
+        repo=repo,
+        context=context,
+        source_kind="accepted_diff_context",
+        source_path=",".join(changed_files),
+        provenance_paths=[*changed_files, "task:" + _required_str(replay_row, "id")],
+        confidence="observed",
+        links=links,
+        data=data,
+    )
+
+
+def _pytest_strict_idiom_records(
+    repo: Path,
+    context: Mapping[str, str],
+    *,
+    replay_id: str,
+    prompt_source: Mapping[str, object],
+    changed_files: Sequence[str],
+    focused_validation_command: str,
+    links: Mapping[str, Sequence[str]],
+) -> tuple[dict[str, object], ...]:
+    source_path = _pytest_config_source_path(changed_files)
+    config_test_path = "testing/test_config.py"
+    mark_test_path = "testing/test_mark.py"
+    config_context = _pytest_config_semantic_context(repo / source_path)
+    test_context = _pytest_strict_test_context(repo, config_test_path, mark_test_path)
+    base = {
+        "replay_id": replay_id,
+        "target_source_path": source_path,
+        "target_test_files": [config_test_path, mark_test_path],
+        "focused_validation_command": focused_validation_command,
+    }
+    rows = [
+        {
+            **base,
+            "knowledge_category": "pytest_strict_addopts_behavior",
+            "problem_label": "strict_options_from_addopts_ignored",
+            "behavior_facts": [
+                "Config.parse prepends validated PYTEST_ADDOPTS before setup discovery.",
+                "Config.parse registers addopts after setup discovery, then prepends validated ini addopts before known-args parsing.",
+                "Strict options supplied through addopts must affect the same known-args and ini-cache state as command-line strict options.",
+                "The accepted change performs one post-addopts override-ini update and clears the ini cache; it is not an unbounded recursive addopts expansion.",
+            ],
+            "source_evidence": {
+                "methods": _pick_methods(config_context, ["Config.parse"]),
+                "parse_flow": config_context["parse_flow"],
+                "override_ini_handling": config_context["override_ini_handling"],
+            },
+            "test_evidence": {
+                "strict_config_tests": test_context["strict_config_tests"],
+                "strict_mark_tests": test_context["strict_mark_tests"],
+            },
+        },
+        {
+            **base,
+            "knowledge_category": "pytest_strict_markers_config_semantics",
+            "problem_label": "strict_config_and_marker_semantics",
+            "behavior_facts": [
+                "strict_config and legacy strict turn unknown config option warnings into UsageError.",
+                "--strict-markers, --strict, strict_markers, and strict prohibit unregistered markers.",
+                "The regression-specific behavior is the addopts delivery path, not a new strictness policy.",
+            ],
+            "issue_pr": {
+                "issue_number": prompt_source.get("issue_number"),
+                "issue_title": prompt_source.get("issue_title"),
+                "issue_url": prompt_source.get("issue_url"),
+                "pull_request_number": prompt_source.get("pull_request_number"),
+                "pull_request_url": prompt_source.get("pull_request_url"),
+            },
+            "source_evidence": {
+                "methods": _pick_methods(
+                    config_context,
+                    ["Config._warn_or_fail_if_strict", "Config.parse"],
+                ),
+                "strict_ini_gets": config_context["strict_ini_gets"],
+                "unknown_ini_check": config_context["unknown_ini_check"],
+            },
+            "test_evidence": {
+                "strict_config_tests": test_context["strict_config_tests"],
+                "strict_mark_tests": test_context["strict_mark_tests"],
+            },
+        },
+        {
+            **base,
+            "knowledge_category": "pytest_repo_test_patterns",
+            "problem_label": "pytester_strict_option_regression_tests",
+            "behavior_facts": [
+                "Config parser tests use Pytester.makeini, runpytest, stderr/stdout fnmatch_lines, and ExitCode assertions.",
+                "Marker strictness tests use Pytester.makepyfile plus either direct CLI options or ini-driven addopts cases.",
+                "The focused validation command runs only testing/test_config.py and testing/test_mark.py.",
+            ],
+            "test_evidence": test_context,
+        },
+        {
+            **base,
+            "knowledge_category": "pytest_changelog_fragment_convention",
+            "problem_label": "pytest_changelog_bugfix_fragment",
+            "behavior_facts": [
+                "Pytest bugfix news entries are stored as changelog/<issue>.bugfix.rst fragments.",
+                "The accepted PR adds changelog/14442.bugfix.rst as an auxiliary file.",
+                "A source/test-only candidate attempt should record this auxiliary path as deferred unless a changelog materializer is in scope.",
+            ],
+            "changelog_evidence": _pytest_changelog_context(
+                repo,
+                target_path="changelog/14442.bugfix.rst",
+            ),
+        },
+        {
+            **base,
+            "knowledge_category": "pytest_authors_convention",
+            "problem_label": "pytest_authors_contributor_entry",
+            "behavior_facts": [
+                "AUTHORS is a newline-delimited contributor list maintained as a repository auxiliary file.",
+                "The accepted PR adds the contributor name for this replay row.",
+                "A source/test-only candidate attempt should record AUTHORS as deferred unless auxiliary authors materialization is in scope.",
+            ],
+            "authors_evidence": _pytest_authors_context(
+                repo,
+                expected_new_entry="Praneeth Kodumagulla",
+            ),
+        },
+    ]
+    return tuple(
+        _source_record(
+            record_type=(
+                "pytest_pattern_record"
+                if row["knowledge_category"] == "pytest_repo_test_patterns"
+                else "library_idiom_record"
+            ),
+            repo=repo,
+            context=context,
+            source_kind="repo_file",
+            source_path=_pytest_idiom_source_path(row["knowledge_category"], source_path),
+            provenance_paths=_pytest_idiom_provenance_paths(
+                repo,
+                row["knowledge_category"],
+                source_path=source_path,
+                config_test_path=config_test_path,
+                mark_test_path=mark_test_path,
                 replay_id=replay_id,
             ),
             confidence="observed",
@@ -1795,6 +2085,308 @@ def _requests_idiom_provenance_paths(
     return paths
 
 
+def _pytest_config_source_path(changed_files: Sequence[str]) -> str:
+    for path in changed_files:
+        if path == "src/_pytest/config/__init__.py":
+            return path
+    for path in changed_files:
+        if path.endswith(".py") and not _is_test_file(path):
+            return path
+    raise ValueError("pytest strict-addopts replay row must include a source file")
+
+
+def _pytest_config_semantic_context(path: Path) -> dict[str, object]:
+    tree = _parse_python(path)
+    methods = _class_method_contexts(tree, class_names={"Config"})
+    parse_node = _class_method_node(tree, class_name="Config", method_name="parse")
+    strict_node = _class_method_node(
+        tree,
+        class_name="Config",
+        method_name="_warn_or_fail_if_strict",
+    )
+    unknown_ini_node = _class_method_node(
+        tree,
+        class_name="Config",
+        method_name="_get_unknown_ini_keys",
+    )
+    return {
+        "methods": methods,
+        "parse_flow": _pytest_parse_flow_shape(parse_node),
+        "override_ini_handling": _pytest_override_ini_shape(tree, parse_node),
+        "strict_ini_gets": _pytest_getini_calls(strict_node),
+        "unknown_ini_check": _function_semantic_shape(unknown_ini_node),
+        "sha256": _sha256_bytes(path.read_bytes()),
+    }
+
+
+def _pytest_parse_flow_shape(
+    node: ast.FunctionDef | ast.AsyncFunctionDef | None,
+) -> dict[str, object]:
+    if node is None:
+        return {}
+    return {
+        "line_span": [node.lineno, node.end_lineno or node.lineno],
+        "argument_names": [arg.arg for arg in node.args.args],
+        "call_names": sorted(_calls_in_node(node))[:60],
+        "mentions": sorted(
+            _names_in_node(node)
+            & {
+                "addopts",
+                "PYTEST_ADDOPTS",
+                "override_ini",
+                "known_args_namespace",
+                "_inicfg",
+                "_inicache",
+                "getini",
+                "_validate_args",
+            }
+        ),
+        "string_literals": sorted(
+            literal
+            for literal in _string_constants(node)
+            if literal in {"PYTEST_ADDOPTS", "addopts", "via PYTEST_ADDOPTS", "via addopts config"}
+        ),
+        "getini_names": _pytest_getini_calls(node),
+        "assignments": _pytest_assignment_shapes(
+            node,
+            names={"args", "known_args_namespace", "_inicfg", "_inicache"},
+        ),
+    }
+
+
+def _pytest_override_ini_shape(
+    tree: ast.Module,
+    node: ast.FunctionDef | ast.AsyncFunctionDef | None,
+) -> dict[str, object]:
+    imports_parse_override = any(
+        isinstance(child, ast.ImportFrom)
+        and child.module == "_pytest.config.findpaths"
+        and any(alias.name == "parse_override_ini" for alias in child.names)
+        for child in tree.body
+    )
+    call_names = sorted(_calls_in_node(node)) if node is not None else []
+    names = sorted(_names_in_node(node)) if node is not None else []
+    return {
+        "imports_parse_override_ini": imports_parse_override,
+        "parse_calls_parse_override_ini": "parse_override_ini" in call_names,
+        "mentions_override_ini": "override_ini" in names,
+        "updates_inicfg": "_inicfg" in names and "update" in call_names,
+        "clears_inicache": "_inicache" in names and "clear" in call_names,
+    }
+
+
+def _pytest_getini_calls(
+    node: ast.FunctionDef | ast.AsyncFunctionDef | None,
+) -> list[str]:
+    if node is None:
+        return []
+    values = []
+    for child in ast.walk(node):
+        if not isinstance(child, ast.Call) or _call_name(child.func) != "self.getini":
+            continue
+        if child.args and isinstance(child.args[0], ast.Constant):
+            value = child.args[0].value
+            if isinstance(value, str):
+                values.append(value)
+    return sorted(dict.fromkeys(values))
+
+
+def _pytest_assignment_shapes(
+    node: ast.FunctionDef | ast.AsyncFunctionDef,
+    *,
+    names: set[str],
+) -> list[dict[str, object]]:
+    rows = []
+    for child in ast.walk(node):
+        if not isinstance(child, (ast.Assign, ast.AugAssign)):
+            continue
+        targets = child.targets if isinstance(child, ast.Assign) else [child.target]
+        target_names = sorted(
+            target_name
+            for target in targets
+            if (target_name := _call_name(target))
+            and any(name in target_name for name in names)
+        )
+        if not target_names:
+            continue
+        value = child.value if isinstance(child, ast.Assign) else child.value
+        rows.append(
+            {
+                "line": child.lineno,
+                "targets": target_names,
+                "value_calls": sorted(_calls_in_node(value)),
+                "value_names": sorted(_names_in_node(value)),
+            }
+        )
+    return rows
+
+
+def _pytest_strict_test_context(
+    repo: Path,
+    config_test_path: str,
+    mark_test_path: str,
+) -> dict[str, object]:
+    config_tree = _parse_python(repo / config_test_path)
+    mark_tree = _parse_python(repo / mark_test_path)
+    config_functions = _all_functions(config_tree)
+    mark_functions = _all_functions(mark_tree)
+    return {
+        "config_test_file": config_test_path,
+        "mark_test_file": mark_test_path,
+        "strict_config_tests": [
+            _function_test_shape(node)
+            for node in config_functions
+            if "strict_config" in node.name or "invalid_config" in node.name
+        ][:12],
+        "addopts_tests": [
+            _function_test_shape(node)
+            for node in config_functions
+            if "addopts" in node.name
+        ][:12],
+        "strict_mark_tests": [
+            _function_test_shape(node)
+            for node in mark_functions
+            if "strict" in node.name or "marker" in node.name
+        ][:12],
+        "pytester_tools": sorted(
+            tool
+            for node in [*config_functions, *mark_functions]
+            for tool in _pytester_tools(node)
+        )[:40],
+        "config_imports": list(_imports(config_tree))[:30],
+        "mark_imports": list(_imports(mark_tree))[:30],
+        "sha256": {
+            config_test_path: _sha256_bytes((repo / config_test_path).read_bytes()),
+            mark_test_path: _sha256_bytes((repo / mark_test_path).read_bytes()),
+        },
+    }
+
+
+def _all_functions(tree: ast.Module) -> list[ast.FunctionDef | ast.AsyncFunctionDef]:
+    return [
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+    ]
+
+
+def _pytester_tools(node: ast.AST) -> set[str]:
+    return {
+        name
+        for child in ast.walk(node)
+        if isinstance(child, ast.Call)
+        and (name := _call_name(child.func))
+        and (
+            name.startswith("pytester.")
+            or name
+            in {
+                "result.stdout.fnmatch_lines",
+                "result.stderr.fnmatch_lines",
+                "result.stdout.no_fnmatch_line",
+                "rec.assertoutcome",
+                "rec.assert_outcomes",
+            }
+        )
+    }
+
+
+def _pytest_auxiliary_file_context(repo: Path, relative_path: str) -> dict[str, object]:
+    path = repo / relative_path
+    if relative_path == "AUTHORS":
+        return _pytest_authors_context(repo, expected_new_entry="Praneeth Kodumagulla")
+    if relative_path.startswith("changelog/"):
+        return _pytest_changelog_context(repo, target_path=relative_path)
+    return {
+        "path": relative_path,
+        "exists": path.exists(),
+        "sha256": _sha256_bytes(path.read_bytes()) if path.is_file() else None,
+    }
+
+
+def _pytest_changelog_context(repo: Path, *, target_path: str) -> dict[str, object]:
+    changelog_dir = repo / "changelog"
+    fragments = sorted(
+        path.relative_to(repo).as_posix()
+        for path in changelog_dir.glob("*.rst")
+        if path.is_file()
+    ) if changelog_dir.is_dir() else []
+    suffix_counts: dict[str, int] = {}
+    for fragment in fragments:
+        suffix = ".".join(Path(fragment).name.split(".")[1:])
+        suffix_counts[suffix] = suffix_counts.get(suffix, 0) + 1
+    target = repo / target_path
+    return {
+        "path": target_path,
+        "exists_in_repo_before": target.exists(),
+        "expected_fragment_suffix": ".bugfix.rst",
+        "issue_number_in_filename": "14442",
+        "fragment_count": len(fragments),
+        "suffix_counts": dict(sorted(suffix_counts.items())),
+        "nearby_bugfix_fragments": [
+            fragment for fragment in fragments if fragment.endswith(".bugfix.rst")
+        ][:12],
+        "target_sha256": _sha256_bytes(target.read_bytes()) if target.is_file() else None,
+    }
+
+
+def _pytest_authors_context(
+    repo: Path,
+    *,
+    expected_new_entry: str,
+) -> dict[str, object]:
+    path = repo / "AUTHORS"
+    lines = path.read_text(encoding="utf-8").splitlines() if path.exists() else []
+    non_empty = [line for line in lines if line.strip()]
+    first_letter = expected_new_entry[:1].casefold()
+    neighborhood = [
+        line
+        for line in non_empty
+        if line[:1].casefold() in {first_letter, chr(ord(first_letter) - 1), chr(ord(first_letter) + 1)}
+    ]
+    return {
+        "path": "AUTHORS",
+        "exists": path.exists(),
+        "line_count": len(lines),
+        "non_empty_line_count": len(non_empty),
+        "expected_new_entry": expected_new_entry,
+        "expected_entry_present_in_repo_before": expected_new_entry in non_empty,
+        "entry_shape": "one contributor name per line",
+        "alphabetical_neighborhood_sample": neighborhood[:20],
+        "sha256": _sha256_bytes(path.read_bytes()) if path.is_file() else None,
+    }
+
+
+def _pytest_idiom_source_path(knowledge_category: object, source_path: str) -> str:
+    if knowledge_category == "pytest_changelog_fragment_convention":
+        return "changelog"
+    if knowledge_category == "pytest_authors_convention":
+        return "AUTHORS"
+    if knowledge_category == "pytest_repo_test_patterns":
+        return "testing/test_config.py,testing/test_mark.py"
+    return source_path
+
+
+def _pytest_idiom_provenance_paths(
+    repo: Path,
+    knowledge_category: object,
+    *,
+    source_path: str,
+    config_test_path: str,
+    mark_test_path: str,
+    replay_id: str,
+) -> list[str]:
+    paths = [source_path, config_test_path, mark_test_path, "task:" + replay_id]
+    if knowledge_category == "pytest_changelog_fragment_convention":
+        paths = [
+            path
+            for path in ("changelog", "changelog/14442.bugfix.rst", "task:" + replay_id)
+            if path.startswith("task:") or (repo / path).exists()
+        ]
+    elif knowledge_category == "pytest_authors_convention":
+        paths = ["AUTHORS", "task:" + replay_id]
+    return paths
+
+
 def _class_method_contexts(
     tree: ast.Module,
     *,
@@ -2320,6 +2912,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--click-replay-row", help="issue/PR replay row id to extract")
     parser.add_argument("--requests-replay-row", help="issue/PR replay row id to extract")
     parser.add_argument(
+        "--pytest-strict-addopts-replay-row",
+        help="pytest strict addopts issue/PR replay row id to extract",
+    )
+    parser.add_argument(
         "--manifest",
         type=Path,
         default=Path("examples/issue_pr_mini_replay/manifest.json"),
@@ -2342,7 +2938,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
-    if args.click_replay_row and args.requests_replay_row:
+    modes = [
+        args.click_replay_row,
+        args.requests_replay_row,
+        args.pytest_strict_addopts_replay_row,
+    ]
+    if sum(1 for mode in modes if mode) > 1:
         parser.error("choose only one replay extraction mode")
     if args.click_replay_row:
         if args.repo is None:
@@ -2360,6 +2961,20 @@ def main(argv: Sequence[str] | None = None) -> int:
             parser.error("--repo is required with --requests-replay-row")
         row = _load_manifest_replay_row(args.manifest, args.requests_replay_row)
         records = build_requests_replay_local_knowledge_records(
+            args.repo,
+            row,
+            retrieved_at=args.retrieved_at,
+            setup_commands=args.setup_command,
+            baseline_validation_commands=args.baseline_validation_command,
+        )
+    elif args.pytest_strict_addopts_replay_row:
+        if args.repo is None:
+            parser.error("--repo is required with --pytest-strict-addopts-replay-row")
+        row = _load_manifest_replay_row(
+            args.manifest,
+            args.pytest_strict_addopts_replay_row,
+        )
+        records = build_pytest_strict_addopts_local_knowledge_records(
             args.repo,
             row,
             retrieved_at=args.retrieved_at,

@@ -408,9 +408,24 @@ Long-term target:
   outcomes, and define how each becomes data instead of hardcoded rules.
 - Tests: plan consistency and `git diff --check`.
 
+### KNOW-002: Extract first wedge knowledge records
+
+- Status: ready
+- Why: `KNOW-001` defined the local knowledge shape, but the product wedge
+  needs pytest, packaging, import, and validation records that builders can
+  cite instead of hardcoded assumptions.
+- Write scope: a small extractor or manifest for calibration repo knowledge
+  records, focused tests, docs if needed, and plan updates.
+- Acceptance: emit compact JSONL records for test layout, package layout,
+  public imports, validation recipe, and at least one pytest pattern from a
+  calibration repo, with provenance hashes, split labels, and an example
+  knowledge-use link suitable for tests-only planning.
+- Tests: focused extractor or schema tests, plan consistency, and
+  `git diff --check`.
+
 ### WEDGE-001: Product wedge decision
 
-- Status: active
+- Status: done
 - Why: the first usable product must be narrower than "Codex replacement" and
   must force the hard repo understanding, validation, and materialization work.
 - Write scope: focused product decision doc and plan updates.
@@ -433,6 +448,22 @@ Long-term target:
 - Tests: focused runner tests with mocked subprocess or a tiny local fixture,
   plan consistency, and `git diff --check`.
 
+### REAL-003: Run first tests-only wedge shadow score
+
+- Status: blocked
+- Blocker: depends on `REAL-002` baseline preflight evidence and `GS7-005`
+  tests-only existing-repo support.
+- Why: the wedge should move to guarded opt-in only after held-out real-repo
+  shadow scoring proves tests-only generalization, validation runtime, and
+  hidden-like agreement.
+- Write scope: eval command/report docs, generated outputs under `/tmp`, small
+  harness fixes only if directly required, and plan updates.
+- Acceptance: run the tests-only tasks from the real-repo ladder with max three
+  candidates, record `pass@1`, `pass@3`, first passing rank, runtime, mutation
+  scope, hidden-like agreement, residual labels, zero hosted usage, and a
+  gate decision against `docs/PRODUCT_WEDGE_DECISION.md`.
+- Tests: shadow-score command, plan consistency, and `git diff --check`.
+
 ### DATA-005: Issue/PR replay preflight runner
 
 - Status: ready
@@ -451,8 +482,11 @@ Long-term target:
 
 Start with these unless fresh evidence changes the order:
 
-1. `MAT-002`: constrained source-region materialization probe.
-2. `KNOW-001`: local knowledge inventory for the wedge.
-3. `WEDGE-001`: product wedge decision.
-4. `REAL-002`: real-repo ladder preflight runner.
-5. `DATA-005`: issue/PR replay preflight runner.
+1. `MAT-002`: finish the constrained source-region materialization probe.
+2. `REAL-002`: real-repo ladder preflight runner.
+3. `DATA-005`: issue/PR replay preflight runner.
+4. `GS7-005`: tests-only existing-repo support for one-file libraries.
+5. `KNOW-002`: extract first wedge knowledge records.
+6. `GS7-006`: repo-state-aware library convention edits.
+7. `REAL-003`: first tests-only wedge shadow score after blockers clear.
+8. `MODEL-006`: candidate-after or AST-delta observation for ranking evidence.

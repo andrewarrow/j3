@@ -673,3 +673,23 @@ meaningful work. Do not replace this file with a daily reset.
   issue/PR replay preflight rows before wiring this knowledge into candidate
   generation.
 - Blockers: none
+
+### 2026-05-18 - WEDGE-001 - Product wedge decision
+
+- Owner: worker Boyle (`019e3b51-328a-7c62-adc9-ba8cbf1055ba`)
+- Files changed: `docs/PRODUCT_WEDGE_DECISION.md`, `plans/active.md`,
+  `plans/backlog.md`, `plans/progress.md`
+- Tests: `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check` -> passed.
+- Result: chose guarded local tests-only maintenance for small existing Python
+  libraries as the first product path. Conservative one-file source maintenance
+  remains shadow-only until `MAT-002`, `GS7-006`, and `REAL-001` one-file
+  feature gates pass. The decision ties the wedge to real-repo generalization,
+  structured action coverage, repo-state planning, local knowledge, cheap
+  validation, held-out ranking, concrete rollout gates, pivot criteria, and the
+  next proof queue.
+- Commit: this task commit
+- Push: pending at commit time; see worker report
+- Next: run `REAL-002`, `DATA-005`, `GS7-005`, `KNOW-002`, and `GS7-006` before
+  attempting `REAL-003` shadow scoring or guarded tests-only opt-in.
+- Blockers: none

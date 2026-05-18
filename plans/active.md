@@ -35,19 +35,6 @@ This is the live coordinator board. Keep it current and compact.
 - Tests: focused source-region tests, `pytest tests/test_plan_consistency.py -q`,
   and `git diff --check`.
 
-### `WEDGE-001`: Product wedge decision
-
-- Status: active
-- Owner: worker Boyle (`019e3b51-328a-7c62-adc9-ba8cbf1055ba`)
-- Started: 2026-05-18
-- Goal: choose the first usable product path and make its gates/failure
-  criteria concrete enough to stop vague Codex-replacement drift.
-- Write scope: a focused product decision doc under `docs/` and plan updates.
-- Acceptance: choose the wedge, define the user promise, non-goals, guarded
-  rollout gates, evaluation links to `REAL-001`, `MAT-001`, `DATA-004`, and
-  `KNOW-001`, and concrete pivot/failure criteria.
-- Tests: `pytest tests/test_plan_consistency.py -q` and `git diff --check`.
-
 ## Ready Queue
 
 These are good next assignments for the next loop:
@@ -55,7 +42,12 @@ These are good next assignments for the next loop:
 1. `REAL-002`: add a preflight runner for the real-repo eval ladder.
 2. `DATA-005`: add a replay preflight runner for one issue/PR row.
 3. `GS7-005`: add tests-only existing-repo support for one-file libraries.
-4. `GS7-006`: add repo-state-aware library convention edits.
+4. `KNOW-002`: extract first wedge knowledge records.
+5. `GS7-006`: add repo-state-aware library convention edits.
+6. `MODEL-006`: add candidate-after or AST-delta observation for ranking
+   evidence.
+7. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.
+8. `MODEL-004`: distinguish mapping key and value targets.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
@@ -64,6 +56,8 @@ Run at most two tasks in parallel unless write scopes are plainly disjoint.
 - `TRANS-003`: blocked until the `TRANS-002` generation and ranking residuals
   have focused fixes or regression evidence; do not expand the full matrix
   until targeted `TRANS-004` evidence is recorded.
+- `REAL-003`: blocked until `REAL-002` proves baseline real-repo validation and
+  `GS7-005` adds tests-only existing-repo support.
 - `MODEL-002`: superseded by bounded scorer subtasks in the backlog, beginning
   with `MODEL-003` through `MODEL-006`.
 
@@ -79,6 +73,12 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `WEDGE-001`: added `docs/PRODUCT_WEDGE_DECISION.md`, choosing guarded local
+  tests-only maintenance for small existing Python libraries as the first
+  product path. Conservative one-file source maintenance remains shadow-only
+  until `MAT-002`, `GS7-006`, and `REAL-001` one-file feature gates pass. The
+  decision defines the user promise, non-goals, rollout metrics, failure
+  criteria, and next proof queue.
 - `KNOW-001`: added `docs/LOCAL_KNOWLEDGE_INVENTORY.md`, choosing the first
   local-knowledge wedge as pytest authoring and validation, Python packaging
   and import layout, and small-library maintenance conventions. The inventory

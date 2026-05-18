@@ -994,3 +994,22 @@ meaningful work. Do not replace this file with a daily reset.
   candidate surface, then rerun the REAL-003 tests-only shadow score with
   generated candidates.
 - Blockers: `test_case_materialization_gap`
+
+### 2026-05-18 - COORD - Test materialization and Gate A dispatch
+
+- Owner: coordinator
+- Files changed: `plans/active.md`, `plans/backlog.md`, `plans/progress.md`
+- Tests: `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check` -> passed.
+- Result: reviewed `REAL-004` and `GS7-007`. Live preflight now passes for the
+  `iniconfig` calibration repo, but Gate A still needs at least three baseline
+  repos. The generic real-repo tests-only planner now selects the correct
+  `iniconfig` test file and import style, but remains blocked by
+  `test_case_materialization_gap`. The next active tasks are `GS7-008` and
+  `REAL-005`.
+- Commit: pending coordinator commit
+- Push: pending coordinator push
+- Next: dispatch workers to materialize real-repo pytest cases for
+  `iniconfig` and extend live baseline preflight toward the three-repo Gate A
+  threshold.
+- Blockers: none

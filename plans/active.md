@@ -21,6 +21,45 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
+### `GS7-008`: Materialize real-repo pytest cases for iniconfig
+
+- Status: active
+- Owner: pending spawn
+- Started: 2026-05-18
+- Goal: close the `GS7-007` `test_case_materialization_gap` for the
+  `iniconfig-tests-parse-comments` calibration task without broadening to
+  arbitrary real-repo edits.
+- Write scope: `j3/real_repo_tests_planner.py`,
+  `tests/test_real_repo_tests_planner.py`, optional generated outputs under
+  `/tmp`, and plan updates.
+- Acceptance: materialize behavior-specific pytest cases into
+  `testing/test_iniconfig.py` for comment-only lines, inline section comments,
+  and duplicate keys; preserve production files; emit candidate-after mutation
+  scope, validation command, knowledge citations, and residual labels. If the
+  live pinned repo reveals incompatible APIs, record that exact blocker instead
+  of claiming a pass.
+- Tests: focused planner/materializer tests,
+  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+
+### `REAL-005`: Extend live baseline preflight toward Gate A
+
+- Status: active
+- Owner: pending spawn
+- Started: 2026-05-18
+- Goal: test whether cheap validation is viable beyond the `iniconfig`
+  calibration repo by running live baseline preflight on at least two more
+  ladder repositories.
+- Write scope: compact report under `docs/`, generated output under `/tmp`,
+  small preflight runner fixes only if directly required, focused tests if code
+  changes, and plan updates.
+- Acceptance: run live preflight for at least two of `h11`, `humanize`, and
+  `boltons`; record checkout/setup/baseline command results, runtime, network
+  policy, blocker labels, and whether Gate A has enough passing repos when
+  combined with `REAL-004`. Classify failures as environment, setup, or
+  validation, not agent failures.
+- Tests: live command/report smoke, `pytest tests/test_plan_consistency.py -q`,
+  and `git diff --check`.
+
 ## Ready Queue
 
 These are good next assignments for the next loop:

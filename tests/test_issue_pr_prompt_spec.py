@@ -5,6 +5,7 @@ from pathlib import Path
 
 from j3.issue_pr_prompt_spec import (
     CLICK_DEFAULT_MAP_REPLAY_ID,
+    REQUESTS_PREPARE_BODY_REPLAY_ID,
     build_issue_pr_prompt_spec,
     build_issue_pr_prompt_specs,
     load_issue_pr_replay_manifest,
@@ -86,6 +87,104 @@ def test_click_default_map_prompt_spec_records_provenance() -> None:
     assert normalized_from[2]["url"].endswith("/pull/3364.diff")
 
 
+def test_builds_requests_prepare_body_prompt_spec() -> None:
+    manifest = load_issue_pr_replay_manifest(MANIFEST_PATH)
+    spec = build_issue_pr_prompt_spec(
+        manifest,
+        REQUESTS_PREPARE_BODY_REPLAY_ID,
+        manifest_path=MANIFEST_PATH,
+    )
+
+    assert spec["schema_version"] == "issue-pr-prompt-spec-v1"
+    assert spec["record_kind"] == "issue_pr_prompt_spec"
+    assert spec["prompt_spec_kind"] == "requests_prepare_body_getattr_stream"
+    assert spec["status"] == "normalized"
+    assert spec["candidate_code_edits_attempted"] is False
+    assert spec["required_prompt_fields_complete"] is True
+    assert spec["missing_prompt_fields"] == []
+    assert spec["source_text_blockers"] == []
+
+    fields = spec["normalized_fields"]
+    assert fields["minimal_reproduction"]["request"] == {
+        "method": "POST",
+        "url_shape": "httpbin('redirect-to?url=/post&status_code=307')",
+        "data_argument": "AttrProxy()",
+    }
+    assert fields["observed_behavior"]["prepare_body_probe"] == {
+        "body_type_after_prepare": "AttrProxy",
+        "content_length": "4",
+        "body_position_before_fix": None,
+        "body_position_after_accepted_fix": 0,
+    }
+    assert (
+        fields["expected_behavior"]["behavior"]
+        == "treat_getattr_iter_file_wrapper_as_stream"
+    )
+    assert (
+        fields["affected_api_symbol"]["implementation_symbol"]
+        == "requests.models.PreparedRequest.prepare_body"
+    )
+    assert fields["input_shape"]["value_kind"] == "attribute_proxy_file_wrapper"
+    assert (
+        fields["acceptance_test_shape"]["test_name"]
+        == "test_getattr_proxy_stream_follows_redirect"
+    )
+    assert fields["getattr_file_wrapper_behavior"]["direct_iter_method_on_class"] is False
+    assert fields["getattr_file_wrapper_behavior"]["hasattr_wrapper_dunder_iter"] is True
+    assert "hasattr(data, '__iter__')" in fields["stream_detection_semantics"][
+        "accepted_condition_shape"
+    ]
+    assert fields["redirect_rewind_behavior"]["redirect_status"] == 307
+
+
+def test_requests_prepare_body_prompt_spec_records_provenance_and_source_gaps() -> None:
+    specs = build_issue_pr_prompt_specs(
+        manifest_path=MANIFEST_PATH,
+        replay_ids=[REQUESTS_PREPARE_BODY_REPLAY_ID],
+    )
+    spec = specs[0]
+    provenance = spec["provenance"]
+
+    assert provenance["manifest_schema_version"] == "issue-pr-mini-replay-v0"
+    assert provenance["stable_split"]["split"] == "train"
+    normalized_from = provenance["normalized_from"]
+    assert [source["id"] for source in normalized_from] == [
+        "github_issue_7432_compact_manifest",
+        "github_pr_7433_diff",
+        "data_008_focused_validation_recipe",
+        "know_005_requests_local_knowledge",
+        "github_pr_7433_conversation",
+    ]
+    assert normalized_from[1]["merge_commit_sha"] == (
+        "6404f345e562d962abe6700a1c357ec1e7e18232"
+    )
+    assert normalized_from[1]["url"].endswith("/pull/7433.diff")
+    assert normalized_from[4]["availability"] == "not_checked_in_not_required"
+    assert spec["field_provenance"]["redirect_rewind_behavior"] == [
+        "know_005_requests_redirect_rewind_body_semantics",
+        "data_008_focused_validation_recipe",
+    ]
+    assert spec["source_text_gaps"] == [
+        {
+            "source": "github_issue_7432_body",
+            "availability": "not_checked_in",
+            "impact": (
+                "Exact issue body text is unavailable locally; fields were "
+                "normalized from compact manifest metadata, accepted PR diff, "
+                "DATA-008 validation evidence, and KNOW-005 local knowledge."
+            ),
+        },
+        {
+            "source": "github_pr_7433_conversation",
+            "availability": "not_checked_in",
+            "impact": (
+                "PR discussion text is unavailable locally; no required "
+                "prompt/spec field depends on unretrieved conversation text."
+            ),
+        },
+    ]
+
+
 def test_prompt_spec_jsonl_summary_and_report(tmp_path: Path) -> None:
     specs = build_issue_pr_prompt_specs(
         manifest_path=MANIFEST_PATH,
@@ -111,7 +210,7 @@ def test_prompt_spec_jsonl_summary_and_report(tmp_path: Path) -> None:
 
 def test_unknown_prompt_spec_stays_machine_readable_blocked() -> None:
     manifest = load_issue_pr_replay_manifest(MANIFEST_PATH)
-    spec = build_issue_pr_prompt_spec(manifest, "psf__requests-issue-7432-pr-7433")
+    spec = build_issue_pr_prompt_spec(manifest, "pallets__click-issue-3298-pr-3299")
 
     assert spec["status"] == "blocked"
     assert spec["required_prompt_fields_complete"] is False

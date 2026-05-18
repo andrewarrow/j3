@@ -2002,3 +2002,35 @@ meaningful work. Do not replace this file with a daily reset.
   (`019e3c11-f5b2-7840-87fe-e3a2cba3bfec`) owns the Requests prompt/spec
   normalization.
 - Blockers: none.
+
+### 2026-05-18 - DATA-011 - Requests prepare_body prompt/spec normalization
+
+- Owner: worker Curie (`019e3c11-f5b2-7840-87fe-e3a2cba3bfec`).
+- Files changed: `j3/issue_pr_prompt_spec.py`,
+  `tests/test_issue_pr_prompt_spec.py`, `plans/active.md`,
+  `plans/backlog.md`, `plans/progress.md`.
+- Tests: `python -m py_compile j3/issue_pr_prompt_spec.py
+  tests/test_issue_pr_prompt_spec.py` -> passed; `pytest
+  tests/test_issue_pr_prompt_spec.py -q` -> 6 passed; CLI smoke `python -m
+  j3.issue_pr_prompt_spec --manifest
+  examples/issue_pr_mini_replay/manifest.json --replay-id
+  psf__requests-issue-7432-pr-7433 --out
+  /tmp/j3-data-011-requests-prepare-body-spec.jsonl --report
+  /tmp/j3-data-011-requests-prepare-body-spec.md` -> passed with status
+  `normalized`; `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check` -> passed.
+- Result: added machine-readable prompt/spec normalization for
+  `psf__requests-issue-7432-pr-7433` without candidate source edits. The
+  record captures minimal reproduction, observed behavior, expected behavior,
+  affected API symbol, input shape, acceptance test shape,
+  `__getattr__` file-wrapper behavior, stream detection semantics,
+  redirect/rewind behavior, and field provenance. Required prompt fields are
+  complete, `source_text_blockers` is empty, and unavailable source text is
+  recorded as nonblocking `source_text_gaps` for the unchecked-in issue body
+  and PR conversation.
+- Commit: pending in worker commit.
+- Push: pending.
+- Next: `DATA-010` or `DATA-012` can consume the Requests prompt/spec record
+  together with DATA-008 validation and KNOW-005 local knowledge when choosing
+  a candidate attempt.
+- Blockers: none for Requests prompt/spec normalization.

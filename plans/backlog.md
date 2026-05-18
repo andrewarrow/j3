@@ -1169,7 +1169,7 @@ Long-term target:
 
 ### DATA-011: Requests prepare_body prompt/spec normalization
 
-- Status: active
+- Status: done
 - Why: `DATA-008` and `KNOW-005` resolved validation and local-knowledge
   blockers for `psf__requests-issue-7432-pr-7433`, but the row still needs a
   normalized prompt/spec record before candidate attempts can be evaluated
@@ -1186,6 +1186,16 @@ Long-term target:
   edits.
 - Tests: focused prompt/spec tests, plan consistency, `git diff --check`, and
   a CLI smoke proving the Requests spec can be emitted.
+- Completion note: added `j3.issue_pr_prompt_spec` support for the Requests
+  #7432/#7433 row. The emitted JSONL spec is normalized, has no missing
+  required prompt fields, records no blocking source-text gaps, and captures
+  the minimal reproduction, observed repo-before body-position gap, expected
+  redirect-safe stream behavior, affected API, input and acceptance-test
+  shape, `__getattr__` file-wrapper behavior, stream detection semantics,
+  redirect/rewind behavior, and provenance. Candidate source edits were not
+  attempted. Smoke artifacts:
+  `/private/tmp/j3-data-011-requests-prepare-body-spec.jsonl` and
+  `/private/tmp/j3-data-011-requests-prepare-body-spec.md`.
 
 ### DATA-012: First issue/PR candidate attempt
 

@@ -17,6 +17,7 @@ from j3.issue_pr_preflight import (
 
 ISSUE_PR_PROMPT_SPEC_SCHEMA_VERSION = "issue-pr-prompt-spec-v1"
 CLICK_DEFAULT_MAP_REPLAY_ID = "pallets__click-issue-2745-pr-3364"
+REQUESTS_PREPARE_BODY_REPLAY_ID = "psf__requests-issue-7432-pr-7433"
 DEFAULT_MAP_REQUIRED_FIELDS = (
     "minimal_reproduction",
     "observed_behavior",
@@ -27,6 +28,17 @@ DEFAULT_MAP_REQUIRED_FIELDS = (
     "default_map_mutation_timing",
     "multi_value_parameter_shape",
     "string_splitting_semantics",
+)
+REQUESTS_PREPARE_BODY_REQUIRED_FIELDS = (
+    "minimal_reproduction",
+    "observed_behavior",
+    "expected_behavior",
+    "affected_api_symbol",
+    "input_shape",
+    "acceptance_test_shape",
+    "getattr_file_wrapper_behavior",
+    "stream_detection_semantics",
+    "redirect_rewind_behavior",
 )
 
 
@@ -41,6 +53,12 @@ def build_issue_pr_prompt_spec(
     record = select_issue_pr_replay_record(manifest, replay_id)
     if replay_id == CLICK_DEFAULT_MAP_REPLAY_ID:
         return _click_default_map_prompt_spec(
+            manifest=manifest,
+            manifest_path=manifest_path,
+            record=record,
+        )
+    if replay_id == REQUESTS_PREPARE_BODY_REPLAY_ID:
+        return _requests_prepare_body_prompt_spec(
             manifest=manifest,
             manifest_path=manifest_path,
             record=record,
@@ -150,7 +168,7 @@ def write_issue_pr_prompt_spec_report(
     resolved.parent.mkdir(parents=True, exist_ok=True)
     report_summary = dict(summary or summarize_issue_pr_prompt_specs(specs))
     lines = [
-        "# DATA-009 Click Default Map Prompt Spec",
+        f"# {_prompt_spec_report_title(specs)}",
         "",
         "Prompt/spec normalization only; no candidate source edits were attempted.",
         "",
@@ -172,6 +190,15 @@ def write_issue_pr_prompt_spec_report(
         lines.extend(["## Artifacts", "", f"- JSONL: `{report_summary['outcome_path']}`"])
     resolved.write_text("\n".join(lines) + "\n", encoding="utf-8")
     return resolved
+
+
+def _prompt_spec_report_title(specs: Sequence[Mapping[str, object]]) -> str:
+    kinds = {str(spec.get("prompt_spec_kind")) for spec in specs}
+    if kinds == {"click_default_map_multi_value_parameter"}:
+        return "DATA-009 Click Default Map Prompt Spec"
+    if kinds == {"requests_prepare_body_getattr_stream"}:
+        return "DATA-011 Requests Prepare Body Prompt Spec"
+    return "Issue/PR Prompt Spec Report"
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -385,6 +412,278 @@ def _click_default_map_prompt_spec(
                         "multi_value_parameter_shape",
                         "string_splitting_semantics",
                     ],
+                },
+            ],
+        ),
+    }
+
+
+def _requests_prepare_body_prompt_spec(
+    *,
+    manifest: Mapping[str, object],
+    manifest_path: Path | None,
+    record: Mapping[str, object],
+) -> dict[str, object]:
+    prompt_source = _mapping(record.get("prompt_source"))
+    accepted_change = _mapping(record.get("accepted_change"))
+    issue_url = str(prompt_source.get("issue_url") or "")
+    pr_url = str(prompt_source.get("pull_request_url") or "")
+    diff_url = str(accepted_change.get("diff_url") or "")
+    focused_validation_command = (
+        ".venv/bin/python -m pytest tests/test_requests.py -q "
+        "-k 'prepare_body or rewind_body or getattr_proxy_stream_follows_redirect'"
+    )
+    field_provenance = {
+        "minimal_reproduction": [
+            "github_pr_7433_diff",
+            "know_005_requests_getattr_file_wrapper_behavior",
+        ],
+        "observed_behavior": [
+            "data_011_repo_before_prepare_body_probe",
+            "know_005_requests_prepare_body_stream_detection",
+        ],
+        "expected_behavior": [
+            "github_pr_7433_diff",
+            "know_005_requests_redirect_rewind_body_semantics",
+        ],
+        "affected_api_symbol": [
+            "github_pr_7433_diff",
+            "know_005_requests_prepare_body_stream_detection",
+        ],
+        "input_shape": ["github_pr_7433_diff"],
+        "acceptance_test_shape": [
+            "github_pr_7433_diff",
+            "data_008_focused_validation_recipe",
+        ],
+        "getattr_file_wrapper_behavior": [
+            "github_pr_7433_diff",
+            "know_005_requests_getattr_file_wrapper_behavior",
+        ],
+        "stream_detection_semantics": [
+            "github_pr_7433_diff",
+            "know_005_requests_prepare_body_stream_detection",
+        ],
+        "redirect_rewind_behavior": [
+            "know_005_requests_redirect_rewind_body_semantics",
+            "data_008_focused_validation_recipe",
+        ],
+    }
+    normalized_fields = {
+        "minimal_reproduction": {
+            "kind": "requests_post_redirect_attr_proxy_stream",
+            "request": {
+                "method": "POST",
+                "url_shape": "httpbin('redirect-to?url=/post&status_code=307')",
+                "data_argument": "AttrProxy()",
+            },
+            "local_wrapper": {
+                "class_name": "AttrProxy",
+                "backing_store": "io.BytesIO(b'data')",
+                "direct_methods": ["__init__", "__getattr__"],
+                "delegation": "__getattr__ returns attributes from the backing BytesIO",
+                "class_does_not_define": ["__iter__", "read", "tell", "seek"],
+            },
+            "assertion": {
+                "response_accessor": "r.json()['data']",
+                "expected_value": "data",
+            },
+        },
+        "observed_behavior": {
+            "repo_before_ref": "0b401c76b6e80a4eecf3c690085b2553f6e261ca",
+            "failure_mode": "attribute_proxy_body_not_marked_rewindable",
+            "prepare_body_probe": {
+                "body_type_after_prepare": "AttrProxy",
+                "content_length": "4",
+                "body_position_before_fix": None,
+                "body_position_after_accepted_fix": 0,
+            },
+            "stream_detection_gap": (
+                "The repo-before predicate uses isinstance(data, Iterable), so "
+                "an object whose __iter__ is exposed only through __getattr__ is "
+                "not treated as the stream branch that records _body_position."
+            ),
+        },
+        "expected_behavior": {
+            "behavior": "treat_getattr_iter_file_wrapper_as_stream",
+            "redirect_semantics": (
+                "A 307 redirect should resend the original streamed bytes after "
+                "Requests rewinds the prepared body to the recorded position."
+            ),
+            "body_position": "record integer tell() position before redirect-prone sends",
+            "preserve_exclusions": [
+                "str",
+                "bytes",
+                "list",
+                "tuple",
+                "Mapping",
+            ],
+        },
+        "affected_api_symbol": {
+            "public_surface": "requests.PreparedRequest.prepare_body",
+            "implementation_symbol": "requests.models.PreparedRequest.prepare_body",
+            "redirect_surface": "requests.sessions.SessionRedirectMixin.resolve_redirects",
+            "rewind_helper": "requests.utils.rewind_body",
+            "changed_file": "src/requests/models.py",
+            "changed_test_file": "tests/test_requests.py",
+        },
+        "input_shape": {
+            "source": "requests.post(data=...)",
+            "value_kind": "attribute_proxy_file_wrapper",
+            "excluded_kinds": ["str", "bytes", "list", "tuple", "Mapping"],
+            "required_attributes_via_getattr": ["__iter__", "tell", "seek", "read"],
+            "example_backing_object": "io.BytesIO",
+        },
+        "acceptance_test_shape": {
+            "test_file": "tests/test_requests.py",
+            "test_class": "TestRequests",
+            "test_name": "test_getattr_proxy_stream_follows_redirect",
+            "fixture_arguments": ["httpbin"],
+            "cases": [
+                "local AttrProxy wraps io.BytesIO(b'data')",
+                "AttrProxy delegates methods through __getattr__",
+                "POST goes through httpbin 307 redirect to /post",
+                "response JSON data echoes the original uploaded bytes",
+            ],
+            "validation_command": focused_validation_command,
+            "setup_command": (
+                "python -m venv .venv && .venv/bin/python -m pip install -q "
+                "--upgrade pip setuptools wheel && .venv/bin/python -m pip "
+                "install -q -e . pytest pytest-httpbin==2.1.0 httpbin~=0.10.0 trustme"
+            ),
+        },
+        "getattr_file_wrapper_behavior": {
+            "wrapper": "AttrProxy",
+            "delegated_to": "io.BytesIO",
+            "delegation_method": "__getattr__",
+            "direct_iter_method_on_class": False,
+            "hasattr_wrapper_dunder_iter": True,
+            "candidate_constraint": (
+                "Stream detection must consider attribute-proxied __iter__ "
+                "without classifying ordinary str, bytes, list, tuple, or "
+                "Mapping inputs as streamed bodies."
+            ),
+        },
+        "stream_detection_semantics": {
+            "repo_before_condition": (
+                "isinstance(data, Iterable) and not isinstance(data, "
+                "(str, bytes, list, tuple, Mapping))"
+            ),
+            "accepted_condition_shape": (
+                "(isinstance(data, Iterable) or hasattr(data, '__iter__')) "
+                "and not isinstance(data, (str, bytes, list, tuple, Mapping))"
+            ),
+            "stream_branch_effects": [
+                "body is the original data object",
+                "length is computed with super_len(data)",
+                "self._body_position records body.tell() when available",
+                "Content-Length is set when length is known",
+                "Transfer-Encoding is set to chunked when length is unknown",
+            ],
+        },
+        "redirect_rewind_behavior": {
+            "redirect_status": 307,
+            "rewind_trigger": (
+                "resolve_redirects treats a prepared request as rewindable when "
+                "_body_position is not None and Content-Length or "
+                "Transfer-Encoding is present."
+            ),
+            "rewind_helper": "requests.utils.rewind_body",
+            "rewind_action": "seek prepared_request.body to _body_position",
+            "error_behavior": "raise UnrewindableBodyError when seek/tell state is unusable",
+            "issue_specific_effect": (
+                "Recording _body_position for the AttrProxy stream lets the "
+                "redirect resend b'data' instead of losing the request body."
+            ),
+        },
+    }
+    return {
+        "schema_version": ISSUE_PR_PROMPT_SPEC_SCHEMA_VERSION,
+        "record_kind": "issue_pr_prompt_spec",
+        "replay_id": str(record.get("id")),
+        "repo": str(record.get("repo")),
+        "prompt_spec_kind": "requests_prepare_body_getattr_stream",
+        "status": "normalized",
+        "candidate_code_edits_attempted": False,
+        "required_prompt_fields": list(REQUESTS_PREPARE_BODY_REQUIRED_FIELDS),
+        "missing_prompt_fields": [],
+        "required_prompt_fields_complete": True,
+        "source_text_blockers": [],
+        "source_text_gaps": [
+            {
+                "source": "github_issue_7432_body",
+                "availability": "not_checked_in",
+                "impact": (
+                    "Exact issue body text is unavailable locally; fields were "
+                    "normalized from compact manifest metadata, accepted PR diff, "
+                    "DATA-008 validation evidence, and KNOW-005 local knowledge."
+                ),
+            },
+            {
+                "source": "github_pr_7433_conversation",
+                "availability": "not_checked_in",
+                "impact": (
+                    "PR discussion text is unavailable locally; no required "
+                    "prompt/spec field depends on unretrieved conversation text."
+                ),
+            },
+        ],
+        "normalized_fields": normalized_fields,
+        "field_provenance": field_provenance,
+        "prompt_source": dict(prompt_source),
+        "accepted_change": dict(accepted_change),
+        "provenance": _prompt_spec_provenance(
+            manifest=manifest,
+            manifest_path=manifest_path,
+            record=record,
+            normalized_from=[
+                {
+                    "id": "github_issue_7432_compact_manifest",
+                    "kind": "github_issue_metadata",
+                    "url": issue_url,
+                    "fields": [
+                        "minimal_reproduction",
+                        "observed_behavior",
+                        "affected_api_symbol",
+                    ],
+                },
+                {
+                    "id": "github_pr_7433_diff",
+                    "kind": "github_pull_request_diff",
+                    "url": diff_url,
+                    "merge_commit_sha": accepted_change.get("merge_commit_sha"),
+                    "fields": [
+                        "minimal_reproduction",
+                        "expected_behavior",
+                        "affected_api_symbol",
+                        "input_shape",
+                        "acceptance_test_shape",
+                        "getattr_file_wrapper_behavior",
+                        "stream_detection_semantics",
+                    ],
+                },
+                {
+                    "id": "data_008_focused_validation_recipe",
+                    "kind": "local_validation_report",
+                    "url": "docs/DATA_008_REQUESTS_VALIDATION_RECIPE_2026-05-18.md",
+                    "fields": ["acceptance_test_shape", "redirect_rewind_behavior"],
+                },
+                {
+                    "id": "know_005_requests_local_knowledge",
+                    "kind": "local_knowledge_jsonl",
+                    "url": "/tmp/j3-know-005-requests-records.jsonl",
+                    "fields": [
+                        "observed_behavior",
+                        "getattr_file_wrapper_behavior",
+                        "stream_detection_semantics",
+                        "redirect_rewind_behavior",
+                    ],
+                },
+                {
+                    "id": "github_pr_7433_conversation",
+                    "kind": "github_pull_request",
+                    "url": pr_url,
+                    "fields": [],
+                    "availability": "not_checked_in_not_required",
                 },
             ],
         ),

@@ -66,27 +66,6 @@ This is the live coordinator board. Keep it current and compact.
   tests/test_plan_consistency.py -q`, `git diff --check`, and a CLI smoke or
   fixture report over the first three replay rows.
 
-### `DATA-011`: Requests prepare_body prompt/spec normalization
-
-- Status: active
-- Owner: worker Curie (`019e3c11-f5b2-7840-87fe-e3a2cba3bfec`).
-- Why: `DATA-008` and `KNOW-005` resolved validation and local-knowledge
-  blockers for `psf__requests-issue-7432-pr-7433`, but the row still lacks a
-  normalized prompt/spec record, so a candidate attempt would still be judged
-  against an ambiguous request.
-- Write scope: `j3/issue_pr_prompt_spec.py`,
-  `tests/test_issue_pr_prompt_spec.py`, optional compact report, and plan
-  updates. Do not edit readiness or local-knowledge modules.
-- Acceptance: build a structured spec for
-  `psf__requests-issue-7432-pr-7433` that records minimal reproduction,
-  observed behavior, expected behavior, affected API symbol, input shape,
-  acceptance test shape, `__getattr__` file-wrapper behavior, stream detection
-  semantics, redirect/rewind behavior, provenance, and any fields still
-  blocked on unavailable source text. No candidate source edits.
-- Tests: focused prompt/spec tests, `pytest tests/test_plan_consistency.py
-  -q`, `git diff --check`, and a CLI smoke proving the Requests spec can be
-  emitted.
-
 ## Ready Queue
 
 These are good next assignments for the next loop:
@@ -122,6 +101,16 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `DATA-011`: added machine-readable prompt/spec normalization for
+  `psf__requests-issue-7432-pr-7433` without candidate source edits. The
+  `issue_pr_prompt_spec` record captures the minimal reproduction, observed
+  repo-before `_body_position` gap, expected redirect-safe stream behavior,
+  affected `requests.PreparedRequest.prepare_body` surface, input shape,
+  acceptance test shape, `__getattr__` file-wrapper behavior, stream detection
+  semantics, redirect/rewind behavior, field provenance, and nonblocking
+  unavailable source-text gaps for the unchecked-in issue body and PR
+  conversation. JSONL: `/private/tmp/j3-data-011-requests-prepare-body-spec.jsonl`;
+  report: `/private/tmp/j3-data-011-requests-prepare-body-spec.md`.
 - `KNOW-005`: added a narrow Requests replay local-knowledge extractor and CLI
   smoke path for `psf__requests-issue-7432-pr-7433`. The emitted records cover
   changed-file context for `src/requests/models.py` and

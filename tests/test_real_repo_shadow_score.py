@@ -103,17 +103,81 @@ def test_duplicate_keys_report_key_name() -> None:
     )
 
 
+def _write_synthetic_h11_checkout(repo: Path) -> None:
+    (repo / "h11" / "tests").mkdir(parents=True)
+    (repo / "pyproject.toml").write_text(
+        """[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "h11"
+version = "0.14.0"
+requires-python = ">=3.8"
+""",
+        encoding="utf-8",
+    )
+    (repo / "h11" / "__init__.py").write_text(
+        """from __future__ import annotations
+
+from ._util import bytesify
+
+__all__ = ["bytesify"]
+""",
+        encoding="utf-8",
+    )
+    (repo / "h11" / "_util.py").write_text(
+        """from __future__ import annotations
+
+
+def bytesify(value: bytes | bytearray | memoryview | int | str) -> bytes:
+    if type(value) is bytes:
+        return value
+    if isinstance(value, str):
+        value = value.encode("ascii")
+    if isinstance(value, int):
+        raise TypeError("expected bytes-like object, not int")
+    return bytes(value)
+""",
+        encoding="utf-8",
+    )
+    (repo / "h11" / "tests" / "test_util.py").write_text(
+        """import pytest
+
+from .._util import bytesify
+
+
+def test_bytesify() -> None:
+    assert bytesify(b"123") == b"123"
+    assert bytesify(bytearray(b"123")) == b"123"
+    assert bytesify("123") == b"123"
+
+    with pytest.raises(UnicodeEncodeError):
+        bytesify("\\u1234")
+
+    with pytest.raises(TypeError):
+        bytesify(10)
+""",
+        encoding="utf-8",
+    )
+
+
 def _passing_validation_runner(
     command: str,
     cwd: Path,
     timeout_seconds: int,
 ) -> CandidateValidationResult:
+    stdout = (
+        "11 passed in 0.02s\n"
+        if "h11/tests/test_util.py" in command
+        else "54 passed in 0.03s\n"
+    )
     return CandidateValidationResult(
         command=command,
         cwd=str(cwd),
         timeout_seconds=timeout_seconds,
         returncode=0,
-        stdout="54 passed in 0.03s\n",
+        stdout=stdout,
         status="passed",
     )
 
@@ -121,13 +185,15 @@ def _passing_validation_runner(
 def test_real_repo_tests_only_shadow_score_scores_iniconfig_candidate(
     tmp_path: Path,
 ) -> None:
-    repo_path = tmp_path / "iniconfig"
-    _write_synthetic_iniconfig_checkout(repo_path)
+    iniconfig_path = tmp_path / "iniconfig"
+    h11_path = tmp_path / "h11"
+    _write_synthetic_iniconfig_checkout(iniconfig_path)
+    _write_synthetic_h11_checkout(h11_path)
 
     score = run_real_repo_tests_only_shadow_score(
         MANIFEST_PATH,
         created_at="2026-05-18T00:00:00+00:00",
-        repo_paths={"iniconfig": repo_path},
+        repo_paths={"iniconfig": iniconfig_path, "h11": h11_path},
         validate_candidates=True,
         validation_runner=_passing_validation_runner,
     )
@@ -140,16 +206,25 @@ def test_real_repo_tests_only_shadow_score_scores_iniconfig_candidate(
     metrics = score["metrics"]
     assert isinstance(metrics, dict)
     assert metrics["tasks_scored"] == 4
-    assert metrics["candidate_count"] == 1
-    assert metrics["candidates_tested"] == 1
-    assert metrics["pass@1"] == "1/4"
-    assert metrics["pass@3"] == "1/4"
-    assert metrics["first_passing_ranks"] == [1, None, None, None]
-    assert metrics["correct_test_location"] == "1/4"
+    assert metrics["candidate_count"] == 2
+    assert metrics["candidates_tested"] == 2
+    assert metrics["pass@1"] == "2/4"
+    assert metrics["pass@3"] == "2/4"
+    assert metrics["first_passing_ranks"] == [1, 1, None, None]
+    assert metrics["calibration"]["pass@3"] == "1/1"
+    assert metrics["heldout"]["pass@3"] == "1/3"
+    assert metrics["correct_test_location"] == "2/4"
     assert metrics["production_file_modifications"] == 0
     assert metrics["writes_outside_allowlist"] == 0
-    assert metrics["hidden_like_agreement"]["agreeing"] == 1
-    assert metrics["hidden_like_agreement"]["not_run"] == 3
+    assert metrics["mutation_scope_violations"] == {
+        "production_file_modifications": 0,
+        "writes_outside_allowlist": 0,
+        "candidate_target_path_violations": 0,
+    }
+    assert metrics["candidate_validation_statuses"]["passed"] == 2
+    assert metrics["candidate_validation_statuses"]["blocked"] == 2
+    assert metrics["hidden_like_agreement"]["agreeing"] == 2
+    assert metrics["hidden_like_agreement"]["not_run"] == 2
 
     gate = score["gate_decision"]
     assert isinstance(gate, dict)
@@ -193,15 +268,43 @@ def test_real_repo_tests_only_shadow_score_scores_iniconfig_candidate(
         "iniconfig_duplicate_key_reports_name",
     ]
 
-    heldout_rows = [row for row in rows if row["repo_split"] == "heldout"]
-    assert all(row["pass@1"] is False for row in heldout_rows)
-    assert all(row["pass@3"] is False for row in heldout_rows)
-    assert all(row["first_passing_rank"] is None for row in heldout_rows)
-    assert all(row["hidden_like_agreement"] == "not_run" for row in heldout_rows)
-    assert all(row["candidate_validation"]["status"] == "blocked" for row in heldout_rows)
+    h11 = next(row for row in rows if row["repo_id"] == "h11")
+    assert h11["candidate_count"] == 1
+    assert h11["candidates_tested"] == 1
+    assert h11["pass@1"] is True
+    assert h11["pass@3"] is True
+    assert h11["first_passing_rank"] == 1
+    assert h11["candidate_validation"]["status"] == "passed"
+    assert h11["candidate_validation"]["result"]["stdout"] == "11 passed in 0.02s\n"
+    assert h11["hidden_like_agreement"] == "agrees"
+    assert h11["residual_labels"] == []
+    assert h11["blockers"] == []
+    assert h11["candidate_record"]["status"] == "materialized"
+    assert h11["mutation_scope"]["files_changed"] == ["h11/tests/test_util.py"]
+    assert h11["mutation_scope"]["production_files_changed"] == []
+    assert h11["mutation_scope"]["writes_outside_allowlist"] == []
+    assert h11["mutation_scope"]["candidate_after"]["test_case_ids"] == [
+        "h11_bytesify_bytearray",
+        "h11_bytesify_memoryview",
+        "h11_bytesify_ascii_str",
+        "h11_bytesify_non_ascii_str",
+        "h11_bytesify_int_type_error",
+    ]
+
+    blocked_heldout_rows = [
+        row for row in rows if row["repo_id"] in {"humanize", "boltons"}
+    ]
+    assert all(row["pass@1"] is False for row in blocked_heldout_rows)
+    assert all(row["pass@3"] is False for row in blocked_heldout_rows)
+    assert all(row["first_passing_rank"] is None for row in blocked_heldout_rows)
+    assert all(row["hidden_like_agreement"] == "not_run" for row in blocked_heldout_rows)
+    assert all(
+        row["candidate_validation"]["status"] == "blocked"
+        for row in blocked_heldout_rows
+    )
     assert all(
         "test_case_materialization_gap" in row["residual_labels"]
-        for row in heldout_rows
+        for row in blocked_heldout_rows
     )
 
 
@@ -221,7 +324,7 @@ def test_shadow_score_keeps_heldout_materializer_blockers(
     rows = score["task_results"]
     assert isinstance(rows, list)
 
-    for repo_id in ("h11", "humanize", "boltons"):
+    for repo_id in ("humanize", "boltons"):
         row = next(item for item in rows if item["repo_id"] == repo_id)
         assert row["candidate_count"] == 0
         assert row["candidates_tested"] == 0
@@ -244,12 +347,14 @@ def test_shadow_score_keeps_heldout_materializer_blockers(
 
 
 def test_shadow_score_writes_json_and_markdown_reports(tmp_path: Path) -> None:
-    repo_path = tmp_path / "iniconfig"
-    _write_synthetic_iniconfig_checkout(repo_path)
+    iniconfig_path = tmp_path / "iniconfig"
+    h11_path = tmp_path / "h11"
+    _write_synthetic_iniconfig_checkout(iniconfig_path)
+    _write_synthetic_h11_checkout(h11_path)
     score = run_real_repo_tests_only_shadow_score(
         MANIFEST_PATH,
         created_at="2026-05-18T00:00:00+00:00",
-        repo_paths={"iniconfig": repo_path},
+        repo_paths={"iniconfig": iniconfig_path, "h11": h11_path},
         validate_candidates=True,
         validation_runner=_passing_validation_runner,
     )
@@ -263,10 +368,13 @@ def test_shadow_score_writes_json_and_markdown_reports(tmp_path: Path) -> None:
         tmp_path / "report.md",
     )
 
-    assert json.loads(score_path.read_text(encoding="utf-8"))["metrics"]["pass@3"] == "1/4"
+    assert json.loads(score_path.read_text(encoding="utf-8"))["metrics"]["pass@3"] == "2/4"
     report = report_path.read_text(encoding="utf-8")
-    assert "REAL-006 Tests-Only Shadow Score" in report
-    assert "pass@3: `1/4`" in report
+    assert "REAL-007 Tests-Only Shadow Score" in report
+    assert "Calibration pass@3: `1/1`" in report
+    assert "Held-out pass@3: `1/3`" in report
+    assert "pass@3: `2/4`" in report
     assert "| `iniconfig-tests-parse-comments` | calibration | passed | True | True | 1 |" in report
+    assert "| `h11-tests-bytesify-memoryview` | heldout | passed | True | True | 1 |" in report
     assert "remain_shadow_only" in report
     assert format_real_repo_tests_only_shadow_score(score) == report

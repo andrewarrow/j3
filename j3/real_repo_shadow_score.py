@@ -23,6 +23,7 @@ from j3.real_repo_preflight import (
 )
 from j3.real_repo_tests_planner import (
     CANDIDATE_VALIDATION_DEFERRED,
+    H11_BYTESIFY_MEMORYVIEW_TASK_ID,
     INICONFIG_PARSE_COMMENTS_TASK_ID,
     REAL_REPO_TESTS_ACTION_FAMILY,
     TEST_CASE_MATERIALIZATION_BLOCKER,
@@ -40,9 +41,15 @@ SUPPORTED_DOMAIN = "text_slugify"
 SUPPORTED_SOURCE_FILES = (SLUGIFY_SOURCE,)
 SUPPORTED_TARGET_TEST_FILES = (SLUGIFY_TESTS,)
 SUPPORTED_FEATURES = tuple(SLUGIFY_FEATURES)
-DEFAULT_REPORT_PATH = Path("/tmp/j3-real-003-tests-only-shadow-score/report.md")
-DEFAULT_SCORE_PATH = Path("/tmp/j3-real-003-tests-only-shadow-score/score.json")
+DEFAULT_REPORT_PATH = Path("/tmp/j3-real-007-tests-only-shadow-score/report.md")
+DEFAULT_SCORE_PATH = Path("/tmp/j3-real-007-tests-only-shadow-score/score.json")
 DEFAULT_VALIDATION_TIMEOUT_SECONDS = 120
+MATERIALIZED_TESTS_ONLY_TASK_IDS = frozenset(
+    {
+        INICONFIG_PARSE_COMMENTS_TASK_ID,
+        H11_BYTESIFY_MEMORYVIEW_TASK_ID,
+    }
+)
 
 ValidationRunner = Callable[[str, Path, int], "CandidateValidationResult"]
 
@@ -82,9 +89,9 @@ def run_real_repo_tests_only_shadow_score(
 ) -> dict[str, object]:
     """Score current tests-only wedge coverage against REAL-001 tasks.
 
-    The calibration ``iniconfig`` row is scored through the GS7-008
-    repo-state-aware planner when a checkout path is supplied. Held-out repos
-    stay as explicit machine-readable blockers until their materializers exist.
+    The ``iniconfig`` calibration row and available held-out rows are scored
+    through the real-repo tests planner when checkout paths are supplied. Rows
+    without materializers stay as explicit machine-readable blockers.
     """
 
     started = perf_counter()
@@ -118,6 +125,8 @@ def run_real_repo_tests_only_shadow_score(
     )
     candidate_count = sum(int(row["candidate_count"]) for row in rows)
     candidates_tested = sum(int(row["candidates_tested"]) for row in rows)
+    calibration_metrics = _split_pass_metrics(rows, split="calibration")
+    heldout_metrics = _split_pass_metrics(rows, split="heldout")
     runtime_not_run_reasons = sorted(
         {
             str(_mapping(row["runtime"], field="runtime").get("not_run_reason"))
@@ -156,22 +165,25 @@ def run_real_repo_tests_only_shadow_score(
         "supported_action_surface": {
             "legacy_action_family": SUPPORTED_ACTION_FAMILY,
             "real_repo_action_family": REAL_REPO_TESTS_ACTION_FAMILY,
-            "calibration_materializer": INICONFIG_PARSE_COMMENTS_TASK_ID,
-            "heldout_materializers": [],
+            "calibration_materializers": [INICONFIG_PARSE_COMMENTS_TASK_ID],
+            "heldout_materializers": [H11_BYTESIFY_MEMORYVIEW_TASK_ID],
             "legacy_domain": SUPPORTED_DOMAIN,
             "legacy_source_files": list(SUPPORTED_SOURCE_FILES),
             "legacy_target_test_files": list(SUPPORTED_TARGET_TEST_FILES),
             "legacy_features": list(SUPPORTED_FEATURES),
             "scope_note": (
                 "GS7-008 materializes the iniconfig calibration tests-only "
-                "candidate; held-out tests-only materializers are not counted "
-                "until implemented and live validated."
+                "candidate and GS7-009 materializes the first held-out h11 "
+                "tests-only candidate. Other held-out tasks remain explicit "
+                "materialization blockers until implemented and live validated."
             ),
         },
         "metrics": {
             "tasks_scored": total,
             "candidate_count": candidate_count,
             "candidates_tested": candidates_tested,
+            "calibration": calibration_metrics,
+            "heldout": heldout_metrics,
             "pass@1": f"{pass_at_1_count}/{total}",
             "pass@3": f"{pass_at_3_count}/{total}",
             "pass_at_1_count": pass_at_1_count,
@@ -183,6 +195,33 @@ def run_real_repo_tests_only_shadow_score(
             "correct_test_location": f"{correct_location_count}/{total}",
             "production_file_modifications": production_file_modifications,
             "writes_outside_allowlist": writes_outside_allowlist,
+            "mutation_scope_violations": {
+                "production_file_modifications": production_file_modifications,
+                "writes_outside_allowlist": writes_outside_allowlist,
+                "candidate_target_path_violations": sum(
+                    len(
+                        _sequence(
+                            _mapping(row["mutation_scope"], field="mutation_scope").get(
+                                "candidate_target_path_violations"
+                            ),
+                            field="candidate_target_path_violations",
+                        )
+                    )
+                    for row in rows
+                ),
+            },
+            "candidate_validation_statuses": {
+                status: sum(
+                    1
+                    for row in rows
+                    if _mapping(
+                        row["candidate_validation"],
+                        field="candidate_validation",
+                    ).get("status")
+                    == status
+                )
+                for status in ("passed", "failed", "blocked", "deferred")
+            },
             "hidden_like_agreement": {
                 "agreeing": sum(
                     1 for row in rows if row["hidden_like_agreement"] == "agrees"
@@ -212,13 +251,14 @@ def run_real_repo_tests_only_shadow_score(
             "reason": (
                 f"pass@3 is {pass_at_3_count}/{total}, below the "
                 f"{minimum_pass_at_3}/{total} tests-only gate. The iniconfig "
-                "calibration candidate is scored, but held-out tests-only "
-                "materializers are still blockers."
+                "calibration candidate and first held-out h11 candidate are "
+                "scored, but humanize and boltons tests-only materializers "
+                "are still blockers."
             ),
             "failed_checks": [
                 "pass@3 below tests-only gate",
                 "fewer than 3/4 tests-only tasks have passing materialized candidates",
-                "held-out tests-only materializers are not yet available",
+                "humanize and boltons tests-only materializers are not yet available",
             ],
         },
         "task_results": rows,
@@ -245,7 +285,7 @@ def format_real_repo_tests_only_shadow_score(score: Mapping[str, object]) -> str
     gate = _mapping(score.get("gate_decision"), field="gate_decision")
     rows = _sequence(score.get("task_results"), field="task_results")
     lines = [
-        "# REAL-006 Tests-Only Shadow Score",
+        "# REAL-007 Tests-Only Shadow Score",
         "",
         f"- Schema: `{score.get('schema_version')}`",
         f"- Manifest: `{score.get('manifest_path')}`",
@@ -253,6 +293,14 @@ def format_real_repo_tests_only_shadow_score(score: Mapping[str, object]) -> str
         f"- Zero hosted usage: `{str(score.get('zero_hosted_usage_confirmed')).lower()}`",
         f"- Candidate count: `{metrics.get('candidate_count')}`",
         f"- Candidates tested: `{metrics.get('candidates_tested')}`",
+        (
+            "- Calibration pass@3: "
+            f"`{_mapping(metrics.get('calibration'), field='calibration').get('pass@3')}`"
+        ),
+        (
+            "- Held-out pass@3: "
+            f"`{_mapping(metrics.get('heldout'), field='heldout').get('pass@3')}`"
+        ),
         f"- pass@1: `{metrics.get('pass@1')}`",
         f"- pass@3: `{metrics.get('pass@3')}`",
         f"- Correct test location: `{metrics.get('correct_test_location')}`",
@@ -320,7 +368,7 @@ def write_real_repo_tests_only_shadow_report(
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Run the REAL-006 tests-only wedge shadow score."
+        description="Run the REAL-007 tests-only wedge shadow score."
     )
     parser.add_argument(
         "--manifest",
@@ -411,8 +459,8 @@ def _score_tests_only_task(
         _string_sequence(task.get("expected_failure_modes"), field="expected_failure_modes")
     )
 
-    if task_id == INICONFIG_PARSE_COMMENTS_TASK_ID:
-        return _score_materialized_iniconfig_task(
+    if task_id in MATERIALIZED_TESTS_ONLY_TASK_IDS:
+        return _score_materialized_tests_only_task(
             repo=repo,
             task=task,
             defaults=defaults,
@@ -490,7 +538,7 @@ def _score_tests_only_task(
     }
 
 
-def _score_materialized_iniconfig_task(
+def _score_materialized_tests_only_task(
     *,
     repo: Mapping[str, object],
     task: Mapping[str, object],
@@ -525,7 +573,7 @@ def _score_materialized_iniconfig_task(
         blocker = {
             "field": "repo_path",
             "reason": "candidate_checkout_missing",
-            "message": "iniconfig candidate scoring requires a checkout path",
+            "message": f"{task_id} candidate scoring requires a checkout path",
         }
         return _blocked_materialized_row(
             repo=repo,
@@ -871,12 +919,38 @@ def _hidden_like_agreement(
         _string_sequence(candidate_after.get("test_case_ids", []), field="test_case_ids")
     )
     task_id = _required_str(task, "id")
-    required_case_ids = {
-        "iniconfig_comment_only_lines",
-        "iniconfig_inline_section_comments",
-        "iniconfig_duplicate_key_reports_name",
-    }
     if task_id == INICONFIG_PARSE_COMMENTS_TASK_ID:
+        required_case_ids = {
+            "iniconfig_comment_only_lines",
+            "iniconfig_inline_section_comments",
+            "iniconfig_duplicate_key_reports_name",
+        }
+        agrees = (
+            not production_changed
+            and not writes_outside
+            and required_case_ids <= test_case_ids
+        )
+        return {
+            "status": "agrees" if agrees else "disagrees",
+            "production_files_unchanged": not production_changed,
+            "writes_inside_allowlist": not writes_outside,
+            "required_case_ids_present": sorted(required_case_ids & test_case_ids),
+            "missing_case_ids": sorted(required_case_ids - test_case_ids),
+            "checks": list(
+                _string_sequence(
+                    task.get("hidden_like_checks"),
+                    field="hidden_like_checks",
+                )
+            ),
+        }
+    if task_id == H11_BYTESIFY_MEMORYVIEW_TASK_ID:
+        required_case_ids = {
+            "h11_bytesify_bytearray",
+            "h11_bytesify_memoryview",
+            "h11_bytesify_ascii_str",
+            "h11_bytesify_non_ascii_str",
+            "h11_bytesify_int_type_error",
+        }
         agrees = (
             not production_changed
             and not writes_outside
@@ -899,6 +973,28 @@ def _hidden_like_agreement(
     return {
         "status": "not_run",
         "reason": "no hidden-like evaluator for this task",
+    }
+
+
+def _split_pass_metrics(
+    rows: Sequence[Mapping[str, object]],
+    *,
+    split: str,
+) -> dict[str, object]:
+    split_rows = [row for row in rows if row.get("repo_split") == split]
+    total = len(split_rows)
+    pass_at_1_count = sum(1 for row in split_rows if row["pass@1"] is True)
+    pass_at_3_count = sum(1 for row in split_rows if row["pass@3"] is True)
+    return {
+        "split": split,
+        "tasks_scored": total,
+        "candidate_count": sum(int(row["candidate_count"]) for row in split_rows),
+        "candidates_tested": sum(int(row["candidates_tested"]) for row in split_rows),
+        "pass@1": f"{pass_at_1_count}/{total}",
+        "pass@3": f"{pass_at_3_count}/{total}",
+        "pass_at_1_count": pass_at_1_count,
+        "pass_at_3_count": pass_at_3_count,
+        "first_passing_ranks": [row["first_passing_rank"] for row in split_rows],
     }
 
 

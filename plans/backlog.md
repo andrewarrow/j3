@@ -699,7 +699,7 @@ Long-term target:
 
 ### REAL-007: Held-out tests-only score after first h11 materializer
 
-- Status: active
+- Status: done
 - Why: once `GS7-009` either passes or fails, the evidence needs a score that
   separates calibration progress from held-out generalization.
 - Write scope: shadow-score command/report updates, generated outputs under
@@ -712,6 +712,16 @@ Long-term target:
   wedge remains shadow-only.
 - Tests: focused shadow-score tests, plan consistency, `git diff --check`, and
   the score/report smoke command.
+- Completion note: reran the tests-only shadow score with the GS7-008
+  `iniconfig` calibration materializer and the GS7-009 held-out `h11`
+  materializer both counted through the real-repo tests planner surface. The
+  live `/tmp/j3-real-007-shadow-score` run against pinned checkouts scored
+  `pass@1 = 2/4`, `pass@3 = 2/4`, calibration pass@3 `1/1`, and held-out
+  pass@3 `1/3`; iniconfig and h11 both passed candidate validation with first
+  passing rank 1, zero production-file changes, zero writes outside allowlists,
+  hidden-like agreement, and zero hosted usage. `humanize` and `boltons`
+  remain explicit `test_case_materialization_gap` blockers, so the gate stays
+  `remain_shadow_only`.
 
 ### REAL-008: Tests-only gate after next held-out materializer batch
 

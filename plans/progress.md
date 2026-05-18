@@ -1190,3 +1190,34 @@ meaningful work. Do not replace this file with a daily reset.
   one-file feature materializer. Keep `GS7-010` and `GS7-011` ready for the
   following held-out tests-only materializers.
 - Blockers: none
+
+### 2026-05-18 - REAL-007 - Held-out tests-only shadow score
+
+- Owner: worker Hooke (`019e3ba2-e5c6-7503-9c04-a674490288ee`)
+- Files changed: `j3/real_repo_shadow_score.py`,
+  `tests/test_real_repo_shadow_score.py`,
+  `docs/REAL_007_TESTS_ONLY_SHADOW_SCORE_2026-05-18.md`,
+  `plans/active.md`, `plans/backlog.md`, `plans/progress.md`
+- Tests: `pytest tests/test_real_repo_shadow_score.py -q` -> 3 passed;
+  `python -m py_compile j3/real_repo_shadow_score.py
+  tests/test_real_repo_shadow_score.py` -> passed; live preflight
+  `PATH=/tmp/j3-real-007-shadow-score/.venv/bin:$PATH python -m j3.real_repo_preflight --manifest examples/real_repo_eval_ladder.json --repo iniconfig --repo h11 --work-root /tmp/j3-real-007-shadow-score/repos --outcome /tmp/j3-real-007-shadow-score/preflight.jsonl`
+  -> passed with 4 rows, `blocker_labels = ["none"]`, runtime 5.120 seconds;
+  live shadow score
+  `PATH=/tmp/j3-real-007-shadow-score/.venv/bin:$PATH python -m j3.real_repo_shadow_score --manifest examples/real_repo_eval_ladder.json --repo-path iniconfig=/tmp/j3-real-007-shadow-score/repos/iniconfig --repo-path h11=/tmp/j3-real-007-shadow-score/repos/h11 --validate-candidates --out /tmp/j3-real-007-shadow-score/score.json --report /tmp/j3-real-007-shadow-score/report.md`
+  -> passed with `pass@1 = 2/4`, `pass@3 = 2/4`, and
+  `gate_decision = remain_shadow_only`.
+- Result: counted both `iniconfig-tests-parse-comments` and
+  `h11-tests-bytesify-memoryview` through the real-repo tests planner surface.
+  Calibration pass@3 is `1/1`; held-out pass@3 is `1/3`; first passing ranks
+  are `[1, 1, null, null]`. Candidate validation passed for iniconfig and h11,
+  with zero production-file modifications, zero writes outside allowlists,
+  zero candidate target path violations, hidden-like agreement for both passing
+  candidates, and zero hosted usage. `humanize` and `boltons` remain explicit
+  `test_case_materialization_gap` blockers.
+- Commit: this commit
+- Push: pending
+- Next: materialize the next held-out tests-only candidate (`GS7-010`
+  `humanize` or `GS7-011` `boltons`) before rerunning `REAL-008`.
+- Blockers: tests-only guarded opt-in remains blocked at `pass@3 = 2/4`;
+  `humanize` and `boltons` still need materialized candidates.

@@ -17,36 +17,13 @@ This is the live coordinator board. Keep it current and compact.
   and live-validates the `iniconfig` calibration candidate. `REAL-005` extends
   live baseline preflight to `h11` and `humanize`, so Gate A now has three
   baseline-passing repositories when combined with `REAL-004` `iniconfig`.
-  `REAL-006` scored the materialized calibration candidate at
-  `pass@1 = 1/4` and `pass@3 = 1/4`, so tests-only guarded opt-in remains
-  shadow-only. `GS7-009` materialized and live-validated the first held-out
-  tests-only h11 candidate. `REAL-007` is now active to count that held-out
-  candidate separately from calibration, while `MAT-003` attacks the real
-  one-file source materialization gap.
+  `REAL-007` scored the materialized calibration candidate plus the first
+  held-out h11 candidate at `pass@1 = 2/4` and `pass@3 = 2/4`; calibration
+  pass rate is `1/1`, held-out pass rate is `1/3`, and tests-only guarded
+  opt-in remains shadow-only. `MAT-003` attacks the real one-file source
+  materialization gap.
 
 ## Active Tasks
-
-### `REAL-007`: Held-out tests-only score after first h11 materializer
-
-- Status: active
-- Owner: worker Hooke (`019e3ba2-e5c6-7503-9c04-a674490288ee`).
-- Goal: rerun or extend the tests-only shadow score after `GS7-009`, counting
-  the held-out h11 materialized candidate while separating calibration and
-  held-out pass rates.
-- Write scope: `j3/real_repo_shadow_score.py`,
-  `tests/test_real_repo_shadow_score.py`, one compact `docs/REAL_007_*.md`
-  report if useful, generated outputs under `/tmp`, and plan updates.
-- Do not touch: source feature materialization modules for `MAT-003`.
-- Acceptance: score both `iniconfig-tests-parse-comments` and
-  `h11-tests-bytesify-memoryview` through the planner surface; report
-  calibration pass rate, held-out pass rate, total pass@1/pass@3, first
-  passing ranks, runtime, mutation-scope violations, hidden-like agreement,
-  zero hosted usage, and the gate decision. `humanize` and `boltons` should
-  remain explicit materialization blockers unless the scorer can honestly count
-  them.
-- Tests: `pytest tests/test_real_repo_shadow_score.py -q`,
-  `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and a live
-  score/report smoke with pinned `iniconfig` and `h11` checkout paths.
 
 ### `MAT-003`: Real one-file feature materialization probe
 
@@ -110,6 +87,16 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `REAL-007`: reran the tests-only shadow score after `GS7-009`, counting both
+  `iniconfig-tests-parse-comments` and `h11-tests-bytesify-memoryview` through
+  the real-repo tests planner surface. The live `/tmp` run against pinned
+  checkouts scored `pass@1 = 2/4`, `pass@3 = 2/4`, calibration pass@3 `1/1`,
+  and held-out pass@3 `1/3`; first passing ranks were `[1, 1, null, null]`.
+  Candidate validation passed for iniconfig and h11, with zero production-file
+  changes, zero writes outside allowlists, hidden-like agreement for both
+  passing candidates, and zero hosted usage. `humanize` and `boltons` remain
+  explicit `test_case_materialization_gap` blockers, so the gate remains
+  `remain_shadow_only`.
 - `REAL-006`: reran the tests-only shadow score through the GS7-008
   materialized candidate surface. The live `/tmp` run scored
   `iniconfig-tests-parse-comments` as a rank-1 passing candidate with

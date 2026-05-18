@@ -3948,3 +3948,30 @@ meaningful work. Do not replace this file with a daily reset.
 - Push: pending.
 - Next: continue non-overlapping coordinator review while both workers run.
 - Blockers: none.
+
+### 2026-05-18 - MAT-011 - Second held-out typed-builder materialization probe
+
+- Owner: worker Confucius (`019e3cf2-f37e-76a2-89ac-5f106d630add`) with
+  coordinator integration after worker pause.
+- Files changed: `j3/heldout_typed_builder_candidate.py`,
+  `tests/test_heldout_typed_builder_candidate.py`,
+  `docs/MAT_011_REQUESTS_7441_TYPED_BUILDER_CANDIDATE_2026-05-18.md`,
+  `plans/active.md`, `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `python -m py_compile j3/heldout_typed_builder_candidate.py
+  tests/test_heldout_typed_builder_candidate.py` -> passed; `pytest
+  tests/test_heldout_typed_builder_candidate.py -q` -> 6 passed; live fresh
+  checkout materialization for `psf/requests#7441` -> validated; `git diff
+  --check` for touched files -> passed.
+- Result: materialized and live-validated `psf/requests#7441` from base
+  `b7b549b54571d03950b16afd2d01bc6ff0348224` to accepted head
+  `412f581d7e7c27bfee4f042fcac89bae9a804afe`. The candidate changed only
+  `src/requests/_types.py` and `src/requests/models.py`, matched the accepted
+  PR diff after normalization, and passed `python -m py_compile
+  src/requests/_types.py src/requests/models.py` in `0.024s`. MAT-010's
+  annotation family generalized, but this row required general parameterized
+  expansions for `type_alias_update` and `import_member_remove`.
+- Commit: pending.
+- Push: pending.
+- Next: integrate VAL-002, then dispatch the next validation or typed-builder
+  probe based on residuals.
+- Blockers: none for MAT-011; typed-builder coverage still needs more rows.

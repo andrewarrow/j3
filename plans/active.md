@@ -61,22 +61,6 @@ This is the live coordinator board. Keep it current and compact.
   distinguish coverage-gap decoys without accepted-label leakage, record that
   as a product-gate blocker.
 
-### `MAT-011`: Second held-out typed-builder materialization probe
-
-- Status: active
-- Owner: worker Confucius (`019e3cf2-f37e-76a2-89ac-5f106d630add`).
-- Write scope: typed-builder materialization extensions/tests/docs only
-  (`j3/heldout_typed_builder_candidate.py`,
-  `tests/test_heldout_typed_builder_candidate.py`, optional `docs/MAT_011_*`,
-  and generated artifacts under `/tmp`). Avoid issue/PR ranking and validation
-  probe modules.
-- Acceptance: attempt another MAT-007 `general_typed_builder` row,
-  preferably `psf/requests#7441`, using the reusable typed action layer from
-  MAT-010 rather than adding a PR-named action kind. Record pinned base ref,
-  accepted changed files, mutation scope, candidate-after diff/AST metadata,
-  accepted-diff comparison, validation result or exact blocker, and whether
-  MAT-010 action families generalized or required expansion.
-
 ## Ready Queue
 
 These are good next assignments for the next loop:
@@ -106,6 +90,20 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `MAT-011`: materialized and live-validated the held-out `psf/requests#7441`
+  typed-builder row from base `b7b549b54571d03950b16afd2d01bc6ff0348224` to
+  accepted head `412f581d7e7c27bfee4f042fcac89bae9a804afe`. The candidate
+  changed only `src/requests/_types.py` and `src/requests/models.py`, matched
+  the accepted PR diff after normalization, and passed `python -m py_compile
+  src/requests/_types.py src/requests/models.py` in `0.024s`. MAT-010's
+  `type_annotation_update` generalized after expansion to existing annotation
+  updates; the row also required general parameterized `type_alias_update` and
+  `import_member_remove` actions. Artifacts:
+  `/tmp/j3-mat-011-requests-7441-final/candidate.json`,
+  `/tmp/j3-mat-011-requests-7441-final/report.md`,
+  `/tmp/j3-mat-011-requests-7441-final/candidate.diff`,
+  `/tmp/j3-mat-011-requests-7441-final/accepted.diff`, and
+  `docs/MAT_011_REQUESTS_7441_TYPED_BUILDER_CANDIDATE_2026-05-18.md`.
 - `MAT-010`: materialized and live-validated the held-out
   `pallets/click#3422` typed-builder row using reusable
   `class_scope_annotation_move`, `return_annotation_update`, and

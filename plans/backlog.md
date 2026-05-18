@@ -790,7 +790,7 @@ Long-term target:
 
 ### MAT-011: Second held-out typed-builder materialization probe
 
-- Status: active
+- Status: done
 - Why: MAT-010 proves one held-out typed-builder row, but MAT-007 had seven
   `general_typed_builder` rows. The next proof must show whether the typed
   action layer generalizes beyond Click instance-attribute annotation movement.
@@ -807,6 +807,20 @@ Long-term target:
   MAT-010 action families generalized or required expansion.
 - Tests: focused typed-builder materializer tests, plan consistency,
   `git diff --check`, and live validation or a recorded validation blocker.
+- Result: materialized and live-validated `psf/requests#7441` from base
+  `b7b549b54571d03950b16afd2d01bc6ff0348224` to accepted head
+  `412f581d7e7c27bfee4f042fcac89bae9a804afe`. The candidate changed only
+  `src/requests/_types.py` and `src/requests/models.py`, matched the accepted
+  PR diff after normalization, and passed `python -m py_compile
+  src/requests/_types.py src/requests/models.py` in `0.024s`. MAT-010's
+  `type_annotation_update` generalized after expansion from insert-only to
+  existing annotation updates; this row also required general parameterized
+  `type_alias_update` and `import_member_remove` actions.
+- Artifacts: `/tmp/j3-mat-011-requests-7441-final/candidate.json`,
+  `/tmp/j3-mat-011-requests-7441-final/report.md`,
+  `/tmp/j3-mat-011-requests-7441-final/candidate.diff`,
+  `/tmp/j3-mat-011-requests-7441-final/accepted.diff`, and
+  `docs/MAT_011_REQUESTS_7441_TYPED_BUILDER_CANDIDATE_2026-05-18.md`.
 
 ### KNOW-001: Local knowledge inventory for the wedge
 

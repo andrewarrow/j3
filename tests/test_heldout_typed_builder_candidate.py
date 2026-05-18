@@ -6,6 +6,7 @@ from textwrap import dedent
 
 from j3.heldout_typed_builder_candidate import (
     build_click_utils_annotation_spec,
+    build_requests_headers_mapping_spec,
     materialize_heldout_typed_builder_candidate,
 )
 
@@ -112,10 +113,153 @@ def test_click_utils_validation_command_can_pass_on_materialized_fixture(
     assert record["residual_labels"] == ["candidate_validation_passed"]
 
 
+def test_requests_headers_mapping_spec_uses_general_typed_actions(
+    tmp_path: Path,
+) -> None:
+    repo = _write_requests_fixture_repo(tmp_path / "requests")
+
+    spec = build_requests_headers_mapping_spec(repo)
+
+    assert [action.kind for action in spec.typed_actions] == [
+        "type_alias_update",
+        "import_member_remove",
+        "type_annotation_update",
+    ]
+    assert spec.allowed_write_paths == (
+        "src/requests/_types.py",
+        "src/requests/models.py",
+    )
+    for action in spec.typed_actions:
+        assert "requests" not in action.kind
+        assert "7441" not in action.kind
+
+
+def test_materializes_requests_headers_mapping_across_two_files(
+    tmp_path: Path,
+) -> None:
+    accepted_repo = _write_requests_fixture_repo(tmp_path / "accepted")
+    (accepted_repo / "src" / "requests" / "_types.py").write_text(
+        _requests_types_after(),
+        encoding="utf-8",
+    )
+    (accepted_repo / "src" / "requests" / "models.py").write_text(
+        _requests_models_after(),
+        encoding="utf-8",
+    )
+    accepted_diff = tmp_path / "accepted.diff"
+    accepted_diff.write_text(
+        _git_stdout(
+            accepted_repo,
+            "diff",
+            "--",
+            "src/requests/_types.py",
+            "src/requests/models.py",
+        ),
+        encoding="utf-8",
+    )
+
+    repo = _write_requests_fixture_repo(tmp_path / "candidate")
+    candidate = materialize_heldout_typed_builder_candidate(
+        repo,
+        build_requests_headers_mapping_spec(repo, base_ref=_repo_head(repo)),
+        write=True,
+        validate=False,
+        accepted_diff_path=accepted_diff,
+    )
+    record = candidate.to_record()
+
+    assert record["status"] == "materialized"
+    assert record["residual_labels"] == ["candidate_validation_deferred"]
+    assert record["mutation_scope"]["actual_changed_files"] == [
+        "src/requests/_types.py",
+        "src/requests/models.py",
+    ]
+    assert record["mutation_scope"]["writes_outside_allowlist"] == []
+    assert record["accepted_diff_comparison"]["accepted_changed_files"] == [
+        "src/requests/_types.py",
+        "src/requests/models.py",
+    ]
+    assert record["accepted_diff_comparison"]["normalized_diff_equal"] is True
+
+    files = record["candidate_after"]["files"]
+    assert set(files) == {"src/requests/_types.py", "src/requests/models.py"}
+    assert files["src/requests/_types.py"]["candidate_after"]["ast_parse_ok"] is True
+    assert files["src/requests/models.py"]["candidate_after"]["ast_parse_ok"] is True
+    candidate_diff = record["candidate_after"]["candidate_diff"]
+    assert "+    HeadersType: TypeAlias = Mapping[str, str | bytes] | None\n" in candidate_diff
+    assert "-    from collections.abc import MutableMapping\n" in candidate_diff
+    assert "+    headers: Mapping[str, str | bytes]\n" in candidate_diff
+
+
+def test_requests_headers_mapping_validation_command_can_pass(
+    tmp_path: Path,
+) -> None:
+    accepted_repo = _write_requests_fixture_repo(tmp_path / "accepted")
+    (accepted_repo / "src" / "requests" / "_types.py").write_text(
+        _requests_types_after(),
+        encoding="utf-8",
+    )
+    (accepted_repo / "src" / "requests" / "models.py").write_text(
+        _requests_models_after(),
+        encoding="utf-8",
+    )
+    accepted_diff = tmp_path / "accepted.diff"
+    accepted_diff.write_text(
+        _git_stdout(
+            accepted_repo,
+            "diff",
+            "--",
+            "src/requests/_types.py",
+            "src/requests/models.py",
+        ),
+        encoding="utf-8",
+    )
+
+    repo = _write_requests_fixture_repo(tmp_path / "candidate")
+    candidate = materialize_heldout_typed_builder_candidate(
+        repo,
+        build_requests_headers_mapping_spec(repo, base_ref=_repo_head(repo)),
+        write=True,
+        validate=True,
+        accepted_diff_path=accepted_diff,
+    )
+    record = candidate.to_record()
+
+    assert record["status"] == "validated"
+    assert record["validation"]["status"] == "passed"
+    assert record["residual_labels"] == ["candidate_validation_passed"]
+
+
 def _write_click_fixture_repo(repo: Path) -> Path:
     (repo / "src" / "click").mkdir(parents=True)
     (repo / "src" / "click" / "utils.py").write_text(
         _click_utils_before(),
+        encoding="utf-8",
+    )
+    subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+    subprocess.run(["git", "add", "."], cwd=repo, check=True)
+    subprocess.run(
+        ["git", "commit", "-q", "-m", "fixture"],
+        cwd=repo,
+        check=True,
+        env={
+            "GIT_AUTHOR_NAME": "Tester",
+            "GIT_AUTHOR_EMAIL": "tester@example.com",
+            "GIT_COMMITTER_NAME": "Tester",
+            "GIT_COMMITTER_EMAIL": "tester@example.com",
+        },
+    )
+    return repo
+
+
+def _write_requests_fixture_repo(repo: Path) -> Path:
+    (repo / "src" / "requests").mkdir(parents=True)
+    (repo / "src" / "requests" / "_types.py").write_text(
+        _requests_types_before(),
+        encoding="utf-8",
+    )
+    (repo / "src" / "requests" / "models.py").write_text(
+        _requests_models_before(),
         encoding="utf-8",
     )
     subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
@@ -416,5 +560,86 @@ def _click_utils_after() -> str:
 
             def flush(self) -> None:
                 self.wrapped.flush()
+        '''
+    ).lstrip()
+
+
+def _requests_types_before() -> str:
+    return dedent(
+        '''
+        from __future__ import annotations
+
+        from collections.abc import Mapping, MutableMapping
+        from typing import TYPE_CHECKING, TypeAlias
+
+        if TYPE_CHECKING:
+            class _ValidatedRequest:
+                pass
+
+            HeadersType: TypeAlias = MutableMapping[str, str | bytes] | None
+        '''
+    ).lstrip()
+
+
+def _requests_types_after() -> str:
+    return dedent(
+        '''
+        from __future__ import annotations
+
+        from collections.abc import Mapping, MutableMapping
+        from typing import TYPE_CHECKING, TypeAlias
+
+        if TYPE_CHECKING:
+            class _ValidatedRequest:
+                pass
+
+            HeadersType: TypeAlias = Mapping[str, str | bytes] | None
+        '''
+    ).lstrip()
+
+
+def _requests_models_before() -> str:
+    return dedent(
+        '''
+        from __future__ import annotations
+
+        from collections.abc import Mapping
+        from typing import TYPE_CHECKING
+
+        if TYPE_CHECKING:
+            from collections.abc import MutableMapping
+            from http.cookiejar import CookieJar
+
+
+        class RequestHooksMixin:
+            pass
+
+
+        class Request(RequestHooksMixin):
+            method: str | None
+            headers: MutableMapping[str, str | bytes]
+        '''
+    ).lstrip()
+
+
+def _requests_models_after() -> str:
+    return dedent(
+        '''
+        from __future__ import annotations
+
+        from collections.abc import Mapping
+        from typing import TYPE_CHECKING
+
+        if TYPE_CHECKING:
+            from http.cookiejar import CookieJar
+
+
+        class RequestHooksMixin:
+            pass
+
+
+        class Request(RequestHooksMixin):
+            method: str | None
+            headers: Mapping[str, str | bytes]
         '''
     ).lstrip()

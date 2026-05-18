@@ -23,6 +23,13 @@ DEFAULT_CLICK_3422_BASE_REF = "fc6c7c47edd6110b6bd5a1a5297b2035214b0cd1"
 DEFAULT_CLICK_3422_HEAD_REF = "fc41aa1d0b62494eb93e92ff3929601221e3abf4"
 DEFAULT_CLICK_3422_VALIDATION_COMMAND = "python -m py_compile src/click/utils.py"
 CLICK_UTILS_PATH = "src/click/utils.py"
+DEFAULT_REQUESTS_7441_BASE_REF = "b7b549b54571d03950b16afd2d01bc6ff0348224"
+DEFAULT_REQUESTS_7441_HEAD_REF = "412f581d7e7c27bfee4f042fcac89bae9a804afe"
+DEFAULT_REQUESTS_7441_VALIDATION_COMMAND = (
+    "python -m py_compile src/requests/_types.py src/requests/models.py"
+)
+REQUESTS_TYPES_PATH = "src/requests/_types.py"
+REQUESTS_MODELS_PATH = "src/requests/models.py"
 
 
 class HeldoutTypedBuilderCandidateError(ValueError):
@@ -122,6 +129,78 @@ class TypeAnnotationUpdateAction:
 
 
 @dataclass(frozen=True, slots=True)
+class TypeAliasUpdateAction:
+    """Update the value expression for a named TypeAlias assignment."""
+
+    target_file: str
+    alias_name: str
+    value: str
+    kind: str = "type_alias_update"
+    schema_version: str = TYPED_ACTION_SCHEMA_VERSION
+    rationale: str | None = None
+
+    def __post_init__(self) -> None:
+        _validate_relative_path(self.target_file)
+        if not self.alias_name:
+            raise ValueError("alias_name is required")
+        if not self.value:
+            raise ValueError("value is required")
+
+    def to_record(self) -> dict[str, object]:
+        return {
+            "schema_version": self.schema_version,
+            "kind": self.kind,
+            "target": {
+                "file_path": self.target_file,
+                "alias_name": self.alias_name,
+            },
+            "value": self.value,
+            "constraints": {
+                "must_parse_ast": True,
+                "single_type_alias_assignment": True,
+            },
+            "rationale": self.rationale,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class ImportMemberRemoveAction:
+    """Remove one or more imported names from a from-import statement."""
+
+    target_file: str
+    module: str
+    names: tuple[str, ...]
+    type_checking_only: bool = False
+    kind: str = "import_member_remove"
+    schema_version: str = TYPED_ACTION_SCHEMA_VERSION
+    rationale: str | None = None
+
+    def __post_init__(self) -> None:
+        _validate_relative_path(self.target_file)
+        if not self.module:
+            raise ValueError("module is required")
+        if not self.names:
+            raise ValueError("names are required")
+
+    def to_record(self) -> dict[str, object]:
+        return {
+            "schema_version": self.schema_version,
+            "kind": self.kind,
+            "target": {
+                "file_path": self.target_file,
+                "module": self.module,
+                "type_checking_only": self.type_checking_only,
+            },
+            "names": list(self.names),
+            "constraints": {
+                "must_parse_ast": True,
+                "single_line_from_import": True,
+            },
+            "rationale": self.rationale,
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class ReturnAnnotationUpdateAction:
     """Add or update one function return annotation."""
 
@@ -161,6 +240,8 @@ class ReturnAnnotationUpdateAction:
 TypedAction = (
     ClassScopeAnnotationMoveAction
     | TypeAnnotationUpdateAction
+    | TypeAliasUpdateAction
+    | ImportMemberRemoveAction
     | ReturnAnnotationUpdateAction
 )
 
@@ -219,6 +300,12 @@ class HeldoutTypedBuilderSpec:
     def __post_init__(self) -> None:
         for path in (self.target_file, *self.allowed_write_paths):
             _validate_relative_path(path)
+        allowed = set(self.allowed_write_paths)
+        for action in self.typed_actions:
+            if action.target_file not in allowed:
+                raise ValueError(
+                    f"action target_file must be in allowed_write_paths: {action.target_file}"
+                )
 
 
 @dataclass(frozen=True, slots=True)
@@ -381,6 +468,96 @@ def build_click_utils_annotation_spec(
     )
 
 
+def build_requests_headers_mapping_spec(
+    repo_path: Path,
+    *,
+    base_ref: str = DEFAULT_REQUESTS_7441_BASE_REF,
+    accepted_head_ref: str = DEFAULT_REQUESTS_7441_HEAD_REF,
+    validation_command: str = DEFAULT_REQUESTS_7441_VALIDATION_COMMAND,
+) -> HeldoutTypedBuilderSpec:
+    """Build the held-out requests#7441 headers Mapping candidate spec."""
+
+    _repo_file(repo_path, REQUESTS_TYPES_PATH)
+    _repo_file(repo_path, REQUESTS_MODELS_PATH)
+    return HeldoutTypedBuilderSpec(
+        candidate_id="mat-011-requests-headers-mapping",
+        repo_id="psf/requests",
+        repo_url="https://github.com/psf/requests",
+        repo_split="held_out",
+        base_ref=base_ref,
+        accepted_head_ref=accepted_head_ref,
+        reference_pr_url="https://github.com/psf/requests/pull/7441",
+        prompt=(
+            "Move Request.headers typing back from MutableMapping to Mapping "
+            "while keeping accepted type-checking imports minimal."
+        ),
+        target_file=REQUESTS_MODELS_PATH,
+        validation_command=validation_command,
+        allowed_write_paths=(REQUESTS_TYPES_PATH, REQUESTS_MODELS_PATH),
+        typed_actions=(
+            TypeAliasUpdateAction(
+                target_file=REQUESTS_TYPES_PATH,
+                alias_name="HeadersType",
+                value="Mapping[str, str | bytes] | None",
+                rationale=(
+                    "change the request headers input alias from mutable to "
+                    "read-only mapping"
+                ),
+            ),
+            ImportMemberRemoveAction(
+                target_file=REQUESTS_MODELS_PATH,
+                module="collections.abc",
+                names=("MutableMapping",),
+                type_checking_only=True,
+                rationale=(
+                    "remove the no-longer-used type-checking import after the "
+                    "headers annotation update"
+                ),
+            ),
+            TypeAnnotationUpdateAction(
+                target_file=REQUESTS_MODELS_PATH,
+                class_name="Request",
+                annotations=(("headers", "Mapping[str, str | bytes]"),),
+                rationale=(
+                    "update the Request.headers class annotation to use the "
+                    "already imported Mapping type"
+                ),
+            ),
+        ),
+        action_family_reuse_evidence=(
+            {
+                "action_kind": "type_annotation_update",
+                "reusable_parameters": ["target_file", "class_name", "annotations"],
+                "evidence": (
+                    "extends the MAT-010 class annotation family from insert-only "
+                    "annotations to updates of existing annotations"
+                ),
+            },
+            {
+                "action_kind": "type_alias_update",
+                "reusable_parameters": ["target_file", "alias_name", "value"],
+                "evidence": (
+                    "generalizes typed-builder changes to TypeAlias value "
+                    "updates without a requests-specific action"
+                ),
+            },
+            {
+                "action_kind": "import_member_remove",
+                "reusable_parameters": [
+                    "target_file",
+                    "module",
+                    "names",
+                    "type_checking_only",
+                ],
+                "evidence": (
+                    "removes stale typing imports by module/name parameters "
+                    "rather than by PR-specific source replacement"
+                ),
+            },
+        ),
+    )
+
+
 def materialize_heldout_typed_builder_candidate(
     repo_path: Path,
     spec: HeldoutTypedBuilderSpec,
@@ -406,14 +583,20 @@ def materialize_heldout_typed_builder_candidate(
             }
         )
 
-    target_path = _repo_file(repo, spec.target_file)
-    before_file = target_path.read_text(encoding="utf-8")
+    action_paths = tuple(dict.fromkeys(action.target_file for action in spec.typed_actions))
+    if not action_paths:
+        action_paths = (spec.target_file,)
+    before_sources = {
+        path: _repo_file(repo, path).read_text(encoding="utf-8")
+        for path in action_paths
+    }
     hashes_before = _file_hashes(repo, spec.allowed_write_paths)
     action_results: list[TypedActionResult] = []
-    current_source = before_file
+    current_sources = dict(before_sources)
 
     if not blockers:
         for action in spec.typed_actions:
+            current_source = current_sources[action.target_file]
             try:
                 next_source = _apply_typed_action(current_source, action)
             except HeldoutTypedBuilderCandidateError as error:
@@ -427,10 +610,13 @@ def materialize_heldout_typed_builder_candidate(
                     target_file=action.target_file,
                 )
             )
-            current_source = next_source
+            current_sources[action.target_file] = next_source
 
-    if write and not blockers and current_source != before_file:
-        target_path.write_text(current_source, encoding="utf-8")
+    if write and not blockers:
+        for path, before_source in before_sources.items():
+            current_source = current_sources[path]
+            if current_source != before_source:
+                _repo_file(repo, path).write_text(current_source, encoding="utf-8")
 
     hashes_after = _file_hashes(repo, spec.allowed_write_paths)
     candidate_diff = _git_diff(repo, spec.allowed_write_paths)
@@ -469,23 +655,23 @@ def materialize_heldout_typed_builder_candidate(
             }
         )
 
-    final_ast_delta = python_ast_delta_metadata(before_file, current_source)
+    primary_file = spec.target_file if spec.target_file in before_sources else action_paths[0]
+    primary_before = before_sources[primary_file]
+    primary_after = current_sources[primary_file]
+    file_candidate_after = {
+        path: _file_candidate_after_record(
+            before_sources[path],
+            current_sources[path],
+            path,
+            wrote_file=bool(
+                write and not blockers and before_sources[path] != current_sources[path]
+            ),
+        )
+        for path in action_paths
+    }
     candidate_after = {
-        "target_file": {
-            "schema_version": "typed-builder-file-candidate-after-v1",
-            "target_file": spec.target_file,
-            "wrote_file": bool(write and not blockers and current_source != before_file),
-            "candidate_after": {
-                "diff": _unified_diff(before_file, current_source, spec.target_file),
-                "diff_summary": _diff_summary(
-                    _unified_diff(before_file, current_source, spec.target_file)
-                ),
-                "ast_delta": final_ast_delta,
-                "ast_parse_ok": final_ast_delta.get("ast_parse_ok") is True,
-                "sha256_before": _sha256_text(before_file),
-                "sha256_after": _sha256_text(current_source),
-            },
-        },
+        "target_file": file_candidate_after[primary_file],
+        "files": file_candidate_after,
         "action_results": [result.to_record() for result in action_results],
         "candidate_diff": candidate_diff,
         "candidate_diff_summary": _diff_summary(candidate_diff),
@@ -632,6 +818,21 @@ def _apply_typed_action(source: str, action: TypedAction) -> str:
             class_name=action.class_name,
             annotations=action.annotations,
         )
+    if isinstance(action, TypeAliasUpdateAction):
+        return _ensure_type_alias_value(
+            source,
+            target_file=action.target_file,
+            alias_name=action.alias_name,
+            value=action.value,
+        )
+    if isinstance(action, ImportMemberRemoveAction):
+        return _remove_import_members(
+            source,
+            target_file=action.target_file,
+            module=action.module,
+            names=action.names,
+            type_checking_only=action.type_checking_only,
+        )
     if isinstance(action, ReturnAnnotationUpdateAction):
         return _ensure_return_annotation(
             source,
@@ -662,7 +863,57 @@ def _ensure_class_annotations(
             },
         )
 
-    existing = _class_scope_annotation_names(class_node)
+    existing = _class_scope_annotation_nodes(class_node)
+    lines = source.splitlines(keepends=True)
+    patched_lines = list(lines)
+    for name, annotation in annotations:
+        node = existing.get(name)
+        if node is None:
+            continue
+        current = ast.unparse(node.annotation)
+        if current == annotation:
+            continue
+        if node.end_lineno != node.lineno:
+            raise HeldoutTypedBuilderCandidateError(
+                f"multi-line annotation update is not supported: {class_name}.{name}",
+                blocker={
+                    "field": "typed_builder",
+                    "reason": "type_annotation_update_blocked",
+                    "message": (
+                        "multi-line annotation update is not supported: "
+                        f"{class_name}.{name}"
+                    ),
+                },
+            )
+        replacement = _replace_class_annotation_line(
+            patched_lines[node.lineno - 1],
+            name=name,
+            annotation=annotation,
+        )
+        if replacement is None:
+            raise HeldoutTypedBuilderCandidateError(
+                f"could not update annotation for {class_name}.{name}",
+                blocker={
+                    "field": "typed_builder",
+                    "reason": "type_annotation_update_blocked",
+                    "message": f"could not update annotation for {class_name}.{name}",
+                },
+            )
+        patched_lines[node.lineno - 1] = replacement
+
+    source = "".join(patched_lines)
+    tree = _parse_python(source, filename=target_file, field="typed_builder")
+    class_node = _find_class(tree, class_name)
+    if class_node is None:
+        raise HeldoutTypedBuilderCandidateError(
+            f"class not found after annotation update: {class_name}",
+            blocker={
+                "field": "typed_builder",
+                "reason": "typed_target_not_found",
+                "message": f"class not found after annotation update: {class_name}",
+            },
+        )
+    existing = _class_scope_annotation_nodes(class_node)
     missing = [(name, annotation) for name, annotation in annotations if name not in existing]
     if not missing:
         return source
@@ -673,6 +924,105 @@ def _ensure_class_annotations(
     insertion = [f"{indent}{name}: {annotation}\n" for name, annotation in missing]
     insertion.append("\n")
     patched = "".join(lines[:insert_index] + insertion + lines[insert_index:])
+    _parse_python(patched, filename=target_file, field="typed_builder")
+    return patched
+
+
+def _ensure_type_alias_value(
+    source: str,
+    *,
+    target_file: str,
+    alias_name: str,
+    value: str,
+) -> str:
+    tree = _parse_python(source, filename=target_file, field="typed_builder")
+    alias_node = _find_type_alias_assignment(tree, alias_name)
+    if alias_node is None:
+        raise HeldoutTypedBuilderCandidateError(
+            f"type alias not found: {alias_name}",
+            blocker={
+                "field": "typed_builder",
+                "reason": "typed_target_not_found",
+                "message": f"type alias not found: {alias_name}",
+            },
+        )
+    if alias_node.value is not None and ast.unparse(alias_node.value) == value:
+        return source
+    if alias_node.value is None or alias_node.end_lineno != alias_node.lineno:
+        raise HeldoutTypedBuilderCandidateError(
+            f"could not update type alias: {alias_name}",
+            blocker={
+                "field": "typed_builder",
+                "reason": "type_alias_update_blocked",
+                "message": f"could not update type alias: {alias_name}",
+            },
+        )
+
+    lines = source.splitlines(keepends=True)
+    line = lines[alias_node.lineno - 1]
+    pattern = rf"^(?P<prefix>\s*{re.escape(alias_name)}\s*:\s*TypeAlias\s*=\s*).*(?P<newline>\n?)$"
+    match = re.match(pattern, line)
+    if match is None:
+        raise HeldoutTypedBuilderCandidateError(
+            f"could not update type alias line: {alias_name}",
+            blocker={
+                "field": "typed_builder",
+                "reason": "type_alias_update_blocked",
+                "message": f"could not update type alias line: {alias_name}",
+            },
+        )
+    lines[alias_node.lineno - 1] = f"{match.group('prefix')}{value}{match.group('newline')}"
+    patched = "".join(lines)
+    _parse_python(patched, filename=target_file, field="typed_builder")
+    return patched
+
+
+def _remove_import_members(
+    source: str,
+    *,
+    target_file: str,
+    module: str,
+    names: Sequence[str],
+    type_checking_only: bool,
+) -> str:
+    tree = _parse_python(source, filename=target_file, field="typed_builder")
+    import_node = _find_import_from(
+        tree,
+        module=module,
+        names=set(names),
+        type_checking_only=type_checking_only,
+    )
+    if import_node is None:
+        return source
+    if import_node.end_lineno != import_node.lineno:
+        raise HeldoutTypedBuilderCandidateError(
+            f"multi-line import removal is not supported: {module}",
+            blocker={
+                "field": "typed_builder",
+                "reason": "import_member_remove_blocked",
+                "message": f"multi-line import removal is not supported: {module}",
+            },
+        )
+
+    remove_names = set(names)
+    remaining = [
+        alias
+        for alias in import_node.names
+        if alias.name not in remove_names and (alias.asname or alias.name) not in remove_names
+    ]
+    lines = source.splitlines(keepends=True)
+    original = lines[import_node.lineno - 1]
+    newline = "\n" if original.endswith("\n") else ""
+    if remaining:
+        indent = original[: len(original) - len(original.lstrip())]
+        imports = ", ".join(
+            alias.name if alias.asname is None else f"{alias.name} as {alias.asname}"
+            for alias in remaining
+        )
+        lines[import_node.lineno - 1] = f"{indent}from {module} import {imports}{newline}"
+    else:
+        lines[import_node.lineno - 1] = ""
+    patched = "".join(lines)
     _parse_python(patched, filename=target_file, field="typed_builder")
     return patched
 
@@ -786,6 +1136,30 @@ def _typed_action_result(
     )
 
 
+def _file_candidate_after_record(
+    before: str,
+    after: str,
+    target_file: str,
+    *,
+    wrote_file: bool,
+) -> dict[str, object]:
+    diff = _unified_diff(before, after, target_file)
+    ast_delta = python_ast_delta_metadata(before, after)
+    return {
+        "schema_version": "typed-builder-file-candidate-after-v1",
+        "target_file": target_file,
+        "wrote_file": wrote_file,
+        "candidate_after": {
+            "diff": diff,
+            "diff_summary": _diff_summary(diff),
+            "ast_delta": ast_delta,
+            "ast_parse_ok": ast_delta.get("ast_parse_ok") is True,
+            "sha256_before": _sha256_text(before),
+            "sha256_after": _sha256_text(after),
+        },
+    }
+
+
 def _find_class(tree: ast.Module, class_name: str) -> ast.ClassDef | None:
     for node in ast.walk(tree):
         if isinstance(node, ast.ClassDef) and node.name == class_name:
@@ -824,6 +1198,84 @@ def _class_scope_annotation_names(class_node: ast.ClassDef) -> set[str]:
         if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
             names.add(node.target.id)
     return names
+
+
+def _class_scope_annotation_nodes(class_node: ast.ClassDef) -> dict[str, ast.AnnAssign]:
+    nodes: dict[str, ast.AnnAssign] = {}
+    for node in class_node.body:
+        if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+            nodes[node.target.id] = node
+    return nodes
+
+
+def _replace_class_annotation_line(
+    line: str,
+    *,
+    name: str,
+    annotation: str,
+) -> str | None:
+    pattern = rf"^(?P<indent>\s*){re.escape(name)}\s*:\s*[^=\n#]+(?P<tail>[ \t]*(?:=.*)?(?:#.*)?)(?P<newline>\n?)$"
+    match = re.match(pattern, line)
+    if match is None:
+        return None
+    tail = match.group("tail").rstrip()
+    if tail and not tail.startswith((" ", "\t", "#", "=")):
+        tail = f" {tail}"
+    return f"{match.group('indent')}{name}: {annotation}{tail}{match.group('newline')}"
+
+
+def _find_type_alias_assignment(tree: ast.Module, alias_name: str) -> ast.AnnAssign | None:
+    for node in ast.walk(tree):
+        if (
+            isinstance(node, ast.AnnAssign)
+            and isinstance(node.target, ast.Name)
+            and node.target.id == alias_name
+            and ast.unparse(node.annotation) == "TypeAlias"
+        ):
+            return node
+    return None
+
+
+def _find_import_from(
+    tree: ast.Module,
+    *,
+    module: str,
+    names: set[str],
+    type_checking_only: bool,
+) -> ast.ImportFrom | None:
+    nodes = (
+        _iter_type_checking_nodes(tree.body)
+        if type_checking_only
+        else ast.walk(tree)
+    )
+    for node in nodes:
+        if not isinstance(node, ast.ImportFrom):
+            continue
+        if node.level != 0 or node.module != module:
+            continue
+        imported = {alias.name for alias in node.names} | {
+            alias.asname for alias in node.names if alias.asname is not None
+        }
+        if imported & names:
+            return node
+    return None
+
+
+def _iter_type_checking_nodes(nodes: Sequence[ast.stmt]) -> Sequence[ast.AST]:
+    found: list[ast.AST] = []
+    for node in nodes:
+        if isinstance(node, ast.If) and _is_type_checking_test(node.test):
+            for child in node.body:
+                found.extend(ast.walk(child))
+        for child in ast.iter_child_nodes(node):
+            child_body = getattr(child, "body", None)
+            if isinstance(child_body, list):
+                found.extend(_iter_type_checking_nodes(child_body))
+    return found
+
+
+def _is_type_checking_test(node: ast.expr) -> bool:
+    return isinstance(node, ast.Name) and node.id == "TYPE_CHECKING"
 
 
 def _class_annotation_insert_index(lines: Sequence[str], class_node: ast.ClassDef) -> int:
@@ -1131,6 +1583,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Materialize a held-out typed-builder candidate."
     )
+    parser.add_argument(
+        "--candidate",
+        choices=("click-3422", "requests-7441"),
+        default="click-3422",
+    )
     parser.add_argument("--repo-path", type=Path, required=True)
     parser.add_argument("--accepted-diff", type=Path)
     parser.add_argument("--out", type=Path, required=True)
@@ -1141,7 +1598,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--no-write", action="store_true")
     args = parser.parse_args(argv)
 
-    spec = build_click_utils_annotation_spec(args.repo_path)
+    if args.candidate == "requests-7441":
+        spec = build_requests_headers_mapping_spec(args.repo_path)
+    else:
+        spec = build_click_utils_annotation_spec(args.repo_path)
     candidate = materialize_heldout_typed_builder_candidate(
         args.repo_path,
         spec,

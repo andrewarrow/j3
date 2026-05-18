@@ -100,7 +100,7 @@ Long-term target:
 
 ### DATA-001: Audit expanded prompt corpus quality
 
-- Status: active
+- Status: done
 - Why: the current 320 rows are useful bootstrap data, not generalization proof.
 - Write scope: prompt inspection command/report and progress notes.
 - Acceptance: report counts by source type, split, task type, domain, ambiguity,
@@ -151,7 +151,7 @@ Long-term target:
 
 ### TRANS-002: Diagnose matrix gate blockers
 
-- Status: active
+- Status: done
 - Blocker: none; `TRANS-001` matrix evidence exists under `/tmp`.
 - Why: next scorer/action work should follow residual evidence.
 - Write scope: residual analysis docs, targeted tests, small fixes only if
@@ -190,6 +190,21 @@ Long-term target:
   missing structured actions.
 - Acceptance: shows which failures need new actions versus better ranking.
 - Tests: focused tests with small residual fixtures.
+
+### ACT-002: Fix subscript-key generation gap from matrix residuals
+
+- Status: ready
+- Why: `TRANS-002` found one candidate-generation gap:
+  `greenshot_6_subset/http_no_store_directive_subscript_key` needs the
+  `change_subscript_key` candidate from `"no-store"` to `"no_store"` to enter
+  the tested evidence set.
+- Write scope: repair patching candidate generation/ranking around subscript
+  keys and focused tests.
+- Acceptance: the focused GreenShot-6 task produces and validates a passing
+  `change_subscript_key` candidate within the configured candidate cap, without
+  regressing existing candidate ranking tests.
+- Tests: focused patching/candidate ranking tests plus the single GreenShot-6
+  task smoke.
 
 ### MODEL-001: Re-evaluate learned prompt intent baseline
 
@@ -235,9 +250,9 @@ Long-term target:
 
 Start with these unless fresh evidence changes the order:
 
-1. `TRANS-002`: diagnose matrix gate blockers from the 2026-05-18 evidence.
-2. `DATA-001`: audit prompt corpus quality.
+1. `DATA-002`: add prompt/spec schema validation from the DATA-001 audit.
+2. `ACT-002`: fix the subscript-key generation gap from TRANS-002.
 3. `OPS-002`: add a lightweight plan consistency check.
 4. `GS7-002`: add five non-calculator request-to-repo fixtures.
-5. Coordinator review: choose between prompt/schema validation,
-   GreenShot-7 fixture expansion, or scorer/model work based on evidence.
+5. Coordinator review: choose between GreenShot-7 fixture expansion, scorer
+   ranking work, or broader data provenance work based on evidence.

@@ -164,8 +164,8 @@ meaningful work. Do not replace this file with a daily reset.
   `expected.clarification_fields` coverage. GreenShot-7 intent context has 87
   unsupported `source_type=greenshot_7_intent_fixture` labels under the current
   corpus allow-list and 12 cross-split near-duplicate prompt pairs.
-- Commit: pending
-- Push: pending
+- Commit: a3929d170b6b7697b16045df9ec5fac2d3bb6c03
+- Push: succeeded
 - Next: `DATA-002` should turn the audit output into schema validation for
   explicit expected actions, list-typed expected fields, synthetic provenance,
   supported source types, and cross-split near-duplicate review.

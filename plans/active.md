@@ -7,8 +7,8 @@ This is the live coordinator board. Keep it current and compact.
 - Coordinator mode: persistent multi-week execution.
 - Parallel worker default: 2.
 - Parallel worker maximum: 3, only with disjoint write scopes.
-- Current review state: planning-system migration complete; `TRANS-001` and
-  `GS7-001` evidence runs complete; ready for follow-up triage.
+- Current review state: `TRANS-002` and `DATA-001` follow-up evidence complete;
+  ready to assign schema validation and the subscript-key generation fix.
 - Current product gate stance: transition ranking remains shadow-only; the
   2026-05-18 `TRANS-001` matrix decision was `remain_shadow_only`.
 
@@ -18,11 +18,12 @@ No active worker tasks.
 
 ## Ready Queue
 
-These are good next assignments after the current active tasks complete:
+These are good next assignments after the current review:
 
-1. `OPS-002`: add a lightweight plan consistency check.
-2. `GS7-002`: add five non-calculator request-to-repo fixtures.
-3. `DATA-002`: add prompt/spec schema validation.
+1. `DATA-002`: add prompt/spec schema validation.
+2. `ACT-002`: fix the subscript-key generation gap from matrix residuals.
+3. `OPS-002`: add a lightweight plan consistency check.
+4. `GS7-002`: add five non-calculator request-to-repo fixtures.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 

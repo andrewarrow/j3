@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 from j3.prompt_intents import predict_prompt_intent
-from j3.request_spec import parse_request_to_spec
+from j3.request_spec import clarification_response_from_spec, parse_request_to_spec
 
 
 TASKS_PATH = Path("examples/greenshot_7/tasks.json")
@@ -95,6 +95,34 @@ def test_parser_emits_blocking_clarifications_for_unclear_rows() -> None:
         assert record["clarifications_needed"] == task["expected_spec"][
             "clarifications_needed"
         ]
+
+
+def test_parser_builds_first_class_clarification_response() -> None:
+    spec = parse_request_to_spec("make a math thing", task_name="math_tool_unclear")
+    response = clarification_response_from_spec(spec).to_record()
+
+    assert response == {
+        "schema_version": "clarification-response-v1",
+        "status": "needs_clarification",
+        "task_name": "math_tool_unclear",
+        "task_type": "create_app",
+        "language": "python",
+        "repo_mode": "new_repo",
+        "domain": "unknown",
+        "prompt": "make a math thing",
+        "questions": [
+            {
+                "id": "q1",
+                "field": "domain",
+                "question": (
+                    "Should this be a basic CLI calculator, and which operations "
+                    "should it support?"
+                ),
+                "required": True,
+            }
+        ],
+        "unsupported_requirements": [],
+    }
 
 
 def test_parser_emits_non_calculator_greenfield_specs() -> None:

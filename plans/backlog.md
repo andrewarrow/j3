@@ -103,7 +103,7 @@ Long-term target:
 
 ### GS7-004: Implement clarification as a first-class outcome
 
-- Status: active
+- Status: done
 - Why: Codex-like behavior requires asking when requirements are under-specified.
 - Write scope: request spec parser/planner, GreenShot-7 clarification fixture,
   tests.

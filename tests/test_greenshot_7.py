@@ -165,6 +165,15 @@ def test_run_greenshot_7_tasks_builds_validates_and_records(tmp_path: Path) -> N
         _nested(row, "build_result")["status"] == "blocked" for row in blocked_rows
     )
     assert all(
+        _nested(row, "clarification_response")["status"] == "needs_clarification"
+        for row in blocked_rows
+    )
+    assert all(
+        _nested(row, "clarification_response")["questions"]
+        == _nested(row, "build_result")["clarification_response"]["questions"]
+        for row in blocked_rows
+    )
+    assert all(
         _nested(row, "validation")["reason"] == "blocked_clarification"
         for row in blocked_rows
     )
@@ -172,6 +181,11 @@ def test_run_greenshot_7_tasks_builds_validates_and_records(tmp_path: Path) -> N
     assert {_nested(row, "failure_observation")["kind"] for row in blocked_rows} == {
         "blocking_clarification"
     }
+    assert all(
+        _nested(row, "failure_observation")["clarification_response"]
+        == _nested(row, "clarification_response")
+        for row in blocked_rows
+    )
 
     smoke_repo = out_dir / "calculator_short_calc"
     smoke = _run_calculator(smoke_repo, "8", "/", "2")

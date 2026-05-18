@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from j3.greenfield import BuildResult, GreenfieldPlan
-from j3.request_spec import RequestSpec
+from j3.request_spec import RequestSpec, clarification_response_from_spec
 
 
 ROW_SCHEMA_VERSION = "request-repo-attempt-v1"
@@ -33,11 +33,13 @@ def request_repo_attempt_row(
     build_record = build_result.to_record()
     build_record["cli_files_written"] = list(files_written)
     validation_record = _json_copy(validation)
+    clarification_response = _clarification_response(spec, build_result)
     clarification_status = "blocked" if spec.clarifications_needed else "not_needed"
     failure_observation = _failure_observation(
         spec=spec,
         build_result=build_result,
         validation=validation,
+        clarification_response=clarification_response,
     )
 
     return {
@@ -59,6 +61,7 @@ def request_repo_attempt_row(
                 spec_record["clarifications_needed"]  # type: ignore[index]
             ),
         },
+        "clarification_response": clarification_response,
         "greenfield_plan": plan_record,
         "greenfield_actions": list(plan_record["actions"]),  # type: ignore[index]
         "build_result": build_record,
@@ -105,6 +108,7 @@ def _failure_observation(
     spec: RequestSpec,
     build_result: BuildResult,
     validation: dict[str, object],
+    clarification_response: dict[str, object] | None,
 ) -> dict[str, object] | None:
     if spec.clarifications_needed:
         return {
@@ -112,6 +116,7 @@ def _failure_observation(
             "clarifications_needed": [
                 dict(clarification) for clarification in spec.clarifications_needed
             ],
+            "clarification_response": _json_copy(clarification_response),
         }
     if build_result.status != "built":
         return {
@@ -128,6 +133,19 @@ def _failure_observation(
             "stderr": validation.get("stderr", ""),
         }
     return None
+
+
+def _clarification_response(
+    spec: RequestSpec,
+    build_result: BuildResult,
+) -> dict[str, object] | None:
+    if not spec.clarifications_needed:
+        return None
+    if build_result.clarification_response is not None:
+        copied = _json_copy(build_result.clarification_response)
+        if isinstance(copied, dict):
+            return copied
+    return clarification_response_from_spec(spec).to_record()
 
 
 def _json_copy(value: Any) -> object:

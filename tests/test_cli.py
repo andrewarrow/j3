@@ -1701,9 +1701,10 @@ def test_implement_command_blocks_clarification_without_calculator_files(
     )
 
     output = capsys.readouterr().out
-    assert "j3 implement blocked" in output
-    assert "status: blocked" in output
+    assert "j3 implement clarification needed" in output
+    assert "status: needs_clarification" in output
     assert "domain: unknown" in output
+    assert "questions:" in output
     assert "Should this be a basic CLI calculator" in output
     assert not (out_dir / "calculator.py").exists()
     assert not (out_dir / "tests/test_calculator_cli.py").exists()
@@ -1825,8 +1826,8 @@ def test_implement_script_blocks_prompt_intent_graphical_calculator(tmp_path) ->
     )
 
     assert result.returncode == 1
-    assert "j3 implement blocked" in result.stdout
-    assert "status: blocked" in result.stdout
+    assert "j3 implement clarification needed" in result.stdout
+    assert "status: needs_clarification" in result.stdout
     assert "domain: calculator" in result.stdout
     assert "This slice only supports a Python CLI calculator" in result.stdout
     assert not (out_dir / "calculator.py").exists()
@@ -1867,13 +1868,41 @@ def test_implement_command_records_blocked_clarification(capsys, tmp_path) -> No
             ),
         }
     ]
+    assert row["clarification_response"] == {
+        "schema_version": "clarification-response-v1",
+        "status": "needs_clarification",
+        "task_name": "make_a_math_thing",
+        "task_type": "create_app",
+        "language": "python",
+        "repo_mode": "new_repo",
+        "domain": "unknown",
+        "prompt": "make a math thing",
+        "questions": [
+            {
+                "id": "q1",
+                "field": "domain",
+                "question": (
+                    "Should this be a basic CLI calculator, and which operations "
+                    "should it support?"
+                ),
+                "required": True,
+            }
+        ],
+        "unsupported_requirements": [],
+    }
     assert row["greenfield_plan"]["status"] == "blocked"
+    assert row["greenfield_plan"]["clarification_response"] == row[
+        "clarification_response"
+    ]
     assert [action["kind"] for action in row["greenfield_actions"]] == [
         "ask_clarification"
     ]
     assert row["build_result"]["status"] == "blocked"
     assert row["build_result"]["files_written"] == []
     assert row["build_result"]["cli_files_written"] == []
+    assert row["build_result"]["clarification_response"] == row[
+        "clarification_response"
+    ]
     assert row["validation"] == {
         "status": "not_run",
         "command": None,
@@ -1882,6 +1911,9 @@ def test_implement_command_records_blocked_clarification(capsys, tmp_path) -> No
     }
     assert row["passed"] is False
     assert row["failure_observation"]["kind"] == "blocking_clarification"
+    assert row["failure_observation"]["clarification_response"] == row[
+        "clarification_response"
+    ]
     assert not (out_dir / "calculator.py").exists()
     assert not (out_dir / "tests/test_calculator_cli.py").exists()
 

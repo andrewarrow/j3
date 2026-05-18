@@ -62,7 +62,11 @@ from j3.prompt_repo_transitions import (
     load_prompt_repo_transition_rows,
 )
 from j3.request_outcomes import append_request_repo_attempt
-from j3.request_spec import RequestSpec, parse_request_to_spec
+from j3.request_spec import (
+    RequestSpec,
+    clarification_response_from_spec,
+    parse_request_to_spec,
+)
 from j3.training import train_from_paths
 from j3.transition_assets import (
     format_transition_asset_inventory,
@@ -138,6 +142,7 @@ def handle_implement(args: argparse.Namespace) -> int:
     plan = plan_greenfield_repo(spec)
 
     if spec.clarifications_needed:
+        clarification_response = clarification_response_from_spec(spec).to_record()
         result = build_greenfield_repo(plan, out_dir)
         validation = _blocked_implement_validation()
         _record_implement_attempt(
@@ -150,15 +155,22 @@ def handle_implement(args: argparse.Namespace) -> int:
             out_dir=out_dir,
             files_written=[],
         )
-        print("j3 implement blocked")
+        print("j3 implement clarification needed")
         print(f"task type: {spec.task_type}")
-        print("status: blocked")
+        print(f"status: {clarification_response['status']}")
         print(f"domain: {spec.domain}")
-        print("clarifications:")
-        for clarification in spec.clarifications_needed:
-            field = clarification.get("field", "request")
-            question = clarification.get("question", "Clarification is required.")
-            print(f"  {field}: {question}")
+        print("questions:")
+        questions = clarification_response["questions"]
+        assert isinstance(questions, list)
+        for question_record in questions:
+            assert isinstance(question_record, dict)
+            question_id = question_record.get("id", "q")
+            field = question_record.get("field", "request")
+            question = question_record.get(
+                "question",
+                "Clarification is required before editing files.",
+            )
+            print(f"  {question_id} ({field}): {question}")
         return 1
 
     if (out_dir / REQUEST_SPEC_ARTIFACT).exists():

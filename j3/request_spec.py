@@ -10,6 +10,7 @@ from j3.prompt_intents import PromptIntentPrediction, PromptIntentTarget
 
 
 SCHEMA_VERSION = "request-spec-v1"
+CLARIFICATION_RESPONSE_SCHEMA_VERSION = "clarification-response-v1"
 CALCULATOR_FEATURES = ["add", "subtract", "multiply", "divide"]
 CALCULATOR_ALIASES = {
     "add": ["add", "plus", "+"],
@@ -110,6 +111,72 @@ class RequestSpec:
                 dict(requirement) for requirement in self.unsupported_requirements
             ]
         return record
+
+
+@dataclass(frozen=True, slots=True)
+class ClarificationResponse:
+    """A structured no-write response for prompts that need clarification."""
+
+    schema_version: str
+    status: str
+    task_name: str
+    task_type: str
+    language: str
+    repo_mode: str
+    domain: str
+    prompt: str
+    questions: list[dict[str, object]] = field(default_factory=list)
+    unsupported_requirements: list[dict[str, str]] = field(default_factory=list)
+
+    def to_record(self) -> dict[str, object]:
+        """Return a JSON-compatible clarification response record."""
+
+        return {
+            "schema_version": self.schema_version,
+            "status": self.status,
+            "task_name": self.task_name,
+            "task_type": self.task_type,
+            "language": self.language,
+            "repo_mode": self.repo_mode,
+            "domain": self.domain,
+            "prompt": self.prompt,
+            "questions": [_json_copy(question) for question in self.questions],
+            "unsupported_requirements": [
+                dict(requirement) for requirement in self.unsupported_requirements
+            ],
+        }
+
+
+def clarification_response_from_spec(spec: RequestSpec) -> ClarificationResponse:
+    """Create a first-class clarification response from a blocking spec."""
+
+    if not spec.clarifications_needed:
+        raise ValueError("request spec does not require clarification")
+    return ClarificationResponse(
+        schema_version=CLARIFICATION_RESPONSE_SCHEMA_VERSION,
+        status="needs_clarification",
+        task_name=spec.task_name,
+        task_type=spec.task_type,
+        language=spec.language,
+        repo_mode=spec.repo_mode,
+        domain=spec.domain,
+        prompt=spec.prompt,
+        questions=[
+            {
+                "id": f"q{index}",
+                "field": clarification.get("field", "request"),
+                "question": clarification.get(
+                    "question",
+                    "Clarification is required before editing files.",
+                ),
+                "required": True,
+            }
+            for index, clarification in enumerate(spec.clarifications_needed, start=1)
+        ],
+        unsupported_requirements=[
+            dict(requirement) for requirement in spec.unsupported_requirements
+        ],
+    )
 
 
 def parse_request_to_spec(
@@ -606,3 +673,14 @@ def _has_symbol(normalized: str, symbol: str) -> bool:
     if symbol == "x":
         return _has_word(normalized, symbol)
     return symbol in normalized
+
+
+def _json_copy(value: Any) -> object:
+    if isinstance(value, dict):
+        return {
+            str(key): _json_copy(nested)
+            for key, nested in value.items()
+        }
+    if isinstance(value, list):
+        return [_json_copy(item) for item in value]
+    return value

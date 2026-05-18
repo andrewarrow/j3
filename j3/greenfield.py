@@ -10,8 +10,9 @@ from typing import Any
 from j3.request_spec import (
     CALCULATOR_FEATURES,
     KV_PARSER_ARTIFACTS,
-    SLUGIFY_ARTIFACTS,
     RequestSpec,
+    SLUGIFY_ARTIFACTS,
+    clarification_response_from_spec,
 )
 
 
@@ -75,6 +76,7 @@ class GreenfieldPlan:
     artifacts: list[str] = field(default_factory=list)
     validation: dict[str, object] = field(default_factory=dict)
     blockers: list[dict[str, str]] = field(default_factory=list)
+    clarification_response: dict[str, object] | None = None
 
     def to_record(self) -> dict[str, object]:
         """Return a JSON-compatible plan record."""
@@ -94,6 +96,7 @@ class GreenfieldPlan:
                 "hidden_cases": bool(self.validation.get("hidden_cases", False)),
             },
             "blockers": [dict(blocker) for blocker in self.blockers],
+            "clarification_response": _json_copy(self.clarification_response),
         }
 
 
@@ -110,6 +113,7 @@ class BuildResult:
     files_written: list[str] = field(default_factory=list)
     validation: dict[str, object] = field(default_factory=dict)
     blockers: list[dict[str, str]] = field(default_factory=list)
+    clarification_response: dict[str, object] | None = None
 
     def to_record(self) -> dict[str, object]:
         """Return a JSON-compatible build result record."""
@@ -127,6 +131,7 @@ class BuildResult:
                 "hidden_cases": bool(self.validation.get("hidden_cases", False)),
             },
             "blockers": [dict(blocker) for blocker in self.blockers],
+            "clarification_response": _json_copy(self.clarification_response),
         }
 
 
@@ -406,6 +411,7 @@ def build_greenfield_repo(
         files_written=[],
         validation=dict(plan.validation),
         blockers=[dict(blocker) for blocker in plan.blockers],
+        clarification_response=_json_copy(plan.clarification_response),
     )
 
 
@@ -416,17 +422,7 @@ def materialize_calculator_repo(plan: GreenfieldPlan, out_dir: Path) -> BuildRes
         raise ValueError("unsupported greenfield plan schema")
 
     if plan.status == "blocked":
-        return BuildResult(
-            schema_version=BUILD_SCHEMA_VERSION,
-            plan_schema_version=plan.schema_version,
-            task_name=plan.task_name,
-            status="blocked",
-            out_dir=str(out_dir),
-            artifacts=[],
-            files_written=[],
-            validation=dict(plan.validation),
-            blockers=[dict(blocker) for blocker in plan.blockers],
-        )
+        return _blocked_build_result(plan, out_dir)
 
     _validate_materializable_plan(plan)
 
@@ -527,6 +523,11 @@ def _blocked_plan(
         if blockers is not None
         else [dict(clarification) for clarification in spec.clarifications_needed]
     )
+    clarification_response = (
+        clarification_response_from_spec(spec).to_record()
+        if spec.clarifications_needed
+        else None
+    )
     return GreenfieldPlan(
         schema_version=PLAN_SCHEMA_VERSION,
         request_schema_version=spec.schema_version,
@@ -541,12 +542,14 @@ def _blocked_plan(
                 payload={
                     "reason": "request_spec_has_blocking_clarifications",
                     "clarifications_needed": resolved_blockers,
+                    "clarification_response": _json_copy(clarification_response),
                 },
             )
         ],
         artifacts=[],
         validation=dict(spec.validation),
         blockers=resolved_blockers,
+        clarification_response=clarification_response,
     )
 
 
@@ -561,6 +564,7 @@ def _blocked_build_result(plan: GreenfieldPlan, out_dir: Path) -> BuildResult:
         files_written=[],
         validation=dict(plan.validation),
         blockers=[dict(blocker) for blocker in plan.blockers],
+        clarification_response=_json_copy(plan.clarification_response),
     )
 
 

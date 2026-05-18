@@ -183,7 +183,36 @@ def test_plan_calculator_repo_reports_blocked_clarification_specs() -> None:
         }
     ]
     assert [action["kind"] for action in record["actions"]] == ["ask_clarification"]
-    assert record["actions"][0]["payload"] == {  # type: ignore[index]
+    payload = record["actions"][0]["payload"]  # type: ignore[index]
+    assert payload["reason"] == "request_spec_has_blocking_clarifications"  # type: ignore[index]
+    assert payload["clarifications_needed"] == record["blockers"]  # type: ignore[index]
+    assert payload["clarification_response"] == record["clarification_response"]  # type: ignore[index]
+    assert record["clarification_response"] == {
+        "schema_version": "clarification-response-v1",
+        "status": "needs_clarification",
+        "task_name": "math_tool_unclear",
+        "task_type": "create_app",
+        "language": "python",
+        "repo_mode": "new_repo",
+        "domain": "unknown",
+        "prompt": "make a math thing",
+        "questions": [
+            {
+                "id": "q1",
+                "field": "domain",
+                "question": (
+                    "Should this be a basic CLI calculator, and which operations "
+                    "should it support?"
+                ),
+                "required": True,
+            }
+        ],
+        "unsupported_requirements": [],
+    }
+    assert {
+        "reason": payload["reason"],  # type: ignore[index]
+        "clarifications_needed": payload["clarifications_needed"],  # type: ignore[index]
+    } == {
         "reason": "request_spec_has_blocking_clarifications",
         "clarifications_needed": record["blockers"],
     }
@@ -319,5 +348,24 @@ def test_materialize_reports_blocked_clarification_plan(tmp_path: Path) -> None:
             "question": "Which scientific calculator operations should be supported?",
         }
     ]
+    assert result.to_record()["clarification_response"] == {
+        "schema_version": "clarification-response-v1",
+        "status": "needs_clarification",
+        "task_name": "calculator_scientific_unclear",
+        "task_type": "create_app",
+        "language": "python",
+        "repo_mode": "new_repo",
+        "domain": "calculator",
+        "prompt": "make a scientific calculator",
+        "questions": [
+            {
+                "id": "q1",
+                "field": "features",
+                "question": "Which scientific calculator operations should be supported?",
+                "required": True,
+            }
+        ],
+        "unsupported_requirements": [],
+    }
     assert not (tmp_path / "calculator.py").exists()
     assert not (tmp_path / "tests").exists()

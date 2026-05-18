@@ -479,3 +479,31 @@ meaningful work. Do not replace this file with a daily reset.
   (`019e3b31-5757-7a83-9f73-06f1313f2064`) and `GS7-004` is running as
   Ptolemy (`019e3b31-5773-7432-afed-0e4d4299f4ee`).
 - Blockers: none
+
+### 2026-05-18 - GS7-004 - Clarification first-class outcome
+
+- Owner: worker Ptolemy (`019e3b31-5773-7432-afed-0e4d4299f4ee`)
+- Files changed: `j3/request_spec.py`, `j3/greenfield.py`,
+  `j3/request_outcomes.py`, `cli/handlers.py`, `tests/test_request_spec.py`,
+  `tests/test_greenfield_calculator.py`, `tests/test_greenshot_7.py`,
+  `tests/test_cli.py`, `plans/active.md`, `plans/backlog.md`,
+  `plans/progress.md`
+- Tests: `pytest tests/test_request_spec.py -q` -> 9 passed;
+  `pytest tests/test_greenfield_calculator.py -q` -> 8 passed;
+  `pytest tests/test_greenshot_7.py -q` -> 1 passed;
+  `pytest tests/test_cli.py::test_implement_command_blocks_clarification_without_calculator_files
+  tests/test_cli.py::test_implement_script_blocks_prompt_intent_graphical_calculator
+  tests/test_cli.py::test_implement_command_records_blocked_clarification -q`
+  -> 3 passed; `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check` -> passed.
+- Result: ambiguous request-to-repo prompts now produce a structured
+  `clarification-response-v1` record with required questions. Blocked plans,
+  blocked build results, JSONL attempt rows, and public `implement` output all
+  expose the response while preserving no-write behavior for generated repo
+  files. Calculator, slugify, and key/value parser positive fixtures still
+  build and validate.
+- Commit: included in GS7-004 worker commit
+- Push: pending
+- Next: `GS7-005` can build on the existing tests-only classified gap without
+  treating clarification outcomes as generated repo failures.
+- Blockers: none

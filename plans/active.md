@@ -28,20 +28,6 @@ This is the live coordinator board. Keep it current and compact.
 - Tests: focused prompt-intent tests or CLI smoke,
   `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
 
-### `GS7-004`: Implement clarification as a first-class outcome
-
-- Owner: worker Ptolemy (`019e3b31-5773-7432-afed-0e4d4299f4ee`)
-- Status: active
-- Write scope: request-spec/parser/planner, GreenShot-7 clarification outcome
-  tests, public CLI behavior if needed, and plan updates. Do not touch prompt
-  intent evaluation files.
-- Acceptance: ambiguous prompts produce a structured clarification response
-  with questions and no filesystem writes, rather than only a blocked build
-  record.
-- Tests: `pytest tests/test_request_spec.py -q`,
-  `pytest tests/test_greenshot_7.py -q`, focused CLI tests if public behavior
-  changes, `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
-
 ## Ready Queue
 
 These are good next assignments for the next loop:
@@ -76,6 +62,10 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `GS7-004`: added a first-class `clarification-response-v1` outcome for
+  ambiguous request-to-repo prompts. Blocked GreenShot plans, build results,
+  JSONL attempt rows, and public `implement` output now carry structured
+  questions while continuing to write no generated repo files.
 - `REPO-001`: added an inspectable repo-state coverage section alongside the
   deterministic embedding record. Fixture coverage now reports all discovered
   files with roles, Python packages, imports, top-level functions and classes,

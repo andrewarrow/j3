@@ -1475,8 +1475,8 @@ meaningful work. Do not replace this file with a daily reset.
   `python -m j3.real_repo_shadow_score --manifest examples/real_repo_eval_ladder.json --repo-path iniconfig=/tmp/j3-real-010-shadow-score-live/repos/iniconfig --repo-path h11=/tmp/j3-real-010-shadow-score-live/repos/h11 --repo-path humanize=/tmp/j3-real-010-shadow-score-live/repos/humanize --repo-path boltons=/tmp/j3-real-010-shadow-score-live/repos/boltons --validate-candidates --out /tmp/j3-real-010-shadow-score-live/score.json --report /tmp/j3-real-010-shadow-score-live/report.md`
   -> passed with `pass@1 = 4/4`, `pass@3 = 4/4`, and
   `gate_decision = allow_guarded_tests_only_opt_in`; `pytest
-  tests/test_plan_consistency.py -q`, `git diff --check`, commit, and push
-  pending.
+  tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check` ->
+  passed.
 - Result: counted all four materialized tests-only ladder candidates through
   the real-repo tests planner surface. Calibration pass@3 is `1/1`; held-out
   pass@3 is `3/3`; first passing ranks are `[1, 1, 1, 1]`. Candidate
@@ -1488,8 +1488,8 @@ meaningful work. Do not replace this file with a daily reset.
   `humanize-tests-naturalsize-negative-strings`, and
   `boltons-tests-slugify-delimiter` when validation passes inside task
   allowlists.
-- Commit: pending
-- Push: pending
+- Commit: 3437ac9
+- Push: succeeded
 - Next: coordinator can review `REAL-010` with `MAT-004`; tests-only guarded
   opt-in scope is now the full four-row materialized tests-only ladder.
 - Blockers: none

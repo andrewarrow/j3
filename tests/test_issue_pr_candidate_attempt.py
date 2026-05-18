@@ -9,12 +9,14 @@ from j3.issue_pr_candidate_attempt import (
     PYTEST_STRICT_ADDOPTS_REPLAY_ID,
     PYTEST_TIMEDELTA_APPROX_REPLAY_ID,
     REQUESTS_REPLAY_ID,
+    SCRAPY_DOWNLOADER_AWARE_REPLAY_ID,
     main,
     run_click_default_map_issue_pr_candidate_attempt,
     run_click_semver_issue_pr_candidate_attempt,
     run_pytest_strict_addopts_issue_pr_candidate_attempt,
     run_pytest_timedelta_approx_issue_pr_candidate_attempt,
     run_requests_issue_pr_candidate_attempt,
+    run_scrapy_downloader_aware_issue_pr_candidate_attempt,
     write_issue_pr_candidate_attempt_report,
 )
 
@@ -686,6 +688,131 @@ def test_pytest_timedelta_approx_candidate_validation_report_and_cli(
     assert "DATA-029 Pytest #14462" in report_path.read_text(encoding="utf-8")
 
 
+def test_scrapy_downloader_aware_candidate_materializes_source_and_tests(
+    tmp_path: Path,
+) -> None:
+    repo = _write_synthetic_scrapy_checkout(tmp_path / "scrapy")
+
+    attempt = run_scrapy_downloader_aware_issue_pr_candidate_attempt(
+        repo,
+        manifest_path=MANIFEST_PATH,
+        write=True,
+        validate=False,
+        readiness_records=[_scrapy_downloader_aware_ready_row()],
+        prompt_spec_records=[_scrapy_downloader_aware_prompt_spec_row()],
+        validation_records=[_scrapy_downloader_aware_validation_row()],
+        local_knowledge_records=[
+            _scrapy_downloader_aware_knowledge_row(
+                "scrapy_downloader_aware_priority_queue"
+            ),
+            _scrapy_downloader_aware_knowledge_row(
+                "scrapy_slot_active_download_accounting"
+            ),
+            _scrapy_downloader_aware_knowledge_row("scrapy_pqueue_test_patterns"),
+        ],
+        materialization_audit_records=[
+            _scrapy_downloader_aware_audit_row("scrapy/pqueues.py"),
+            _scrapy_downloader_aware_audit_row("tests/test_pqueues.py"),
+        ],
+    )
+    record = attempt.to_record()
+
+    assert record["replay_id"] == SCRAPY_DOWNLOADER_AWARE_REPLAY_ID
+    assert record["action_family"] == (
+        "scrapy_downloader_aware_slot_rotation_source_test_candidate"
+    )
+    assert record["status"] == "materialized"
+    assert record["mutation_scope"]["allowed_write_path_check_passed"] is True
+    assert record["mutation_scope"]["files_changed"] == [
+        "scrapy/pqueues.py",
+        "tests/test_pqueues.py",
+    ]
+    assert record["mutation_scope"]["accepted_missing_paths"] == []
+    assert record["mutation_scope"]["full_accepted_edit_coverage_expressible"] is True
+    assert record["structured_action_coverage"]["accepted_edit_covered"] is True
+    assert record["structured_action_coverage"]["materialization_gap"] is None
+    assert record["validation"]["validation_command"] == (
+        "python -m py_compile scrapy/pqueues.py && pytest tests/test_pqueues.py -q"
+    )
+    assert record["residual_labels"] == ["candidate_validation_deferred"]
+    assert len(record["evidence"]["local_knowledge"]) == 3
+    assert len(record["evidence"]["materialization_audit"]) == 2
+
+    source = (repo / "scrapy" / "pqueues.py").read_text(encoding="utf-8")
+    assert "self._last_selected_slot: str | None = None" in source
+    assert "def _next_slot(" in source
+    assert "slot = self._next_slot(stats, update_state=True)" in source
+    assert "slot = self._next_slot(stats, update_state=False)" in source
+
+    tests = (repo / "tests" / "test_pqueues.py").read_text(encoding="utf-8")
+    assert "from scrapy.core.downloader import Downloader" in tests
+    assert "def test_tie_breaking_rotates_slots" in tests
+    assert (
+        "def test_tie_breaking_keeps_rotation_after_selected_slot_is_deleted" in tests
+    )
+    assert 'assert slots == ["slot-a", "slot-b", "slot-a", "slot-b"]' in tests
+    assert 'assert slots == ["slot-a", "slot-b", "slot-c", "slot-a"]' in tests
+
+
+def test_scrapy_downloader_aware_candidate_plan_only_records_scope(
+    tmp_path: Path,
+) -> None:
+    repo = _write_synthetic_scrapy_checkout(tmp_path / "scrapy")
+
+    attempt = run_scrapy_downloader_aware_issue_pr_candidate_attempt(
+        repo,
+        manifest_path=MANIFEST_PATH,
+        write=False,
+        validate=False,
+    )
+    record = attempt.to_record()
+
+    assert record["status"] == "planned"
+    assert record["mutation_scope"]["files_changed"] == [
+        "scrapy/pqueues.py",
+        "tests/test_pqueues.py",
+    ]
+    source = (repo / "scrapy" / "pqueues.py").read_text(encoding="utf-8")
+    tests = (repo / "tests" / "test_pqueues.py").read_text(encoding="utf-8")
+    assert "self._last_selected_slot: str | None = None" not in source
+    assert "from scrapy.core.downloader import Downloader" not in tests
+
+
+def test_scrapy_downloader_aware_candidate_validation_report_and_cli(
+    tmp_path: Path,
+) -> None:
+    repo = _write_synthetic_scrapy_checkout(tmp_path / "scrapy")
+    out_path = tmp_path / "candidate.json"
+    report_path = tmp_path / "candidate.md"
+
+    exit_code = main(
+        [
+            "--manifest",
+            str(MANIFEST_PATH),
+            "--replay-id",
+            SCRAPY_DOWNLOADER_AWARE_REPLAY_ID,
+            "--repo-path",
+            str(repo),
+            "--setup-command",
+            "python -c 'print(\"setup ok\")'",
+            "--validation-command",
+            "python -c 'print(\"validation ok\")'",
+            "--validate",
+            "--out",
+            str(out_path),
+            "--report",
+            str(report_path),
+        ]
+    )
+
+    assert exit_code == 0
+    record = json.loads(out_path.read_text(encoding="utf-8"))
+    assert record["status"] == "validated"
+    assert record["validation"]["status"] == "passed"
+    assert record["residual_labels"] == ["candidate_validation_passed"]
+    assert "DATA-035 Scrapy #7293" in report_path.read_text(encoding="utf-8")
+
+
 def _write_synthetic_requests_checkout(repo: Path) -> Path:
     (repo / "src" / "requests").mkdir(parents=True)
     (repo / "tests").mkdir(parents=True)
@@ -729,6 +856,280 @@ class TestRequests:
 
     def _patch_adapter_gzipped_redirect(self, session, url):
         return None
+""",
+        encoding="utf-8",
+    )
+    return repo
+
+
+def _write_synthetic_scrapy_checkout(repo: Path) -> Path:
+    (repo / "scrapy").mkdir(parents=True)
+    (repo / "tests").mkdir(parents=True)
+    (repo / "scrapy" / "pqueues.py").write_text(
+        """from __future__ import annotations
+
+from typing import Iterable, Self
+
+
+class Crawler:
+    settings = {}
+    engine = None
+
+
+class QueueProtocol:
+    def push(self, request: Request) -> None:
+        pass
+
+    def pop(self) -> Request | None:
+        return None
+
+    def peek(self) -> Request | None:
+        return None
+
+    def close(self) -> list[int]:
+        return []
+
+    def __len__(self) -> int:
+        return 0
+
+
+class Request:
+    def __init__(self, url: str):
+        self.url = url
+        self.meta = {}
+
+
+class Downloader:
+    def get_slot_key(self, request: Request) -> str:
+        return str(request.meta.get("slot", "default"))
+
+
+class ScrapyPriorityQueue:
+    def __init__(
+        self,
+        crawler: Crawler,
+        downstream_queue_cls: type[QueueProtocol],
+        key: str,
+        startprios: Iterable[int] = (),
+        *,
+        start_queue_cls: type[QueueProtocol] | None = None,
+    ) -> None:
+        self.key = key
+
+    def push(self, request: Request) -> None:
+        pass
+
+    def pop(self) -> Request | None:
+        return None
+
+    def peek(self) -> Request | None:
+        return None
+
+    def close(self) -> list[int]:
+        return []
+
+    def __len__(self) -> int:
+        return 0
+
+
+def _path_safe(slot: str) -> str:
+    return slot
+
+
+class DownloaderInterface:
+    def __init__(self, crawler: Crawler):
+        assert crawler.engine
+        self.downloader: Downloader = crawler.engine.downloader
+
+    def stats(self, possible_slots: Iterable[str]) -> list[tuple[int, str]]:
+        return [(self._active_downloads(slot), slot) for slot in possible_slots]
+
+    def get_slot_key(self, request: Request) -> str:
+        return self.downloader.get_slot_key(request)
+
+    def _active_downloads(self, slot: str) -> int:
+        return 0
+
+
+class DownloaderAwarePriorityQueue:
+    @classmethod
+    def from_crawler(
+        cls,
+        crawler: Crawler,
+        downstream_queue_cls: type[QueueProtocol],
+        key: str,
+        startprios: dict[str, Iterable[int]] | None = None,
+        *,
+        start_queue_cls: type[QueueProtocol] | None = None,
+    ) -> Self:
+        return cls(
+            crawler,
+            downstream_queue_cls,
+            key,
+            startprios,
+            start_queue_cls=start_queue_cls,
+        )
+
+    def __init__(
+        self,
+        crawler: Crawler,
+        downstream_queue_cls: type[QueueProtocol],
+        key: str,
+        slot_startprios: dict[str, Iterable[int]] | None = None,
+        *,
+        start_queue_cls: type[QueueProtocol] | None = None,
+    ):
+        self._downloader_interface: DownloaderInterface = DownloaderInterface(crawler)
+        self.downstream_queue_cls: type[QueueProtocol] = downstream_queue_cls
+        self._start_queue_cls: type[QueueProtocol] | None = start_queue_cls
+        self.key: str = key
+        self.crawler: Crawler = crawler
+
+        self.pqueues: dict[str, ScrapyPriorityQueue] = {}  # slot -> priority queue
+        if slot_startprios:
+            for slot, startprios in slot_startprios.items():
+                self.pqueues[slot] = self.pqfactory(slot, startprios)
+
+    def pqfactory(
+        self, slot: str, startprios: Iterable[int] = ()
+    ) -> ScrapyPriorityQueue:
+        return ScrapyPriorityQueue(
+            self.crawler,
+            self.downstream_queue_cls,
+            self.key + "/" + _path_safe(slot),
+            startprios,
+            start_queue_cls=self._start_queue_cls,
+        )
+
+    def pop(self) -> Request | None:
+        stats = self._downloader_interface.stats(self.pqueues)
+
+        if not stats:
+            return None
+
+        slot = min(stats)[1]
+        queue = self.pqueues[slot]
+        request = queue.pop()
+        if len(queue) == 0:
+            del self.pqueues[slot]
+        return request
+
+    def push(self, request: Request) -> None:
+        slot = self._downloader_interface.get_slot_key(request)
+        if slot not in self.pqueues:
+            self.pqueues[slot] = self.pqfactory(slot)
+        queue = self.pqueues[slot]
+        queue.push(request)
+
+    def peek(self) -> Request | None:
+        stats = self._downloader_interface.stats(self.pqueues)
+        if not stats:
+            return None
+        slot = min(stats)[1]
+        queue = self.pqueues[slot]
+        return queue.peek()
+
+    def close(self) -> dict[str, list[int]]:
+        active = {slot: queue.close() for slot, queue in self.pqueues.items()}
+        self.pqueues.clear()
+        return active
+""",
+        encoding="utf-8",
+    )
+    (repo / "tests" / "test_pqueues.py").write_text(
+        """import tempfile
+from unittest.mock import Mock
+
+import pytest
+import queuelib
+
+from scrapy.http.request import Request
+from scrapy.pqueues import DownloaderAwarePriorityQueue, ScrapyPriorityQueue
+from scrapy.spiders import Spider
+from scrapy.squeues import FifoMemoryQueue
+from scrapy.utils.misc import build_from_crawler, load_object
+from scrapy.utils.test import get_crawler
+from tests.test_scheduler import MockDownloader
+
+
+class TestPriorityQueue:
+    def setup_method(self):
+        self.crawler = get_crawler(Spider)
+        self.spider = self.crawler._create_spider("foo")
+
+
+class TestDownloaderAwarePriorityQueue:
+    def setup_method(self):
+        crawler = get_crawler(Spider)
+        crawler.engine = Mock(downloader=MockDownloader())
+        self.queue = DownloaderAwarePriorityQueue.from_crawler(
+            crawler=crawler,
+            downstream_queue_cls=FifoMemoryQueue,
+            key="foo/bar",
+        )
+
+    def teardown_method(self):
+        self.queue.close()
+
+    def test_push_pop(self):
+        assert len(self.queue) == 0
+        assert self.queue.pop() is None
+        req1 = Request("http://www.example.com/1")
+        req2 = Request("http://www.example.com/2")
+        req3 = Request("http://www.example.com/3")
+        self.queue.push(req1)
+        self.queue.push(req2)
+        self.queue.push(req3)
+        assert len(self.queue) == 3
+        assert self.queue.pop().url == req1.url
+        assert len(self.queue) == 2
+        assert self.queue.pop().url == req2.url
+        assert len(self.queue) == 1
+        assert self.queue.pop().url == req3.url
+        assert len(self.queue) == 0
+        assert self.queue.pop() is None
+
+    def test_no_peek_raises(self):
+        if hasattr(queuelib.queue.FifoMemoryQueue, "peek"):
+            pytest.skip("queuelib.queue.FifoMemoryQueue.peek is defined")
+        self.queue.push(Request("https://example.org"))
+        with pytest.raises(
+            NotImplementedError,
+            match="The underlying queue class does not implement 'peek'",
+        ):
+            self.queue.peek()
+
+    def test_peek(self):
+        if not hasattr(queuelib.queue.FifoMemoryQueue, "peek"):
+            pytest.skip("queuelib.queue.FifoMemoryQueue.peek is undefined")
+        assert len(self.queue) == 0
+        req1 = Request("https://example.org/1")
+        req2 = Request("https://example.org/2")
+        req3 = Request("https://example.org/3")
+        self.queue.push(req1)
+        self.queue.push(req2)
+        self.queue.push(req3)
+        assert len(self.queue) == 3
+        assert self.queue.peek().url == req1.url
+        assert self.queue.pop().url == req1.url
+        assert len(self.queue) == 2
+        assert self.queue.peek().url == req2.url
+        assert self.queue.pop().url == req2.url
+        assert len(self.queue) == 1
+        assert self.queue.peek().url == req3.url
+        assert self.queue.pop().url == req3.url
+        assert self.queue.peek() is None
+
+
+@pytest.mark.parametrize(
+    ("input_", "output"),
+    [
+        ([{}, {}], [2, 1]),
+    ],
+)
+def test_pop_order(input_, output):
+    assert input_
+    assert output
 """,
         encoding="utf-8",
     )
@@ -1384,6 +1785,52 @@ def _pytest_timedelta_approx_audit_row(path: str) -> dict[str, object]:
         "record_kind": "issue_pr_materialization_audit",
         "audit_id": f"DATA-028/{PYTEST_TIMEDELTA_APPROX_REPLAY_ID}/{path}",
         "replay_id": PYTEST_TIMEDELTA_APPROX_REPLAY_ID,
+        "path": path,
+        "classification": "requiring_constrained_local_generator_or_source_region_action",
+    }
+
+
+def _scrapy_downloader_aware_ready_row() -> dict[str, object]:
+    return {
+        "record_kind": "issue_pr_candidate_readiness",
+        "replay_id": SCRAPY_DOWNLOADER_AWARE_REPLAY_ID,
+        "ready_for_candidate_attempt": True,
+        "validation_command": "pytest tests/test_pqueues.py -q",
+    }
+
+
+def _scrapy_downloader_aware_prompt_spec_row() -> dict[str, object]:
+    return {
+        "record_kind": "issue_pr_prompt_spec",
+        "replay_id": SCRAPY_DOWNLOADER_AWARE_REPLAY_ID,
+        "status": "normalized",
+        "prompt_spec_kind": "scrapy_downloader_aware_priority_queue_tie_breaking",
+    }
+
+
+def _scrapy_downloader_aware_validation_row() -> dict[str, object]:
+    return {
+        "record_kind": "issue_pr_replay_preflight_outcome",
+        "replay_id": SCRAPY_DOWNLOADER_AWARE_REPLAY_ID,
+        "status": "passed",
+        "validation_command": "pytest tests/test_pqueues.py -q",
+    }
+
+
+def _scrapy_downloader_aware_knowledge_row(category: str) -> dict[str, object]:
+    return {
+        "record_type": "library_idiom_record",
+        "id": f"scrapy-7293:{category}",
+        "links": {"task_ids": [SCRAPY_DOWNLOADER_AWARE_REPLAY_ID]},
+        "data": {"knowledge_category": category},
+    }
+
+
+def _scrapy_downloader_aware_audit_row(path: str) -> dict[str, object]:
+    return {
+        "record_kind": "issue_pr_materialization_audit",
+        "audit_id": f"DATA-034/{SCRAPY_DOWNLOADER_AWARE_REPLAY_ID}/{path}",
+        "replay_id": SCRAPY_DOWNLOADER_AWARE_REPLAY_ID,
         "path": path,
         "classification": "requiring_constrained_local_generator_or_source_region_action",
     }

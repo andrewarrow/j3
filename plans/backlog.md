@@ -1971,7 +1971,7 @@ Long-term target:
 
 ### DATA-035: Scrapy validation-split source/test candidate attempt
 
-- Status: active
+- Status: done
 - Why: DATA-033 says the validation-split Scrapy row is candidate-ready and
   DATA-034 identifies the exact source/test materialization gap. The next hard
   proof is whether j3 can materialize and validate the accepted Scrapy queue
@@ -1995,6 +1995,23 @@ Long-term target:
   instead of broadening scope silently.
 - Tests: focused candidate-attempt tests, plan consistency, `git diff
   --check`, and live focused validation when feasible.
+- Completion note: added a bounded Scrapy #7293/#7351 source/test candidate
+  attempt. The materializer records DATA-030/031/033/034 provenance and
+  changes only `scrapy/pqueues.py` and `tests/test_pqueues.py` in the live
+  pinned checkout. It adds `DownloaderAwarePriorityQueue._last_selected_slot`,
+  inserts the bounded `_next_slot` helper, makes `pop` update rotation state,
+  keeps `peek` non-mutating, and inserts the accepted Downloader import plus
+  two `TestDownloaderAwarePriorityQueue` slot-rotation tests. Coordinator
+  review fixed one blank-line placement mismatch in the generated test diff;
+  the regenerated real-checkout candidate diff matches the accepted PR diff
+  byte-for-byte for the source/test paths. Focused live validation passed with
+  `python -m py_compile scrapy/pqueues.py && pytest tests/test_pqueues.py -q`
+  (`13` passed, `2` skipped, `2` warnings). Final artifacts:
+  `/tmp/j3-data-035-scrapy-7293-source-test-final/candidate.json`,
+  `/tmp/j3-data-035-scrapy-7293-source-test-final/report.md`,
+  `/tmp/j3-data-035-scrapy-7293-source-test-final/candidate.diff`,
+  `/tmp/j3-data-035-scrapy-7293-source-test-final/accepted.diff`, and
+  `/tmp/j3-data-035-scrapy-7293-source-test-final/parity.diff`.
 
 ### DATA-036: Pip validation recipe scripttest probe
 

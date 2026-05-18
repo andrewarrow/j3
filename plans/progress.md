@@ -3393,8 +3393,8 @@ meaningful work. Do not replace this file with a daily reset.
 - Result: recorded worker Raman
   (`019e3ca5-4caf-77d2-b343-031d80960c20`) for `DATA-035` and worker
   Poincare (`019e3ca5-4ce1-7701-910c-79e6c8e708b6`) for `DATA-036`.
-- Commit: pending.
-- Push: pending.
+- Commit: e07d7ae.
+- Push: succeeded.
 - Next: continue non-overlapping coordinator review while both workers run.
 - Blockers: none.
 
@@ -3433,3 +3433,42 @@ meaningful work. Do not replace this file with a daily reset.
   validation-split rows.
 - Blockers: pip validation remains blocked on fixture/tooling setup after
   `installer` and `scripttest`; next explicit dependency is `pytest-socket`.
+
+### 2026-05-18 - DATA-035 - Scrapy validation-split source/test candidate
+
+- Owner: worker Raman (`019e3ca5-4caf-77d2-b343-031d80960c20`) with
+  coordinator review and parity cleanup.
+- Files changed: `j3/issue_pr_candidate_attempt.py`,
+  `tests/test_issue_pr_candidate_attempt.py`, `plans/active.md`,
+  `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `python -m py_compile j3/issue_pr_candidate_attempt.py
+  tests/test_issue_pr_candidate_attempt.py` -> passed; `pytest
+  tests/test_issue_pr_candidate_attempt.py -q` -> 21 passed; regenerated a
+  real Scrapy repo-before checkout for
+  `scrapy__scrapy-issue-7293-pr-7351` and compared the source/test candidate
+  diff to the accepted PR diff -> byte-for-byte match; live focused validation
+  `python -m py_compile scrapy/pqueues.py && pytest tests/test_pqueues.py -q`
+  -> 13 passed, 2 skipped, 2 warnings; `pytest
+  tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check` ->
+  passed.
+- Result: added a bounded source/test candidate attempt for the validation-split
+  Scrapy row. The materializer changes only `scrapy/pqueues.py` and
+  `tests/test_pqueues.py`, records DATA-030/031/033/034 provenance, adds the
+  slot-rotation state/helper, updates `pop` while keeping `peek` non-mutating,
+  inserts the accepted Downloader import and two queue tie-breaking tests, and
+  records mutation scope, candidate diff, validation, residual labels, and
+  structured-action coverage. Coordinator review fixed one blank-line placement
+  mismatch from the worker patch before accepting the result. Final artifacts:
+  `/tmp/j3-data-035-scrapy-7293-source-test-final/candidate.json`,
+  `/tmp/j3-data-035-scrapy-7293-source-test-final/report.md`,
+  `/tmp/j3-data-035-scrapy-7293-source-test-final/candidate.diff`,
+  `/tmp/j3-data-035-scrapy-7293-source-test-final/accepted.diff`, and
+  `/tmp/j3-data-035-scrapy-7293-source-test-final/parity.diff`.
+- Commit: pending.
+- Push: pending.
+- Next: use the validated pytest #14462 and Scrapy #7293 issue/PR candidates
+  for ranking/decoy evidence on real held-out repos; continue materialization
+  coverage audits on real accepted PRs instead of returning to fixture-only
+  progress.
+- Blockers: ranking evidence remains a next-stage gap; the pip row remains
+  blocked separately on validation fixture setup.

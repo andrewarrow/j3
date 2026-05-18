@@ -44,22 +44,8 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-### `DATA-035`: Scrapy validation-split source/test candidate attempt
-
-- Status: active
-- Owner: worker Raman (`019e3ca5-4caf-77d2-b343-031d80960c20`).
-- Write scope: `j3/issue_pr_candidate_attempt.py`,
-  `tests/test_issue_pr_candidate_attempt.py`, generated outputs under `/tmp`,
-  optional compact report under `docs/`, and planning updates.
-- Acceptance: attempt exactly `scrapy__scrapy-issue-7293-pr-7351` in
-  source/test scope, changing only `scrapy/pqueues.py` and
-  `tests/test_pqueues.py` in the live pinned checkout. Implement the DATA-034
-  slot-rotation source materializer and `TestDownloaderAwarePriorityQueue`
-  test-method inserter, record actions, candidate diff, mutation scope,
-  validation command/runtime/pass-fail, residual labels, DATA-030/031/033/034
-  provenance, and structured-action coverage. Validate with `python -m
-  py_compile scrapy/pqueues.py && pytest tests/test_pqueues.py -q`, or record
-  the exact materialization or validation blocker.
+No active worker tasks at this instant; the coordinator is recording the next
+dispatch. Continuous loop mode still applies.
 
 ## Ready Queue
 
@@ -92,6 +78,23 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `DATA-035`: added and reviewed a bounded source/test candidate attempt for
+  exactly `scrapy__scrapy-issue-7293-pr-7351`. The materializer changes only
+  `scrapy/pqueues.py` and `tests/test_pqueues.py`, adds
+  `DownloaderAwarePriorityQueue._last_selected_slot`, inserts the bounded
+  `_next_slot` helper, makes `pop` update rotation state, keeps `peek`
+  non-mutating, and inserts the accepted Downloader import plus two
+  `TestDownloaderAwarePriorityQueue` slot-rotation tests. Coordinator review
+  fixed the worker's one blank-line parity mismatch; the regenerated real
+  checkout candidate diff now matches the accepted PR diff byte-for-byte for
+  the source/test paths. Focused live validation passed with `python -m
+  py_compile scrapy/pqueues.py && pytest tests/test_pqueues.py -q` (`13`
+  passed, `2` skipped, `2` warnings). Final artifacts:
+  `/tmp/j3-data-035-scrapy-7293-source-test-final/candidate.json`,
+  `/tmp/j3-data-035-scrapy-7293-source-test-final/report.md`,
+  `/tmp/j3-data-035-scrapy-7293-source-test-final/candidate.diff`,
+  `/tmp/j3-data-035-scrapy-7293-source-test-final/accepted.diff`, and
+  `/tmp/j3-data-035-scrapy-7293-source-test-final/parity.diff`.
 - `DATA-036`: continued the DATA-032 pip validation recipe isolation for
   exactly `pypa__pip-issue-12018-pr-13886` with no candidate edits. The setup
   command `python -m pip install -e . installer scripttest` explicitly adds

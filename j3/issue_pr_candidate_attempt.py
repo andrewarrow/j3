@@ -108,6 +108,20 @@ PYTEST_TIMEDELTA_APPROX_VALIDATION_COMMAND = (
     "python -m py_compile src/_pytest/python_api.py && "
     "pytest testing/python/approx.py -q"
 )
+SCRAPY_DOWNLOADER_AWARE_REPLAY_ID = "scrapy__scrapy-issue-7293-pr-7351"
+SCRAPY_DOWNLOADER_AWARE_ACTION_FAMILY = (
+    "scrapy_downloader_aware_slot_rotation_source_test_candidate"
+)
+SCRAPY_DOWNLOADER_AWARE_SOURCE_PATH = "scrapy/pqueues.py"
+SCRAPY_DOWNLOADER_AWARE_TEST_PATH = "tests/test_pqueues.py"
+SCRAPY_DOWNLOADER_AWARE_ACCEPTED_PATHS = [
+    SCRAPY_DOWNLOADER_AWARE_SOURCE_PATH,
+    SCRAPY_DOWNLOADER_AWARE_TEST_PATH,
+]
+SCRAPY_DOWNLOADER_AWARE_SETUP_COMMAND = "python -m pip install -e ."
+SCRAPY_DOWNLOADER_AWARE_VALIDATION_COMMAND = (
+    "python -m py_compile scrapy/pqueues.py && pytest tests/test_pqueues.py -q"
+)
 
 
 class IssuePrCandidateAttemptError(ValueError):
@@ -1763,6 +1777,282 @@ def run_pytest_timedelta_approx_issue_pr_candidate_attempt(
     )
 
 
+def run_scrapy_downloader_aware_issue_pr_candidate_attempt(
+    repo_path: Path,
+    *,
+    manifest_path: Path = Path("examples/issue_pr_mini_replay/manifest.json"),
+    replay_id: str = SCRAPY_DOWNLOADER_AWARE_REPLAY_ID,
+    readiness_records: Sequence[Mapping[str, object]] = (),
+    prompt_spec_records: Sequence[Mapping[str, object]] = (),
+    validation_records: Sequence[Mapping[str, object]] = (),
+    local_knowledge_records: Sequence[Mapping[str, object]] = (),
+    materialization_audit_records: Sequence[Mapping[str, object]] = (),
+    setup_command: str | None = None,
+    validation_command: str | None = None,
+    write: bool = True,
+    validate: bool = False,
+    validation_timeout_seconds: int = 120,
+) -> IssuePrCandidateAttempt:
+    """Attempt the Scrapy #7293/#7351 downloader-aware queue candidate."""
+
+    if replay_id != SCRAPY_DOWNLOADER_AWARE_REPLAY_ID:
+        raise IssuePrCandidateAttemptError(
+            f"unsupported replay id: {replay_id}",
+            blocker={
+                "field": "replay_id",
+                "reason": "unsupported_issue_pr_candidate",
+                "message": (
+                    "DATA-035 may attempt only "
+                    "scrapy__scrapy-issue-7293-pr-7351"
+                ),
+            },
+        )
+    resolved_repo = repo_path.expanduser().resolve()
+    if not resolved_repo.is_dir():
+        raise IssuePrCandidateAttemptError(
+            f"repo does not exist: {resolved_repo}",
+            blocker={
+                "field": "repo_path",
+                "reason": "missing_repo_before_checkout",
+                "message": f"repo does not exist: {resolved_repo}",
+            },
+        )
+
+    manifest_path = manifest_path.expanduser().resolve()
+    manifest = load_issue_pr_replay_manifest(manifest_path)
+    replay_record = select_issue_pr_replay_record(manifest, replay_id)
+    repo = _required_str(replay_record, "repo")
+    prompt = _required_str(replay_record, "prompt_text")
+    repo_before_ref = _mapping(replay_record["repo_before_ref"])
+    expected_sha = _required_str(repo_before_ref, "sha")
+    accepted_change = _mapping(replay_record["accepted_change"])
+    accepted_paths = _string_sequence(accepted_change.get("changed_files"))
+    if accepted_paths != SCRAPY_DOWNLOADER_AWARE_ACCEPTED_PATHS:
+        raise IssuePrCandidateAttemptError(
+            "Scrapy downloader-aware candidate allowlist changed unexpectedly",
+            blocker={
+                "field": "accepted_change.changed_files",
+                "reason": "unexpected_allowed_write_scope",
+                "message": "DATA-035 expects exactly the Scrapy #7351 source/test paths",
+            },
+        )
+
+    blockers: list[dict[str, str]] = []
+    allowed_write_paths = list(SCRAPY_DOWNLOADER_AWARE_ACCEPTED_PATHS)
+    planned_write_files = list(SCRAPY_DOWNLOADER_AWARE_ACCEPTED_PATHS)
+    actions: list[dict[str, object]] = [
+        {
+            "kind": "select_replay_row",
+            "target": replay_id,
+            "payload": {
+                "manifest_path": str(manifest_path),
+                "repo": repo,
+                "repo_before_ref": expected_sha,
+            },
+        },
+        {
+            "kind": "declare_source_test_only_scope",
+            "target": replay_id,
+            "payload": {
+                "planned_write_files": planned_write_files,
+                "provenance": ["DATA-030", "DATA-031", "DATA-033", "DATA-034"],
+            },
+        },
+    ]
+    head = _git_stdout(resolved_repo, ("rev-parse", "HEAD"))
+    if head:
+        actions.append(
+            {
+                "kind": "verify_repo_before_ref",
+                "target": ".",
+                "payload": {"expected": expected_sha, "actual": head},
+            }
+        )
+        if head != expected_sha:
+            blockers.append(
+                {
+                    "field": "repo_before_ref",
+                    "reason": "repo_before_ref_mismatch",
+                    "message": f"expected {expected_sha}, got {head}",
+                }
+            )
+
+    source_materialization: dict[str, object] = {}
+    test_materialization: dict[str, object] = {}
+    if not blockers:
+        try:
+            source_materialization = _materialize_scrapy_downloader_aware_source(
+                resolved_repo,
+                write=write,
+            )
+            actions.extend(_scrapy_downloader_aware_source_actions())
+        except IssuePrCandidateAttemptError as error:
+            source_materialization = {
+                "status": "blocked",
+                "target_source_file": SCRAPY_DOWNLOADER_AWARE_SOURCE_PATH,
+            }
+            blockers.append(error.blocker)
+
+    if not blockers:
+        try:
+            test_materialization = _materialize_scrapy_downloader_aware_tests(
+                resolved_repo,
+                write=write,
+            )
+            actions.append(_scrapy_downloader_aware_test_action())
+        except IssuePrCandidateAttemptError as error:
+            test_materialization = {
+                "status": "blocked",
+                "target_test_file": SCRAPY_DOWNLOADER_AWARE_TEST_PATH,
+            }
+            blockers.append(error.blocker)
+
+    candidate_diff = _candidate_diff(
+        resolved_repo,
+        SCRAPY_DOWNLOADER_AWARE_ACCEPTED_PATHS,
+    )
+    changed_files = _string_sequence(candidate_diff.get("changed_files"))
+    planned_changed_files = _unique(
+        [
+            *_source_planned_changed_files(
+                source_materialization, SCRAPY_DOWNLOADER_AWARE_SOURCE_PATH
+            ),
+            *_string_sequence(test_materialization.get("planned_changed_files")),
+        ]
+    )
+    files_changed = changed_files or planned_changed_files
+    writes_outside_allowed_scope = _paths_outside_allowlist(
+        files_changed,
+        allowed_write_paths,
+    )
+    if writes_outside_allowed_scope:
+        blockers.append(
+            {
+                "field": "mutation_scope",
+                "reason": "writes_outside_source_test_scope",
+                "message": "DATA-035 candidate wrote outside the explicit source/test scope",
+            }
+        )
+    missing_allowed_paths = [
+        path for path in allowed_write_paths if path not in files_changed
+    ]
+    if not blockers and missing_allowed_paths:
+        blockers.append(
+            {
+                "field": "candidate_diff",
+                "reason": "source_test_edit_not_fully_materialized",
+                "message": "candidate did not materialize required source/test paths: "
+                + ", ".join(missing_allowed_paths),
+            }
+        )
+
+    selected_setup = setup_command or SCRAPY_DOWNLOADER_AWARE_SETUP_COMMAND
+    selected_validation = validation_command or _scrapy_downloader_aware_validation_command(
+        validation_records=validation_records,
+        readiness_records=readiness_records,
+    )
+    validation = _deferred_validation_record(
+        setup_command=selected_setup,
+        validation_command=selected_validation,
+    )
+    if validate and not blockers:
+        validation = validate_issue_pr_candidate(
+            resolved_repo,
+            setup_command=selected_setup,
+            validation_command=selected_validation,
+            timeout_seconds=validation_timeout_seconds,
+        )
+
+    if validation.get("status") == "failed":
+        blockers.append(
+            {
+                "field": "validation",
+                "reason": "candidate_validation_failed",
+                "message": "focused Scrapy #7293 validation command failed",
+            }
+        )
+    elif validation.get("status") == "timeout":
+        blockers.append(
+            {
+                "field": "validation",
+                "reason": "candidate_validation_timeout",
+                "message": "focused Scrapy #7293 validation command timed out",
+            }
+        )
+
+    structured_action_coverage = _scrapy_downloader_aware_structured_action_coverage(
+        blockers=blockers,
+        files_changed=files_changed,
+        validation=validation,
+    )
+    residual_labels = [blocker["reason"] for blocker in blockers]
+    if not residual_labels:
+        if validation.get("status") == "passed":
+            residual_labels = ["candidate_validation_passed"]
+        elif validate:
+            residual_labels = [f"candidate_validation_{validation.get('status')}"]
+        else:
+            residual_labels = ["candidate_validation_deferred"]
+
+    status = "blocked" if blockers else "materialized"
+    if not blockers and validation.get("status") == "passed":
+        status = "validated"
+    elif not blockers and not write:
+        status = "planned"
+
+    evidence = _evidence_summary(
+        readiness_records=readiness_records,
+        prompt_spec_records=prompt_spec_records,
+        validation_records=validation_records,
+        local_knowledge_records=local_knowledge_records,
+        materialization_audit_records=materialization_audit_records,
+        replay_id=SCRAPY_DOWNLOADER_AWARE_REPLAY_ID,
+    )
+    candidate_id = _candidate_id(
+        replay_id=replay_id,
+        repo_before_ref=expected_sha,
+        candidate_diff=str(candidate_diff.get("diff", "")),
+        validation_status=str(validation.get("status", "")),
+    )
+    mutation_scope = {
+        "mode": "issue_pr_candidate_attempt_source_test_only",
+        "accepted_write_paths": list(accepted_paths),
+        "allowed_write_paths": list(allowed_write_paths),
+        "planned_write_files": planned_write_files,
+        "included_auxiliary_paths": [],
+        "excluded_auxiliary_paths": [],
+        "files_changed": files_changed,
+        "writes_outside_allowlist": writes_outside_allowed_scope,
+        "allowed_write_path_check_passed": not writes_outside_allowed_scope,
+        "missing_allowed_write_paths": missing_allowed_paths,
+        "materialization_gap_paths": [],
+        "accepted_missing_paths": missing_allowed_paths,
+        "full_accepted_edit_coverage_expressible": (
+            not missing_allowed_paths and not blockers
+        ),
+    }
+    return IssuePrCandidateAttempt(
+        candidate_id=candidate_id,
+        replay_id=replay_id,
+        repo=repo,
+        repo_before_ref=expected_sha,
+        prompt=prompt,
+        status=status,
+        action_family=SCRAPY_DOWNLOADER_AWARE_ACTION_FAMILY,
+        allowed_write_paths=list(allowed_write_paths),
+        evidence=evidence,
+        actions=actions,
+        source_materialization=source_materialization,
+        test_materialization=test_materialization,
+        candidate_diff=candidate_diff,
+        mutation_scope=mutation_scope,
+        validation=validation,
+        structured_action_coverage=structured_action_coverage,
+        blockers=blockers,
+        residual_labels=_unique(residual_labels),
+    )
+
+
 def run_issue_pr_candidate_attempt(
     repo_path: Path,
     *,
@@ -1860,6 +2150,22 @@ def run_issue_pr_candidate_attempt(
             validate=validate,
             validation_timeout_seconds=validation_timeout_seconds,
         )
+    if replay_id == SCRAPY_DOWNLOADER_AWARE_REPLAY_ID:
+        return run_scrapy_downloader_aware_issue_pr_candidate_attempt(
+            repo_path,
+            manifest_path=manifest_path,
+            replay_id=replay_id,
+            readiness_records=readiness_records,
+            prompt_spec_records=prompt_spec_records,
+            validation_records=validation_records,
+            local_knowledge_records=local_knowledge_records,
+            materialization_audit_records=materialization_audit_records,
+            setup_command=setup_command,
+            validation_command=validation_command,
+            write=write,
+            validate=validate,
+            validation_timeout_seconds=validation_timeout_seconds,
+        )
     raise IssuePrCandidateAttemptError(
         f"unsupported replay id: {replay_id}",
         blocker={
@@ -1868,7 +2174,8 @@ def run_issue_pr_candidate_attempt(
             "message": (
                 "supported candidate attempts are DATA-012 Requests, DATA-014 "
                 "Click default_map, DATA-016 Click semver default, and DATA-024 "
-                "pytest strict addopts, and DATA-029 pytest timedelta approx"
+                "pytest strict addopts, DATA-029 pytest timedelta approx, and "
+                "DATA-035 Scrapy downloader-aware queue"
             ),
         },
     )
@@ -1964,6 +2271,8 @@ def write_issue_pr_candidate_attempt_report(
         if record.get("replay_id") == PYTEST_STRICT_ADDOPTS_REPLAY_ID
         else "DATA-029 Pytest #14462 Source/Test Candidate Attempt"
         if record.get("replay_id") == PYTEST_TIMEDELTA_APPROX_REPLAY_ID
+        else "DATA-035 Scrapy #7293 Source/Test Candidate Attempt"
+        if record.get("replay_id") == SCRAPY_DOWNLOADER_AWARE_REPLAY_ID
         else "DATA-012 Requests Issue/PR Candidate Attempt"
     )
     lines = [
@@ -2082,6 +2391,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             setup_command = PYTEST_TIMEDELTA_APPROX_SETUP_COMMAND
         if validation_command == REQUESTS_VALIDATION_COMMAND:
             validation_command = PYTEST_TIMEDELTA_APPROX_VALIDATION_COMMAND
+    elif args.replay_id == SCRAPY_DOWNLOADER_AWARE_REPLAY_ID:
+        if setup_command == REQUESTS_SETUP_COMMAND:
+            setup_command = SCRAPY_DOWNLOADER_AWARE_SETUP_COMMAND
+        if validation_command == REQUESTS_VALIDATION_COMMAND:
+            validation_command = SCRAPY_DOWNLOADER_AWARE_VALIDATION_COMMAND
 
     attempt = run_issue_pr_candidate_attempt(
         args.repo_path,
@@ -3384,6 +3698,367 @@ def _materialize_pytest_timedelta_approx_tests(
     return result
 
 
+def _scrapy_downloader_aware_source_actions() -> list[dict[str, object]]:
+    return [
+        {
+            "kind": "python_instance_state_insert",
+            "target": SCRAPY_DOWNLOADER_AWARE_SOURCE_PATH,
+            "payload": {
+                "class_name": "DownloaderAwarePriorityQueue",
+                "attribute": "_last_selected_slot",
+                "initial_value": None,
+                "provenance": ["DATA-031", "DATA-034", "DATA-035"],
+            },
+        },
+        {
+            "kind": "python_method_insert",
+            "target": SCRAPY_DOWNLOADER_AWARE_SOURCE_PATH,
+            "payload": {
+                "class_name": "DownloaderAwarePriorityQueue",
+                "method_name": "_next_slot",
+                "semantics": "rotate_equal_active_download_slots_after_last_selected",
+                "provenance": ["DATA-031", "DATA-034", "DATA-035"],
+            },
+        },
+        {
+            "kind": "python_callsite_replace",
+            "target": SCRAPY_DOWNLOADER_AWARE_SOURCE_PATH,
+            "payload": {
+                "method_name": "pop",
+                "old_call": "min(stats)[1]",
+                "new_call": "self._next_slot(stats, update_state=True)",
+                "provenance": ["DATA-034", "DATA-035"],
+            },
+        },
+        {
+            "kind": "python_callsite_replace",
+            "target": SCRAPY_DOWNLOADER_AWARE_SOURCE_PATH,
+            "payload": {
+                "method_name": "peek",
+                "old_call": "min(stats)[1]",
+                "new_call": "self._next_slot(stats, update_state=False)",
+                "provenance": ["DATA-034", "DATA-035"],
+            },
+        },
+    ]
+
+
+def _scrapy_downloader_aware_test_action() -> dict[str, object]:
+    return {
+        "kind": "scrapy_pqueue_pytest_class_method_insert",
+        "target": SCRAPY_DOWNLOADER_AWARE_TEST_PATH,
+        "payload": {
+            "import_added": "from scrapy.core.downloader import Downloader",
+            "class_name": "TestDownloaderAwarePriorityQueue",
+            "inserted_methods": [
+                "test_tie_breaking_rotates_slots",
+                "test_tie_breaking_keeps_rotation_after_selected_slot_is_deleted",
+            ],
+            "slot_metadata": "Downloader.DOWNLOAD_SLOT",
+            "provenance": ["DATA-031", "DATA-034", "DATA-035"],
+        },
+    }
+
+
+def _materialize_scrapy_downloader_aware_source(
+    repo_path: Path,
+    *,
+    write: bool,
+) -> dict[str, object]:
+    source_path = _repo_file(repo_path, SCRAPY_DOWNLOADER_AWARE_SOURCE_PATH)
+    before_text = source_path.read_text(encoding="utf-8")
+    after_text = before_text
+    accepted_markers = [
+        "        self._last_selected_slot: str | None = None",
+        "    def _next_slot(self, stats: list[tuple[int, str]], *, update_state: bool) -> str:",
+        "        slot = self._next_slot(stats, update_state=True)",
+        "        slot = self._next_slot(stats, update_state=False)",
+    ]
+    if all(marker in after_text for marker in accepted_markers):
+        return _python_source_candidate_after(
+            before_text=before_text,
+            after_text=before_text,
+            source_file=SCRAPY_DOWNLOADER_AWARE_SOURCE_PATH,
+            planned_changed_files=[],
+            wrote_file=False,
+            status="already_applied",
+        )
+
+    old_state_block = "\n".join(
+        [
+            "        self.pqueues: dict[str, ScrapyPriorityQueue] = {}  # slot -> priority queue",
+            "        if slot_startprios:",
+        ]
+    )
+    new_state_block = "\n".join(
+        [
+            "        self.pqueues: dict[str, ScrapyPriorityQueue] = {}  # slot -> priority queue",
+            "        self._last_selected_slot: str | None = None",
+            "        if slot_startprios:",
+        ]
+    )
+    if old_state_block not in after_text:
+        raise IssuePrCandidateAttemptError(
+            "Scrapy downloader-aware state anchor not found",
+            blocker={
+                "field": "source_materialization",
+                "reason": "source_state_anchor_not_found",
+                "message": (
+                    "could not find DownloaderAwarePriorityQueue.pqueues "
+                    "initialization anchor"
+                ),
+            },
+        )
+    after_text = after_text.replace(old_state_block, new_state_block, 1)
+
+    next_slot_method = "\n".join(
+        [
+            "    def _next_slot(self, stats: list[tuple[int, str]], *, update_state: bool) -> str:",
+            "        last = self._last_selected_slot",
+            "        min_active: int | None = None",
+            "        best_slot: str | None = None",
+            "        best_slot_after_last: str | None = None",
+            "        for active, slot in stats:",
+            "            if min_active is None or active < min_active:",
+            "                min_active = active",
+            "                best_slot = slot",
+            "                best_slot_after_last = None",
+            "                if last is not None and slot > last:",
+            "                    best_slot_after_last = slot",
+            "            elif active == min_active:",
+            "                if best_slot is None or slot < best_slot:",
+            "                    best_slot = slot",
+            "                if (",
+            "                    last is not None",
+            "                    and slot > last",
+            "                    and (best_slot_after_last is None or slot < best_slot_after_last)",
+            "                ):",
+            "                    best_slot_after_last = slot",
+            "        assert best_slot is not None",
+            "        slot = best_slot_after_last if best_slot_after_last is not None else best_slot",
+            "        if update_state:",
+            "            self._last_selected_slot = slot",
+            "        return slot",
+        ]
+    )
+    method_anchor = "    def pqfactory(\n"
+    if "    def _next_slot(" not in after_text:
+        if method_anchor not in after_text:
+            raise IssuePrCandidateAttemptError(
+                "Scrapy downloader-aware method insertion anchor not found",
+                blocker={
+                    "field": "source_materialization",
+                    "reason": "source_method_anchor_not_found",
+                    "message": "could not find DownloaderAwarePriorityQueue.pqfactory",
+                },
+            )
+        after_text = after_text.replace(
+            method_anchor,
+            next_slot_method + "\n\n" + method_anchor,
+            1,
+        )
+
+    old_pop_slot = "\n".join(
+        [
+            "        slot = min(stats)[1]",
+            "        queue = self.pqueues[slot]",
+            "        request = queue.pop()",
+        ]
+    )
+    new_pop_slot = "\n".join(
+        [
+            "        slot = self._next_slot(stats, update_state=True)",
+            "        queue = self.pqueues[slot]",
+            "        request = queue.pop()",
+        ]
+    )
+    if old_pop_slot not in after_text:
+        raise IssuePrCandidateAttemptError(
+            "Scrapy downloader-aware pop slot-selection anchor not found",
+            blocker={
+                "field": "source_materialization",
+                "reason": "source_pop_anchor_not_found",
+                "message": "could not find DownloaderAwarePriorityQueue.pop min(stats)",
+            },
+        )
+    after_text = after_text.replace(old_pop_slot, new_pop_slot, 1)
+
+    old_peek_slot = "\n".join(
+        [
+            "        slot = min(stats)[1]",
+            "        queue = self.pqueues[slot]",
+            "        return queue.peek()",
+        ]
+    )
+    new_peek_slot = "\n".join(
+        [
+            "        slot = self._next_slot(stats, update_state=False)",
+            "        queue = self.pqueues[slot]",
+            "        return queue.peek()",
+        ]
+    )
+    if old_peek_slot not in after_text:
+        raise IssuePrCandidateAttemptError(
+            "Scrapy downloader-aware peek slot-selection anchor not found",
+            blocker={
+                "field": "source_materialization",
+                "reason": "source_peek_anchor_not_found",
+                "message": "could not find DownloaderAwarePriorityQueue.peek min(stats)",
+            },
+        )
+    after_text = after_text.replace(old_peek_slot, new_peek_slot, 1)
+
+    planned_changed_files = (
+        [SCRAPY_DOWNLOADER_AWARE_SOURCE_PATH] if after_text != before_text else []
+    )
+    if write and planned_changed_files:
+        source_path.write_text(after_text, encoding="utf-8")
+    return _python_source_candidate_after(
+        before_text=before_text,
+        after_text=after_text,
+        source_file=SCRAPY_DOWNLOADER_AWARE_SOURCE_PATH,
+        planned_changed_files=planned_changed_files,
+        wrote_file=write and bool(planned_changed_files),
+        status="materialized" if planned_changed_files else "unchanged",
+    )
+
+
+def _materialize_scrapy_downloader_aware_tests(
+    repo_path: Path,
+    *,
+    write: bool,
+) -> dict[str, object]:
+    test_path = _repo_file(repo_path, SCRAPY_DOWNLOADER_AWARE_TEST_PATH)
+    before_text = test_path.read_text(encoding="utf-8")
+    after_text = before_text
+    accepted_markers = [
+        "from scrapy.core.downloader import Downloader",
+        "    def test_tie_breaking_rotates_slots(self):",
+        "    def test_tie_breaking_keeps_rotation_after_selected_slot_is_deleted(self):",
+    ]
+    if all(marker in after_text for marker in accepted_markers):
+        return _test_candidate_after(
+            before_text=before_text,
+            after_text=before_text,
+            target_test_file=SCRAPY_DOWNLOADER_AWARE_TEST_PATH,
+            planned_changed_files=[],
+            wrote_file=False,
+            status="already_applied",
+        )
+
+    import_anchor = "import queuelib\n\n"
+    downloader_import = "from scrapy.core.downloader import Downloader\n"
+    if downloader_import not in after_text:
+        if import_anchor not in after_text:
+            raise IssuePrCandidateAttemptError(
+                "Scrapy pqueue Downloader import anchor not found",
+                blocker={
+                    "field": "test_materialization",
+                    "reason": "test_import_anchor_not_found",
+                    "message": "could not find queuelib import block in tests/test_pqueues.py",
+                },
+            )
+        after_text = after_text.replace(
+            import_anchor,
+            import_anchor + downloader_import,
+            1,
+        )
+
+    test_methods = "\n".join(
+        [
+            "    def test_tie_breaking_rotates_slots(self):",
+            "        # No active downloads are tracked in the downloader, so every slot has",
+            "        # the same score and tie-breaking must not starve a slot.",
+            '        req_a1 = Request("https://example.org/a1")',
+            '        req_a1.meta[Downloader.DOWNLOAD_SLOT] = "slot-a"',
+            '        req_b1 = Request("https://example.org/b1")',
+            '        req_b1.meta[Downloader.DOWNLOAD_SLOT] = "slot-b"',
+            '        req_a2 = Request("https://example.org/a2")',
+            '        req_a2.meta[Downloader.DOWNLOAD_SLOT] = "slot-a"',
+            '        req_b2 = Request("https://example.org/b2")',
+            '        req_b2.meta[Downloader.DOWNLOAD_SLOT] = "slot-b"',
+            "",
+            "        for request in (req_a1, req_b1, req_a2, req_b2):",
+            "            self.queue.push(request)",
+            "",
+            "        slots = [",
+            "            self.queue.pop().meta[Downloader.DOWNLOAD_SLOT],",
+            "            self.queue.pop().meta[Downloader.DOWNLOAD_SLOT],",
+            "            self.queue.pop().meta[Downloader.DOWNLOAD_SLOT],",
+            "            self.queue.pop().meta[Downloader.DOWNLOAD_SLOT],",
+            "        ]",
+            "",
+            '        assert slots == ["slot-a", "slot-b", "slot-a", "slot-b"]',
+            "",
+            "    def test_tie_breaking_keeps_rotation_after_selected_slot_is_deleted(self):",
+            "        # If the selected slot becomes empty, rotation should continue from",
+            "        # that slot marker to avoid restarting from the smallest slot.",
+            '        req_a1 = Request("https://example.org/a1")',
+            '        req_a1.meta[Downloader.DOWNLOAD_SLOT] = "slot-a"',
+            '        req_a2 = Request("https://example.org/a2")',
+            '        req_a2.meta[Downloader.DOWNLOAD_SLOT] = "slot-a"',
+            '        req_b1 = Request("https://example.org/b1")',
+            '        req_b1.meta[Downloader.DOWNLOAD_SLOT] = "slot-b"',
+            '        req_c1 = Request("https://example.org/c1")',
+            '        req_c1.meta[Downloader.DOWNLOAD_SLOT] = "slot-c"',
+            "",
+            "        for request in (req_a1, req_a2, req_b1, req_c1):",
+            "            self.queue.push(request)",
+            "",
+            "        slots = [",
+            "            self.queue.pop().meta[Downloader.DOWNLOAD_SLOT],",
+            "            self.queue.pop().meta[Downloader.DOWNLOAD_SLOT],",
+            "            self.queue.pop().meta[Downloader.DOWNLOAD_SLOT],",
+            "            self.queue.pop().meta[Downloader.DOWNLOAD_SLOT],",
+            "        ]",
+            "",
+            '        assert slots == ["slot-a", "slot-b", "slot-c", "slot-a"]',
+        ]
+    )
+    class_boundary = "\n\n@pytest.mark.parametrize(\n"
+    if "    def test_tie_breaking_rotates_slots(self):" not in after_text:
+        if class_boundary not in after_text:
+            raise IssuePrCandidateAttemptError(
+                "Scrapy pqueue test insertion boundary not found",
+                blocker={
+                    "field": "test_materialization",
+                    "reason": "test_insertion_anchor_not_found",
+                    "message": (
+                        "could not find boundary after "
+                        "TestDownloaderAwarePriorityQueue in tests/test_pqueues.py"
+                    ),
+                },
+            )
+        after_text = after_text.replace(
+            class_boundary,
+            "\n" + test_methods + "\n" + class_boundary,
+            1,
+        )
+
+    planned_changed_files = (
+        [SCRAPY_DOWNLOADER_AWARE_TEST_PATH] if after_text != before_text else []
+    )
+    if write and planned_changed_files:
+        test_path.write_text(after_text, encoding="utf-8")
+    result = _test_candidate_after(
+        before_text=before_text,
+        after_text=after_text,
+        target_test_file=SCRAPY_DOWNLOADER_AWARE_TEST_PATH,
+        planned_changed_files=planned_changed_files,
+        wrote_file=write and bool(planned_changed_files),
+        status="materialized" if planned_changed_files else "unchanged",
+    )
+    result["metadata"] = {
+        "target_class": "TestDownloaderAwarePriorityQueue",
+        "import_added": downloader_import.strip(),
+        "inserted_methods": [
+            "test_tie_breaking_rotates_slots",
+            "test_tie_breaking_keeps_rotation_after_selected_slot_is_deleted",
+        ],
+    }
+    return result
+
+
 def _python_source_candidate_after(
     *,
     before_text: str,
@@ -3776,6 +4451,74 @@ def _pytest_timedelta_approx_structured_action_coverage(
             "issue/PR replay evidence, not a general source generator."
         ),
     }
+
+
+def _scrapy_downloader_aware_structured_action_coverage(
+    *,
+    blockers: Sequence[Mapping[str, str]],
+    files_changed: Sequence[str],
+    validation: Mapping[str, object],
+) -> dict[str, object]:
+    accepted_paths = set(SCRAPY_DOWNLOADER_AWARE_ACCEPTED_PATHS)
+    changed = set(files_changed)
+    source_covered = SCRAPY_DOWNLOADER_AWARE_SOURCE_PATH in changed
+    test_covered = SCRAPY_DOWNLOADER_AWARE_TEST_PATH in changed
+    accepted_edit_covered = not blockers and accepted_paths == changed
+    labels = []
+    if source_covered:
+        labels.extend(
+            [
+                "scrapy_downloader_slot_rotation_state_insert_covered",
+                "scrapy_downloader_next_slot_method_insert_covered",
+                "scrapy_downloader_pop_peek_callsite_replace_covered",
+            ]
+        )
+    if test_covered:
+        labels.append("scrapy_pqueue_pytest_class_method_insert_covered")
+    if validation.get("status") == "passed":
+        labels.append("focused_validation_covered")
+    return {
+        "accepted_edit_covered": accepted_edit_covered,
+        "behavior_edit_covered": accepted_edit_covered,
+        "source_test_only_scope": True,
+        "full_accepted_scope": True,
+        "coverage_labels": labels,
+        "materialization_gap": (
+            None
+            if accepted_edit_covered
+            else "scrapy_downloader_aware_source_test_candidate_gap"
+        ),
+        "provenance_task_ids": [
+            "DATA-030",
+            "DATA-031",
+            "DATA-033",
+            "DATA-034",
+            "DATA-035",
+        ],
+        "note": (
+            "The DATA-035 candidate covers the full accepted Scrapy #7293 "
+            "source/test scope with a bounded DownloaderAwarePriorityQueue "
+            "slot-rotation source update and a constrained "
+            "TestDownloaderAwarePriorityQueue method inserter. This is local "
+            "issue/PR replay evidence, not a general source generator."
+        ),
+    }
+
+
+def _scrapy_downloader_aware_validation_command(
+    *,
+    validation_records: Sequence[Mapping[str, object]],
+    readiness_records: Sequence[Mapping[str, object]],
+) -> str:
+    selected = _selected_validation_command(
+        validation_records=validation_records,
+        readiness_records=readiness_records,
+        replay_id=SCRAPY_DOWNLOADER_AWARE_REPLAY_ID,
+        default_command=SCRAPY_DOWNLOADER_AWARE_VALIDATION_COMMAND,
+    )
+    if selected == "pytest tests/test_pqueues.py -q":
+        return SCRAPY_DOWNLOADER_AWARE_VALIDATION_COMMAND
+    return selected
 
 
 def _deferred_validation_record(

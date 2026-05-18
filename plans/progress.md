@@ -540,14 +540,17 @@ meaningful work. Do not replace this file with a daily reset.
 
 - Owner: coordinator
 - Files changed: `plans/active.md`, `plans/backlog.md`, `plans/progress.md`
-- Tests: pending coordinator dispatch check
+- Tests: `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check` passed.
 - Result: reviewed `plans/strategy.md` after the north-star update and replaced
   the comfort-zone queue with hard falsification spikes. The next active batch
   is `REAL-001`, `MAT-001`, and `DATA-004`: real-repo harness, materialization
   audit over real PR diffs, and issue/PR mini replay. `KNOW-001` and
   `WEDGE-001` are queued next.
-- Commit: pending coordinator dispatch commit
-- Push: pending coordinator dispatch push
-- Next: spawn `REAL-001`, `MAT-001`, and `DATA-004` workers after plan
-  consistency passes.
+- Commit: f4e0024fdedcb59f063b1ba7f2824d9d8225b3de
+- Push: succeeded
+- Next: `REAL-001` is running as Dewey
+  (`019e3b45-2fe1-7083-9203-c310474a3fd0`), `MAT-001` is running as Meitner
+  (`019e3b45-2fff-73d3-890d-a02d8262237b`), and `DATA-004` is running as
+  Copernicus (`019e3b45-301a-7a41-8138-3d139d4506b4`).
 - Blockers: none

@@ -18,7 +18,7 @@ This is the live coordinator board. Keep it current and compact.
 
 ### `REAL-001`: Real repo eval ladder spike
 
-- Owner: worker pending assignment
+- Owner: worker Dewey (`019e3b45-2fe1-7083-9203-c310474a3fd0`)
 - Status: active
 - Write scope: `docs/REAL_REPO_EVAL_LADDER.md`, a small real-repo eval manifest
   under `examples/` if useful, optional checker/tests, and plan updates. Do not
@@ -32,7 +32,7 @@ This is the live coordinator board. Keep it current and compact.
 
 ### `MAT-001`: Probe the code materialization gap
 
-- Owner: worker pending assignment
+- Owner: worker Meitner (`019e3b45-2fff-73d3-890d-a02d8262237b`)
 - Status: active
 - Write scope: `docs/CODE_MATERIALIZATION_GAP.md`, optional small
   materialization gap fixtures/checker under `examples/` or `j3/`, focused
@@ -48,7 +48,7 @@ This is the live coordinator board. Keep it current and compact.
 
 ### `DATA-004`: Issue/PR mini replay
 
-- Owner: worker pending assignment
+- Owner: worker Copernicus (`019e3b45-301a-7a41-8138-3d139d4506b4`)
 - Status: active
 - Write scope: issue/PR mini-replay manifest/docs/fixture data, small checker
   or schema tests if useful, and plan updates. Do not edit GreenShot

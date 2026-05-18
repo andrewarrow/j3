@@ -1850,3 +1850,44 @@ meaningful work. Do not replace this file with a daily reset.
 - Next: issue/PR candidate generation for Click #3298 can require citations to
   these record categories before ranking or materialization starts.
 - Blockers: none
+
+### 2026-05-18 - DATA-008 - Requests validation recipe isolation
+
+- Owner: worker Ramanujan (`019e3bfa-4838-7cf0-a1fc-1107d9fcb249`).
+- Files changed: `j3/issue_pr_preflight.py`,
+  `tests/test_issue_pr_preflight.py`,
+  `docs/DATA_008_REQUESTS_VALIDATION_RECIPE_2026-05-18.md`,
+  `plans/active.md`, `plans/backlog.md`, `plans/progress.md`.
+- Tests: `python -m py_compile j3/issue_pr_preflight.py
+  tests/test_issue_pr_preflight.py` -> passed; `pytest
+  tests/test_issue_pr_preflight.py -q` -> 17 passed; live recipe smoke
+  `python -m j3.issue_pr_preflight --recipe-attempt --recipe-name
+  requests-focused-prepare-body-httpbin --manifest
+  examples/issue_pr_mini_replay/manifest.json --workspace
+  /tmp/j3-data-008-live/repos --outcome
+  /tmp/j3-data-008-live/attempts.jsonl --report
+  /tmp/j3-data-008-live/report.md --replay-id
+  psf__requests-issue-7432-pr-7433 --setup-command "python -m venv .venv &&
+  .venv/bin/python -m pip install -q --upgrade pip setuptools wheel &&
+  .venv/bin/python -m pip install -q -e . pytest pytest-httpbin==2.1.0
+  httpbin~=0.10.0 trustme" --validation-command ".venv/bin/python -m pytest
+  tests/test_requests.py -q -k 'prepare_body or rewind_body or
+  getattr_proxy_stream_follows_redirect'" --timeout-seconds 240` -> passed
+  with `5 passed, 333 deselected`; accepted-merge diagnostic on
+  `6404f345e562d962abe6700a1c357ec1e7e18232` -> passed with
+  `6 passed, 333 deselected`; `pytest tests/test_plan_consistency.py -q` ->
+  6 passed; `git diff --check` -> passed.
+- Result: added validation recipe attempt records, JSONL/report output, and a
+  `--recipe-attempt` CLI mode. The Requests row no longer needs to stay
+  blocked on `dependency_fixture_setup_failure`: the DATA-006 recursive
+  `httpbin` fixture error was caused by missing `pytest-httpbin`/`httpbin`
+  setup. The recommended hermetic pre-edit recipe uses an in-checkout `.venv`
+  and a focused `-k` selector that passes on repo-before and selects the
+  accepted issue-specific test once present.
+- Commit: pending
+- Push: pending
+- Next: candidate generation for the Requests row can use this validation
+  recipe only after separate prompt/spec and local-knowledge blockers are
+  handled.
+- Blockers: none for validation recipe setup; non-validation residuals remain
+  `prompt_spec_parsing_gap`, `local_knowledge_gap`, and `ranking_gap`.

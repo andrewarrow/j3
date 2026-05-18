@@ -1074,7 +1074,7 @@ Long-term target:
 
 ### DATA-008: Requests replay validation recipe isolation
 
-- Status: active
+- Status: done
 - Why: `DATA-007` identifies the Requests row as a validation/dependency
   blocker, not an edit-quality signal. The replay path needs a hermetic
   focused validation recipe or an explicit reason the row must stay blocked.
@@ -1087,14 +1087,24 @@ Long-term target:
 - Tests: focused issue/PR preflight tests, plan consistency,
   `git diff --check`, and the live validation-recipe smoke command when
   feasible.
+- Completion note: isolated a hermetic focused validation recipe for
+  `psf__requests-issue-7432-pr-7433`. The recursive `httpbin` failure was a
+  setup recipe problem: `pytest` alone does not install Requests'
+  `pytest-httpbin`/`httpbin` fixture dependencies. The passing recipe creates
+  an in-checkout `.venv`, installs `-e .`, `pytest`,
+  `pytest-httpbin==2.1.0`, `httpbin~=0.10.0`, and `trustme`, then runs
+  `.venv/bin/python -m pytest tests/test_requests.py -q -k 'prepare_body or
+  rewind_body or getattr_proxy_stream_follows_redirect'`. Repo-before smoke:
+  `5 passed, 333 deselected`; accepted-merge diagnostic:
+  `6 passed, 333 deselected`. Report:
+  `docs/DATA_008_REQUESTS_VALIDATION_RECIPE_2026-05-18.md`; JSONL:
+  `/tmp/j3-data-008-live/attempts.jsonl`.
 
 ## Next Recommended Queue
 
 Start with these unless fresh evidence changes the order:
 
-1. `DATA-008`: isolate or repair the Requests issue/PR validation recipe.
-2. `KNOW-004`: emit Click replay local-knowledge records required by DATA-007.
-3. `KNOW-003`: broaden knowledge-use attribution where scoring shows missing
+1. `KNOW-003`: broaden knowledge-use attribution where scoring shows missing
    local-knowledge evidence.
-4. `MODEL-006`: candidate-after or AST-delta observation for ranking evidence.
-5. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.
+2. `MODEL-006`: candidate-after or AST-delta observation for ranking evidence.
+3. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.

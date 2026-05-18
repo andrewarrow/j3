@@ -44,22 +44,6 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-### DATA-008: Requests Replay Validation Recipe Isolation
-
-- Status: active
-- Owner: worker Ramanujan (`019e3bfa-4838-7cf0-a1fc-1107d9fcb249`).
-- Write scope: `j3/issue_pr_preflight.py`,
-  `tests/test_issue_pr_preflight.py`, optional compact report under `docs/`,
-  generated live artifacts under `/tmp`, and plan updates.
-- Acceptance: for `psf__requests-issue-7432-pr-7433`, attempt to isolate a
-  hermetic focused validation recipe or prove that the row remains blocked by
-  dependency/fixture setup; record tried commands, setup changes, runtime,
-  first failed stage, fixture/dependency evidence, and the recommended next
-  validation action. Do not attempt candidate code edits.
-- Required checks: focused issue/PR preflight tests, `pytest
-  tests/test_plan_consistency.py -q`, `git diff --check`, and the live
-  validation-recipe smoke command when feasible.
-
 ## Ready Queue
 
 These are good next assignments for the next loop:
@@ -93,6 +77,19 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `DATA-008`: isolated a hermetic Requests validation recipe for
+  `psf__requests-issue-7432-pr-7433` without candidate code edits. The
+  recursive `httpbin` failure came from the DATA-006 setup command missing
+  Requests' `pytest-httpbin`/`httpbin` fixture dependencies. The final
+  candidate-free recipe creates an in-checkout `.venv`, installs `-e .`,
+  `pytest`, `pytest-httpbin==2.1.0`, `httpbin~=0.10.0`, and `trustme`, then
+  runs `.venv/bin/python -m pytest tests/test_requests.py -q -k 'prepare_body
+  or rewind_body or getattr_proxy_stream_follows_redirect'`. The repo-before
+  smoke passed with `5 passed, 333 deselected`; the accepted merge diagnostic
+  passed with `6 passed, 333 deselected`, proving the selector includes the
+  issue-specific test once present. Report:
+  `docs/DATA_008_REQUESTS_VALIDATION_RECIPE_2026-05-18.md`; JSONL:
+  `/tmp/j3-data-008-live/attempts.jsonl`.
 - `KNOW-004`: added a narrow Click replay local-knowledge extractor and CLI
   smoke path for `pallets__click-issue-3298-pr-3299`. The emitted records cover
   repo changed-file context, repo test pattern, focused validation recipe,

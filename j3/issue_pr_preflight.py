@@ -16,6 +16,7 @@ from typing import Callable, Mapping, Sequence
 
 
 ISSUE_PR_PREFLIGHT_SCHEMA_VERSION = "issue-pr-replay-preflight-v1"
+ISSUE_PR_VALIDATION_RECIPE_SCHEMA_VERSION = "issue-pr-validation-recipe-attempt-v1"
 DEFAULT_SETUP_COMMAND = "python -m pip install -e ."
 DEFAULT_TIMEOUT_SECONDS = 120
 
@@ -98,6 +99,74 @@ class IssuePrPreflightOutcome:
         }
         row["blocker_details"] = derive_issue_pr_blocker_details(row)
         return row
+
+
+@dataclass(frozen=True, slots=True)
+class IssuePrValidationRecipeAttempt:
+    """Outcome row for one candidate-free validation recipe attempt."""
+
+    replay_id: str
+    repo: str
+    repo_before_ref: Mapping[str, object]
+    recipe_name: str
+    setup_command: str
+    validation_command: str
+    command_results: tuple[PreflightCommandResult, ...]
+    provenance: Mapping[str, object]
+
+    @property
+    def status(self) -> str:
+        return "passed" if all(result.passed for result in self.command_results) else "blocked"
+
+    @property
+    def runtime_seconds(self) -> float:
+        return sum(result.runtime_seconds for result in self.command_results)
+
+    def to_record(self) -> dict[str, object]:
+        failed_result = _first_failed_result_from_sequence(self.command_results)
+        row_for_classification: dict[str, object] = {
+            "replay_id": self.replay_id,
+            "repo": self.repo,
+            "validation_command": self.validation_command,
+            "first_failed_stage": first_failed_stage(self.command_results),
+        }
+        failure_family = (
+            _classify_command_failure(row_for_classification, failed_result.to_record())
+            if failed_result is not None
+            else "none"
+        )
+        evidence = (
+            _command_failure_evidence(failed_result.to_record())
+            if failed_result is not None
+            else {"summary": "", "source_location": None, "lines": []}
+        )
+        return {
+            "schema_version": ISSUE_PR_VALIDATION_RECIPE_SCHEMA_VERSION,
+            "record_kind": "issue_pr_validation_recipe_attempt",
+            "replay_id": self.replay_id,
+            "repo": self.repo,
+            "repo_before_ref": dict(self.repo_before_ref),
+            "recipe_name": self.recipe_name,
+            "setup_command": self.setup_command,
+            "validation_command": self.validation_command,
+            "pre_edit": True,
+            "candidate_code_edits_attempted": False,
+            "status": self.status,
+            "runtime_seconds": round(self.runtime_seconds, 3),
+            "command_stages_reached": [result.name for result in self.command_results],
+            "first_failed_stage": first_failed_stage(self.command_results),
+            "command_results": [result.to_record() for result in self.command_results],
+            "failure_family": failure_family,
+            "fixture_dependency_evidence": evidence,
+            "recommendation": _validation_recipe_recommendation(failure_family),
+            "required_next_actions": _validation_recipe_next_actions(
+                failure_family,
+                setup_command=self.setup_command,
+                validation_command=self.validation_command,
+                evidence=evidence,
+            ),
+            "provenance": dict(self.provenance),
+        }
 
 
 def load_issue_pr_replay_manifest(path: Path) -> dict[str, object]:
@@ -376,6 +445,145 @@ def run_issue_pr_replay_preflight_batch(
     )
 
 
+def run_issue_pr_validation_recipe_attempt(
+    *,
+    manifest_path: Path,
+    replay_id: str,
+    workspace: Path,
+    recipe_name: str,
+    setup_command: str,
+    validation_command: str,
+    timeout_seconds: int = DEFAULT_TIMEOUT_SECONDS,
+    clean_checkout: bool = True,
+    runner: SubprocessRunner | None = None,
+) -> IssuePrValidationRecipeAttempt:
+    """Run one candidate-free validation recipe against a repo-before checkout."""
+
+    if runner is None:
+        runner = run_subprocess
+
+    manifest_path = manifest_path.expanduser().resolve()
+    manifest = load_issue_pr_replay_manifest(manifest_path)
+    record = select_issue_pr_replay_record(manifest, replay_id)
+    repo = _required_str(record, "repo", context=replay_id)
+    repo_before_ref = _mapping(record.get("repo_before_ref"), field="repo_before_ref")
+    sha = _required_str(repo_before_ref, "sha", context="repo_before_ref")
+
+    command_results: list[PreflightCommandResult] = []
+    checkout_dir = _checkout_dir(workspace, repo=repo, replay_id=replay_id, sha=sha)
+    if clean_checkout and checkout_dir.exists():
+        shutil.rmtree(checkout_dir)
+    checkout_dir.parent.mkdir(parents=True, exist_ok=True)
+
+    clone_url = f"https://github.com/{repo}.git"
+    clone = _run_command(
+        name="checkout_clone",
+        command=["git", "clone", clone_url, str(checkout_dir)],
+        cwd=checkout_dir.parent,
+        timeout_seconds=timeout_seconds,
+        runner=runner,
+    )
+    command_results.append(clone)
+    if clone.passed:
+        checkout = _run_command(
+            name="checkout_ref",
+            command=["git", "checkout", sha],
+            cwd=checkout_dir,
+            timeout_seconds=timeout_seconds,
+            runner=runner,
+        )
+        command_results.append(checkout)
+    if command_results[-1].passed:
+        verify = _run_command(
+            name="checkout_verify",
+            command=["git", "rev-parse", "HEAD"],
+            cwd=checkout_dir,
+            timeout_seconds=timeout_seconds,
+            runner=runner,
+        )
+        command_results.append(verify)
+        if verify.passed and verify.stdout.strip() != sha:
+            command_results[-1] = PreflightCommandResult(
+                name=verify.name,
+                command=verify.command,
+                cwd=verify.cwd,
+                exit_code=1,
+                stdout=verify.stdout,
+                stderr=f"expected {sha}, got {verify.stdout.strip()}",
+                runtime_seconds=verify.runtime_seconds,
+            )
+    if command_results[-1].passed:
+        setup = _run_command(
+            name="setup",
+            command=setup_command,
+            cwd=checkout_dir,
+            timeout_seconds=timeout_seconds,
+            runner=runner,
+        )
+        command_results.append(setup)
+    if command_results[-1].passed:
+        validation = _run_command(
+            name="validation",
+            command=validation_command,
+            cwd=checkout_dir,
+            timeout_seconds=timeout_seconds,
+            runner=runner,
+        )
+        command_results.append(validation)
+
+    return IssuePrValidationRecipeAttempt(
+        replay_id=replay_id,
+        repo=repo,
+        repo_before_ref=dict(repo_before_ref),
+        recipe_name=recipe_name,
+        setup_command=setup_command,
+        validation_command=validation_command,
+        command_results=tuple(command_results),
+        provenance=_issue_pr_provenance(
+            manifest=manifest,
+            manifest_path=manifest_path,
+            record=record,
+        ),
+    )
+
+
+def run_issue_pr_validation_recipe_attempts(
+    *,
+    manifest_path: Path,
+    workspace: Path,
+    recipe_name: str,
+    setup_command: str,
+    validation_command: str,
+    replay_ids: Sequence[str] = (),
+    limit: int | None = None,
+    timeout_seconds: int = DEFAULT_TIMEOUT_SECONDS,
+    clean_checkout: bool = True,
+    runner: SubprocessRunner | None = None,
+) -> tuple[IssuePrValidationRecipeAttempt, ...]:
+    """Run the same validation recipe attempt for selected replay rows."""
+
+    manifest = load_issue_pr_replay_manifest(manifest_path)
+    records = select_issue_pr_replay_records(
+        manifest,
+        replay_ids=replay_ids,
+        limit=limit,
+    )
+    return tuple(
+        run_issue_pr_validation_recipe_attempt(
+            manifest_path=manifest_path,
+            replay_id=_required_str(record, "id", context="record"),
+            workspace=workspace,
+            recipe_name=recipe_name,
+            setup_command=setup_command,
+            validation_command=validation_command,
+            timeout_seconds=timeout_seconds,
+            clean_checkout=clean_checkout,
+            runner=runner,
+        )
+        for record in records
+    )
+
+
 def first_failed_stage(command_results: Sequence[PreflightCommandResult]) -> str:
     """Return the first failed command stage, or none when all stages passed."""
 
@@ -383,6 +591,15 @@ def first_failed_stage(command_results: Sequence[PreflightCommandResult]) -> str
         if not result.passed:
             return result.name
     return "none"
+
+
+def _first_failed_result_from_sequence(
+    command_results: Sequence[PreflightCommandResult],
+) -> PreflightCommandResult | None:
+    for result in command_results:
+        if not result.passed:
+            return result
+    return None
 
 
 def summarize_issue_pr_preflight_outcomes(
@@ -704,6 +921,139 @@ def write_issue_pr_preflight_records_report(
     return resolved
 
 
+def write_issue_pr_validation_recipe_attempt_jsonl(
+    attempts: Sequence[IssuePrValidationRecipeAttempt],
+    path: Path,
+) -> Path:
+    """Write validation recipe attempt rows to JSONL."""
+
+    resolved = path.expanduser().resolve()
+    resolved.parent.mkdir(parents=True, exist_ok=True)
+    with resolved.open("w", encoding="utf-8") as handle:
+        for attempt in attempts:
+            handle.write(json.dumps(attempt.to_record(), sort_keys=True) + "\n")
+    return resolved
+
+
+def summarize_issue_pr_validation_recipe_attempts(
+    attempts: Sequence[IssuePrValidationRecipeAttempt],
+    *,
+    outcome_path: Path | None = None,
+    report_path: Path | None = None,
+    batch_runtime_seconds: float | None = None,
+) -> dict[str, object]:
+    """Summarize validation recipe attempts and their first blockers."""
+
+    rows = [attempt.to_record() for attempt in attempts]
+    status_counts = Counter(str(row["status"]) for row in rows)
+    first_failed_stage_counts = Counter(str(row["first_failed_stage"]) for row in rows)
+    failure_family_counts = Counter(str(row["failure_family"]) for row in rows)
+    runtime_by_replay = {
+        str(row["replay_id"]): round(float(row["runtime_seconds"]), 3) for row in rows
+    }
+    total_runtime = (
+        round(batch_runtime_seconds, 3)
+        if batch_runtime_seconds is not None
+        else round(sum(runtime_by_replay.values()), 3)
+    )
+    return {
+        "schema_version": ISSUE_PR_VALIDATION_RECIPE_SCHEMA_VERSION,
+        "record_kind": "issue_pr_validation_recipe_attempt_summary",
+        "outcome_path": (
+            str(outcome_path.expanduser().resolve()) if outcome_path else None
+        ),
+        "report_path": str(report_path.expanduser().resolve()) if report_path else None,
+        "row_count": len(rows),
+        "replay_ids": [str(row["replay_id"]) for row in rows],
+        "recipe_names": [str(row["recipe_name"]) for row in rows],
+        "status_counts": dict(sorted(status_counts.items())),
+        "first_failed_stage_counts": dict(sorted(first_failed_stage_counts.items())),
+        "failure_family_counts": dict(sorted(failure_family_counts.items())),
+        "runtime_seconds": total_runtime,
+        "runtime_seconds_by_replay": runtime_by_replay,
+        "pre_edit": True,
+        "candidate_code_edits_attempted": False,
+    }
+
+
+def write_issue_pr_validation_recipe_attempt_report(
+    attempts: Sequence[IssuePrValidationRecipeAttempt],
+    path: Path,
+    *,
+    summary: Mapping[str, object] | None = None,
+    title: str = "DATA-008 Issue/PR Validation Recipe Attempts",
+) -> Path:
+    """Write a compact Markdown report for validation recipe attempts."""
+
+    resolved = path.expanduser().resolve()
+    resolved.parent.mkdir(parents=True, exist_ok=True)
+    rows = [attempt.to_record() for attempt in attempts]
+    report_summary = dict(
+        summary or summarize_issue_pr_validation_recipe_attempts(attempts)
+    )
+    lines = [
+        f"# {title}",
+        "",
+        "Candidate-free validation recipe attempts only; no source edits were attempted.",
+        "",
+        "## Summary",
+        "",
+        f"- Rows: `{report_summary.get('row_count', 0)}`",
+        f"- Status counts: `{_json_inline(report_summary.get('status_counts', {}))}`",
+        "- First failed stages: "
+        f"`{_json_inline(report_summary.get('first_failed_stage_counts', {}))}`",
+        "- Failure families: "
+        f"`{_json_inline(report_summary.get('failure_family_counts', {}))}`",
+        f"- Runtime seconds: `{report_summary.get('runtime_seconds', 0)}`",
+        "",
+        "## Attempts",
+        "",
+        "| Replay | Recipe | Status | First failed stage | Failure family | Runtime |",
+        "| --- | --- | --- | --- | --- | ---: |",
+    ]
+    for row in rows:
+        lines.append(
+            "| `{replay_id}` | `{recipe}` | `{status}` | `{stage}` | "
+            "`{family}` | `{runtime}` |".format(
+                replay_id=row["replay_id"],
+                recipe=row["recipe_name"],
+                status=row["status"],
+                stage=row["first_failed_stage"],
+                family=row["failure_family"],
+                runtime=row["runtime_seconds"],
+            )
+        )
+    lines.extend(["", "## Commands", ""])
+    for row in rows:
+        lines.extend(
+            [
+                f"### `{row['recipe_name']}`",
+                "",
+                f"- Setup: `{row['setup_command']}`",
+                f"- Validation: `{row['validation_command']}`",
+                f"- Recommendation: `{row['recommendation']}`",
+            ]
+        )
+        evidence = row.get("fixture_dependency_evidence")
+        if isinstance(evidence, dict) and evidence.get("summary"):
+            lines.append(f"- Evidence: `{evidence.get('summary')}`")
+        for action in _string_sequence(
+            row.get("required_next_actions"),
+            field="required_next_actions",
+        ):
+            lines.append(f"- Next: {action}")
+        lines.append("")
+    lines.extend(
+        [
+            "## Artifacts",
+            "",
+            f"- JSONL: `{report_summary.get('outcome_path')}`",
+        ]
+    )
+    resolved.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return resolved
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """CLI entrypoint for live issue/PR replay preflight batches."""
 
@@ -720,6 +1070,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--replay-id", action="append", default=[])
     parser.add_argument("--limit", type=int)
     parser.add_argument("--setup-command", default=DEFAULT_SETUP_COMMAND)
+    parser.add_argument("--validation-command")
+    parser.add_argument("--recipe-attempt", action="store_true")
+    parser.add_argument("--recipe-name", default="validation_recipe")
     parser.add_argument("--timeout-seconds", type=int, default=DEFAULT_TIMEOUT_SECONDS)
     parser.add_argument("--no-clean-checkout", action="store_true")
     args = parser.parse_args(argv)
@@ -746,6 +1099,44 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.error("--workspace is required unless --from-outcome-jsonl is used")
 
     setup_command = args.setup_command if args.setup_command else None
+    if args.recipe_attempt:
+        if setup_command is None:
+            parser.error("--setup-command is required in --recipe-attempt mode")
+        if not args.validation_command:
+            parser.error("--validation-command is required in --recipe-attempt mode")
+        started = time.monotonic()
+        attempts = run_issue_pr_validation_recipe_attempts(
+            manifest_path=args.manifest,
+            workspace=args.workspace,
+            recipe_name=args.recipe_name,
+            setup_command=setup_command,
+            validation_command=args.validation_command,
+            replay_ids=tuple(args.replay_id),
+            limit=args.limit,
+            timeout_seconds=args.timeout_seconds,
+            clean_checkout=not args.no_clean_checkout,
+        )
+        runtime_seconds = time.monotonic() - started
+        outcome_path = write_issue_pr_validation_recipe_attempt_jsonl(
+            attempts,
+            args.outcome,
+        )
+        summary = summarize_issue_pr_validation_recipe_attempts(
+            attempts,
+            outcome_path=outcome_path,
+            report_path=args.report,
+            batch_runtime_seconds=runtime_seconds,
+        )
+        if args.report is not None:
+            report_path = write_issue_pr_validation_recipe_attempt_report(
+                attempts,
+                args.report,
+                summary=summary,
+            )
+            summary["report_path"] = str(report_path)
+        print(json.dumps(summary, sort_keys=True))
+        return 0
+
     started = time.monotonic()
     outcomes = run_issue_pr_replay_preflight_batch(
         manifest_path=args.manifest,
@@ -848,22 +1239,35 @@ def _outcome(
         command_results=tuple(command_results),
         blocker_labels=tuple(blockers),
         residual_category=residual_category,
-        provenance={
-            "manifest_path": str(manifest_path),
-            "manifest_schema_version": manifest.get("schema_version"),
-            "manifest_curated_at": manifest.get("curated_at"),
-            "source": manifest.get("source"),
-            "prompt_text": record.get("prompt_text"),
-            "prompt_source": record.get("prompt_source"),
-            "accepted_change": record.get("accepted_change"),
-            "provenance_license": record.get("provenance_license"),
-            "stable_split": record.get("stable_split"),
-            "initial_residual_labels": record.get("initial_residual_labels", []),
-            "deferred_agent_residual_labels": _deferred_agent_residual_labels(
-                record.get("initial_residual_labels", [])
-            ),
-        },
+        provenance=_issue_pr_provenance(
+            manifest=manifest,
+            manifest_path=manifest_path,
+            record=record,
+        ),
     )
+
+
+def _issue_pr_provenance(
+    *,
+    manifest: Mapping[str, object],
+    manifest_path: Path,
+    record: Mapping[str, object],
+) -> dict[str, object]:
+    return {
+        "manifest_path": str(manifest_path),
+        "manifest_schema_version": manifest.get("schema_version"),
+        "manifest_curated_at": manifest.get("curated_at"),
+        "source": manifest.get("source"),
+        "prompt_text": record.get("prompt_text"),
+        "prompt_source": record.get("prompt_source"),
+        "accepted_change": record.get("accepted_change"),
+        "provenance_license": record.get("provenance_license"),
+        "stable_split": record.get("stable_split"),
+        "initial_residual_labels": record.get("initial_residual_labels", []),
+        "deferred_agent_residual_labels": _deferred_agent_residual_labels(
+            record.get("initial_residual_labels", [])
+        ),
+    }
 
 
 def _deferred_agent_residual_labels(initial_residual_labels: object) -> list[str]:
@@ -1143,6 +1547,54 @@ def _validation_next_actions(
         "Confirm whether the pre-edit baseline is expected to fail. If not, "
         "replace the validation recipe with a passing baseline command before "
         "attempting candidate edits."
+    ]
+
+
+def _validation_recipe_recommendation(failure_family: str) -> str:
+    if failure_family == "none":
+        return "use_validation_recipe"
+    if failure_family == "dependency_fixture_setup_failure":
+        return "keep_blocked_until_fixture_setup_is_hermetic"
+    if failure_family == "timeout":
+        return "reduce_validation_scope_or_record_larger_runtime_budget"
+    if failure_family == "dependency_setup_failure":
+        return "fix_dependency_setup_before_candidate_generation"
+    return "keep_blocked_until_validation_recipe_passes_pre_edit"
+
+
+def _validation_recipe_next_actions(
+    failure_family: str,
+    *,
+    setup_command: str,
+    validation_command: str,
+    evidence: Mapping[str, object],
+) -> list[str]:
+    if failure_family == "none":
+        return [
+            "Use this candidate-free recipe before issue/PR candidate generation: "
+            f"setup `{setup_command}` then validation `{validation_command}`."
+        ]
+    if failure_family == "dependency_fixture_setup_failure":
+        summary = str(evidence.get("summary") or "fixture setup failed")
+        return [
+            "Do not generate candidates from this row until the fixture setup "
+            f"failure is removed. Evidence: {summary}",
+            "Install the missing pytest fixture dependency or replace the "
+            "validation command with a focused subset that does not require it.",
+        ]
+    if failure_family == "timeout":
+        return [
+            "Record a smaller focused validation command or a justified timeout "
+            "budget before candidate generation."
+        ]
+    if failure_family == "dependency_setup_failure":
+        return [
+            "Replace the setup command with the repository-specific dependency "
+            "install recipe, then rerun this candidate-free attempt."
+        ]
+    return [
+        "Keep the row blocked until a pre-edit validation recipe passes and its "
+        "failure mode is no longer a setup or validation artifact."
     ]
 
 

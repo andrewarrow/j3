@@ -11,12 +11,16 @@ from j3.issue_pr_preflight import (
     first_failed_stage,
     load_issue_pr_preflight_jsonl,
     load_issue_pr_replay_manifest,
+    run_issue_pr_validation_recipe_attempt,
     run_issue_pr_replay_preflight_batch,
     run_issue_pr_replay_preflight,
     select_issue_pr_replay_record,
     select_issue_pr_replay_records,
+    summarize_issue_pr_validation_recipe_attempts,
     summarize_issue_pr_preflight_outcomes,
     summarize_issue_pr_preflight_records,
+    write_issue_pr_validation_recipe_attempt_jsonl,
+    write_issue_pr_validation_recipe_attempt_report,
     write_issue_pr_preflight_jsonl,
     write_issue_pr_preflight_records_jsonl,
     write_issue_pr_preflight_records_report,
@@ -222,6 +226,134 @@ def test_validation_drilldown_classifies_recursive_fixture_setup(
     assert detail["evidence_stage"] == "baseline_validation"
     assert "httpbin" in detail["evidence"]["summary"]
     assert "hermetic" in detail["required_next_actions"][0]
+
+
+def test_validation_recipe_attempt_records_passing_recipe(tmp_path: Path) -> None:
+    manifest = load_issue_pr_replay_manifest(MANIFEST_PATH)
+    record = select_issue_pr_replay_record(manifest, REQUESTS_REPLAY_ID)
+    sha = record["repo_before_ref"]["sha"]
+    calls: list[str] = []
+
+    def runner(command: Command, cwd: Path | None, timeout_seconds: int):
+        command_text = _command_text(command)
+        calls.append(command_text)
+        stdout = f"{sha}\n" if command_text == "git rev-parse HEAD" else ""
+        return subprocess.CompletedProcess(command, returncode=0, stdout=stdout, stderr="")
+
+    attempt = run_issue_pr_validation_recipe_attempt(
+        manifest_path=MANIFEST_PATH,
+        replay_id=REQUESTS_REPLAY_ID,
+        workspace=tmp_path / "work",
+        recipe_name="requests-focused-prepare-body",
+        setup_command="python -m pip install -r requirements-dev.txt",
+        validation_command=(
+            "python -m pytest tests/test_requests.py -q "
+            "-k 'prepare_body or rewind_body'"
+        ),
+        timeout_seconds=9,
+        runner=runner,
+    )
+    row = attempt.to_record()
+
+    assert row["schema_version"] == "issue-pr-validation-recipe-attempt-v1"
+    assert row["record_kind"] == "issue_pr_validation_recipe_attempt"
+    assert row["status"] == "passed"
+    assert row["first_failed_stage"] == "none"
+    assert row["failure_family"] == "none"
+    assert row["recommendation"] == "use_validation_recipe"
+    assert row["candidate_code_edits_attempted"] is False
+    assert row["command_stages_reached"] == [
+        "checkout_clone",
+        "checkout_ref",
+        "checkout_verify",
+        "setup",
+        "validation",
+    ]
+    assert calls[3] == "python -m pip install -r requirements-dev.txt"
+    assert calls[4].startswith("python -m pytest tests/test_requests.py")
+
+
+def test_validation_recipe_attempt_records_fixture_blocker(tmp_path: Path) -> None:
+    manifest = load_issue_pr_replay_manifest(MANIFEST_PATH)
+    record = select_issue_pr_replay_record(manifest, REQUESTS_REPLAY_ID)
+    sha = record["repo_before_ref"]["sha"]
+
+    def runner(command: Command, cwd: Path | None, timeout_seconds: int):
+        command_text = _command_text(command)
+        if command_text == "git rev-parse HEAD":
+            return subprocess.CompletedProcess(command, returncode=0, stdout=f"{sha}\n", stderr="")
+        if command_text.startswith("python -m pytest"):
+            return subprocess.CompletedProcess(
+                command,
+                returncode=1,
+                stdout="E recursive dependency involving fixture 'httpbin' detected",
+                stderr="",
+            )
+        return subprocess.CompletedProcess(command, returncode=0, stdout="", stderr="")
+
+    attempt = run_issue_pr_validation_recipe_attempt(
+        manifest_path=MANIFEST_PATH,
+        replay_id=REQUESTS_REPLAY_ID,
+        workspace=tmp_path / "work",
+        recipe_name="requests-original-manifest",
+        setup_command="python -m pip install -e . pytest",
+        validation_command="python -m pytest tests/test_requests.py -q",
+        runner=runner,
+    )
+    row = attempt.to_record()
+
+    assert row["status"] == "blocked"
+    assert row["first_failed_stage"] == "validation"
+    assert row["failure_family"] == "dependency_fixture_setup_failure"
+    assert "httpbin" in row["fixture_dependency_evidence"]["summary"]
+    assert row["recommendation"] == "keep_blocked_until_fixture_setup_is_hermetic"
+
+
+def test_validation_recipe_jsonl_summary_and_report(tmp_path: Path) -> None:
+    manifest = load_issue_pr_replay_manifest(MANIFEST_PATH)
+    record = select_issue_pr_replay_record(manifest, REQUESTS_REPLAY_ID)
+    sha = record["repo_before_ref"]["sha"]
+
+    def runner(command: Command, cwd: Path | None, timeout_seconds: int):
+        command_text = _command_text(command)
+        stdout = f"{sha}\n" if command_text == "git rev-parse HEAD" else ""
+        return subprocess.CompletedProcess(command, returncode=0, stdout=stdout, stderr="")
+
+    attempt = run_issue_pr_validation_recipe_attempt(
+        manifest_path=MANIFEST_PATH,
+        replay_id=REQUESTS_REPLAY_ID,
+        workspace=tmp_path / "work",
+        recipe_name="requests-focused",
+        setup_command="python -m pip install -r requirements-dev.txt",
+        validation_command="python -m pytest tests/test_requests.py -q -k prepare_body",
+        runner=runner,
+    )
+    outcome_path = write_issue_pr_validation_recipe_attempt_jsonl(
+        [attempt],
+        tmp_path / "attempts.jsonl",
+    )
+    summary = summarize_issue_pr_validation_recipe_attempts(
+        [attempt],
+        outcome_path=outcome_path,
+        report_path=tmp_path / "report.md",
+        batch_runtime_seconds=1.5,
+    )
+    report_path = write_issue_pr_validation_recipe_attempt_report(
+        [attempt],
+        tmp_path / "report.md",
+        summary=summary,
+    )
+
+    written = [
+        json.loads(line) for line in outcome_path.read_text(encoding="utf-8").splitlines()
+    ]
+    assert written[0]["recipe_name"] == "requests-focused"
+    assert summary["status_counts"] == {"passed": 1}
+    assert summary["failure_family_counts"] == {"none": 1}
+    assert summary["runtime_seconds"] == 1.5
+    report = report_path.read_text(encoding="utf-8")
+    assert "DATA-008 Issue/PR Validation Recipe Attempts" in report
+    assert "requests-focused" in report
 
 
 def test_timeout_drilldown_classifies_timeout() -> None:

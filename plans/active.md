@@ -24,32 +24,18 @@ This is the live coordinator board. Keep it current and compact.
   `humanize-tests-naturalsize-negative-strings`, and
   `boltons-tests-slugify-delimiter` when candidate validation passes, writes
   stay inside task-allowlisted test files, production files remain unchanged,
-  and hidden-like checks do not disagree. `MAT-003` now materializes and
-  live-validates the
-  first real one-file source feature candidate on held-out `h11`; `REAL-009`
-  scores it at
-  `pass@1 = 1/4` and `pass@3 = 1/4` across one distinct passing repo, so the
-  one-file feature gate remains shadow-only.
+  and hidden-like checks do not disagree. `MAT-003` materialized and
+  live-validated the first real one-file source feature candidate on held-out
+  `h11`; `MAT-004` now materializes and live-validates the second one-file
+  source feature candidate for calibration `iniconfig`. `REAL-009` last scored
+  only the h11 materializer at `pass@1 = 1/4` and `pass@3 = 1/4`, so the
+  one-file feature gate remains shadow-only until the feature scorer counts the
+  new iniconfig candidate.
 
 ## Active Tasks
 
-### MAT-004: Second Real One-File Feature Materialization Probe
-
-- Status: active
-- Owner: worker Pauli (`019e3bc5-6185-75e1-b6be-838855d032f3`).
-- Write scope: `j3/real_repo_feature_materializer.py`,
-  `tests/test_real_repo_feature_materializer.py`, optional compact docs,
-  generated live artifacts under `/tmp`, and plan updates.
-- Target task: `iniconfig-feature-section-default`.
-- Acceptance: attempt the pinned `iniconfig` one-file feature task with a
-  bounded source-region or typed-builder action; preserve the one-production-
-  file constraint for `src/iniconfig/__init__.py`; add focused validation
-  coverage in `testing/test_iniconfig.py`; record candidate-after diff/AST
-  metadata, mutation scope, validation result, runtime, zero hosted usage, and
-  a machine-readable blocker if the edit cannot be expressed.
-- Required checks: focused feature materializer tests, `pytest
-  tests/test_plan_consistency.py -q`, `git diff --check`, and live targeted
-  validation when a candidate is materialized.
+No active worker tasks are recorded after `MAT-004`; the coordinator should
+dispatch the next bounded task or record a concrete blocker.
 
 ## Ready Queue
 
@@ -84,6 +70,17 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `MAT-004`: materialized the second real one-file source feature candidate for
+  `iniconfig-feature-section-default`. The existing feature materializer now
+  supports the calibration iniconfig task with one bounded delimited source
+  region in `src/iniconfig/__init__.py`, appends focused validation coverage
+  to `testing/test_iniconfig.py`, records source/test candidate-after diff and
+  AST metadata, production hashes, mutation scope, validation runtime, and zero
+  hosted usage. Live validation against the pinned iniconfig checkout under
+  `/tmp/j3-mat-004-live/iniconfig` passed with `51 passed in 0.03s`, changing
+  only `src/iniconfig/__init__.py` among production files and writing nothing
+  outside the task allowlist. Candidate record:
+  `/tmp/j3-mat-004-live/candidate.json`.
 - `REAL-010`: reran the tests-only shadow score after `GS7-011`, counting
   `iniconfig-tests-parse-comments`, `h11-tests-bytesify-memoryview`,
   `humanize-tests-naturalsize-negative-strings`, and

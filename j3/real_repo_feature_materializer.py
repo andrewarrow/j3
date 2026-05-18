@@ -28,6 +28,7 @@ from j3.source_region_materializer import (
 REAL_REPO_FEATURE_CANDIDATE_SCHEMA_VERSION = "real-repo-feature-candidate-v1"
 REAL_REPO_FEATURE_CANDIDATE_KIND = "real_repo_one_file_feature_candidate"
 REAL_REPO_FEATURE_ACTION_FAMILY = "one_file_source_feature_region"
+INICONFIG_SECTION_DEFAULT_TASK_ID = "iniconfig-feature-section-default"
 H11_BYTESIFY_OBJECT_MESSAGE_TASK_ID = "h11-feature-bytesify-object-message"
 CANDIDATE_VALIDATION_DEFERRED = "candidate_validation_deferred"
 
@@ -135,10 +136,17 @@ def materialize_real_repo_feature_candidate(
             field="task_type",
             reason="unsupported_task_type",
         )
-    if repo_id != "h11" or task_id != H11_BYTESIFY_OBJECT_MESSAGE_TASK_ID:
+    if repo_id == "h11" and task_id == H11_BYTESIFY_OBJECT_MESSAGE_TASK_ID:
+        target_source_file = "h11/_util.py"
+        target_test_file = "h11/tests/test_util.py"
+    elif repo_id == "iniconfig" and task_id == INICONFIG_SECTION_DEFAULT_TASK_ID:
+        target_source_file = "src/iniconfig/__init__.py"
+        target_test_file = "testing/test_iniconfig.py"
+    else:
         raise _blocker_error(
             "one-file feature materialization is only implemented for "
-            "h11-feature-bytesify-object-message",
+            "h11-feature-bytesify-object-message and "
+            "iniconfig-feature-section-default",
             field="task_id",
             reason="unsupported_real_repo_feature_task",
         )
@@ -160,9 +168,7 @@ def materialize_real_repo_feature_candidate(
         task.get("expected_failure_modes"),
         field="expected_failure_modes",
     )
-    target_source_file = "h11/_util.py"
-    target_test_file = "h11/tests/test_util.py"
-    production_files = _production_python_files(resolved_repo)
+    production_files = _production_python_files(resolved_repo, repo_id=repo_id)
     production_hashes_before = _file_hashes(resolved_repo, production_files)
 
     blockers: list[dict[str, str]] = []
@@ -176,7 +182,10 @@ def materialize_real_repo_feature_candidate(
         source_text = _repo_file(resolved_repo, target_source_file).read_text(
             encoding="utf-8"
         )
-        source_action = _h11_bytesify_object_message_source_action(source_text)
+        if task_id == H11_BYTESIFY_OBJECT_MESSAGE_TASK_ID:
+            source_action = _h11_bytesify_object_message_source_action(source_text)
+        else:
+            source_action = _iniconfig_section_default_source_action(source_text)
         source_result = materialize_source_region(
             resolved_repo,
             source_action,
@@ -202,11 +211,18 @@ def materialize_real_repo_feature_candidate(
                 "not_available_reason": error.residual,
             }
 
-    test_materialization = _materialize_h11_object_message_test(
-        resolved_repo,
-        target_test_file=target_test_file,
-        write=write and not blockers,
-    )
+    if task_id == H11_BYTESIFY_OBJECT_MESSAGE_TASK_ID:
+        test_materialization = _materialize_h11_object_message_test(
+            resolved_repo,
+            target_test_file=target_test_file,
+            write=write and not blockers,
+        )
+    else:
+        test_materialization = _materialize_iniconfig_section_default_tests(
+            resolved_repo,
+            target_test_file=target_test_file,
+            write=write and not blockers,
+        )
     test_files_changed = _string_sequence(
         test_materialization["files_changed"],
         field="test_materialization.files_changed",
@@ -243,7 +259,10 @@ def materialize_real_repo_feature_candidate(
             {
                 "field": "production_files",
                 "reason": "one_file_production_scope_violation",
-                "message": "candidate changed production files outside h11/_util.py",
+                "message": (
+                    "candidate changed production files outside "
+                    f"{target_source_file}"
+                ),
             }
         )
     if writes_outside_allowlist:
@@ -395,10 +414,12 @@ def validate_feature_candidate(
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    """CLI entrypoint for a live h11 source materialization probe."""
+    """CLI entrypoint for a live source materialization probe."""
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--manifest", type=Path, default=Path("examples/real_repo_eval_ladder.json"))
+    parser.add_argument("--repo-id", default="h11")
+    parser.add_argument("--task-id", default=H11_BYTESIFY_OBJECT_MESSAGE_TASK_ID)
     parser.add_argument("--repo-path", type=Path, required=True)
     parser.add_argument("--out", type=Path)
     parser.add_argument("--validate", action="store_true")
@@ -409,13 +430,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     repo = next(
         item
         for item in _sequence(manifest["repositories"], field="repositories")
-        if _mapping(item, field="repository").get("id") == "h11"
+        if _mapping(item, field="repository").get("id") == args.repo_id
     )
     repo_record = _mapping(repo, field="repository")
     task = next(
         item
         for item in _sequence(repo_record["tasks"], field="tasks")
-        if _mapping(item, field="task").get("id") == H11_BYTESIFY_OBJECT_MESSAGE_TASK_ID
+        if _mapping(item, field="task").get("id") == args.task_id
     )
     candidate = materialize_real_repo_feature_candidate(
         args.repo_path,
@@ -462,6 +483,51 @@ def _h11_bytesify_object_message_source_action(source: str) -> SourceRegionActio
         rationale=(
             "unsupported object TypeError should name the concrete input type "
             "while preserving existing bytes-like and ASCII str behavior"
+        ),
+    )
+
+
+def _iniconfig_section_default_source_action(source: str) -> SourceRegionAction:
+    if "def get_section(" in source:
+        raise SourceRegionMaterializationError(
+            "iniconfig get_section default edit is already applied",
+            residual="already_applied",
+        )
+    return SourceRegionAction(
+        kind=SourceRegionActionKind.REPLACE_DELIMITED_REGION,
+        target=SourceRegionTarget(
+            file_path="src/iniconfig/__init__.py",
+            region_name="optional_section_default_method",
+            start_marker="                return value",
+            end_marker="    def __getitem__(self, name: str) -> SectionWrapper:",
+        ),
+        replacement_source="\n".join(
+            [
+                "",
+                "    @overload",
+                "    def get_section(self, name: str) -> SectionWrapper | None: ...",
+                "",
+                "    @overload",
+                "    def get_section(self, name: str, default: _D) -> SectionWrapper | _D: ...",
+                "",
+                "    def get_section(",
+                "        self, name: str, default: _D | None = None",
+                "    ) -> SectionWrapper | _D | None:",
+                "        if name not in self.sections:",
+                "            return default",
+                "        return SectionWrapper(self, name)",
+                "",
+                "",
+            ]
+        ),
+        constraints=SourceRegionConstraints(
+            max_changed_source_lines=14,
+            must_preserve_signature=False,
+        ),
+        rationale=(
+            "add a narrow section lookup helper that leaves __getitem__ KeyError "
+            "semantics intact while returning caller-provided defaults for "
+            "missing optional sections"
         ),
     )
 
@@ -524,6 +590,81 @@ def _merge_h11_object_message_test(existing_text: str) -> str:
     return existing_text.rstrip() + "\n\n\n" + append_block
 
 
+def _materialize_iniconfig_section_default_tests(
+    repo: Path,
+    *,
+    target_test_file: str,
+    write: bool,
+) -> dict[str, object]:
+    target_path = _repo_file(repo, target_test_file)
+    before_text = target_path.read_text(encoding="utf-8") if target_path.exists() else ""
+    after_text = _merge_iniconfig_section_default_tests(before_text)
+    planned_changed_files = [target_test_file] if after_text != before_text else []
+    if write and planned_changed_files:
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        target_path.write_text(after_text, encoding="utf-8")
+    status = "already_applied"
+    files_changed: list[str] = []
+    if planned_changed_files:
+        status = "materialized" if write else "planned"
+        files_changed = list(planned_changed_files) if write else []
+    return {
+        "status": status,
+        "files_changed": files_changed,
+        "candidate_after": _text_candidate_after_record(
+            file_path=target_test_file,
+            before_text=before_text,
+            after_text=after_text,
+            planned_changed_files=planned_changed_files,
+            wrote_file=write and bool(planned_changed_files),
+            test_case_ids=[
+                "iniconfig_get_section_missing_default",
+                "iniconfig_get_section_existing_order",
+            ],
+            test_functions=[
+                "test_get_section_returns_default_for_missing_section",
+                "test_get_section_existing_section_preserves_order",
+            ],
+        ),
+    }
+
+
+def _merge_iniconfig_section_default_tests(existing_text: str) -> str:
+    first_function = "test_get_section_returns_default_for_missing_section"
+    if f"def {first_function}" in existing_text:
+        return existing_text
+    append_block = (
+        "def test_get_section_returns_default_for_missing_section() -> None:\n"
+        "    config = IniConfig(\"x\", data=\"[section]\\nvalue=1\")\n"
+        "    default = {\"fallback\": \"value\"}\n"
+        "\n"
+        "    assert config.get_section(\"missing\", default) is default\n"
+        "    assert config.get_section(\"missing\") is None\n"
+        "    with pytest.raises(KeyError):\n"
+        "        config[\"missing\"]\n"
+        "\n\n"
+        "def test_get_section_existing_section_preserves_order() -> None:\n"
+        "    config = IniConfig(\n"
+        "        \"x.ini\",\n"
+        "        data=\"[section]\\nsecond = 2\\nfirst = 1\\nthird = 3\",\n"
+        "    )\n"
+        "    default = {\"fallback\": \"value\"}\n"
+        "\n"
+        "    section = config.get_section(\"section\", default)\n"
+        "\n"
+        "    assert section is not default\n"
+        "    assert list(section) == [\"second\", \"first\", \"third\"]\n"
+        "    assert list(section.items()) == [\n"
+        "        (\"second\", \"2\"),\n"
+        "        (\"first\", \"1\"),\n"
+        "        (\"third\", \"3\"),\n"
+        "    ]\n"
+    )
+    if not existing_text.strip():
+        return "import pytest\n\nfrom iniconfig import IniConfig\n\n\n" + append_block
+    return existing_text.rstrip() + "\n\n\n" + append_block
+
+
 def _text_candidate_after_record(
     *,
     file_path: str,
@@ -570,8 +711,14 @@ def _already_applied_source_record(file_path: str) -> dict[str, object]:
     }
 
 
-def _production_python_files(repo: Path) -> list[str]:
-    package_root = repo / "h11"
+def _production_python_files(repo: Path, *, repo_id: str) -> list[str]:
+    package_roots = {
+        "h11": repo / "h11",
+        "iniconfig": repo / "src" / "iniconfig",
+    }
+    package_root = package_roots.get(repo_id)
+    if package_root is None:
+        return []
     if not package_root.exists():
         return []
     paths = []

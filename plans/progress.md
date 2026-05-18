@@ -1493,3 +1493,37 @@ meaningful work. Do not replace this file with a daily reset.
 - Next: coordinator can review `REAL-010` with `MAT-004`; tests-only guarded
   opt-in scope is now the full four-row materialized tests-only ladder.
 - Blockers: none
+
+### 2026-05-18 - MAT-004 - iniconfig one-file feature materializer
+
+- Owner: worker Pauli (`019e3bc5-6185-75e1-b6be-838855d032f3`)
+- Files changed: `j3/real_repo_feature_materializer.py`,
+  `tests/test_real_repo_feature_materializer.py`, `plans/active.md`,
+  `plans/backlog.md`, `plans/progress.md`
+- Tests: `python -m py_compile j3/real_repo_feature_materializer.py
+  tests/test_real_repo_feature_materializer.py` -> passed; `pytest
+  tests/test_real_repo_feature_materializer.py -q` -> 4 passed; live setup
+  against `/tmp/j3-mat-004-live/iniconfig` with `python -m pip install -e
+  /tmp/j3-mat-004-live/iniconfig pytest` -> passed; live materializer run
+  wrote `/tmp/j3-mat-004-live/candidate.json`, changed only
+  `src/iniconfig/__init__.py` among production files, and validation
+  `python -m pytest testing/test_iniconfig.py -q` -> 51 passed in 0.03s;
+  `pytest tests/test_real_repo_feature_shadow_score.py -q` -> 3 passed;
+  `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff
+  --check` -> passed.
+- Result: materialized `iniconfig-feature-section-default` with one bounded
+  delimited source-region action in `src/iniconfig/__init__.py` and focused
+  coverage in `testing/test_iniconfig.py` for a missing-section default
+  mapping, unchanged missing-section `__getitem__` KeyError behavior, and
+  existing-section iteration/order behavior. The candidate record includes
+  source and test candidate-after diff/AST metadata, four protected production
+  hashes before/after, mutation scope, validation runtime 0.248 seconds, zero
+  writes outside the task allowlist, residual label
+  `candidate_validation_passed`, and zero hosted usage.
+- Commit: pending before worker commit
+- Push: pending
+- Next: rerun or extend the one-file feature shadow scorer so it counts both
+  `h11-feature-bytesify-object-message` and
+  `iniconfig-feature-section-default` before reconsidering the one-file feature
+  gate.
+- Blockers: none

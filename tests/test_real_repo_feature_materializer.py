@@ -6,6 +6,7 @@ from pathlib import Path
 from j3.real_repo_feature_materializer import (
     CANDIDATE_VALIDATION_DEFERRED,
     H11_BYTESIFY_OBJECT_MESSAGE_TASK_ID,
+    INICONFIG_SECTION_DEFAULT_TASK_ID,
     materialize_real_repo_feature_candidate,
 )
 
@@ -21,6 +22,17 @@ def _manifest_h11_feature_rows() -> tuple[dict[str, object], dict[str, object]]:
         item
         for item in repo["tasks"]
         if item["id"] == H11_BYTESIFY_OBJECT_MESSAGE_TASK_ID
+    )
+    return repo, task
+
+
+def _manifest_iniconfig_feature_rows() -> tuple[dict[str, object], dict[str, object]]:
+    manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+    repo = next(item for item in manifest["repositories"] if item["id"] == "iniconfig")
+    task = next(
+        item
+        for item in repo["tasks"]
+        if item["id"] == INICONFIG_SECTION_DEFAULT_TASK_ID
     )
     return repo, task
 
@@ -74,6 +86,149 @@ def test_bytesify() -> None:
 
     with pytest.raises(TypeError, match="int"):
         bytesify(10)
+""",
+        encoding="utf-8",
+    )
+
+
+def _write_synthetic_iniconfig_checkout(repo: Path) -> None:
+    (repo / "src" / "iniconfig").mkdir(parents=True)
+    (repo / "testing").mkdir()
+    (repo / "src" / "iniconfig" / "__init__.py").write_text(
+        '''"""brain-dead simple parser for ini-style files."""
+
+import os
+from collections.abc import Callable
+from collections.abc import Iterator
+from collections.abc import Mapping
+from typing import Final
+from typing import TypeVar
+from typing import overload
+
+_D = TypeVar("_D")
+_T = TypeVar("_T")
+
+
+class SectionWrapper:
+    config: Final["IniConfig"]
+    name: Final[str]
+
+    def __init__(self, config: "IniConfig", name: str) -> None:
+        self.config = config
+        self.name = name
+
+    def __getitem__(self, key: str) -> str:
+        return self.config.sections[self.name][key]
+
+    def __iter__(self) -> Iterator[str]:
+        section: Mapping[str, str] = self.config.sections.get(self.name, {})
+
+        def lineof(key: str) -> int:
+            return self.config.lineof(self.name, key)  # type: ignore[return-value]
+
+        yield from sorted(section, key=lineof)
+
+    def items(self) -> Iterator[tuple[str, str]]:
+        for name in self:
+            yield name, self[name]
+
+
+class IniConfig:
+    path: Final[str]
+    sections: Final[Mapping[str, Mapping[str, str]]]
+    _sources: Final[Mapping[tuple[str, str | None], int]]
+
+    def __init__(
+        self,
+        path: str | os.PathLike[str],
+        data: str | None = None,
+        encoding: str = "utf-8",
+    ) -> None:
+        self.path = os.fspath(path)
+        section = ""
+        sections: dict[str, dict[str, str]] = {}
+        sources: dict[tuple[str, str | None], int] = {}
+        for lineno, raw_line in enumerate((data or "").splitlines()):
+            line = raw_line.strip()
+            if line.startswith("[") and line.endswith("]"):
+                section = line[1:-1]
+                sections[section] = {}
+                sources[section, None] = lineno
+            elif "=" in line and section:
+                key, value = line.split("=", 1)
+                key = key.strip()
+                sections[section][key] = value.strip()
+                sources[section, key] = lineno
+        self._sources = sources
+        self.sections = sections
+
+    def lineof(self, section: str, name: str | None = None) -> int | None:
+        lineno = self._sources.get((section, name))
+        return None if lineno is None else lineno + 1
+
+    @overload
+    def get(
+        self,
+        section: str,
+        name: str,
+    ) -> str | None: ...
+
+    @overload
+    def get(
+        self,
+        section: str,
+        name: str,
+        default: _D,
+        convert: None = None,
+    ) -> str | _D: ...
+
+    def get(  # type: ignore
+        self,
+        section: str,
+        name: str,
+        default: _D | None = None,
+        convert: Callable[[str], _T] | None = None,
+    ) -> _D | _T | str | None:
+        try:
+            value: str = self.sections[section][name]
+        except KeyError:
+            return default
+        else:
+            if convert is not None:
+                return convert(value)
+            else:
+                return value
+
+    def __getitem__(self, name: str) -> SectionWrapper:
+        if name not in self.sections:
+            raise KeyError(name)
+        return SectionWrapper(self, name)
+
+    def __iter__(self) -> Iterator[SectionWrapper]:
+        for name in sorted(self.sections, key=self.lineof):  # type: ignore
+            yield SectionWrapper(self, name)
+''',
+        encoding="utf-8",
+    )
+    (repo / "src" / "iniconfig" / "_parse.py").write_text("", encoding="utf-8")
+    (repo / "testing" / "test_iniconfig.py").write_text(
+        """import pytest
+
+from iniconfig import IniConfig
+
+
+def test_missing_section() -> None:
+    config = IniConfig("x", data="[section]\\nvalue=1")
+    with pytest.raises(KeyError):
+        config["other"]
+
+
+def test_iter_file_order() -> None:
+    config = IniConfig(
+        "x.ini",
+        data="[section]\\nvalue = 1\\nvalue2 = 2\\n",
+    )
+    assert list(config["section"]) == ["value", "value2"]
 """,
         encoding="utf-8",
     )
@@ -233,6 +388,140 @@ def test_materializer_can_plan_without_writing(
     assert (
         tmp_path / "h11" / "tests" / "test_util.py"
     ).read_text(encoding="utf-8") == test_before
+
+
+def test_materializes_iniconfig_section_default_feature(tmp_path: Path) -> None:
+    repo, task = _manifest_iniconfig_feature_rows()
+    _write_synthetic_iniconfig_checkout(tmp_path)
+    production_before = {
+        "src/iniconfig/__init__.py": (
+            tmp_path / "src" / "iniconfig" / "__init__.py"
+        ).read_bytes(),
+        "src/iniconfig/_parse.py": (
+            tmp_path / "src" / "iniconfig" / "_parse.py"
+        ).read_bytes(),
+    }
+    test_before = (tmp_path / "testing" / "test_iniconfig.py").read_text(
+        encoding="utf-8"
+    )
+
+    candidate = materialize_real_repo_feature_candidate(
+        tmp_path,
+        repo=repo,
+        task=task,
+        validate=False,
+    )
+    row = candidate.to_record()
+
+    assert json.loads(json.dumps(row, sort_keys=True)) == row
+    assert row["repo_id"] == "iniconfig"
+    assert row["repo_split"] == "calibration"
+    assert row["task_id"] == "iniconfig-feature-section-default"
+    assert row["status"] == "materialized"
+    assert row["target_source_file"] == "src/iniconfig/__init__.py"
+    assert row["target_test_file"] == "testing/test_iniconfig.py"
+    assert row["validation"] == {
+        "status": "not_run",
+        "commands": ["python -m pytest testing/test_iniconfig.py -q"],
+        "selected_command": "python -m pytest testing/test_iniconfig.py -q",
+        "not_run_reason": CANDIDATE_VALIDATION_DEFERRED,
+        "candidate_validation_network_allowed": False,
+        "runtime_seconds": 0.0,
+    }
+    assert row["zero_hosted_usage_confirmed"] is True
+    assert row["blockers"] == []
+    assert row["residual_labels"] == [CANDIDATE_VALIDATION_DEFERRED]
+
+    mutation_scope = row["mutation_scope"]
+    assert mutation_scope["mode"] == "one_file_feature"
+    assert mutation_scope["planned_write_files"] == [
+        "src/iniconfig/__init__.py",
+        "testing/test_iniconfig.py",
+    ]
+    assert mutation_scope["files_changed"] == [
+        "src/iniconfig/__init__.py",
+        "testing/test_iniconfig.py",
+    ]
+    assert mutation_scope["writes_outside_allowlist"] == []
+    assert mutation_scope["production_files"] == [
+        "src/iniconfig/__init__.py",
+        "src/iniconfig/_parse.py",
+    ]
+    assert mutation_scope["production_files_changed"] == ["src/iniconfig/__init__.py"]
+    assert mutation_scope["maximum_production_files_changed"] == 1
+    assert mutation_scope["allowed_production_file"] == "src/iniconfig/__init__.py"
+    assert mutation_scope["one_production_file_constraint_preserved"] is True
+
+    assert row["production_file_hashes_before"]["src/iniconfig/_parse.py"] == (
+        row["production_file_hashes_after"]["src/iniconfig/_parse.py"]
+    )
+    assert row["production_file_hashes_before"]["src/iniconfig/__init__.py"] != (
+        row["production_file_hashes_after"]["src/iniconfig/__init__.py"]
+    )
+    assert (tmp_path / "src" / "iniconfig" / "_parse.py").read_bytes() == (
+        production_before["src/iniconfig/_parse.py"]
+    )
+    assert (tmp_path / "src" / "iniconfig" / "__init__.py").read_bytes() != (
+        production_before["src/iniconfig/__init__.py"]
+    )
+
+    source_after = row["candidate_after"]["source_file"]
+    assert source_after["status"] == "materialized"
+    assert source_after["target_function"] is None
+    assert source_after["touched_region"]["region_name"] == (
+        "optional_section_default_method"
+    )
+    assert source_after["candidate_after"]["ast_parse_ok"] is True
+    assert source_after["candidate_after"]["signature_preserved"] is None
+    assert source_after["candidate_after"]["import_changes"] == {
+        "added": [],
+        "removed": [],
+    }
+    assert "def get_section" in source_after["candidate_after"]["diff"]
+    assert "return SectionWrapper(self, name)" in source_after["candidate_after"]["diff"]
+
+    test_after = row["candidate_after"]["test_file"]
+    assert test_after["planned_changed_files"] == ["testing/test_iniconfig.py"]
+    assert test_after["wrote_file"] is True
+    assert test_after["test_case_ids"] == [
+        "iniconfig_get_section_missing_default",
+        "iniconfig_get_section_existing_order",
+    ]
+    assert test_after["ast_delta"]["ast_parse_ok"] is True
+    assert test_after["sha256_before"] != test_after["sha256_after"]
+    assert "test_get_section_returns_default_for_missing_section" in test_after["diff"]
+
+    namespace: dict[str, object] = {}
+    exec(
+        (tmp_path / "src" / "iniconfig" / "__init__.py").read_text(encoding="utf-8"),
+        namespace,
+    )
+    ini_config = namespace["IniConfig"]
+    config = ini_config("x", data="[section]\nsecond=2\nfirst=1\nthird=3")
+    default = {"fallback": "value"}
+
+    assert config.get_section("missing", default) is default
+    assert config.get_section("missing") is None
+    try:
+        config["missing"]
+    except KeyError as error:
+        assert error.args == ("missing",)
+    else:
+        raise AssertionError("missing __getitem__ should still raise KeyError")
+    section = config.get_section("section", default)
+    assert section is not default
+    assert list(section) == ["second", "first", "third"]
+    assert list(section.items()) == [
+        ("second", "2"),
+        ("first", "1"),
+        ("third", "3"),
+    ]
+
+    test_after_text = (tmp_path / "testing" / "test_iniconfig.py").read_text(
+        encoding="utf-8"
+    )
+    assert test_after_text != test_before
+    assert "test_get_section_existing_section_preserves_order" in test_after_text
 
 
 def test_materializer_blocks_when_source_region_is_not_expressible(

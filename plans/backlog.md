@@ -566,7 +566,7 @@ Long-term target:
 
 ### MAT-004: Second real one-file feature materialization probe
 
-- Status: active
+- Status: done
 - Why: one h11 source-region success is useful but not enough to prove the
   materialization thesis across real repos.
 - Write scope: a focused materializer for one remaining one-file feature ladder
@@ -579,6 +579,13 @@ Long-term target:
   edit cannot be expressed.
 - Tests: focused materializer tests, plan consistency, `git diff --check`, and
   a live targeted validation command when a candidate is materialized.
+- Completion note: added support for `iniconfig-feature-section-default` to
+  `j3.real_repo_feature_materializer`. The probe inserts one bounded delimited
+  source region into `src/iniconfig/__init__.py`, appends focused tests for a
+  missing-section default, unchanged missing-section `__getitem__` KeyError,
+  and existing-section iteration order, records source/test diff and AST
+  metadata, protects production hashes, and live-validates the pinned checkout
+  under `/tmp/j3-mat-004-live/iniconfig` with `51 passed in 0.03s`.
 
 ### KNOW-001: Local knowledge inventory for the wedge
 

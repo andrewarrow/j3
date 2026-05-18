@@ -5,6 +5,7 @@ from pathlib import Path
 
 from j3.issue_pr_prompt_spec import (
     CLICK_DEFAULT_MAP_REPLAY_ID,
+    CLICK_SEMVER_DEFAULT_REPLAY_ID,
     REQUESTS_PREPARE_BODY_REPLAY_ID,
     build_issue_pr_prompt_spec,
     build_issue_pr_prompt_specs,
@@ -185,6 +186,107 @@ def test_requests_prepare_body_prompt_spec_records_provenance_and_source_gaps() 
     ]
 
 
+def test_builds_click_semver_default_prompt_spec() -> None:
+    manifest = load_issue_pr_replay_manifest(MANIFEST_PATH)
+    spec = build_issue_pr_prompt_spec(
+        manifest,
+        CLICK_SEMVER_DEFAULT_REPLAY_ID,
+        manifest_path=MANIFEST_PATH,
+    )
+
+    assert spec["schema_version"] == "issue-pr-prompt-spec-v1"
+    assert spec["record_kind"] == "issue_pr_prompt_spec"
+    assert spec["prompt_spec_kind"] == "click_semver_non_string_default_help"
+    assert spec["status"] == "normalized"
+    assert spec["candidate_code_edits_attempted"] is False
+    assert spec["required_prompt_fields_complete"] is True
+    assert spec["missing_prompt_fields"] == []
+    assert spec["source_text_blockers"] == []
+
+    fields = spec["normalized_fields"]
+    assert fields["minimal_reproduction"]["command_shape"] == {
+        "decorator": "click.option",
+        "option_decls": ["--version"],
+        "type": "SemverType()",
+        "default": "semver.Version(1, 0, 0)",
+        "show_default": True,
+    }
+    assert (
+        fields["observed_behavior"]["failure_mode"]
+        == "non_string_default_compared_to_empty_string"
+    )
+    assert fields["observed_behavior"]["failing_expression"] == "default_value == ''"
+    assert (
+        fields["expected_behavior"]["behavior"]
+        == "render_non_string_default_without_string_equality_probe"
+    )
+    assert (
+        fields["affected_api_symbol"]["implementation_symbol"]
+        == "click.core.Option.get_help_extra"
+    )
+    assert fields["input_shape"]["third_party_example"] == "semver.Version(1, 0, 0)"
+    assert fields["acceptance_test_shape"]["test_file"] == "tests/test_options.py"
+    assert fields["acceptance_test_shape"]["helper_class"] == "_StrictEq"
+    assert (
+        fields["non_string_default_behavior"]["after_fix_behavior"]
+        == "Non-string defaults skip the empty-string branch and render "
+        "through str(default_value) unless an earlier branch handles "
+        "them specially."
+    )
+    assert (
+        fields["type_conversion_semantics"]["conversion_layer"]
+        == "click.core.Parameter.type_cast_value"
+    )
+    assert fields["empty_string_check_scope"]["accepted_condition"] == (
+        "isinstance(default_value, str) and default_value == ''"
+    )
+    assert (
+        fields["third_party_semver_version_reproduction_context"][
+            "accepted_test_substitute"
+        ]["class_name"]
+        == "_StrictEq"
+    )
+
+
+def test_click_semver_default_prompt_spec_records_provenance() -> None:
+    specs = build_issue_pr_prompt_specs(
+        manifest_path=MANIFEST_PATH,
+        replay_ids=[CLICK_SEMVER_DEFAULT_REPLAY_ID],
+    )
+    spec = specs[0]
+    provenance = spec["provenance"]
+
+    assert provenance["manifest_schema_version"] == "issue-pr-mini-replay-v0"
+    assert provenance["stable_split"]["split"] == "train"
+    normalized_from = provenance["normalized_from"]
+    assert [source["id"] for source in normalized_from] == [
+        "github_issue_3298",
+        "github_pr_3299_conversation",
+        "github_pr_3299_diff",
+        "know_004_click_local_knowledge",
+    ]
+    assert normalized_from[0]["url"].endswith("/issues/3298")
+    assert normalized_from[2]["merge_commit_sha"] == (
+        "1458800409ed12076f18451889b0857db36aa522"
+    )
+    assert normalized_from[2]["url"].endswith("/pull/3299.diff")
+    assert normalized_from[3]["record_ids"] == [
+        "1904a6fa15665899650dbaec21829fdac4fdc493daddef9f118928262649d73a",
+        "637634d1dee21f7cb4dbc244ebe384a4d8c75fb8070735345fac822cdb16ee7a",
+        "9ec7175c0affa313906dcae73c5304d2dd6bfe1853cfdc05aa4273ebf0948147",
+        "311aef2b41343232a5491c610f636efdf966891f32767d5e3a574ddc64ded546",
+        "0dde986e749141c71f592950b9d7518adcb72b4447c488329df813b418bbdd99",
+        "2882ec4082f4ea978c942600690cf8b99b95bcc92c921293ed6e637f441e67a0",
+        "f96ac571dae6b2a53647803ebd07d034e91895a038ab1bb19ba6d528d97f7587",
+        "29bde1f5e4eed1864b02359519d15579d45e2e5c0d697aece2772004f2eed2f1",
+    ]
+    assert spec["field_provenance"]["empty_string_check_scope"] == [
+        "github_pr_3299_diff",
+        "know_004_click_empty_string_check_semantics",
+    ]
+    assert spec["source_text_gaps"] == []
+
+
 def test_prompt_spec_jsonl_summary_and_report(tmp_path: Path) -> None:
     specs = build_issue_pr_prompt_specs(
         manifest_path=MANIFEST_PATH,
@@ -210,7 +312,7 @@ def test_prompt_spec_jsonl_summary_and_report(tmp_path: Path) -> None:
 
 def test_unknown_prompt_spec_stays_machine_readable_blocked() -> None:
     manifest = load_issue_pr_replay_manifest(MANIFEST_PATH)
-    spec = build_issue_pr_prompt_spec(manifest, "pallets__click-issue-3298-pr-3299")
+    spec = build_issue_pr_prompt_spec(manifest, "pytest-dev__pytest-issue-14442-pr-14443")
 
     assert spec["status"] == "blocked"
     assert spec["required_prompt_fields_complete"] is False

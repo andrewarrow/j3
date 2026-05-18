@@ -66,27 +66,6 @@ This is the live coordinator board. Keep it current and compact.
   tests/test_plan_consistency.py -q`, `git diff --check`, and the live
   DATA-008 focused validation recipe when feasible.
 
-### `DATA-013`: Click semver prompt/spec normalization
-
-- Status: active
-- Owner: worker Descartes (`019e3c1d-22be-7102-8ba4-288177d26123`).
-- Why: `DATA-010` blocked `pallets__click-issue-3298-pr-3299` only on missing
-  prompt/spec evidence; KNOW-004 already acquired the local knowledge.
-- Write scope: `j3/issue_pr_prompt_spec.py`,
-  `tests/test_issue_pr_prompt_spec.py`, optional compact report, and plan
-  updates. Do not edit readiness, candidate-attempt, or local-knowledge
-  modules.
-- Acceptance: build a structured spec for
-  `pallets__click-issue-3298-pr-3299` that records minimal reproduction,
-  observed behavior, expected behavior, affected API symbol, input shape,
-  acceptance test shape, non-string default behavior, type-conversion
-  semantics, empty-string check scope, third-party `semver.Version`
-  reproduction context, provenance, and any fields still blocked on
-  unavailable source text. No candidate source edits.
-- Tests: focused prompt/spec tests, `pytest tests/test_plan_consistency.py
-  -q`, `git diff --check`, and a CLI smoke proving the Click semver spec can
-  be emitted.
-
 ## Ready Queue
 
 These are good next assignments for the next loop:
@@ -123,6 +102,17 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `DATA-013`: added machine-readable prompt/spec normalization for
+  `pallets__click-issue-3298-pr-3299` without candidate source edits. The
+  record captures the semver `Version(1, 0, 0)` minimal reproduction,
+  observed help-rendering failure from comparing a non-string default to `""`,
+  expected string-guarded empty-string behavior, affected
+  `click.core.Option.get_help_extra` surface, input shape, acceptance test
+  shape with `_StrictEq`, non-string default behavior, type-conversion
+  semantics, empty-string check scope, third-party semver context, and
+  provenance back to issue #3298, PR #3299, the PR diff, and KNOW-004 local
+  knowledge. JSONL: `/private/tmp/j3-data-013-click-semver-spec.jsonl`;
+  report: `/private/tmp/j3-data-013-click-semver-spec.md`.
 - `DATA-010`: added an issue/PR candidate-readiness gate that consumes
   DATA-007 preflight evidence, DATA-008 validation, DATA-009/DATA-011
   prompt/spec records, and KNOW-004/KNOW-005 local-knowledge JSONL. The first

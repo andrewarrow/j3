@@ -2098,3 +2098,37 @@ meaningful work. Do not replace this file with a daily reset.
   attempt, and Descartes (`019e3c1d-22be-7102-8ba4-288177d26123`) owns the
   Click #3298 prompt/spec normalization.
 - Blockers: none.
+
+### 2026-05-18 - DATA-013 - Click semver prompt/spec normalization
+
+- Owner: worker Descartes (`019e3c1d-22be-7102-8ba4-288177d26123`).
+- Files changed: `j3/issue_pr_prompt_spec.py`,
+  `tests/test_issue_pr_prompt_spec.py`, `plans/active.md`,
+  `plans/backlog.md`, `plans/progress.md`.
+- Tests: `python -m py_compile j3/issue_pr_prompt_spec.py
+  tests/test_issue_pr_prompt_spec.py` -> passed; `pytest
+  tests/test_issue_pr_prompt_spec.py -q` -> 8 passed; CLI smoke `python -m
+  j3.issue_pr_prompt_spec --manifest examples/issue_pr_mini_replay/manifest.json
+  --replay-id pallets__click-issue-3298-pr-3299 --out
+  /tmp/j3-data-013-click-semver-spec.jsonl --report
+  /tmp/j3-data-013-click-semver-spec.md` -> passed with
+  `status_counts = {"normalized": 1}`; `pytest
+  tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check` ->
+  passed.
+- Result: added machine-readable prompt/spec normalization for
+  `pallets__click-issue-3298-pr-3299` without candidate source edits. The
+  `click_semver_non_string_default_help` record captures the
+  `semver.Version(1, 0, 0)` help-rendering reproduction, observed
+  `default_value == ""` failure, expected `isinstance(default_value, str)`
+  empty-string guard, affected `click.core.Option.get_help_extra` surface,
+  input and acceptance-test shapes, `_StrictEq` accepted-test substitute,
+  non-string default behavior, type-conversion semantics, empty-string check
+  scope, third-party semver context, and provenance to issue #3298, PR #3299,
+  the PR diff, and KNOW-004 local knowledge.
+- Commit: pending in worker commit.
+- Push: pending.
+- Next: rerun DATA-010 readiness with
+  `/private/tmp/j3-data-013-click-semver-spec.jsonl` included as prompt/spec
+  evidence, then consider Click #3298 for a candidate attempt only after the
+  readiness gate confirms the prompt/spec blocker is gone.
+- Blockers: none for Click #3298 prompt/spec normalization.

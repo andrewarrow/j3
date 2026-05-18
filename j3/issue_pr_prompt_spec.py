@@ -18,6 +18,7 @@ from j3.issue_pr_preflight import (
 ISSUE_PR_PROMPT_SPEC_SCHEMA_VERSION = "issue-pr-prompt-spec-v1"
 CLICK_DEFAULT_MAP_REPLAY_ID = "pallets__click-issue-2745-pr-3364"
 REQUESTS_PREPARE_BODY_REPLAY_ID = "psf__requests-issue-7432-pr-7433"
+CLICK_SEMVER_DEFAULT_REPLAY_ID = "pallets__click-issue-3298-pr-3299"
 DEFAULT_MAP_REQUIRED_FIELDS = (
     "minimal_reproduction",
     "observed_behavior",
@@ -40,6 +41,18 @@ REQUESTS_PREPARE_BODY_REQUIRED_FIELDS = (
     "stream_detection_semantics",
     "redirect_rewind_behavior",
 )
+CLICK_SEMVER_DEFAULT_REQUIRED_FIELDS = (
+    "minimal_reproduction",
+    "observed_behavior",
+    "expected_behavior",
+    "affected_api_symbol",
+    "input_shape",
+    "acceptance_test_shape",
+    "non_string_default_behavior",
+    "type_conversion_semantics",
+    "empty_string_check_scope",
+    "third_party_semver_version_reproduction_context",
+)
 
 
 def build_issue_pr_prompt_spec(
@@ -59,6 +72,12 @@ def build_issue_pr_prompt_spec(
         )
     if replay_id == REQUESTS_PREPARE_BODY_REPLAY_ID:
         return _requests_prepare_body_prompt_spec(
+            manifest=manifest,
+            manifest_path=manifest_path,
+            record=record,
+        )
+    if replay_id == CLICK_SEMVER_DEFAULT_REPLAY_ID:
+        return _click_semver_default_prompt_spec(
             manifest=manifest,
             manifest_path=manifest_path,
             record=record,
@@ -198,6 +217,8 @@ def _prompt_spec_report_title(specs: Sequence[Mapping[str, object]]) -> str:
         return "DATA-009 Click Default Map Prompt Spec"
     if kinds == {"requests_prepare_body_getattr_stream"}:
         return "DATA-011 Requests Prepare Body Prompt Spec"
+    if kinds == {"click_semver_non_string_default_help"}:
+        return "DATA-013 Click Semver Default Prompt Spec"
     return "Issue/PR Prompt Spec Report"
 
 
@@ -684,6 +705,322 @@ def _requests_prepare_body_prompt_spec(
                     "url": pr_url,
                     "fields": [],
                     "availability": "not_checked_in_not_required",
+                },
+            ],
+        ),
+    }
+
+
+def _click_semver_default_prompt_spec(
+    *,
+    manifest: Mapping[str, object],
+    manifest_path: Path | None,
+    record: Mapping[str, object],
+) -> dict[str, object]:
+    prompt_source = _mapping(record.get("prompt_source"))
+    accepted_change = _mapping(record.get("accepted_change"))
+    validation = _mapping(record.get("validation"))
+    issue_url = str(prompt_source.get("issue_url") or "")
+    pr_url = str(prompt_source.get("pull_request_url") or "")
+    diff_url = str(accepted_change.get("diff_url") or "")
+    validation_command = str(validation.get("command") or "pytest tests/test_options.py -q")
+    knowledge_path = "/tmp/j3-know-004-click-records.jsonl"
+    field_provenance = {
+        "minimal_reproduction": [
+            "github_issue_3298",
+            "know_004_third_party_semver_version_reproduction",
+        ],
+        "observed_behavior": [
+            "github_issue_3298",
+            "know_004_click_non_string_default_handling",
+        ],
+        "expected_behavior": [
+            "github_pr_3299_conversation",
+            "github_pr_3299_diff",
+            "know_004_click_empty_string_check_semantics",
+        ],
+        "affected_api_symbol": [
+            "github_pr_3299_diff",
+            "know_004_repo_changed_file_context",
+        ],
+        "input_shape": [
+            "github_issue_3298",
+            "know_004_click_parameter_default_handling",
+        ],
+        "acceptance_test_shape": [
+            "github_pr_3299_diff",
+            "know_004_repo_test_pattern",
+            "know_004_focused_validation_recipe",
+        ],
+        "non_string_default_behavior": [
+            "github_issue_3298",
+            "know_004_click_non_string_default_handling",
+        ],
+        "type_conversion_semantics": [
+            "github_issue_3298",
+            "know_004_click_type_conversion_semantics",
+        ],
+        "empty_string_check_scope": [
+            "github_pr_3299_diff",
+            "know_004_click_empty_string_check_semantics",
+        ],
+        "third_party_semver_version_reproduction_context": [
+            "github_issue_3298",
+            "github_pr_3299_diff",
+            "know_004_third_party_semver_version_reproduction",
+        ],
+    }
+    normalized_fields = {
+        "minimal_reproduction": {
+            "kind": "click_help_rendering_semver_default",
+            "package_context": {
+                "python_version": "3.12",
+                "click_version": "8.3.1",
+                "semver_version": "3.0.4",
+            },
+            "command_shape": {
+                "decorator": "click.option",
+                "option_decls": ["--version"],
+                "type": "SemverType()",
+                "default": "semver.Version(1, 0, 0)",
+                "show_default": True,
+            },
+            "param_type_shape": {
+                "class_name": "SemverType",
+                "base": "click.ParamType",
+                "convert_accepts": ["str", "semver.Version"],
+                "convert_returns": "semver.Version",
+                "string_conversion": "Version.parse(value)",
+                "already_converted_behavior": "return value unchanged",
+            },
+            "trigger": {
+                "operation": "render_help_text",
+                "representative_call": "runner.invoke(cli, ['--help'])",
+                "internal_call": "click.Option.get_help_record(ctx)",
+            },
+        },
+        "observed_behavior": {
+            "repo_before_ref": "04ef3a6f473deb2499721a8d11f92a7d2c0912f2",
+            "failure_mode": "non_string_default_compared_to_empty_string",
+            "exception_type": "ValueError",
+            "exception_message": " is not valid SemVer string",
+            "failing_expression": "default_value == ''",
+            "call_path": [
+                "click.Option.get_help_record",
+                "click.Option.get_help_extra",
+                "semver.Version.__eq__",
+                "semver.Version.compare",
+                "semver.Version.parse",
+            ],
+        },
+        "expected_behavior": {
+            "behavior": "render_non_string_default_without_string_equality_probe",
+            "help_default_output": "[default: 1.0.0]",
+            "accepted_fix_shape": (
+                "Only run the empty-string display branch when the default "
+                "value is a string; otherwise fall back to str(default_value)."
+            ),
+            "preserve_empty_string_display": (
+                "A real empty string default remains displayed as "
+                "`[default: \"\"]`."
+            ),
+            "candidate_constraint": (
+                "Do not disable type conversion or remove empty-string display "
+                "semantics while avoiding equality against arbitrary objects."
+            ),
+        },
+        "affected_api_symbol": {
+            "public_surface": "click.option(..., default=..., show_default=True)",
+            "parameter_surface": "click.Option",
+            "implementation_symbol": "click.core.Option.get_help_extra",
+            "related_symbols": [
+                "click.core.Option.get_help_record",
+                "click.core.Option.get_default",
+                "click.core.Parameter.type_cast_value",
+            ],
+            "changed_file": "src/click/core.py",
+            "changed_test_file": "tests/test_options.py",
+        },
+        "input_shape": {
+            "source": "click.Option.default",
+            "value_kind": "non_string_object_with_string_comparison_side_effect",
+            "third_party_example": "semver.Version(1, 0, 0)",
+            "local_regression_double": "_StrictEq()",
+            "option_kwargs": {
+                "show_default": True,
+                "type": "custom click.ParamType returning the object unchanged",
+            },
+            "excluded_from_empty_string_branch": ["semver.Version", "_StrictEq"],
+            "still_in_empty_string_branch": [""],
+        },
+        "acceptance_test_shape": {
+            "test_file": "tests/test_options.py",
+            "test_name": "test_show_default_with_empty_string",
+            "helper_class": "_StrictEq",
+            "parametrize_cases": [
+                {
+                    "id": "empty-string",
+                    "default": "",
+                    "expected": "[default: \"\"]",
+                },
+                {
+                    "id": "non-string-comparable-object",
+                    "default": "_StrictEq()",
+                    "expected": "[default: strict]",
+                },
+            ],
+            "validation_command": validation_command,
+            "setup_command": "python -m pip install -e . pytest",
+            "third_party_dependency_policy": (
+                "The accepted regression test does not require semver; it uses "
+                "a local strict-equality object that raises on string operands."
+            ),
+        },
+        "non_string_default_behavior": {
+            "source_method": "click.core.Option.get_help_extra",
+            "default_lookup": "self.get_default(ctx, call=False)",
+            "before_fix_risk": (
+                "A default object can execute arbitrary __eq__ behavior when "
+                "Click compares it to the empty string."
+            ),
+            "after_fix_behavior": (
+                "Non-string defaults skip the empty-string branch and render "
+                "through str(default_value) unless an earlier branch handles "
+                "them specially."
+            ),
+            "known_special_cases_preserved": [
+                "UNSET or suppressed show_default",
+                "tuple and list display",
+                "Enum value display",
+                "dynamic default function display",
+                "single bool flag with false default",
+            ],
+        },
+        "type_conversion_semantics": {
+            "conversion_layer": "click.core.Parameter.type_cast_value",
+            "processing_layer": "click.core.Parameter.process_value",
+            "help_rendering_constraint": (
+                "Help default rendering must inspect and stringify defaults "
+                "without forcing conversion changes for command execution."
+            ),
+            "semver_param_type": {
+                "already_version": "convert returns the Version instance unchanged",
+                "string_input": "convert parses strings with Version.parse",
+                "failure_surface": "type conversion failure should remain a BadParameter path",
+            },
+            "candidate_constraint": (
+                "The fix belongs in help text default formatting, not in "
+                "generic type conversion or missing-value detection."
+            ),
+        },
+        "empty_string_check_scope": {
+            "repo_before_condition": "default_value == ''",
+            "accepted_condition": "isinstance(default_value, str) and default_value == ''",
+            "scope": "click.core.Option.get_help_extra default_string formatting",
+            "preserved_behavior": "empty string defaults render as quoted empty strings",
+            "out_of_scope": [
+                "non-string default object equality",
+                "command invocation value conversion",
+                "environment variable parsing",
+                "multiple or nargs missing-value detection",
+            ],
+        },
+        "third_party_semver_version_reproduction_context": {
+            "package": "semver",
+            "class": "semver.Version",
+            "reported_version": "3.0.4",
+            "reported_default": "Version(1, 0, 0)",
+            "comparison_behavior": (
+                "Version.__eq__ accepts string operands by parsing them; an "
+                "empty string raises ValueError because it is not valid SemVer."
+            ),
+            "accepted_test_substitute": {
+                "class_name": "_StrictEq",
+                "eq_behavior": "raise ValueError when other is a str",
+                "str_behavior": "return 'strict'",
+                "reason": (
+                    "Captures Click's invalid equality probe without adding a "
+                    "semver dependency to the Click test suite."
+                ),
+            },
+        },
+    }
+    return {
+        "schema_version": ISSUE_PR_PROMPT_SPEC_SCHEMA_VERSION,
+        "record_kind": "issue_pr_prompt_spec",
+        "replay_id": str(record.get("id")),
+        "repo": str(record.get("repo")),
+        "prompt_spec_kind": "click_semver_non_string_default_help",
+        "status": "normalized",
+        "candidate_code_edits_attempted": False,
+        "required_prompt_fields": list(CLICK_SEMVER_DEFAULT_REQUIRED_FIELDS),
+        "missing_prompt_fields": [],
+        "required_prompt_fields_complete": True,
+        "source_text_blockers": [],
+        "source_text_gaps": [],
+        "normalized_fields": normalized_fields,
+        "field_provenance": field_provenance,
+        "prompt_source": dict(prompt_source),
+        "accepted_change": dict(accepted_change),
+        "provenance": _prompt_spec_provenance(
+            manifest=manifest,
+            manifest_path=manifest_path,
+            record=record,
+            normalized_from=[
+                {
+                    "id": "github_issue_3298",
+                    "kind": "github_issue",
+                    "url": issue_url,
+                    "fields": [
+                        "minimal_reproduction",
+                        "observed_behavior",
+                        "input_shape",
+                        "non_string_default_behavior",
+                        "type_conversion_semantics",
+                        "third_party_semver_version_reproduction_context",
+                    ],
+                },
+                {
+                    "id": "github_pr_3299_conversation",
+                    "kind": "github_pull_request",
+                    "url": pr_url,
+                    "fields": ["expected_behavior", "empty_string_check_scope"],
+                },
+                {
+                    "id": "github_pr_3299_diff",
+                    "kind": "github_pull_request_diff",
+                    "url": diff_url,
+                    "merge_commit_sha": accepted_change.get("merge_commit_sha"),
+                    "fields": [
+                        "expected_behavior",
+                        "affected_api_symbol",
+                        "acceptance_test_shape",
+                        "empty_string_check_scope",
+                        "third_party_semver_version_reproduction_context",
+                    ],
+                },
+                {
+                    "id": "know_004_click_local_knowledge",
+                    "kind": "local_knowledge_jsonl",
+                    "url": knowledge_path,
+                    "fields": [
+                        "affected_api_symbol",
+                        "acceptance_test_shape",
+                        "non_string_default_behavior",
+                        "type_conversion_semantics",
+                        "empty_string_check_scope",
+                        "third_party_semver_version_reproduction_context",
+                    ],
+                    "record_ids": [
+                        "1904a6fa15665899650dbaec21829fdac4fdc493daddef9f118928262649d73a",
+                        "637634d1dee21f7cb4dbc244ebe384a4d8c75fb8070735345fac822cdb16ee7a",
+                        "9ec7175c0affa313906dcae73c5304d2dd6bfe1853cfdc05aa4273ebf0948147",
+                        "311aef2b41343232a5491c610f636efdf966891f32767d5e3a574ddc64ded546",
+                        "0dde986e749141c71f592950b9d7518adcb72b4447c488329df813b418bbdd99",
+                        "2882ec4082f4ea978c942600690cf8b99b95bcc92c921293ed6e637f441e67a0",
+                        "f96ac571dae6b2a53647803ebd07d034e91895a038ab1bb19ba6d528d97f7587",
+                        "29bde1f5e4eed1864b02359519d15579d45e2e5c0d697aece2772004f2eed2f1",
+                    ],
                 },
             ],
         ),

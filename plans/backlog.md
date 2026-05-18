@@ -1228,7 +1228,7 @@ Long-term target:
 
 ### DATA-013: Click semver prompt/spec normalization
 
-- Status: active
+- Status: done
 - Why: `DATA-010` blocked `pallets__click-issue-3298-pr-3299` only on missing
   prompt/spec evidence. KNOW-004 already acquired the required local
   knowledge, so the next blocker-removal step is a normalized spec.
@@ -1244,6 +1244,17 @@ Long-term target:
   unavailable source text. The task must not attempt candidate code edits.
 - Tests: focused prompt/spec tests, plan consistency, `git diff --check`, and
   a CLI smoke proving the Click semver spec can be emitted.
+- Completion note: added a normalized `click_semver_non_string_default_help`
+  prompt/spec record for `pallets__click-issue-3298-pr-3299` without
+  candidate source edits. The record captures the semver `Version(1, 0, 0)`
+  reproduction, observed `default_value == ""` failure, expected
+  string-guarded empty-string check, affected `Option.get_help_extra` symbol,
+  input and acceptance-test shapes, non-string default behavior,
+  type-conversion semantics, empty-string check scope, third-party semver
+  context, and provenance to issue #3298, PR #3299, the PR diff, and KNOW-004.
+  CLI smoke emitted `/private/tmp/j3-data-013-click-semver-spec.jsonl` with
+  `status_counts = {"normalized": 1}` and no missing prompt fields or source
+  blockers.
 
 ### DATA-014: Second issue/PR candidate attempt
 

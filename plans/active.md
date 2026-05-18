@@ -44,15 +44,7 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-- `DATA-028`: worker Heisenberg (`019e3c77-e916-7c71-af0d-4260a6c4030c`) to
-  audit materialization coverage for
-  `pytest-dev__pytest-issue-14462-pr-14466` before any candidate edit.
-  Ownership: `j3/issue_pr_materialization_audit.py`,
-  `tests/test_issue_pr_materialization_audit.py`, generated `/tmp` artifacts,
-  optional compact report under `docs/`, and plan updates. Acceptance:
-  classify `src/_pytest/python_api.py` and `testing/python/approx.py` by
-  current/proposed action coverage, validation cost, likely failure mode, and
-  smallest next falsifiable materializer task.
+- None.
 
 ## Ready Queue
 
@@ -85,6 +77,17 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `DATA-028`: added a materialization coverage audit for exactly
+  `pytest-dev__pytest-issue-14462-pr-14466`. Both accepted paths,
+  `src/_pytest/python_api.py` and `testing/python/approx.py`, require
+  constrained local generator/source-region action coverage before candidate
+  generation; no path is covered by the current structured-action surface.
+  The audit records manifest, DATA-018, and DATA-026 provenance, accepted
+  diff stats (`31`/`12` and `95`/`5`), validation costs, likely failure
+  modes, and smallest next falsifiable materializer tasks. Artifacts:
+  `/tmp/j3-data-028-pytest-14462-materialization-audit/audit.jsonl`,
+  `/tmp/j3-data-028-pytest-14462-materialization-audit/report.md`, and
+  `docs/DATA_028_PYTEST_14462_MATERIALIZATION_COVERAGE_AUDIT_2026-05-18.md`.
 - `DATA-027`: refreshed candidate-readiness for exactly
   `pytest-dev__pytest-issue-14462-pr-14466` using DATA-018 preflight and
   DATA-026 prompt/spec/local-knowledge evidence. The row is

@@ -3020,8 +3020,39 @@ meaningful work. Do not replace this file with a daily reset.
   local-knowledge rows. Residual labels remain `materialization_gap` and
   `ranking_gap`; materialization and ranking are the next-stage challenges
   before any candidate attempt.
-- Commit: pending.
+- Commit: this commit.
 - Push: pending.
 - Next: DATA-028 can use the DATA-027 readiness row as candidate-attempt
   precondition evidence while auditing materialization coverage.
 - Blockers: none.
+
+### 2026-05-18 - DATA-028 - Pytest #14462 materialization coverage audit
+
+- Owner: worker Heisenberg (`019e3c77-e916-7c71-af0d-4260a6c4030c`).
+- Files changed: `j3/issue_pr_materialization_audit.py`,
+  `tests/test_issue_pr_materialization_audit.py`,
+  `docs/DATA_028_PYTEST_14462_MATERIALIZATION_COVERAGE_AUDIT_2026-05-18.md`,
+  `plans/active.md`, `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `python -m py_compile j3/issue_pr_materialization_audit.py
+  tests/test_issue_pr_materialization_audit.py` -> passed; `pytest
+  tests/test_issue_pr_materialization_audit.py -q` -> 6 passed; CLI smoke
+  `python -m j3.issue_pr_materialization_audit --replay-id
+  pytest-dev__pytest-issue-14462-pr-14466 ...` -> emitted two audit rows and
+  a report; `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff
+  --check` -> passed.
+- Result: classified both accepted pytest #14462/#14466 paths before candidate
+  generation. `src/_pytest/python_api.py` requires a bounded
+  `ApproxTimedelta` source-region update plus `_approx_scalar`
+  datetime/timedelta dispatch insertion. `testing/python/approx.py` requires a
+  constrained `TestApproxDatetime` method refiner/inserter. Rows include
+  manifest, DATA-018 preflight, DATA-026 prompt/spec and local-knowledge
+  provenance, accepted diff stats, validation costs, likely failure modes, and
+  smallest next falsifiable materializer tasks.
+- Commit: pending.
+- Push: pending.
+- Next: a future candidate task should implement the recorded source-region
+  materializer and test-class refiner, then validate with `python -m
+  py_compile src/_pytest/python_api.py` and `pytest testing/python/approx.py
+  -q` before any ranking or candidate attempt is treated as ready.
+- Blockers: no audit blocker; the accepted diff is not currently expressible by
+  existing structured actions.

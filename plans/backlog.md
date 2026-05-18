@@ -1728,7 +1728,7 @@ Long-term target:
 
 ### DATA-028: Pytest #14462 materialization coverage audit
 
-- Status: active
+- Status: done
 - Why: before attempting another pytest candidate, classify whether the
   accepted timedelta `approx` diff is expressible with the current action
   surface or requires a new constrained source/test materializer.
@@ -1745,6 +1745,17 @@ Long-term target:
   falsifiable materializer task.
 - Tests: focused audit tests, plan consistency, `git diff --check`, and a CLI
   smoke that emits machine-readable audit rows plus a compact report.
+- Completion note: added DATA-028 audit coverage for both accepted
+  `pytest-dev__pytest-issue-14462-pr-14466` paths. `src/_pytest/python_api.py`
+  requires a bounded `ApproxTimedelta` source-region update plus
+  `_approx_scalar` datetime/timedelta dispatch insertion; `testing/python/approx.py`
+  requires a constrained `TestApproxDatetime` method refiner/inserter. The
+  audit records manifest, DATA-018 preflight, DATA-026 prompt/spec and
+  local-knowledge provenance, accepted diff stats, validation costs, likely
+  failure modes, and smallest next falsifiable materializer tasks. Artifacts:
+  `/tmp/j3-data-028-pytest-14462-materialization-audit/audit.jsonl`,
+  `/tmp/j3-data-028-pytest-14462-materialization-audit/report.md`, and
+  `docs/DATA_028_PYTEST_14462_MATERIALIZATION_COVERAGE_AUDIT_2026-05-18.md`.
 
 ## Next Recommended Queue
 

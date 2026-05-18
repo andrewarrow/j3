@@ -18,6 +18,7 @@ from j3.issue_pr_preflight import (
 
 MATERIALIZATION_AUDIT_SCHEMA_VERSION = "issue-pr-materialization-audit-v1"
 PYTEST_STRICT_ADDOPTS_REPLAY_ID = "pytest-dev__pytest-issue-14442-pr-14443"
+PYTEST_TIMEDELTA_APPROX_REPLAY_ID = "pytest-dev__pytest-issue-14462-pr-14466"
 
 COVERED_BY_CURRENT_STRUCTURED_ACTION = "covered_by_current_structured_action"
 COVERED_BY_SMALL_PROPOSED_DETERMINISTIC_ACTION = (
@@ -40,6 +41,15 @@ class MaterializationPathFinding:
     validation_cost: Mapping[str, object]
     likely_failure_mode_if_attempted: str
     smallest_next_falsifiable_materializer_task: Mapping[str, object]
+
+
+@dataclass(frozen=True, slots=True)
+class MaterializationAuditDefinition:
+    task_id: str
+    report_title: str
+    report_description: str
+    out_of_scope_failure_mode: str
+    findings: tuple[MaterializationPathFinding, ...]
 
 
 PYTEST_STRICT_ADDOPTS_FINDINGS = (
@@ -290,6 +300,162 @@ PYTEST_STRICT_ADDOPTS_FINDINGS = (
 )
 
 
+PYTEST_TIMEDELTA_APPROX_FINDINGS = (
+    MaterializationPathFinding(
+        path="src/_pytest/python_api.py",
+        accepted_diff_summary={
+            "change_kind": "python_approx_timedelta_dispatch_and_tolerance_update",
+            "accepted_numstat": {"added": 31, "removed": 12},
+            "anchors": [
+                "ApproxBase._approx_scalar",
+                "ApproxTimedelta.__init__",
+                "approx datetime/timedelta documentation",
+            ],
+            "semantic_payload": (
+                "dispatch datetime/timedelta values inside containers to "
+                "ApproxTimedelta, accept numeric timedelta rel values, validate "
+                "negative/NaN rel and negative abs, compute rel * abs(expected), "
+                "and keep datetime rel unsupported"
+            ),
+        },
+        classification=REQUIRING_CONSTRAINED_LOCAL_GENERATOR,
+        current_action_family=(
+            "source_region_replace_v1 exists, but the accepted edit spans "
+            "dispatch typing, ApproxTimedelta validation/tolerance logic, and "
+            "documentation text"
+        ),
+        proposed_action_family=(
+            "pytest_approx_timedelta_source_region_update_v1 + "
+            "python_dispatch_branch_insert_v1"
+        ),
+        action_family_recommendation=(
+            "Use a bounded source-region materializer for ApproxTimedelta.__init__ "
+            "plus a deterministic dispatch branch inserter in ApproxBase._approx_scalar; "
+            "gate it on DATA-026 relative-tolerance and datetime-policy facts."
+        ),
+        validation_cost={
+            "tier": "moderate",
+            "commands": [
+                "python -m py_compile src/_pytest/python_api.py",
+                "pytest testing/python/approx.py -q",
+            ],
+            "notes": (
+                "Syntax is cheap; behavior needs the focused approx test module "
+                "because container dispatch and datetime rejection are easy to "
+                "regress while fixing timedelta rel."
+            ),
+        },
+        likely_failure_mode_if_attempted=(
+            "accepting rel for datetime by accident, continuing to treat timedelta "
+            "rel as an absolute timedelta, failing sequence/mapping dispatch, "
+            "missing negative or NaN validation, or comparing against the actual "
+            "value rather than abs(expected)"
+        ),
+        smallest_next_falsifiable_materializer_task={
+            "task_id": "DATA-028-next-approx-timedelta-source-region",
+            "description": (
+                "Materialize only the accepted ApproxBase._approx_scalar dispatch "
+                "branch plus ApproxTimedelta.__init__ tolerance update in the "
+                "repo-before checkout, without editing tests first."
+            ),
+            "target_path": "src/_pytest/python_api.py",
+            "expected_mutation_scope": ["src/_pytest/python_api.py"],
+            "acceptance_probe": (
+                "py_compile passes, the diff changes only the dispatch branch and "
+                "ApproxTimedelta/docstring regions, datetime rel still raises, and "
+                "focused approx validation can run after tests are materialized"
+            ),
+        },
+    ),
+    MaterializationPathFinding(
+        path="testing/python/approx.py",
+        accepted_diff_summary={
+            "change_kind": "pytest_datetime_test_class_refine_and_extend",
+            "accepted_numstat": {"added": 95, "removed": 5},
+            "anchors": [
+                "TestApproxDatetime.test_timedelta_rel_within_tolerance",
+                "TestApproxDatetime.test_timedelta_rel_outside_tolerance",
+                "TestApproxDatetime container dispatch tests",
+            ],
+            "semantic_payload": (
+                "change timedelta rel tests from timedelta rel values to numeric "
+                "fractions, add invalid rel/abs validation cases, abs+rel and zero "
+                "rel coverage, expected-value scaling coverage, and datetime/"
+                "timedelta sequence and mapping dispatch tests"
+            ),
+        },
+        classification=REQUIRING_CONSTRAINED_LOCAL_GENERATOR,
+        current_action_family=(
+            "deterministic pytest insertion/replacement exists only for prior "
+            "bounded replay fixtures and cannot yet refine this class plus append "
+            "the accepted datetime/timedelta cases"
+        ),
+        proposed_action_family="pytest_existing_class_method_refine_and_insert_v1",
+        action_family_recommendation=(
+            "Use a constrained pytest test-class refiner that can replace selected "
+            "methods, rename one method, and insert focused methods under "
+            "TestApproxDatetime using DATA-026 acceptance-test facts."
+        ),
+        validation_cost={
+            "tier": "moderate",
+            "commands": ["pytest testing/python/approx.py -q"],
+            "notes": (
+                "The module command is cheap in DATA-018 and covers source/test "
+                "interaction, including skips from optional numpy tests."
+            ),
+        },
+        likely_failure_mode_if_attempted=(
+            "adding generic timedelta cases without expected-value scaling, "
+            "forgetting container dispatch, preserving the obsolete rel=timedelta "
+            "expectation, or placing tests outside TestApproxDatetime conventions"
+        ),
+        smallest_next_falsifiable_materializer_task={
+            "task_id": "DATA-028-next-approx-test-class-refiner",
+            "description": (
+                "Implement a constrained TestApproxDatetime refiner that changes "
+                "the two existing rel tests and appends the smallest representative "
+                "numeric-rel validation, scaling, and container cases."
+            ),
+            "target_path": "testing/python/approx.py",
+            "expected_mutation_scope": ["testing/python/approx.py"],
+            "acceptance_probe": (
+                "only TestApproxDatetime changes, obsolete rel=timedelta assertions "
+                "are replaced, numeric rel scaling and sequence/mapping cases exist, "
+                "and pytest testing/python/approx.py -q passes with the source edit"
+            ),
+        },
+    ),
+)
+
+
+AUDIT_DEFINITIONS = {
+    PYTEST_STRICT_ADDOPTS_REPLAY_ID: MaterializationAuditDefinition(
+        task_id="DATA-023",
+        report_title="DATA-023 Pytest #14442 Materialization Coverage Audit",
+        report_description=(
+            "Machine-readable audit over the accepted pytest #14442/#14443 changed "
+            "paths. No candidate source edits were attempted."
+        ),
+        out_of_scope_failure_mode=(
+            "path is not part of the DATA-023 pytest #14442 audit scope"
+        ),
+        findings=PYTEST_STRICT_ADDOPTS_FINDINGS,
+    ),
+    PYTEST_TIMEDELTA_APPROX_REPLAY_ID: MaterializationAuditDefinition(
+        task_id="DATA-028",
+        report_title="DATA-028 Pytest #14462 Materialization Coverage Audit",
+        report_description=(
+            "Machine-readable audit over the accepted pytest #14462/#14466 changed "
+            "paths. No candidate source edits were attempted."
+        ),
+        out_of_scope_failure_mode=(
+            "path is not part of the DATA-028 pytest #14462 audit scope"
+        ),
+        findings=PYTEST_TIMEDELTA_APPROX_FINDINGS,
+    ),
+}
+
+
 def build_issue_pr_materialization_audit_rows(
     *,
     manifest_path: Path,
@@ -321,13 +487,29 @@ def build_issue_pr_materialization_audit_rows(
     )
 
     rows: list[dict[str, object]] = []
-    findings_by_path = {finding.path: finding for finding in PYTEST_STRICT_ADDOPTS_FINDINGS}
+    audit_definition = AUDIT_DEFINITIONS.get(
+        replay_id,
+        MaterializationAuditDefinition(
+            task_id="needs-classification",
+            report_title="Issue/PR Materialization Coverage Audit",
+            report_description=(
+                "Machine-readable audit over accepted changed paths. No candidate "
+                "source edits were attempted."
+            ),
+            out_of_scope_failure_mode=(
+                "path is not part of a classified materialization audit scope"
+            ),
+            findings=(),
+        ),
+    )
+    findings_by_path = {finding.path: finding for finding in audit_definition.findings}
     for path in accepted_paths:
         finding = findings_by_path.get(path)
         if finding is None:
             rows.append(
                 _unknown_path_row(
                     path=path,
+                    audit_definition=audit_definition,
                     manifest=manifest,
                     manifest_path=resolved_manifest,
                     replay_record=replay_record,
@@ -342,7 +524,8 @@ def build_issue_pr_materialization_audit_rows(
             {
                 "schema_version": MATERIALIZATION_AUDIT_SCHEMA_VERSION,
                 "record_kind": "issue_pr_materialization_audit",
-                "audit_id": f"DATA-023/{replay_id}/{path}",
+                "audit_id": f"{audit_definition.task_id}/{replay_id}/{path}",
+                "audit_task_id": audit_definition.task_id,
                 "replay_id": replay_id,
                 "repo": str(replay_record.get("repo") or ""),
                 "path": path,
@@ -364,6 +547,7 @@ def build_issue_pr_materialization_audit_rows(
                     replay_record=replay_record,
                 ),
                 "evidence_provenance": evidence_provenance,
+                "audit_provenance": _audit_provenance(audit_definition.task_id),
             }
         )
     return tuple(rows)
@@ -428,11 +612,11 @@ def write_issue_pr_materialization_audit_report(
     resolved = path.expanduser().resolve()
     resolved.parent.mkdir(parents=True, exist_ok=True)
     report_summary = dict(summary or summarize_issue_pr_materialization_audit_rows(rows))
+    audit_definition = _audit_definition_for_rows(rows)
     lines = [
-        "# DATA-023 Pytest #14442 Materialization Coverage Audit",
+        f"# {audit_definition.report_title}",
         "",
-        "Machine-readable audit over the accepted pytest #14442/#14443 changed "
-        "paths. No candidate source edits were attempted.",
+        audit_definition.report_description,
         "",
         "## Summary",
         "",
@@ -485,7 +669,7 @@ def write_issue_pr_materialization_audit_report(
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    """CLI entrypoint for DATA-023 materialization coverage audit."""
+    """CLI entrypoint for issue/PR materialization coverage audit."""
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -728,6 +912,7 @@ def _row_matches_replay(row: Mapping[str, object], replay_id: str) -> bool:
 def _unknown_path_row(
     *,
     path: str,
+    audit_definition: MaterializationAuditDefinition,
     manifest: Mapping[str, object],
     manifest_path: Path,
     replay_record: Mapping[str, object],
@@ -736,7 +921,8 @@ def _unknown_path_row(
     return {
         "schema_version": MATERIALIZATION_AUDIT_SCHEMA_VERSION,
         "record_kind": "issue_pr_materialization_audit",
-        "audit_id": f"DATA-023/{replay_record.get('id')}/{path}",
+        "audit_id": f"{audit_definition.task_id}/{replay_record.get('id')}/{path}",
+        "audit_task_id": audit_definition.task_id,
         "replay_id": str(replay_record.get("id") or ""),
         "repo": str(replay_record.get("repo") or ""),
         "path": path,
@@ -746,9 +932,7 @@ def _unknown_path_row(
         "action_family_recommendation": "classify this accepted path before materializing it",
         "accepted_diff_summary": {"change_kind": "unknown_accepted_path"},
         "validation_cost": {"tier": "unknown", "commands": []},
-        "likely_failure_mode_if_attempted": (
-            "path is not part of the DATA-023 pytest #14442 audit scope"
-        ),
+        "likely_failure_mode_if_attempted": audit_definition.out_of_scope_failure_mode,
         "smallest_next_falsifiable_materializer_task": {
             "task_id": "needs-coordinator-scope",
             "description": "Classify this accepted path before materializing it.",
@@ -762,7 +946,38 @@ def _unknown_path_row(
             replay_record=replay_record,
         ),
         "evidence_provenance": dict(evidence_provenance),
+        "audit_provenance": _audit_provenance(audit_definition.task_id),
     }
+
+
+def _audit_provenance(task_id: str) -> list[str]:
+    if task_id == "DATA-028":
+        return ["DATA-018", "DATA-026", "DATA-028"]
+    if task_id == "DATA-023":
+        return ["DATA-018", "DATA-021", "DATA-023"]
+    return [task_id]
+
+
+def _audit_definition_for_rows(
+    rows: Sequence[Mapping[str, object]],
+) -> MaterializationAuditDefinition:
+    replay_ids = [str(row.get("replay_id")) for row in rows if row.get("replay_id")]
+    if replay_ids:
+        definition = AUDIT_DEFINITIONS.get(replay_ids[0])
+        if definition is not None:
+            return definition
+    return MaterializationAuditDefinition(
+        task_id="needs-classification",
+        report_title="Issue/PR Materialization Coverage Audit",
+        report_description=(
+            "Machine-readable audit over accepted changed paths. No candidate "
+            "source edits were attempted."
+        ),
+        out_of_scope_failure_mode=(
+            "path is not part of a classified materialization audit scope"
+        ),
+        findings=(),
+    )
 
 
 def _mapping(value: object) -> dict[str, object]:

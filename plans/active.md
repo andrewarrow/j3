@@ -47,7 +47,7 @@ This is the live coordinator board. Keep it current and compact.
 ### DATA-008: Requests Replay Validation Recipe Isolation
 
 - Status: active
-- Owner: worker to be spawned by coordinator.
+- Owner: worker Ramanujan (`019e3bfa-4838-7cf0-a1fc-1107d9fcb249`).
 - Write scope: `j3/issue_pr_preflight.py`,
   `tests/test_issue_pr_preflight.py`, optional compact report under `docs/`,
   generated live artifacts under `/tmp`, and plan updates.
@@ -63,7 +63,7 @@ This is the live coordinator board. Keep it current and compact.
 ### KNOW-004: Click Replay Local Knowledge Records
 
 - Status: active
-- Owner: worker to be spawned by coordinator.
+- Owner: worker Hubble (`019e3bfa-487c-7cc3-8886-824d0bb43ac8`).
 - Write scope: `j3/local_knowledge.py`, `tests/test_local_knowledge.py`,
   optional example/report files, generated artifacts under `/tmp`, and plan
   updates.

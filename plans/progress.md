@@ -3478,7 +3478,8 @@ meaningful work. Do not replace this file with a daily reset.
 - Owner: coordinator.
 - Files changed: `plans/active.md`, `plans/backlog.md`, and
   `plans/progress.md`.
-- Tests: pending before dispatch commit.
+- Tests: `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff
+  --check` -> passed.
 - Result: selected the next batch to answer hard falsifiable questions rather
   than continuing fixture-comfort work. `DATA-037` targets ranking survival on
   the now-validated real issue/PR candidates from DATA-029 and DATA-035 by
@@ -3497,7 +3498,8 @@ meaningful work. Do not replace this file with a daily reset.
 
 - Owner: coordinator.
 - Files changed: `plans/active.md` and `plans/progress.md`.
-- Tests: pending before commit.
+- Tests: `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff
+  --check` -> passed.
 - Result: recorded worker Rawls
   (`019e3cb6-0219-70a2-880c-8493517eb714`) for `DATA-037` and worker Bacon
   (`019e3cb6-2c94-7423-9a3d-db7e5fa19e1d`) for `MAT-007`.
@@ -3505,3 +3507,33 @@ meaningful work. Do not replace this file with a daily reset.
 - Push: succeeded.
 - Next: continue non-overlapping coordinator review while both workers run.
 - Blockers: none.
+
+### 2026-05-18 - DATA-037 - Real issue/PR ranking decoy harness
+
+- Owner: worker Rawls (`019e3cb6-0219-70a2-880c-8493517eb714`) with
+  coordinator integration after worker pause.
+- Files changed: `j3/issue_pr_candidate_ranking.py`,
+  `tests/test_issue_pr_candidate_ranking.py`,
+  `docs/DATA_037_ISSUE_PR_RANKING_DECOY_HARNESS_2026-05-18.md`,
+  `plans/active.md`, `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `python -m py_compile j3/issue_pr_candidate_ranking.py
+  tests/test_issue_pr_candidate_ranking.py` -> passed; `pytest
+  tests/test_issue_pr_candidate_ranking.py -q` -> 6 passed; CLI smoke
+  `python -m j3.issue_pr_candidate_ranking --out-dir
+  /tmp/j3-data-037-issue-pr-ranking-decoys` -> wrote JSON, JSONL, and
+  markdown artifacts; `pytest tests/test_plan_consistency.py -q` -> 6
+  passed; `git diff --check` -> passed.
+- Result: added a shadow-only decoy harness for the validated DATA-029 pytest
+  #14462 and DATA-035 Scrapy #7293 issue/PR candidates. Each row has one
+  accepted validated candidate and four realistic decoys. The result is a hard
+  negative: `rankable_rows = 0`, `pass@1 = blocked`, and `pass@k = blocked`.
+  Blockers are `no_guarded_issue_pr_ranker`, `decoys_not_live_validated`,
+  `full_candidate_after_unavailable`, and
+  `issue_specific_semantics_not_in_current_features`. No production ranking
+  gate changed and no hosted LLM source judgment was used.
+- Commit: pending.
+- Push: pending.
+- Next: collect full candidate-after snapshots or live-validated decoy
+  outcomes before claiming issue/PR ranking gains; ranking remains shadow-only.
+- Blockers: current candidate-record features are insufficient for honest
+  issue/PR decoy ranking.

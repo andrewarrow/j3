@@ -2078,7 +2078,7 @@ Long-term target:
 
 ### DATA-037: Real issue/PR candidate ranking decoy harness
 
-- Status: active
+- Status: done
 - Why: DATA-029 and DATA-035 prove that the system can materialize and validate
   two real issue/PR source/test candidates, but the ranking question is still
   unproven. The next hard proof is whether the accepted candidate can survive
@@ -2098,6 +2098,21 @@ Long-term target:
   exact observation or feature blocker instead of claiming a pass.
 - Tests: focused ranking/decoy tests, plan consistency, `git diff --check`,
   and a CLI/report smoke if a CLI is added.
+- Completion note: added `j3.issue_pr_candidate_ranking`, a shadow-only decoy
+  harness for the validated DATA-029 pytest #14462 and DATA-035 Scrapy #7293
+  candidate records. Each row has one accepted validated candidate and four
+  realistic decoys covering incomplete timedelta relative tolerance semantics,
+  missing source/test materialization, stale `min(stats)` slot selection,
+  mutating `peek`, missing `_last_selected_slot`, and missing tests. The result
+  is intentionally blocked rather than forced: `rankable_rows = 0`, `pass@1 =
+  blocked`, and `pass@k = blocked` because there is no guarded issue/PR ranker,
+  the decoys are not live-validated, complete candidate-after snapshots are not
+  available, and current candidate-record features do not encode enough
+  issue-specific semantics. Artifacts:
+  `/tmp/j3-data-037-issue-pr-ranking-decoys/ranking-report.json`,
+  `/tmp/j3-data-037-issue-pr-ranking-decoys/decoy-candidates.jsonl`,
+  `/tmp/j3-data-037-issue-pr-ranking-decoys/ranking-report.md`, and
+  `docs/DATA_037_ISSUE_PR_RANKING_DECOY_HARNESS_2026-05-18.md`.
 
 ## Next Recommended Queue
 

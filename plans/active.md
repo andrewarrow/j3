@@ -44,21 +44,6 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-### `DATA-037`: Real issue/PR candidate ranking decoy harness
-
-- Status: active
-- Owner: worker Rawls (`019e3cb6-0219-70a2-880c-8493517eb714`).
-- Write scope: a new focused issue/PR ranking or decoy-evidence module and
-  tests, optional compact docs/report, generated outputs under `/tmp`, and
-  planning updates. Do not change production ranking gates.
-- Acceptance: consume the validated DATA-029 pytest #14462 and DATA-035 Scrapy
-  #7293 candidate records as real issue/PR rows; build a shadow ranking harness
-  with the accepted validated candidate plus realistic decoys for each row;
-  report pass@1, pass@k, first accepted rank, feature inputs available from
-  candidate-after/diff/AST metadata, and residual labels. If the existing
-  ranker cannot score these rows honestly, record the exact observation or
-  feature blocker instead of inventing a passing metric.
-
 ### `MAT-007`: Real PR materialization coverage refresh
 
 - Status: active
@@ -104,6 +89,19 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `DATA-037`: added a shadow-only real issue/PR ranking decoy harness for the
+  validated DATA-029 pytest #14462 and DATA-035 Scrapy #7293 candidate records.
+  Each row has one accepted validated candidate and four realistic decoys. The
+  result is an honest blocker, not a ranking win: `rankable_rows = 0`,
+  `pass@1 = blocked`, and `pass@k = blocked` because there is no guarded
+  issue/PR ranker, decoys are not live-validated, full candidate-after file
+  snapshots are unavailable, and current candidate-record features do not
+  encode the issue-specific semantics needed to separate the accepted candidate
+  from hard decoys. Artifacts:
+  `/tmp/j3-data-037-issue-pr-ranking-decoys/ranking-report.json`,
+  `/tmp/j3-data-037-issue-pr-ranking-decoys/decoy-candidates.jsonl`,
+  `/tmp/j3-data-037-issue-pr-ranking-decoys/ranking-report.md`, and
+  `docs/DATA_037_ISSUE_PR_RANKING_DECOY_HARNESS_2026-05-18.md`.
 - `DATA-035`: added and reviewed a bounded source/test candidate attempt for
   exactly `scrapy__scrapy-issue-7293-pr-7351`. The materializer changes only
   `scrapy/pqueues.py` and `tests/test_pqueues.py`, adds

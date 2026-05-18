@@ -1629,6 +1629,49 @@ Long-term target:
   `/tmp/j3-data-024-pytest-14442-source-test/report.md`, and
   `docs/DATA_024_PYTEST_14442_SOURCE_TEST_CANDIDATE_2026-05-18.md`.
 
+### DATA-025: Pytest #14442 auxiliary materializers and full-scope candidate
+
+- Status: active
+- Why: DATA-024 validated the source/test behavior but preserved
+  `accepted_auxiliary_paths_not_materialized`. DATA-023 says `AUTHORS` is a
+  small deterministic insertion and the changelog fragment needs a constrained
+  generator. The next proof is whether auxiliary path materializers can close
+  full accepted-edit parity without breaking validation.
+- Write scope: a focused pytest auxiliary materializer module/tests, generated
+  outputs under `/tmp`, optional compact report under `docs/`, and plan
+  updates.
+- Acceptance: in a live pinned pytest checkout, materialize the DATA-024
+  source/test candidate plus accepted auxiliary paths `AUTHORS` and
+  `changelog/14442.bugfix.rst`. Record actions, candidate diff, mutation
+  scope, validation command/runtime/pass-fail, residual labels,
+  DATA-021/022/023/024 provenance, and structured-action coverage. The live
+  checkout may change exactly the five accepted paths and must validate with
+  `pytest testing/test_config.py testing/test_mark.py -q` when feasible. If
+  AUTHORS/changelog content is blocked, record the exact blocker.
+- Tests: focused auxiliary materializer tests, plan consistency, `git diff
+  --check`, and live validation when feasible.
+
+### DATA-026: Pytest #14462 prompt/spec and local knowledge evidence
+
+- Status: active
+- Why: DATA-018 proved pytest #14462 has working checkout/setup/baseline
+  validation, but it still needs normalized prompt/spec and local knowledge
+  before candidate generation. This pushes the pytest replay path beyond a
+  single issue and tests local knowledge acquisition for datetime/timedelta
+  `approx` semantics.
+- Write scope: focused issue/PR prompt/spec and local-knowledge modules/tests,
+  generated outputs under `/tmp`, optional compact report under `docs/`, and
+  plan updates. Do not attempt candidate source edits.
+- Acceptance: emit machine-readable evidence for
+  `pytest-dev__pytest-issue-14462-pr-14466`: normalized prompt/spec fields for
+  timedelta `approx` relative tolerance, changed-file context for
+  `src/_pytest/python_api.py` and `testing/python/approx.py`, DATA-018
+  focused validation recipe, `ApproxTimedelta` tolerance semantics,
+  datetime/timedelta comparison behavior, repo test patterns, provenance, and
+  remaining readiness blockers.
+- Tests: focused prompt/spec/local-knowledge tests, plan consistency,
+  `git diff --check`, and CLI smoke that emits the evidence rows.
+
 ## Next Recommended Queue
 
 Start with these unless fresh evidence changes the order:

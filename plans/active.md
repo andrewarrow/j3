@@ -44,7 +44,23 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-- none.
+- `DATA-025`: worker to materialize the pytest #14442 auxiliary accepted paths
+  `AUTHORS` and `changelog/14442.bugfix.rst`, then integrate them with the
+  DATA-024 validated source/test candidate. Ownership: a focused pytest
+  auxiliary materializer module/tests, generated `/tmp` artifacts, optional
+  compact report under `docs/`, and plan updates. Acceptance: live pinned
+  pytest checkout changes exactly the five accepted paths, validates with
+  `pytest testing/test_config.py testing/test_mark.py -q`, records auxiliary
+  actions, candidate diff, mutation scope, residuals, and whether full
+  accepted-edit coverage is now expressible.
+- `DATA-026`: worker to acquire prompt/spec and local-knowledge evidence for
+  the next DATA-018 pytest row,
+  `pytest-dev__pytest-issue-14462-pr-14466`. Ownership: focused prompt/spec
+  and local-knowledge modules/tests, generated `/tmp` evidence, optional
+  compact report under `docs/`, and plan updates. Acceptance: no candidate
+  edits; emit normalized timedelta `approx` prompt/spec plus local knowledge
+  for `ApproxTimedelta`, source/test context, validation recipe, and remaining
+  readiness blockers.
 
 ## Ready Queue
 

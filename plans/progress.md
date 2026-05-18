@@ -2846,3 +2846,28 @@ meaningful work. Do not replace this file with a daily reset.
   ranking/scoring evidence.
 - Blockers: none for the source/test candidate; auxiliary accepted-edit parity
   remains out of scope for DATA-024.
+
+### 2026-05-18 - Coordinator Review And Dispatch - DATA-025 / DATA-026
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, `plans/progress.md`.
+- Tests: `python -m py_compile j3/issue_pr_candidate_attempt.py
+  tests/test_issue_pr_candidate_attempt.py` -> passed; `pytest
+  tests/test_issue_pr_candidate_attempt.py -q` -> 14 passed; `python -m
+  py_compile j3/candidate_observation.py j3/transition_action_choice.py
+  candidate_ranker/features.py candidate_ranker/feature_params.py
+  tests/test_transition_action_choice.py tests/test_transition_action_scoring.py
+  tests/test_candidate_ranking.py` -> passed; `pytest
+  tests/test_transition_action_choice.py tests/test_transition_action_scoring.py
+  tests/test_candidate_ranking.py -q` -> 55 passed; `pytest
+  tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check` ->
+  passed.
+- Result: reviewed DATA-024 and MODEL-006. The first pytest source/test
+  candidate validates, and ranking now has shadow-only candidate-after/AST
+  delta signals. The next loop tries to close the accepted auxiliary gap for
+  pytest #14442 with `AUTHORS` and changelog materializers (`DATA-025`) while
+  pushing pytest generalization to #14462 evidence acquisition (`DATA-026`).
+- Commit: pending coordinator dispatch commit.
+- Push: pending.
+- Next: workers dispatched for `DATA-025` and `DATA-026`.
+- Blockers: none.

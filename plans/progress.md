@@ -1057,8 +1057,8 @@ meaningful work. Do not replace this file with a daily reset.
   metadata, actual mutation scope, validation command, protected production
   hashes, knowledge citations, and residual labels; and preserves production
   files byte-for-byte in both synthetic and live checks.
-- Commit: pending worker commit
-- Push: pending worker push
+- Commit: fd5094893f3e8b46a826ed8e81bd649681cf2334
+- Push: succeeded
 - Next: rerun or extend the tests-only shadow score with this candidate surface
   before considering guarded tests-only opt-in.
 - Blockers: none

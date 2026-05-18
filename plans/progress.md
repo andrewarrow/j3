@@ -3325,8 +3325,8 @@ meaningful work. Do not replace this file with a daily reset.
   `49`/`0`), action-family recommendations, validation costs, likely failure
   modes, and next falsifiable materializer tasks for the source slot-rotation
   update and pqueue test inserter.
-- Commit: pending.
-- Push: pending.
+- Commit: 092e63a; push-record commit will contain this metadata update.
+- Push: succeeded.
 - Next: implement the smallest Scrapy source-region materializer only after
   coordinator review; candidate edits remain deferred.
 - Blockers: none.

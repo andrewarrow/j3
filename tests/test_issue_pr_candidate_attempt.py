@@ -436,6 +436,93 @@ def test_pytest_strict_addopts_candidate_materializes_source_test_only(
     assert (repo / "AUTHORS").read_text(encoding="utf-8") == "Existing Author\n"
 
 
+def test_pytest_strict_addopts_candidate_materializes_full_scope(
+    tmp_path: Path,
+) -> None:
+    repo = _write_synthetic_pytest_checkout(tmp_path / "pytest")
+    (repo / "AUTHORS").write_text(
+        "\n".join(
+            [
+                "Holger Krekel",
+                "",
+                "Contributors include::",
+                "",
+                "Guoqiang Zhang",
+                "Harald Armin Massa",
+                "Prakhar Gurunani",
+                "Prashant Anand",
+                "Éloi Rivard",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    attempt = run_pytest_strict_addopts_issue_pr_candidate_attempt(
+        repo,
+        manifest_path=MANIFEST_PATH,
+        write=True,
+        validate=False,
+        include_auxiliary_paths=True,
+        readiness_records=[_pytest_strict_addopts_ready_row()],
+        prompt_spec_records=[_pytest_strict_addopts_prompt_spec_row()],
+        validation_records=[_pytest_strict_addopts_validation_row()],
+        local_knowledge_records=[
+            _pytest_strict_addopts_knowledge_row("repo_changed_file_context"),
+            _pytest_strict_addopts_knowledge_row(
+                "pytest_changelog_fragment_convention"
+            ),
+            _pytest_strict_addopts_knowledge_row("pytest_authors_convention"),
+        ],
+        materialization_audit_records=[
+            _pytest_strict_addopts_audit_row("AUTHORS"),
+            _pytest_strict_addopts_audit_row("changelog/14442.bugfix.rst"),
+            _pytest_strict_addopts_audit_row("src/_pytest/config/__init__.py"),
+            _pytest_strict_addopts_audit_row("testing/test_config.py"),
+            _pytest_strict_addopts_audit_row("testing/test_mark.py"),
+        ],
+    )
+    record = attempt.to_record()
+
+    assert record["action_family"] == "pytest_strict_addopts_full_scope_candidate"
+    assert record["status"] == "materialized"
+    assert set(record["mutation_scope"]["files_changed"]) == {
+        "AUTHORS",
+        "changelog/14442.bugfix.rst",
+        "src/_pytest/config/__init__.py",
+        "testing/test_config.py",
+        "testing/test_mark.py",
+    }
+    assert record["mutation_scope"]["materialization_gap_paths"] == []
+    assert record["mutation_scope"]["accepted_missing_paths"] == []
+    assert record["mutation_scope"]["full_accepted_edit_coverage_expressible"] is True
+    assert record["structured_action_coverage"]["behavior_edit_covered"] is True
+    assert record["structured_action_coverage"]["auxiliary_edit_covered"] is True
+    assert record["structured_action_coverage"]["accepted_edit_covered"] is True
+    assert record["structured_action_coverage"]["materialization_gap"] is None
+    assert record["residual_labels"] == ["candidate_validation_deferred"]
+    assert len(record["evidence"]["materialization_audit"]) == 5
+    authors_lines = (repo / "AUTHORS").read_text(encoding="utf-8").splitlines()
+    assert authors_lines.index("Guoqiang Zhang") < authors_lines.index("Hamza Mobeen")
+    assert authors_lines.index("Hamza Mobeen") < authors_lines.index(
+        "Harald Armin Massa"
+    )
+    assert authors_lines.index("Prakhar Gurunani") < authors_lines.index(
+        "Praneeth Kodumagulla"
+    )
+    assert authors_lines.index("Praneeth Kodumagulla") < authors_lines.index(
+        "Prashant Anand"
+    )
+    changelog = (repo / "changelog" / "14442.bugfix.rst").read_text(
+        encoding="utf-8"
+    )
+    assert ":option:`--strict-markers`" in changelog
+    assert ":confval:`addopts`" in changelog
+    assert "changelog/14442.bugfix.rst" in record["auxiliary_materialization"][
+        "targets"
+    ][1]["diff"]
+
+
 def test_pytest_strict_addopts_candidate_validation_report_and_cli(
     tmp_path: Path,
 ) -> None:

@@ -8,6 +8,7 @@ import hashlib
 import json
 import subprocess
 import time
+import unicodedata
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
 from typing import Mapping, Sequence
@@ -57,12 +58,29 @@ CLICK_SEMVER_VALIDATION_COMMAND = "pytest tests/test_options.py -q"
 CLICK_SEMVER_SETUP_COMMAND = "python -m pip install -e . pytest"
 PYTEST_STRICT_ADDOPTS_REPLAY_ID = "pytest-dev__pytest-issue-14442-pr-14443"
 PYTEST_STRICT_ADDOPTS_ACTION_FAMILY = "pytest_strict_addopts_source_test_candidate"
+PYTEST_STRICT_ADDOPTS_FULL_SCOPE_ACTION_FAMILY = (
+    "pytest_strict_addopts_full_scope_candidate"
+)
 PYTEST_STRICT_ADDOPTS_SOURCE_PATH = "src/_pytest/config/__init__.py"
 PYTEST_STRICT_ADDOPTS_TEST_CONFIG_PATH = "testing/test_config.py"
 PYTEST_STRICT_ADDOPTS_TEST_MARK_PATH = "testing/test_mark.py"
+PYTEST_STRICT_ADDOPTS_AUTHORS_PATH = "AUTHORS"
+PYTEST_STRICT_ADDOPTS_CHANGELOG_PATH = "changelog/14442.bugfix.rst"
+PYTEST_STRICT_ADDOPTS_AUTHOR_ENTRIES = [
+    "Hamza Mobeen",
+    "Praneeth Kodumagulla",
+]
+PYTEST_STRICT_ADDOPTS_CHANGELOG_TEXT = "\n".join(
+    [
+        "Fixed a regression in pytest 9.0 where :option:`--strict-markers` and :option:`--strict-config` specified through :confval:`addopts` were silently ignored.",
+        "",
+        "Note that when targeting pytest >= 9.0, it's nicer to use :confval:`strict_markers` and :confval:`strict_config`, or :ref:`strict mode <strict mode>`.",
+        "",
+    ]
+)
 PYTEST_STRICT_ADDOPTS_AUXILIARY_PATHS = [
-    "AUTHORS",
-    "changelog/14442.bugfix.rst",
+    PYTEST_STRICT_ADDOPTS_AUTHORS_PATH,
+    PYTEST_STRICT_ADDOPTS_CHANGELOG_PATH,
 ]
 PYTEST_STRICT_ADDOPTS_SOURCE_TEST_PATHS = [
     PYTEST_STRICT_ADDOPTS_SOURCE_PATH,
@@ -105,6 +123,7 @@ class IssuePrCandidateAttempt:
     allowed_write_paths: list[str] = field(default_factory=list)
     evidence: dict[str, object] = field(default_factory=dict)
     actions: list[dict[str, object]] = field(default_factory=list)
+    auxiliary_materialization: dict[str, object] = field(default_factory=dict)
     source_materialization: dict[str, object] = field(default_factory=dict)
     test_materialization: dict[str, object] = field(default_factory=dict)
     candidate_diff: dict[str, object] = field(default_factory=dict)
@@ -129,6 +148,7 @@ class IssuePrCandidateAttempt:
             "allowed_write_paths": list(self.allowed_write_paths),
             "evidence": _json_copy(self.evidence),
             "actions": _json_copy(self.actions),
+            "auxiliary_materialization": _json_copy(self.auxiliary_materialization),
             "source_materialization": _json_copy(self.source_materialization),
             "test_materialization": _json_copy(self.test_materialization),
             "candidate_diff": _json_copy(self.candidate_diff),
@@ -1015,9 +1035,10 @@ def run_pytest_strict_addopts_issue_pr_candidate_attempt(
     validation_command: str | None = None,
     write: bool = True,
     validate: bool = False,
+    include_auxiliary_paths: bool = False,
     validation_timeout_seconds: int = 120,
 ) -> IssuePrCandidateAttempt:
-    """Attempt the DATA-024 pytest #14442/#14443 source/test-only candidate."""
+    """Attempt the pytest #14442/#14443 candidate in source/test or full scope."""
 
     if replay_id != PYTEST_STRICT_ADDOPTS_REPLAY_ID:
         raise IssuePrCandidateAttemptError(
@@ -1063,6 +1084,12 @@ def run_pytest_strict_addopts_issue_pr_candidate_attempt(
 
     blockers: list[dict[str, str]] = []
     materialization_gaps: list[dict[str, str]] = []
+    allowed_write_paths = (
+        PYTEST_STRICT_ADDOPTS_ACCEPTED_PATHS
+        if include_auxiliary_paths
+        else PYTEST_STRICT_ADDOPTS_SOURCE_TEST_PATHS
+    )
+    planned_write_files = list(allowed_write_paths)
     actions: list[dict[str, object]] = [
         {
             "kind": "select_replay_row",
@@ -1074,11 +1101,24 @@ def run_pytest_strict_addopts_issue_pr_candidate_attempt(
             },
         },
         {
-            "kind": "declare_source_test_only_scope",
+            "kind": (
+                "declare_full_accepted_edit_scope"
+                if include_auxiliary_paths
+                else "declare_source_test_only_scope"
+            ),
             "target": replay_id,
             "payload": {
-                "planned_write_files": PYTEST_STRICT_ADDOPTS_SOURCE_TEST_PATHS,
-                "excluded_auxiliary_paths": PYTEST_STRICT_ADDOPTS_AUXILIARY_PATHS,
+                "planned_write_files": planned_write_files,
+                "included_auxiliary_paths": (
+                    list(PYTEST_STRICT_ADDOPTS_AUXILIARY_PATHS)
+                    if include_auxiliary_paths
+                    else []
+                ),
+                "excluded_auxiliary_paths": (
+                    []
+                    if include_auxiliary_paths
+                    else list(PYTEST_STRICT_ADDOPTS_AUXILIARY_PATHS)
+                ),
             },
         },
     ]
@@ -1103,6 +1143,50 @@ def run_pytest_strict_addopts_issue_pr_candidate_attempt(
     source_materialization: dict[str, object] = {}
     test_config_materialization: dict[str, object] = {}
     test_mark_materialization: dict[str, object] = {}
+    auxiliary_materialization: dict[str, object] = {}
+    authors_materialization: dict[str, object] = {}
+    changelog_materialization: dict[str, object] = {}
+    if include_auxiliary_paths and not blockers:
+        try:
+            authors_materialization = _materialize_pytest_strict_addopts_authors(
+                resolved_repo,
+                write=write,
+            )
+            actions.append(_pytest_strict_addopts_authors_action())
+        except IssuePrCandidateAttemptError as error:
+            authors_materialization = {
+                "status": "blocked",
+                "target_file": PYTEST_STRICT_ADDOPTS_AUTHORS_PATH,
+            }
+            blockers.append(error.blocker)
+
+    if include_auxiliary_paths and not blockers:
+        try:
+            changelog_materialization = _materialize_pytest_strict_addopts_changelog(
+                resolved_repo,
+                write=write,
+            )
+            actions.append(_pytest_strict_addopts_changelog_action())
+        except IssuePrCandidateAttemptError as error:
+            changelog_materialization = {
+                "status": "blocked",
+                "target_file": PYTEST_STRICT_ADDOPTS_CHANGELOG_PATH,
+            }
+            blockers.append(error.blocker)
+
+    if include_auxiliary_paths:
+        auxiliary_materialization = {
+            "status": (
+                "materialized"
+                if authors_materialization and changelog_materialization
+                else "blocked"
+            ),
+            "targets": [
+                authors_materialization,
+                changelog_materialization,
+            ],
+        }
+
     if not blockers:
         try:
             source_materialization = _materialize_pytest_strict_addopts_source(
@@ -1169,6 +1253,8 @@ def run_pytest_strict_addopts_issue_pr_candidate_attempt(
     changed_files = _string_sequence(candidate_diff.get("changed_files"))
     planned_changed_files = _unique(
         [
+            *_string_sequence(authors_materialization.get("planned_changed_files")),
+            *_string_sequence(changelog_materialization.get("planned_changed_files")),
             *_source_planned_changed_files(
                 source_materialization, PYTEST_STRICT_ADDOPTS_SOURCE_PATH
             ),
@@ -1177,18 +1263,24 @@ def run_pytest_strict_addopts_issue_pr_candidate_attempt(
         ]
     )
     files_changed = changed_files or planned_changed_files
-    writes_outside_source_test_scope = _paths_outside_allowlist(
+    writes_outside_allowed_scope = _paths_outside_allowlist(
         files_changed,
-        PYTEST_STRICT_ADDOPTS_SOURCE_TEST_PATHS,
+        allowed_write_paths,
     )
-    if writes_outside_source_test_scope:
+    if writes_outside_allowed_scope:
         blockers.append(
             {
-                "field": "source_test_only_scope",
-                "reason": "writes_outside_source_test_scope",
+                "field": "mutation_scope",
+                "reason": (
+                    "writes_outside_accepted_scope"
+                    if include_auxiliary_paths
+                    else "writes_outside_source_test_scope"
+                ),
                 "message": (
-                    "DATA-024 candidate wrote outside the explicit source/test-only "
-                    "scope"
+                    "candidate wrote outside the accepted pytest #14442 scope"
+                    if include_auxiliary_paths
+                    else "DATA-024 candidate wrote outside the explicit "
+                    "source/test-only scope"
                 ),
             }
         )
@@ -1210,14 +1302,39 @@ def run_pytest_strict_addopts_issue_pr_candidate_attempt(
         path for path in PYTEST_STRICT_ADDOPTS_AUXILIARY_PATHS if path not in files_changed
     ]
     if auxiliary_missing_paths:
-        materialization_gaps.append(
+        if include_auxiliary_paths:
+            blockers.append(
+                {
+                    "field": "candidate_diff",
+                    "reason": "accepted_auxiliary_edit_not_fully_materialized",
+                    "message": (
+                        "DATA-025 full-scope candidate did not materialize: "
+                        + ", ".join(auxiliary_missing_paths)
+                    ),
+                }
+            )
+        else:
+            materialization_gaps.append(
+                {
+                    "field": "accepted_change.changed_files",
+                    "reason": "accepted_auxiliary_paths_not_materialized",
+                    "message": (
+                        "DATA-024 is explicitly source/test-only and did not "
+                        "materialize: "
+                        + ", ".join(auxiliary_missing_paths)
+                    ),
+                }
+            )
+    accepted_missing_paths = [
+        path for path in PYTEST_STRICT_ADDOPTS_ACCEPTED_PATHS if path not in files_changed
+    ]
+    if include_auxiliary_paths and not blockers and accepted_missing_paths:
+        blockers.append(
             {
-                "field": "accepted_change.changed_files",
-                "reason": "accepted_auxiliary_paths_not_materialized",
-                "message": (
-                    "DATA-024 is explicitly source/test-only and did not materialize: "
-                    + ", ".join(auxiliary_missing_paths)
-                ),
+                "field": "candidate_diff",
+                "reason": "accepted_edit_not_fully_materialized",
+                "message": "candidate did not materialize accepted paths: "
+                + ", ".join(accepted_missing_paths),
             }
         )
 
@@ -1262,6 +1379,7 @@ def run_pytest_strict_addopts_issue_pr_candidate_attempt(
         materialization_gaps=materialization_gaps,
         files_changed=files_changed,
         validation=validation,
+        include_auxiliary_paths=include_auxiliary_paths,
     )
     residual_labels = [blocker["reason"] for blocker in blockers]
     if not residual_labels:
@@ -1294,16 +1412,31 @@ def run_pytest_strict_addopts_issue_pr_candidate_attempt(
         validation_status=str(validation.get("status", "")),
     )
     mutation_scope = {
-        "mode": "issue_pr_candidate_attempt_source_test_only",
+        "mode": (
+            "issue_pr_candidate_attempt_full_accepted_scope"
+            if include_auxiliary_paths
+            else "issue_pr_candidate_attempt_source_test_only"
+        ),
         "accepted_write_paths": list(accepted_paths),
-        "allowed_write_paths": list(PYTEST_STRICT_ADDOPTS_SOURCE_TEST_PATHS),
-        "planned_write_files": list(PYTEST_STRICT_ADDOPTS_SOURCE_TEST_PATHS),
-        "excluded_auxiliary_paths": list(PYTEST_STRICT_ADDOPTS_AUXILIARY_PATHS),
+        "allowed_write_paths": list(allowed_write_paths),
+        "planned_write_files": planned_write_files,
+        "included_auxiliary_paths": (
+            list(PYTEST_STRICT_ADDOPTS_AUXILIARY_PATHS)
+            if include_auxiliary_paths
+            else []
+        ),
+        "excluded_auxiliary_paths": (
+            [] if include_auxiliary_paths else list(PYTEST_STRICT_ADDOPTS_AUXILIARY_PATHS)
+        ),
         "files_changed": files_changed,
-        "writes_outside_allowlist": writes_outside_source_test_scope,
-        "allowed_write_path_check_passed": not writes_outside_source_test_scope,
+        "writes_outside_allowlist": writes_outside_allowed_scope,
+        "allowed_write_path_check_passed": not writes_outside_allowed_scope,
         "missing_allowed_write_paths": source_test_missing_paths,
         "materialization_gap_paths": auxiliary_missing_paths,
+        "accepted_missing_paths": accepted_missing_paths,
+        "full_accepted_edit_coverage_expressible": (
+            include_auxiliary_paths and not accepted_missing_paths and not blockers
+        ),
     }
     return IssuePrCandidateAttempt(
         candidate_id=candidate_id,
@@ -1312,10 +1445,15 @@ def run_pytest_strict_addopts_issue_pr_candidate_attempt(
         repo_before_ref=expected_sha,
         prompt=prompt,
         status=status,
-        action_family=PYTEST_STRICT_ADDOPTS_ACTION_FAMILY,
-        allowed_write_paths=list(PYTEST_STRICT_ADDOPTS_SOURCE_TEST_PATHS),
+        action_family=(
+            PYTEST_STRICT_ADDOPTS_FULL_SCOPE_ACTION_FAMILY
+            if include_auxiliary_paths
+            else PYTEST_STRICT_ADDOPTS_ACTION_FAMILY
+        ),
+        allowed_write_paths=list(allowed_write_paths),
         evidence=evidence,
         actions=actions,
+        auxiliary_materialization=auxiliary_materialization,
         source_materialization=source_materialization,
         test_materialization={
             "status": (
@@ -1351,6 +1489,7 @@ def run_issue_pr_candidate_attempt(
     validation_command: str | None = None,
     write: bool = True,
     validate: bool = False,
+    include_pytest_auxiliaries: bool = False,
     validation_timeout_seconds: int = 120,
 ) -> IssuePrCandidateAttempt:
     """Dispatch to the bounded candidate attempt for a supported replay id."""
@@ -1414,6 +1553,7 @@ def run_issue_pr_candidate_attempt(
             validation_command=validation_command,
             write=write,
             validate=validate,
+            include_auxiliary_paths=include_pytest_auxiliaries,
             validation_timeout_seconds=validation_timeout_seconds,
         )
     raise IssuePrCandidateAttemptError(
@@ -1514,6 +1654,8 @@ def write_issue_pr_candidate_attempt_report(
         if record.get("replay_id") == CLICK_DEFAULT_MAP_REPLAY_ID
         else "DATA-016 Click semver Issue/PR Candidate Attempt"
         if record.get("replay_id") == CLICK_SEMVER_REPLAY_ID
+        else "DATA-025 Pytest #14442 Full-Scope Candidate Attempt"
+        if record.get("action_family") == PYTEST_STRICT_ADDOPTS_FULL_SCOPE_ACTION_FAMILY
         else "DATA-024 Pytest #14442 Source/Test Candidate Attempt"
         if record.get("replay_id") == PYTEST_STRICT_ADDOPTS_REPLAY_ID
         else "DATA-012 Requests Issue/PR Candidate Attempt"
@@ -1600,6 +1742,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--validation-timeout-seconds", type=int, default=120)
     parser.add_argument("--plan-only", action="store_true")
     parser.add_argument("--validate", action="store_true")
+    parser.add_argument(
+        "--include-pytest-auxiliaries",
+        action="store_true",
+        help=(
+            "For pytest #14442 only, materialize AUTHORS and the changelog "
+            "fragment with the DATA-024 source/test candidate."
+        ),
+    )
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--report", type=Path)
     args = parser.parse_args(argv)
@@ -1637,6 +1787,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         validation_command=validation_command,
         write=not args.plan_only,
         validate=args.validate,
+        include_pytest_auxiliaries=args.include_pytest_auxiliaries,
         validation_timeout_seconds=args.validation_timeout_seconds,
     )
     out_path = write_issue_pr_candidate_attempt_json(attempt, args.out)
@@ -2016,6 +2167,173 @@ def _pytest_strict_addopts_source_actions() -> list[dict[str, object]]:
     ]
 
 
+def _pytest_strict_addopts_authors_action() -> dict[str, object]:
+    return {
+        "kind": "newline_delimited_sorted_unique_insert",
+        "target": PYTEST_STRICT_ADDOPTS_AUTHORS_PATH,
+        "payload": {
+            "entries": list(PYTEST_STRICT_ADDOPTS_AUTHOR_ENTRIES),
+            "sort_key": "casefold",
+            "provenance": ["DATA-021", "DATA-023", "DATA-024", "DATA-025"],
+        },
+    }
+
+
+def _pytest_strict_addopts_changelog_action() -> dict[str, object]:
+    return {
+        "kind": "towncrier_fragment_create",
+        "target": PYTEST_STRICT_ADDOPTS_CHANGELOG_PATH,
+        "payload": {
+            "issue_number": 14442,
+            "fragment_type": "bugfix",
+            "content_source": "pytest_strict_addopts_changelog_fragment_v1",
+            "provenance": ["DATA-021", "DATA-023", "DATA-024", "DATA-025"],
+        },
+    }
+
+
+def _materialize_pytest_strict_addopts_authors(
+    repo_path: Path,
+    *,
+    write: bool,
+) -> dict[str, object]:
+    authors_path = _repo_file(repo_path, PYTEST_STRICT_ADDOPTS_AUTHORS_PATH)
+    if not authors_path.exists():
+        raise IssuePrCandidateAttemptError(
+            "pytest AUTHORS file not found",
+            blocker={
+                "field": "auxiliary_materialization",
+                "reason": "authors_file_not_found",
+                "message": "could not find AUTHORS in the pytest checkout",
+            },
+        )
+    before_text = authors_path.read_text(encoding="utf-8")
+    before_lines = before_text.splitlines()
+    existing = set(before_lines)
+    missing_entries = [
+        entry for entry in PYTEST_STRICT_ADDOPTS_AUTHOR_ENTRIES if entry not in existing
+    ]
+    if not missing_entries:
+        return _text_file_candidate_after(
+            before_text=before_text,
+            after_text=before_text,
+            target_file=PYTEST_STRICT_ADDOPTS_AUTHORS_PATH,
+            planned_changed_files=[],
+            wrote_file=False,
+            status="already_applied",
+            metadata={
+                "inserted_entries": [],
+                "sort_key": "contributors_section_ascii_casefold",
+            },
+        )
+
+    after_lines = list(before_lines)
+    for entry in sorted(missing_entries, key=str.casefold):
+        entry_key = _authors_sort_key(entry)
+        insert_at = len(after_lines)
+        for index, line in enumerate(after_lines):
+            if index < _authors_contributor_start_line(after_lines):
+                continue
+            if line.strip() and _authors_sort_key(line) > entry_key:
+                insert_at = index
+                break
+        after_lines.insert(insert_at, entry)
+    after_text = "\n".join(after_lines) + ("\n" if before_text.endswith("\n") else "")
+    planned_changed_files = (
+        [PYTEST_STRICT_ADDOPTS_AUTHORS_PATH] if after_text != before_text else []
+    )
+    if write and planned_changed_files:
+        authors_path.write_text(after_text, encoding="utf-8")
+    return _text_file_candidate_after(
+        before_text=before_text,
+        after_text=after_text,
+        target_file=PYTEST_STRICT_ADDOPTS_AUTHORS_PATH,
+        planned_changed_files=planned_changed_files,
+        wrote_file=write and bool(planned_changed_files),
+        status="materialized" if planned_changed_files else "unchanged",
+        metadata={
+            "inserted_entries": missing_entries,
+            "sort_key": "contributors_section_ascii_casefold",
+        },
+    )
+
+
+def _materialize_pytest_strict_addopts_changelog(
+    repo_path: Path,
+    *,
+    write: bool,
+) -> dict[str, object]:
+    changelog_path = _repo_file(repo_path, PYTEST_STRICT_ADDOPTS_CHANGELOG_PATH)
+    changelog_dir = changelog_path.parent
+    if not changelog_dir.is_dir():
+        raise IssuePrCandidateAttemptError(
+            "pytest changelog directory not found",
+            blocker={
+                "field": "auxiliary_materialization",
+                "reason": "changelog_directory_not_found",
+                "message": "could not find changelog/ in the pytest checkout",
+            },
+        )
+    before_text = (
+        changelog_path.read_text(encoding="utf-8") if changelog_path.exists() else ""
+    )
+    after_text = PYTEST_STRICT_ADDOPTS_CHANGELOG_TEXT
+    if before_text == after_text:
+        return _text_file_candidate_after(
+            before_text=before_text,
+            after_text=before_text,
+            target_file=PYTEST_STRICT_ADDOPTS_CHANGELOG_PATH,
+            planned_changed_files=[],
+            wrote_file=False,
+            status="already_applied",
+            metadata={
+                "issue_number": 14442,
+                "fragment_type": "bugfix",
+                "created_new_file": False,
+            },
+        )
+    if before_text:
+        raise IssuePrCandidateAttemptError(
+            "pytest changelog fragment already exists with different content",
+            blocker={
+                "field": "auxiliary_materialization",
+                "reason": "changelog_fragment_conflict",
+                "message": (
+                    "changelog/14442.bugfix.rst exists and does not match the "
+                    "DATA-025 deterministic fragment"
+                ),
+            },
+        )
+    if write:
+        changelog_path.write_text(after_text, encoding="utf-8")
+    return _text_file_candidate_after(
+        before_text=before_text,
+        after_text=after_text,
+        target_file=PYTEST_STRICT_ADDOPTS_CHANGELOG_PATH,
+        planned_changed_files=[PYTEST_STRICT_ADDOPTS_CHANGELOG_PATH],
+        wrote_file=write,
+        status="materialized",
+        metadata={
+            "issue_number": 14442,
+            "fragment_type": "bugfix",
+            "created_new_file": True,
+        },
+    )
+
+
+def _authors_contributor_start_line(lines: Sequence[str]) -> int:
+    for index, line in enumerate(lines):
+        if line == "Contributors include::":
+            return index + 1
+    return 0
+
+
+def _authors_sort_key(value: str) -> str:
+    normalized = unicodedata.normalize("NFKD", value)
+    ascii_value = normalized.encode("ascii", "ignore").decode("ascii")
+    return ascii_value.casefold()
+
+
 def _materialize_pytest_strict_addopts_source(
     repo_path: Path,
     *,
@@ -2339,6 +2657,29 @@ def _test_candidate_after(
     }
 
 
+def _text_file_candidate_after(
+    *,
+    before_text: str,
+    after_text: str,
+    target_file: str,
+    planned_changed_files: Sequence[str],
+    wrote_file: bool,
+    status: str,
+    metadata: Mapping[str, object] | None = None,
+) -> dict[str, object]:
+    return {
+        "status": status,
+        "target_file": target_file,
+        "planned_changed_files": list(planned_changed_files),
+        "wrote_file": wrote_file,
+        "sha256_before": _sha256_text(before_text),
+        "sha256_after": _sha256_text(after_text),
+        "diff_summary": _diff_summary(before_text, after_text),
+        "diff": _unified_diff(before_text, after_text, target_file),
+        "metadata": dict(metadata or {}),
+    }
+
+
 def _selected_validation_command(
     *,
     validation_records: Sequence[Mapping[str, object]],
@@ -2556,12 +2897,25 @@ def _pytest_strict_addopts_structured_action_coverage(
     materialization_gaps: Sequence[Mapping[str, str]],
     files_changed: Sequence[str],
     validation: Mapping[str, object],
+    include_auxiliary_paths: bool,
 ) -> dict[str, object]:
     source_test_paths = set(PYTEST_STRICT_ADDOPTS_SOURCE_TEST_PATHS)
+    auxiliary_paths = set(PYTEST_STRICT_ADDOPTS_AUXILIARY_PATHS)
+    accepted_paths = set(PYTEST_STRICT_ADDOPTS_ACCEPTED_PATHS)
     changed = set(files_changed)
     behavior_covered = not blockers and source_test_paths.issubset(changed)
-    accepted_edit_covered = behavior_covered and not materialization_gaps
+    auxiliary_covered = auxiliary_paths.issubset(changed)
+    accepted_edit_covered = (
+        behavior_covered
+        and auxiliary_covered
+        and accepted_paths == changed
+        and not materialization_gaps
+    )
     labels = []
+    if PYTEST_STRICT_ADDOPTS_AUTHORS_PATH in changed:
+        labels.append("newline_delimited_sorted_unique_insert_authors_covered")
+    if PYTEST_STRICT_ADDOPTS_CHANGELOG_PATH in changed:
+        labels.append("towncrier_bugfix_fragment_create_covered")
     if PYTEST_STRICT_ADDOPTS_SOURCE_PATH in changed:
         labels.extend(
             [
@@ -2580,7 +2934,9 @@ def _pytest_strict_addopts_structured_action_coverage(
     return {
         "accepted_edit_covered": accepted_edit_covered,
         "behavior_edit_covered": behavior_covered,
-        "source_test_only_scope": True,
+        "auxiliary_edit_covered": auxiliary_covered,
+        "source_test_only_scope": not include_auxiliary_paths,
+        "full_accepted_scope": include_auxiliary_paths,
         "coverage_labels": labels,
         "materialization_gap": (
             None
@@ -2588,7 +2944,11 @@ def _pytest_strict_addopts_structured_action_coverage(
             else "accepted_auxiliary_authors_changelog_materialization_gap"
         ),
         "note": (
-            "The DATA-024 candidate covers only the behavior-changing pytest "
+            "The DATA-025 full-scope candidate covers the accepted pytest #14442 "
+            "AUTHORS, changelog, source, and test paths with deterministic "
+            "bounded materializers."
+            if include_auxiliary_paths
+            else "The DATA-024 candidate covers only the behavior-changing pytest "
             "source/test slice with a deterministic import inserter, a bounded "
             "Config.parse insertion, and two constrained existing-pytest-test "
             "refinements. Full accepted-edit parity remains false because AUTHORS "
@@ -2656,9 +3016,35 @@ def _run_shell(
 
 
 def _candidate_diff(repo_path: Path, paths: Sequence[str]) -> dict[str, object]:
-    diff = _git_stdout(repo_path, ("diff", "--", *paths))
+    diff_parts = []
+    tracked_diff = _git_stdout(repo_path, ("diff", "--", *paths))
+    if tracked_diff:
+        diff_parts.append(tracked_diff)
     changed = _git_stdout(repo_path, ("diff", "--name-only", "--", *paths))
     changed_files = [line for line in changed.splitlines() if line]
+    inside_git_worktree = (
+        _git_stdout(repo_path, ("rev-parse", "--is-inside-work-tree")) == "true"
+    )
+    if not inside_git_worktree:
+        return {
+            "diff": tracked_diff,
+            "changed_files": changed_files,
+            "diff_summary": _diff_text_summary(tracked_diff),
+        }
+    for path in paths:
+        repo_file = _repo_file(repo_path, path)
+        if not repo_file.is_file():
+            continue
+        tracked = _git_stdout(repo_path, ("ls-files", "--", path))
+        if tracked:
+            continue
+        file_text = repo_file.read_text(encoding="utf-8")
+        diff_parts.append(_unified_diff("", file_text, path))
+        if path not in changed_files:
+            changed_files.append(path)
+    changed_set = set(changed_files)
+    changed_files = [path for path in paths if path in changed_set]
+    diff = "\n".join(part for part in diff_parts if part)
     return {
         "diff": diff,
         "changed_files": changed_files,

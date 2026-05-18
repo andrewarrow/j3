@@ -44,16 +44,7 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-- `DATA-025`: worker Cicero (`019e3c6b-367b-7230-96c6-6f4ca9543de3`) to
-  materialize the pytest #14442 auxiliary accepted paths `AUTHORS` and
-  `changelog/14442.bugfix.rst`, then integrate them with the DATA-024
-  validated source/test candidate. Ownership: a focused pytest auxiliary
-  materializer module/tests, generated `/tmp` artifacts, optional compact
-  report under `docs/`, and plan updates. Acceptance: live pinned pytest
-  checkout changes exactly the five accepted paths, validates with `pytest
-  testing/test_config.py testing/test_mark.py -q`, records auxiliary actions,
-  candidate diff, mutation scope, residuals, and whether full accepted-edit
-  coverage is now expressible.
+- None.
 
 ## Ready Queue
 
@@ -86,6 +77,19 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `DATA-025`: added deterministic pytest #14442 auxiliary materializers and a
+  full-scope candidate mode. The live pinned pytest checkout at
+  `8f81c76744daf72d4f77cfc8423f4bdc60733d78` changed exactly `AUTHORS`,
+  `changelog/14442.bugfix.rst`, `src/_pytest/config/__init__.py`,
+  `testing/test_config.py`, and `testing/test_mark.py`. Focused validation
+  passed with `pytest testing/test_config.py testing/test_mark.py -q` in
+  `6.083s`; py_compile passed for the touched Python files. Candidate JSON
+  records auxiliary actions, candidate diff, mutation scope, DATA-021/023/024
+  provenance, residual label `candidate_validation_passed`, structured-action
+  coverage, and `accepted_edit_covered = true`. Artifacts:
+  `/tmp/j3-data-025-pytest-14442-full-scope/candidate.json`,
+  `/tmp/j3-data-025-pytest-14442-full-scope/report.md`, and
+  `docs/DATA_025_PYTEST_14442_FULL_SCOPE_CANDIDATE_2026-05-18.md`.
 - `DATA-026`: added normalized prompt/spec and local-knowledge evidence for
   exactly `pytest-dev__pytest-issue-14462-pr-14466`. The prompt/spec row covers
   minimal reproduction, observed behavior, expected behavior, affected

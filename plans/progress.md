@@ -2928,3 +2928,35 @@ meaningful work. Do not replace this file with a daily reset.
   materialization and ranking gaps are addressed.
 - Blockers: no evidence blocker remains for DATA-026; candidate materialization
   and ranking evidence remain for pytest #14462.
+
+### 2026-05-18 - DATA-025 - Pytest #14442 auxiliary materializers and full-scope candidate
+
+- Owner: worker Cicero (`019e3c6b-367b-7230-96c6-6f4ca9543de3`).
+- Files changed: `j3/issue_pr_candidate_attempt.py`,
+  `tests/test_issue_pr_candidate_attempt.py`,
+  `docs/DATA_025_PYTEST_14442_FULL_SCOPE_CANDIDATE_2026-05-18.md`,
+  `plans/active.md`, `plans/backlog.md`, `plans/progress.md`.
+- Tests: `python -m py_compile j3/issue_pr_candidate_attempt.py
+  tests/test_issue_pr_candidate_attempt.py` -> passed; `pytest
+  tests/test_issue_pr_candidate_attempt.py -q` -> 15 passed; live CLI
+  `python -m j3.issue_pr_candidate_attempt ... --include-pytest-auxiliaries
+  --validate` against
+  `/tmp/j3-data-025-pytest-14442-full-scope/repo-8f81c767-v3` -> validated;
+  live `python -m py_compile src/_pytest/config/__init__.py
+  testing/test_config.py testing/test_mark.py` -> passed; `pytest
+  tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check` ->
+  passed.
+- Result: materialized the accepted pytest #14442/#14443 auxiliary paths
+  `AUTHORS` and `changelog/14442.bugfix.rst` together with the DATA-024
+  source/test candidate. The live pinned checkout changed exactly `AUTHORS`,
+  `changelog/14442.bugfix.rst`, `src/_pytest/config/__init__.py`,
+  `testing/test_config.py`, and `testing/test_mark.py`; focused validation
+  passed in `6.083s`. Candidate JSON records actions, candidate diff, mutation
+  scope, DATA-021/023/024 provenance, residual label
+  `candidate_validation_passed`, structured-action coverage, and full
+  accepted-edit coverage as expressible for this bounded replay.
+- Commit: this DATA-025 commit.
+- Push: pending at commit time.
+- Next: coordinator can review DATA-025 and DATA-026, then dispatch the next
+  ready task.
+- Blockers: none.

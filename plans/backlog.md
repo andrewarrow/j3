@@ -1631,7 +1631,7 @@ Long-term target:
 
 ### DATA-025: Pytest #14442 auxiliary materializers and full-scope candidate
 
-- Status: active
+- Status: done
 - Why: DATA-024 validated the source/test behavior but preserved
   `accepted_auxiliary_paths_not_materialized`. DATA-023 says `AUTHORS` is a
   small deterministic insertion and the changelog fragment needs a constrained
@@ -1650,6 +1650,17 @@ Long-term target:
   AUTHORS/changelog content is blocked, record the exact blocker.
 - Tests: focused auxiliary materializer tests, plan consistency, `git diff
   --check`, and live validation when feasible.
+- Completion note: added deterministic DATA-025 auxiliary materializers for
+  pytest #14442/#14443 and integrated them with the validated DATA-024
+  source/test candidate. The live pinned checkout at
+  `8f81c76744daf72d4f77cfc8423f4bdc60733d78` changed exactly `AUTHORS`,
+  `changelog/14442.bugfix.rst`, `src/_pytest/config/__init__.py`,
+  `testing/test_config.py`, and `testing/test_mark.py`, passed `pytest
+  testing/test_config.py testing/test_mark.py -q` in `6.083s`, and records
+  full accepted-edit coverage as expressible for this bounded replay. Artifacts:
+  `/tmp/j3-data-025-pytest-14442-full-scope/candidate.json`,
+  `/tmp/j3-data-025-pytest-14442-full-scope/report.md`, and
+  `docs/DATA_025_PYTEST_14442_FULL_SCOPE_CANDIDATE_2026-05-18.md`.
 
 ### DATA-026: Pytest #14462 prompt/spec and local knowledge evidence
 

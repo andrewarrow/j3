@@ -988,8 +988,8 @@ meaningful work. Do not replace this file with a daily reset.
   targeted validation command, cites pytest layout/public API/validation/pytest
   pattern knowledge, and blocks on `test_case_materialization_gap` instead of
   pretending the task passes.
-- Commit: 4135a7c
-- Push: succeeded
+- Commit: pending
+- Push: pending
 - Next: implement behavior-specific pytest case materialization for this
   candidate surface, then rerun the REAL-003 tests-only shadow score with
   generated candidates.
@@ -1030,8 +1030,8 @@ meaningful work. Do not replace this file with a daily reset.
   passed. Combined with `REAL-004` `iniconfig`, Gate A now has three
   baseline-passing repositories. Failures are not classified as agent failures
   because no candidate generation or edit validation was attempted.
-- Commit: pending
-- Push: pending
+- Commit: 4135a7c
+- Push: succeeded
 - Next: proceed to tests-only candidate scoring only after `GS7-008` closes the
   `iniconfig` test-case materialization gap; treat any future `boltons`
   baseline run as separate validation evidence.

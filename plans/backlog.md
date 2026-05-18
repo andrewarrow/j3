@@ -1519,6 +1519,48 @@ Long-term target:
   blockers are candidate-readiness refresh, ranking evidence, and deciding
   whether the accepted auxiliary paths are in scope for a future candidate.
 
+### DATA-022: Pytest #14442 readiness refresh
+
+- Status: active
+- Why: DATA-021 supplied the missing prompt/spec and local-knowledge evidence
+  for the first DATA-018 pytest row. The next gate must say whether
+  `pytest-dev__pytest-issue-14442-pr-14443` is candidate-ready, and if not,
+  exactly which hard blocker remains.
+- Write scope: `j3/issue_pr_readiness.py`,
+  `tests/test_issue_pr_readiness.py`, generated outputs under `/tmp`,
+  optional compact report under `docs/`, and plan updates.
+- Acceptance: consume DATA-018 preflight evidence, DATA-021 prompt/spec
+  evidence, and DATA-021 local-knowledge evidence for exactly
+  `pytest-dev__pytest-issue-14442-pr-14443`. Emit one readiness row with
+  missing-evidence labels, allowed write scope, validation command, residual
+  labels, and recommendation. If the row is ready, make the source/test versus
+  full accepted-edit scope decision explicit; if it is blocked, record the
+  concrete evidence gap.
+- Tests: focused readiness tests, plan consistency, `git diff --check`, and a
+  CLI smoke for the single pytest row.
+
+### DATA-023: Pytest #14442 materialization coverage audit
+
+- Status: active
+- Why: before attempting a pytest candidate, the loop needs an honest answer
+  to whether the accepted diff can be expressed by the current structured
+  action surface or only by new materializers/generators. This directly tests
+  the structured-action coverage thesis on a repo beyond Requests/Click.
+- Write scope: a focused issue/PR materialization audit module and tests,
+  generated outputs under `/tmp`, optional compact report under `docs/`, and
+  plan updates. Do not attempt candidate source edits.
+- Acceptance: inspect the accepted #14442/#14443 diff against the repo-before
+  checkout and classify each accepted path (`AUTHORS`,
+  `changelog/14442.bugfix.rst`, `src/_pytest/config/__init__.py`,
+  `testing/test_config.py`, and `testing/test_mark.py`) as covered by current
+  structured actions, covered by a small proposed deterministic action,
+  requiring a constrained local generator/source-region action, or not
+  currently expressible. Record provenance, action-family recommendation,
+  validation cost, likely failure mode, and the smallest next falsifiable
+  materializer task for each path.
+- Tests: focused audit tests, plan consistency, `git diff --check`, and a CLI
+  smoke that emits machine-readable audit rows plus a compact report.
+
 ## Next Recommended Queue
 
 Start with these unless fresh evidence changes the order:

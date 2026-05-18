@@ -44,9 +44,22 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-None currently recorded. The coordinator should review completed DATA-020 and
-DATA-021 results, then dispatch the next bounded ready task or record a
-concrete blocker.
+- `DATA-022`: worker to rerun candidate-readiness for
+  `pytest-dev__pytest-issue-14442-pr-14443` using DATA-018 preflight plus
+  DATA-021 prompt/spec and local-knowledge evidence. Ownership:
+  `j3/issue_pr_readiness.py`, `tests/test_issue_pr_readiness.py`, generated
+  `/tmp` readiness artifacts, optional compact report under `docs/`, and plan
+  updates. Acceptance: one readiness row for pytest #14442 with exact missing
+  evidence labels, allowed write scope, validation command, residual labels,
+  and recommendation; if not ready, preserve the concrete blocker.
+- `DATA-023`: worker to audit materialization coverage for the accepted
+  `pytest-dev__pytest-issue-14442-pr-14443` diff before any candidate edit.
+  Ownership: a focused issue/PR materialization audit module/tests, generated
+  `/tmp` artifacts, optional compact report under `docs/`, and plan updates.
+  Acceptance: classify `AUTHORS`, `changelog/14442.bugfix.rst`,
+  `src/_pytest/config/__init__.py`, `testing/test_config.py`, and
+  `testing/test_mark.py` by current/proposed action coverage, validation
+  cost, likely failure mode, and smallest next falsifiable materializer task.
 
 ## Ready Queue
 

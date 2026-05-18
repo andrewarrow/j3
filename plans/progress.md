@@ -2574,7 +2574,7 @@ meaningful work. Do not replace this file with a daily reset.
   `docs/commands.md` and `docs/conf.py`. The candidate record includes actions,
   diff, mutation scope, validation command/runtime, residual labels, DATA-017
   and DATA-019 provenance, and Sphinx `docs_build_passed = true`.
-- Commit: 791bb46.
+- Commit: e8dffb7.
 - Push: succeeded.
 - Next: review DATA-021 when it lands; no further Click docs validation
   blocker remains for the `docs/commands.md` plus `docs/conf.py` slice.
@@ -2617,11 +2617,34 @@ meaningful work. Do not replace this file with a daily reset.
   `testing/test_config.py`, and `testing/test_mark.py`, the DATA-018 focused
   validation recipe, strict addopts behavior, strict marker/config semantics,
   repo test patterns, changelog/AUTHORS conventions, provenance, and split.
-- Commit: pending.
-- Push: pending.
+- Commit: 791bb46 and afb1f12.
+- Push: succeeded.
 - Next: run a readiness refresh for the pytest #14442/#14443 row using the new
   prompt/spec and local-knowledge evidence, then decide whether the future
   candidate attempt is source/test-only or includes auxiliary materializers.
 - Blockers: candidate-readiness refresh and ranking evidence remain; accepted
   auxiliary paths `AUTHORS` and `changelog/14442.bugfix.rst` need explicit
   scope or materializers before a full accepted-edit attempt.
+
+### 2026-05-18 - Coordinator Review And Dispatch - DATA-022 / DATA-023
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, `plans/progress.md`.
+- Tests: `python -m py_compile j3/issue_pr_docs_materializer.py
+  tests/test_issue_pr_docs_materializer.py` -> passed; `pytest
+  tests/test_issue_pr_docs_materializer.py -q` -> 5 passed; `python -m
+  py_compile j3/issue_pr_prompt_spec.py j3/local_knowledge.py
+  tests/test_issue_pr_prompt_spec.py tests/test_local_knowledge.py` -> passed;
+  `pytest tests/test_issue_pr_prompt_spec.py tests/test_local_knowledge.py -q`
+  -> 16 passed; `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git
+  diff --check` -> passed.
+- Result: reviewed DATA-020 and DATA-021. The Click docs/conf auxiliary slice
+  now validates with Sphinx, proving the discovered cross-path dependency can
+  be represented with a small config action. The pytest #14442 row now has
+  prompt/spec plus local-knowledge evidence, so the next loop runs the
+  readiness gate (`DATA-022`) and audits accepted-diff materialization coverage
+  (`DATA-023`) before any candidate source edit.
+- Commit: pending coordinator dispatch commit.
+- Push: pending.
+- Next: workers dispatched for `DATA-022` and `DATA-023`.
+- Blockers: none.

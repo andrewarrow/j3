@@ -667,8 +667,8 @@ meaningful work. Do not replace this file with a daily reset.
   issue/PR replay rows, validation outcomes, and residual labels, and defines
   JSONL record families with provenance, stable splits, leakage rules,
   extraction rules, evaluation hooks, and first acquisition commands.
-- Commit: this task commit
-- Push: pending at commit time; see worker report
+- Commit: 08460cbc113df33dc8706ae7ff5edaa68472bd9b
+- Push: succeeded
 - Next: build the real-repo preflight records, pytest pattern extractor, and
   issue/PR replay preflight rows before wiring this knowledge into candidate
   generation.
@@ -691,8 +691,8 @@ meaningful work. Do not replace this file with a daily reset.
   changed line counts, touched region, import changes, unified diff, diff
   summary, and AST delta. The focused fixture mirrors the `psf/requests#7427`
   `should_bypass_proxies` domain-boundary edit.
-- Commit: this task commit
-- Push: pending at commit time; see worker report
+- Commit: f18d3c3959496c34a64743b979a01f8c19ec7867
+- Push: succeeded
 - Next: use the probe as the source-materialization gate for real-repo or
   issue/PR replay candidates, and handle repo-convention pytest construction as
   a separate materialization slice.
@@ -712,8 +712,24 @@ meaningful work. Do not replace this file with a daily reset.
   structured action coverage, repo-state planning, local knowledge, cheap
   validation, held-out ranking, concrete rollout gates, pivot criteria, and the
   next proof queue.
-- Commit: this task commit
-- Push: pending at commit time; see worker report
+- Commit: 6bfb97fff5a09478c75e8f46abf4dd39907fe227
+- Push: succeeded
 - Next: run `REAL-002`, `DATA-005`, `GS7-005`, `KNOW-002`, and `GS7-006` before
   attempting `REAL-003` shadow scoring or guarded tests-only opt-in.
+- Blockers: none
+
+### 2026-05-18 - COORD - Preflight and tests-only dispatch
+
+- Owner: coordinator
+- Files changed: `plans/active.md`, `plans/backlog.md`, `plans/progress.md`
+- Tests: `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check` -> passed.
+- Result: reviewed `MAT-002`, `KNOW-001`, and `WEDGE-001`. The next active
+  batch follows the product wedge proof order: `REAL-002` for real-repo
+  baseline preflight, `DATA-005` for issue/PR replay preflight, and `GS7-005`
+  for the first tests-only existing-repo action slice.
+- Commit: pending coordinator commit
+- Push: pending coordinator push
+- Next: dispatch the three workers, then review whether validation setup,
+  tests-only planning, or replay preflight breaks first.
 - Blockers: none

@@ -16,19 +16,68 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
+### `REAL-002`: Real repo eval ladder preflight runner
+
+- Status: active
+- Owner: pending spawn
+- Started: 2026-05-18
+- Goal: turn the `REAL-001` ladder contract into a runnable preflight that
+  proves pinned checkout, baseline validation, timeouts, and outcome labeling
+  before scoring j3 edits.
+- Write scope: real-repo preflight runner module, focused tests, docs if
+  needed, and plan updates.
+- Acceptance: clone or materialize one pinned repo to `/tmp`, run setup and
+  baseline validation with timeouts, enforce allowed write paths for a dummy
+  candidate, and emit JSONL outcome rows with environment versus agent failure
+  labels. Use subprocess mocking or a tiny local fixture for unit tests; avoid
+  network-dependent tests.
+- Tests: focused runner tests, `pytest tests/test_plan_consistency.py -q`, and
+  `git diff --check`.
+
+### `DATA-005`: Issue/PR replay preflight runner
+
+- Status: active
+- Owner: pending spawn
+- Started: 2026-05-18
+- Goal: prove whether a `DATA-004` replay row can be checked out, setup-checked,
+  baseline-validated, and residual-labeled before any edit attempt.
+- Write scope: issue/PR replay preflight runner module, focused tests, docs if
+  needed, and plan updates.
+- Acceptance: check out or simulate one `repo_before_ref`, run dependency/setup
+  and focused validation preflight without edits, and classify failures as
+  environment, validation, prompt/spec, ranking, materialization, or local
+  knowledge blockers. Use mocked subprocesses or tiny fixtures for tests.
+- Tests: focused preflight tests, `pytest tests/test_plan_consistency.py -q`,
+  and `git diff --check`.
+
+### `GS7-005`: Tests-only existing-repo support for one-file libraries
+
+- Status: active
+- Owner: pending spawn
+- Started: 2026-05-18
+- Goal: implement the first product-wedge action slice: inspect a small
+  existing one-file Python library, add pytest coverage only, avoid production
+  edits, validate, and record a structured request-to-repo outcome.
+- Write scope: existing-repo request planning/building for tests-only library
+  support, GreenShot fixtures/tests, focused request/outcome tests, and plan
+  updates.
+- Acceptance: the existing `slugify_tests_only_existing` GreenShot-7 task
+  should move from `action_coverage` blocked to built/validated or, if blocked,
+  emit a precise residual that identifies the missing repo-state, local
+  knowledge, or materialization layer.
+- Tests: focused existing-repo/GreenShot tests,
+  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+
 ## Ready Queue
 
 These are good next assignments for the next loop:
 
-1. `REAL-002`: add a preflight runner for the real-repo eval ladder.
-2. `DATA-005`: add a replay preflight runner for one issue/PR row.
-3. `GS7-005`: add tests-only existing-repo support for one-file libraries.
-4. `KNOW-002`: extract first wedge knowledge records.
-5. `GS7-006`: add repo-state-aware library convention edits.
-6. `MODEL-006`: add candidate-after or AST-delta observation for ranking
+1. `KNOW-002`: extract first wedge knowledge records.
+2. `GS7-006`: add repo-state-aware library convention edits.
+3. `MODEL-006`: add candidate-after or AST-delta observation for ranking
    evidence.
-7. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.
-8. `MODEL-004`: distinguish mapping key and value targets.
+4. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.
+5. `MODEL-004`: distinguish mapping key and value targets.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 

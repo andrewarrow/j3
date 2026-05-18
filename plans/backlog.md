@@ -114,7 +114,7 @@ Long-term target:
 
 ### GS7-005: Add tests-only existing-repo support for one-file libraries
 
-- Status: ready
+- Status: active
 - Why: `ACT-001` classified `slugify_tests_only_existing` as a request-to-repo
   action coverage gap, not a repair ranking problem.
 - Write scope: existing-repo request planning/building for tests-only library
@@ -436,7 +436,7 @@ Long-term target:
 
 ### REAL-002: Real repo eval ladder preflight runner
 
-- Status: ready
+- Status: active
 - Why: `REAL-001` is only a contract until a runner proves pinned repos can be
   checked out and validated cheaply.
 - Write scope: real-repo ladder runner code, focused tests, docs if needed, and
@@ -466,7 +466,7 @@ Long-term target:
 
 ### DATA-005: Issue/PR replay preflight runner
 
-- Status: ready
+- Status: active
 - Why: `DATA-004` records compact real rows, but validation and setup may break
   before edit quality can be measured.
 - Write scope: replay preflight runner code, focused tests, docs if needed, and

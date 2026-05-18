@@ -44,6 +44,41 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
+### REAL-012: Full One-File Feature Gate After Boltons
+
+- Status: active
+- Owner: worker to be spawned by coordinator.
+- Write scope: `j3/real_repo_feature_shadow_score.py`,
+  `tests/test_real_repo_feature_shadow_score.py`, optional compact report
+  under `docs/`, generated live artifacts under `/tmp`, and plan updates.
+- Acceptance: rerun the one-file feature gate after `MAT-006`, counting all
+  four real-repo feature ladder candidates through
+  `j3.real_repo_feature_materializer`; report calibration versus held-out
+  pass rates, total pass@1/pass@3, distinct repos passing, first passing
+  ranks, candidate validation statuses, production-file constraint,
+  mutation-scope violations, hidden-like agreement, zero hosted usage, and the
+  guarded one-file feature opt-in scope.
+- Required checks: focused feature-score tests, `pytest
+  tests/test_plan_consistency.py -q`, `git diff --check`, and a live
+  score/report smoke command with all four pinned repos when feasible.
+
+### DATA-007: Issue/PR Replay Blocker Drilldown
+
+- Status: active
+- Owner: worker to be spawned by coordinator.
+- Write scope: `j3/issue_pr_preflight.py`,
+  `tests/test_issue_pr_preflight.py`, optional compact report under `docs/`,
+  generated live artifacts under `/tmp`, and plan updates.
+- Acceptance: use the `DATA-006` first-batch outcomes to make the first
+  blockers actionable: distinguish validation recipe failure from dependency
+  or fixture setup failure for the Requests row, and summarize which prompt
+  and local-knowledge fields are missing for the two Click rows. Add compact
+  blocker-detail/report support if needed, without attempting issue/PR code
+  edits.
+- Required checks: focused issue/PR preflight tests, `pytest
+  tests/test_plan_consistency.py -q`, `git diff --check`, and a smoke command
+  over the DATA-006 JSONL or a fresh bounded preflight when feasible.
+
 ## Ready Queue
 
 These are good next assignments for the next loop:

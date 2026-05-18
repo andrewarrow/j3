@@ -1712,3 +1712,20 @@ meaningful work. Do not replace this file with a daily reset.
   h11, iniconfig, and humanize before expanding guarded one-file feature
   opt-in scope.
 - Blockers: none
+
+### 2026-05-18 - Coordinator Review And Dispatch - REAL-012 / DATA-007
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, `plans/progress.md`.
+- Tests: focused verification pending before worker spawn.
+- Result: reviewed `DATA-006` and `MAT-006` worker results. `MAT-006` removes
+  the last one-file feature materialization blocker and needs an immediate
+  full-gate score. `DATA-006` shows issue/PR replay blocks before edit
+  attempts on validation, prompt/spec, and local knowledge; the next issue/PR
+  task must turn those labels into actionable blocker detail rather than
+  optimizing synthetic fixtures.
+- Commit: pending
+- Push: pending
+- Next: dispatch workers for `REAL-012` and `DATA-007`, then review both before
+  choosing the next hard proof.
+- Blockers: none

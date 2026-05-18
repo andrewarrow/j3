@@ -941,6 +941,24 @@ Long-term target:
   disagreement. `boltons-feature-slugify-max-length` remains an explicit
   `one_file_materialization_gap` blocker.
 
+### REAL-012: Full one-file feature gate after boltons materializer
+
+- Status: active
+- Why: `MAT-006` removed the final one-file feature materialization blocker, so
+  the gate must be rescored across all four real repos before broadening any
+  guarded opt-in scope.
+- Write scope: focused one-file feature scorer code, focused tests, one compact
+  report under `docs/` if useful, generated outputs under `/tmp`, and plan
+  updates.
+- Acceptance: score the four one-file feature ladder tasks with iniconfig,
+  h11, humanize, and boltons candidates counted through
+  `j3.real_repo_feature_materializer`; report calibration versus held-out
+  rates, pass@1, pass@3, distinct repos passing, production-file constraint,
+  runtime, mutation-scope violations, hidden-like agreement, zero hosted
+  usage, and the exact one-file feature guarded opt-in scope.
+- Tests: focused feature-score tests, plan consistency, `git diff --check`, and
+  the live score/report smoke command.
+
 ### DATA-005: Issue/PR replay preflight runner
 
 - Status: done
@@ -987,11 +1005,30 @@ Long-term target:
   dependency; the two Click rows passed baseline validation and remain blocked
   by prompt/spec and local-knowledge pre-edit residuals.
 
+### DATA-007: Issue/PR replay blocker drilldown
+
+- Status: active
+- Why: `DATA-006` proved the issue/PR path blocks before edit quality on
+  validation, prompt/spec, and local knowledge; the next proof is whether
+  those blockers can be made actionable instead of becoming vague labels.
+- Write scope: issue/PR preflight blocker-detail/report support, focused tests,
+  one compact report under `docs/` if useful, generated outputs under `/tmp`,
+  and plan updates.
+- Acceptance: use the first DATA-006 batch to distinguish validation recipe
+  failure from dependency/fixture setup failure for the Requests row, and
+  record missing prompt/spec and local-knowledge fields for the two Click rows;
+  do not attempt issue/PR code edits.
+- Tests: focused issue/PR preflight tests, plan consistency,
+  `git diff --check`, and a smoke command over the DATA-006 JSONL or a fresh
+  bounded preflight when feasible.
+
 ## Next Recommended Queue
 
 Start with these unless fresh evidence changes the order:
 
-1. `KNOW-003`: broaden knowledge-use attribution where scoring shows missing
+1. `REAL-012`: rerun the full one-file feature gate after boltons.
+2. `DATA-007`: drill into the issue/PR replay blockers from DATA-006.
+3. `KNOW-003`: broaden knowledge-use attribution where scoring shows missing
    local-knowledge evidence.
-2. `MODEL-006`: candidate-after or AST-delta observation for ranking evidence.
-3. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.
+4. `MODEL-006`: candidate-after or AST-delta observation for ranking evidence.
+5. `MODEL-003`: penalize add-keyword decoys after held-out validation proof.

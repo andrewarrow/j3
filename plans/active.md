@@ -248,6 +248,8 @@ Review before assigning more work if:
   `CHANGES.rst` and `src/flask/sansio/app.py`, matched the full accepted
   diff exactly, and passed the focused `Flask.select_jinja_autoescape`
   validation command.
+- Commit: `c971fa4` implementation/evidence.
+- Push: implementation/evidence commit pushed successfully to `origin/main`.
 - Artifacts:
   `docs/MAT_033_FLASK_6013_AUTOESCAPE_CANDIDATE_2026-05-19.md`,
   `/tmp/j3-mat-033-flask-6013-live/final/candidate.json`,

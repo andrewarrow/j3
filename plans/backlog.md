@@ -3658,12 +3658,35 @@ Long-term target:
   `repo_convention_builder = 0`, `constrained_local_generator = 0`, and
   `not_currently_expressible = 2`.
 
+### MAT-031: Repo-convention closure coverage refresh
+
+- Status: active
+- Why: `MAT-027` through `MAT-030` now account for all four original
+  `repo_convention_builder` rows from the MAT-007 panel. A compact closure
+  record should make the final counts, parity scopes, validation evidence,
+  and next row recommendation explicit before the coordinator moves to another
+  workstream.
+- Write scope: focused repo-convention closure evidence docs, generated
+  artifacts under `/tmp`, and plan updates. Avoid materializer code,
+  transition scoring, issue/PR ranking, validation-policy changes,
+  local-knowledge records, matrix manifests, and `plans/strategy.md`.
+- Acceptance: reconcile the MAT-007 held-out coverage after `MAT-027` through
+  `MAT-030`; record all four original `repo_convention_builder` rows as
+  materialized/live-validated with their evidence tasks, parity scopes,
+  validation status, and reusable action kinds; keep DATA reference rows
+  separate; update remaining non-materialized MAT-007 counts; and recommend
+  the next bounded row or workstream from the remaining panel. If any
+  repo-convention artifact is missing or contradictory, record the exact
+  blocker instead of closing the bucket.
+- Tests: parse any JSONL/JSON artifact written,
+  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+
 ## Next Recommended Queue
 
 Start with these unless fresh evidence changes the order:
 
-1. Review `MAT-030` after completion, then reconcile repo-convention closure
-   coverage if the final row is materialized or record the blocker if it is
-   not.
+1. Review `MAT-031`, then dispatch the next bounded
+   `current_structured_action` materialization row if closure evidence is
+   consistent.
 2. Separately decide whether to pursue the `TRANS-012` shadow-advice-only
    residual examples; product transition routing remains shadow-only.

@@ -6256,3 +6256,23 @@ meaningful work. Do not replace this file with a daily reset.
   whether to dispatch a closure refresh or move to the shadow-advice-only
   residual examples.
 - Blockers: none.
+
+### 2026-05-19 - Coordinator Review And Dispatch - MAT-031
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, and
+  `plans/progress.md`.
+- Tests: `python -m py_compile j3/heldout_repo_convention_candidate.py
+  tests/test_heldout_repo_convention_candidate.py` plus `pytest
+  tests/test_heldout_repo_convention_candidate.py -q` -> 12 passed; `pytest
+  tests/test_plan_consistency.py -q` -> 6 passed; `python -m json.tool
+  /tmp/j3-mat-030-click-3405-live/final/candidate.json` -> passed; `git diff
+  --check` -> passed.
+- Result: reviewed `MAT-030`; exact full accepted-diff parity,
+  repo-convention scoped parity, source/test scoped parity, mutation scope,
+  reusable action records, and focused Click validation are consistent.
+  `origin/main` is aligned after the worker push.
+- Next: dispatch a worker for `MAT-031` to record repo-convention closure
+  coverage, keep reference rows separate, update remaining counts, and
+  recommend the next bounded row or workstream.
+- Blockers: none.

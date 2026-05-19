@@ -193,13 +193,32 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-No active worker tasks.
+### `MAT-031`: Repo-convention closure coverage refresh
+
+- Status: active
+- Owner: worker MAT-031.
+- Started: 2026-05-19.
+- Write scope: focused repo-convention closure evidence docs, generated
+  artifacts under `/tmp`, and plan updates. Avoid materializer code,
+  transition scoring, issue/PR ranking, validation-policy changes,
+  local-knowledge records, matrix manifests, and `plans/strategy.md`.
+- Acceptance: reconcile the MAT-007 held-out coverage after `MAT-027` through
+  `MAT-030`; record all four original `repo_convention_builder` rows as
+  materialized/live-validated with their evidence tasks, parity scopes,
+  validation status, and reusable action kinds; keep DATA reference rows
+  separate; update remaining non-materialized MAT-007 counts; and recommend
+  the next bounded row or workstream from the remaining panel. If any
+  repo-convention artifact is missing or contradictory, record the exact
+  blocker instead of closing the bucket.
+- Expected tests: parse any JSONL/JSON artifact written, `pytest
+  tests/test_plan_consistency.py -q`, and `git diff --check`.
 
 ## Ready Queue
 
-No queued worker task remains. Next coordinator step: review repo-convention
-closure coverage after `MAT-030`, then decide whether to dispatch a coverage
-refresh or move to the shadow-advice-only residual examples.
+No queued worker task remains while `MAT-031` is active. After it completes,
+review the remaining MAT-007 panel and either dispatch the next
+`current_structured_action` row or move to the shadow-advice-only residual
+examples if that is higher leverage.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 

@@ -5259,9 +5259,27 @@ meaningful work. Do not replace this file with a daily reset.
   20-task GreenShot-5 manifest. Standard suites and runner parameters are
   unchanged. Scorer, ranker, candidate generation, guarded-trial policy, and
   product routing were not touched; transition ranking remains shadow-only.
-- Commit: pending.
-- Push: pending.
+- Commit: ecedaad; completion metadata: 9b0911e.
+- Push: succeeded.
 - Next: `TRANS-012` should run the full expanded standard transition shadow
   matrix as a separate follow-up evidence step against the zero-matrix-residual
   `TRANS-011` baseline.
+- Blockers: none.
+
+### 2026-05-19 - Coordinator Integration And Dispatch - TRANS-012
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, and
+  `plans/progress.md`.
+- Tests: `pytest tests/test_transition_shadow_matrix.py -q` -> 7 passed;
+  `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check`
+  -> passed.
+- Result: reviewed `TRANS-003` in the coordinator workspace. The manifest now
+  selects 12 of 20 GreenShot-5 tasks, preserves source-manifest order, and has
+  a focused test locking the exact selection and count. The next bounded step
+  is evidence-only: rerun the full expanded standard matrix before drawing
+  any product-gate conclusion.
+- Next: dispatch a worker to run `TRANS-012` matrix, residual, checksum, and
+  guarded-decision evidence. Do not edit scorer/ranker/candidate-generation,
+  product-routing, guarded-trial policy, or the matrix manifest in this slice.
 - Blockers: none.

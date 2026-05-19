@@ -108,12 +108,15 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-No active worker task is currently assigned.
+- `TRANS-012`: assigned to rerun the full expanded standard transition shadow
+  matrix after the `TRANS-003` manifest expansion. Compare against the
+  zero-matrix-residual `TRANS-011` baseline, regenerate residual and
+  guarded-decision evidence, and keep product routing shadow-only unless the
+  checked-in guarded-trial policy says otherwise.
 
 ## Ready Queue
 
-- `TRANS-012`: rerun the expanded standard transition shadow matrix as the
-  follow-up evidence step for the `TRANS-003` manifest expansion.
+No ready worker task is currently queued while `TRANS-012` is active.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 

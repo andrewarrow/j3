@@ -630,7 +630,7 @@ Long-term target:
 
 ### TRANS-012: Rerun expanded standard matrix evidence
 
-- Status: ready
+- Status: active
 - Why: `TRANS-003` expanded the standard manifest's `greenshot_5_subset` from
   8 to 12 tasks, but that was intentionally manifest-only. The matrix,
   residual, and guarded-decision evidence must be refreshed in a separate

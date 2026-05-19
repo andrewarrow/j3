@@ -53,7 +53,7 @@ This is the live coordinator board. Keep it current and compact.
 ### `VAL-004`: Reusable behavior-negative-only issue/PR shadow gate
 
 - Status: active
-- Owner: pending worker spawn.
+- Owner: worker Pauli (`019e3df2-761d-7430-884f-173cf9e43c1e`).
 - Write scope: issue/PR ranking or validation-policy helper code/tests,
   optional `docs/VAL_004_*`, generated artifacts under `/tmp`, and
   task-specific planning updates. Avoid typed-builder materialization modules.
@@ -68,7 +68,7 @@ This is the live coordinator board. Keep it current and compact.
 ### `MAT-013`: Refresh real PR materialization coverage after general-AST expansion
 
 - Status: active
-- Owner: pending worker spawn.
+- Owner: worker Mendel (`019e3df2-7640-7c03-a84a-0064de8a88c8`).
 - Write scope: materialization coverage analysis docs/data, optional small
   helper tests if needed, generated artifacts under `/tmp`, and task-specific
   planning updates. Avoid issue/PR ranking or validation-policy modules.

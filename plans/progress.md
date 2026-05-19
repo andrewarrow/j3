@@ -4133,14 +4133,17 @@ meaningful work. Do not replace this file with a daily reset.
 - Owner: coordinator.
 - Files changed: `plans/active.md`, `plans/backlog.md`, and
   `plans/progress.md`.
-- Tests: pending.
+- Tests: `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check -- plans/active.md plans/backlog.md plans/progress.md` ->
+  passed.
 - Result: selected the next two bounded follow-ups from the VAL-003 and
   MAT-012 residuals. `VAL-004` will turn the behavior-negative-only policy
   into a reusable shadow gate without changing production ranking. `MAT-013`
   will refresh the real PR materialization coverage map now that MAT-012 added
   broader bounded general-AST actions.
-- Commit: pending.
-- Push: pending.
-- Next: spawn one worker for `VAL-004` and one worker for `MAT-013`, then
-  record their worker IDs.
+- Commit: 661b561.
+- Push: succeeded.
+- Next: worker Pauli (`019e3df2-761d-7430-884f-173cf9e43c1e`) is running
+  `VAL-004`; worker Mendel (`019e3df2-7640-7c03-a84a-0064de8a88c8`) is
+  running `MAT-013`.
 - Blockers: none.

@@ -4432,8 +4432,8 @@ meaningful work. Do not replace this file with a daily reset.
   scorer group, so real shadow advice can detect competitors touching the same
   mapping. Existing `add_keyword_arg` scorer behavior remains intact.
   Production ranking gates remain unchanged and shadow-only.
-- Commit: pending.
-- Push: pending.
+- Commit: 7930b63.
+- Push: succeeded.
 - Next: coordinator should review the remaining scorer residuals and choose
   between `MODEL-005` boundary/literal ranking, targeted residual evidence, or
   another bounded ready task.

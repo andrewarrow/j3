@@ -4399,8 +4399,8 @@ meaningful work. Do not replace this file with a daily reset.
   negative, and validation artifacts; and records missing data, objective,
   compute, evaluation, and data-policy questions without changing
   `plans/strategy.md`.
-- Commit: pending.
-- Push: pending.
+- Commit: 760df4f.
+- Push: succeeded.
 - Next: use the inventory as the link target for `SCALE-002` data provenance
   and release policy.
 - Blockers: none.
@@ -4432,9 +4432,33 @@ meaningful work. Do not replace this file with a daily reset.
   scorer group, so real shadow advice can detect competitors touching the same
   mapping. Existing `add_keyword_arg` scorer behavior remains intact.
   Production ranking gates remain unchanged and shadow-only.
-- Commit: 7930b63.
+- Commit: 7930b63; completion metadata: 7b1888b.
 - Push: succeeded.
 - Next: coordinator should review the remaining scorer residuals and choose
   between `MODEL-005` boundary/literal ranking, targeted residual evidence, or
   another bounded ready task.
+- Blockers: none.
+
+### 2026-05-19 - Coordinator Review And Dispatch - MODEL-005 / SCALE-002
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, and
+  `plans/progress.md`.
+- Tests: `python -m py_compile j3/transition_action_scoring.py
+  j3/transition_scorer_advice.py tests/test_transition_action_scoring.py
+  tests/test_transition_scorer_advice.py tests/test_transition_shadow_scorer.py`
+  -> passed; `pytest tests/test_transition_action_scoring.py
+  tests/test_transition_scorer_advice.py tests/test_transition_shadow_scorer.py
+  -q` -> 27 passed; `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check` -> passed.
+- Result: reviewed the completed `MODEL-004` and `SCALE-001` batch. The
+  mapping-target scorer slice is focused and shadow-only, and the pretraining
+  inventory gives `SCALE-002` a concrete policy target. The next dispatch uses
+  two disjoint write scopes: `MODEL-005` continues the scorer residual series
+  with boundary/literal ranking, while `SCALE-002` defines provenance and
+  release policy for local data artifacts.
+- Commit: pending.
+- Push: pending.
+- Next: dispatch workers for `MODEL-005` and `SCALE-002` after plan
+  consistency checks pass.
 - Blockers: none.

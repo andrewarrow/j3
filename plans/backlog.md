@@ -462,7 +462,7 @@ Long-term target:
 
 ### MODEL-005: Improve boundary and literal action ranking
 
-- Status: ready
+- Status: active
 - Why: transition residuals still include boundary/literal and module-constant
   candidates where equivalent-looking edits outrank the passing action family.
 - Write scope: transition scorer fixtures/features/tests for boundary/literal
@@ -512,7 +512,7 @@ Long-term target:
 
 ### SCALE-002: Define data provenance and release policy
 
-- Status: ready
+- Status: active
 - Why: larger corpora need license, terms, split, and checksum discipline.
 - Write scope: `docs/TRAINING.md` or a focused companion doc.
 - Acceptance: policy covers local scratch corpora, checked-in examples, release

@@ -57,13 +57,28 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-No active worker tasks are recorded after `MODEL-004`; coordinator should
-choose the next bounded task from the ready queue.
+- `MODEL-005`: improve boundary and literal action ranking.
+  - Owner: coordinator dispatch in progress; worker pending.
+  - Scope: transition scorer fixtures/features/tests for boundary/literal
+    action-family and file/symbol alignment.
+  - Acceptance: focused residual fixtures improve ranking for
+    boundary/literal examples without adding new repair action kinds.
+  - Expected tests: focused transition action scoring/ranking tests,
+    `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+- `SCALE-002`: define data provenance and release policy.
+  - Owner: coordinator dispatch in progress; worker pending.
+  - Scope: focused docs policy under `docs/` plus required plan updates.
+  - Acceptance: policy covers local scratch corpora, checked-in examples,
+    release archives, synthetic rows, issue/PR mining, generated artifacts,
+    licenses/terms, checksums, and split discipline.
+  - Expected tests: `git diff --check` and
+    `pytest tests/test_plan_consistency.py -q`.
 
 ## Ready Queue
 
-`MODEL-005` is the next queued scorer residual slice unless coordinator review
-chooses targeted residual evidence or another bounded task first.
+`MODEL-005` and `SCALE-002` are being dispatched. Keep additional scorer work
+queued until `MODEL-005` returns, and avoid broad data/training policy edits
+until `SCALE-002` returns.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 

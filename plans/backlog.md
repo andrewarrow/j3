@@ -3222,7 +3222,7 @@ Long-term target:
 
 ### MAT-020: Held-out requests stream-wrapper source/test candidate
 
-- Status: active
+- Status: done
 - Why: MAT-019 identified `psf/requests#7433` as the smallest genuinely
   uncovered constrained source/test row after removing the already-covered
   `requests-7427` and `pytest-14475` rows. It is compact enough for one
@@ -3244,14 +3244,32 @@ Long-term target:
 - Tests: focused source-region candidate tests, JSON/report checks if added,
   `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and live
   focused validation when materialized.
+- Completion note: materialized `psf/requests#7433` from base
+  `0b401c76b6e80a4eecf3c690085b2553f6e261ca` to PR head
+  `ea1c36c1b1a8364e234b6ad49ea05e3261636f8a` using reusable
+  `replace_function_region` and `insert_pytest_function_after_anchor` records.
+  The candidate changed only `src/requests/models.py` and
+  `tests/test_requests.py`, matched the accepted source/test diff exactly
+  after normalization, and recorded candidate-after diff/AST/hash metadata.
+  Live focused validation reached the local `pytest-httpbin` redirect endpoint
+  but timed out after 30 seconds, so the result is recorded with
+  `candidate_validation_timeout` rather than as a validation pass. Artifacts:
+  `docs/MAT_020_REQUESTS_7433_SOURCE_REGION_CANDIDATE_2026-05-19.md`,
+  `/tmp/j3-mat-020-requests-7433-final/candidate.json`,
+  `/tmp/j3-mat-020-requests-7433-final/report.md`,
+  `/tmp/j3-mat-020-requests-7433-final/candidate.diff`, and
+  `/tmp/j3-mat-020-requests-7433-final/accepted.diff`.
 
 ## Next Recommended Queue
 
 Start with these unless fresh evidence changes the order:
 
-1. Assign `MAT-020` for `psf/requests#7433`, the next genuinely uncovered
-   constrained source/test row identified by MAT-019.
-2. Keep `requests-7328` as the compact alternate if `requests-7433` exposes
-   a setup or target-selection blocker.
+1. Coordinator review should decide whether to drill into the
+   `requests-7433` local validation timeout or accept the materialization
+   evidence as exact source/test parity with validation blocked by the local
+   `pytest-httpbin` redirect path.
+2. If continuing constrained source/test materialization, keep
+   `requests-7328` as the compact alternate and `click-3434` as the next
+   formatter-family row.
 3. Separately decide whether to pursue the `TRANS-012` shadow-advice-only
    residual examples; product transition routing remains shadow-only.

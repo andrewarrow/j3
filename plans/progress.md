@@ -5619,3 +5619,48 @@ meaningful work. Do not replace this file with a daily reset.
   source-region materializer surface, focused tests/docs, generated `/tmp`
   artifacts, and plan updates.
 - Blockers: none.
+
+### 2026-05-19 - MAT-020 - Requests #7433 stream-wrapper materialization
+
+- Owner: worker Codex.
+- Files changed: `j3/heldout_source_region_candidate.py`,
+  `tests/test_heldout_source_region_candidate.py`,
+  `docs/MAT_020_REQUESTS_7433_SOURCE_REGION_CANDIDATE_2026-05-19.md`,
+  `plans/active.md`, `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `python -m py_compile j3/heldout_source_region_candidate.py
+  tests/test_heldout_source_region_candidate.py` -> passed; `pytest
+  tests/test_heldout_source_region_candidate.py -q` -> 7 passed; live fresh
+  checkout run `PYTHONPATH=/Users/aa/os/j3 python -m
+  j3.heldout_source_region_candidate --candidate requests-7433 --repo-path
+  /tmp/j3-mat-020-requests-7433-live --accepted-diff
+  /tmp/j3-mat-020-requests-7433-final/accepted.diff --out
+  /tmp/j3-mat-020-requests-7433-final/candidate.json --report
+  /tmp/j3-mat-020-requests-7433-final/report.md --diff-out
+  /tmp/j3-mat-020-requests-7433-final/candidate.diff --validate
+  --validation-timeout-seconds 30` -> materialized, accepted diff parity
+  passed, validation timed out; diagnostic `python -m pytest
+  tests/test_requests.py::TestRequests::test_getattr_proxy_stream_follows_redirect
+  -vv --setup-show -s` with a 30s subprocess timeout -> collected one test,
+  set up `httpbin`, reached `POST /redirect-to?url=/post&status_code=307`,
+  then timed out; `pytest tests/test_plan_consistency.py -q` -> passed;
+  `git diff --check` -> passed.
+- Result: materialized `psf/requests#7433` from base
+  `0b401c76b6e80a4eecf3c690085b2553f6e261ca` to PR head
+  `ea1c36c1b1a8364e234b6ad49ea05e3261636f8a`. The candidate changed only
+  `src/requests/models.py` and `tests/test_requests.py`, matched the accepted
+  source/test diff exactly after normalization, and recorded source/test
+  candidate-after diff/AST/hash metadata plus mutation scope. The row uses
+  reusable `replace_function_region` and
+  `insert_pytest_function_after_anchor` action records; no PR-named action
+  kind was added. A reusable `surrounding_blank_lines` pytest-insertion
+  parameter was added so class-method insertions can match local formatting
+  without changing action kind.
+- Commit: pending worker commit.
+- Push: pending.
+- Next: coordinator should review whether to drill into the local
+  `pytest-httpbin` redirect timeout before counting this as live-validated; if
+  continuing constrained materialization, `requests-7328` remains the compact
+  alternate and `click-3434` remains the next formatter-family row.
+- Blockers: live focused validation timed out after reaching the local
+  `pytest-httpbin` redirect endpoint; recorded as
+  `candidate_validation_timeout`.

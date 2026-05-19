@@ -131,18 +131,24 @@ This is the live coordinator board. Keep it current and compact.
   non-materialized MAT-007 counts are now
   `current_structured_action = 4`, `general_typed_builder = 0`,
   `repo_convention_builder = 4`, `constrained_local_generator = 5`, and
-  `not_currently_expressible = 2`.
+  `not_currently_expressible = 2`. `MAT-020` now materializes
+  `psf/requests#7433` with exact source/test accepted-diff parity using
+  reusable `replace_function_region` and
+  `insert_pytest_function_after_anchor` records; live validation reached the
+  local `pytest-httpbin` redirect endpoint but timed out under the bounded
+  run, so the row is recorded with `candidate_validation_timeout` rather than
+  as a validation pass.
 
 ## Active Tasks
 
-- `MAT-020`: assigned to implement the next genuinely uncovered constrained
-  source/test row, `psf/requests#7433`, using reusable source-region and
-  pytest insertion action records. Keep `requests-7328` as the compact
-  alternate only if setup or target selection blocks.
+No active worker task is currently assigned. Coordinator review should decide
+whether to drill into the `requests-7433` local validation timeout or continue
+to the next constrained source/test row.
 
 ## Ready Queue
 
-No ready worker task is currently queued while `MAT-020` is active.
+No ready worker task is currently queued after `MAT-020`; the next useful task
+depends on coordinator review of the validation-timeout blocker.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
@@ -167,6 +173,21 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `MAT-020`: materialized `psf/requests#7433` from base
+  `0b401c76b6e80a4eecf3c690085b2553f6e261ca` to PR head
+  `ea1c36c1b1a8364e234b6ad49ea05e3261636f8a`. The candidate changed only
+  `src/requests/models.py` and `tests/test_requests.py`, matched the accepted
+  source/test diff exactly after normalization, and recorded candidate-after
+  diff/AST/hash metadata plus mutation scope. Live validation command
+  `python -m pytest tests/test_requests.py::TestRequests::test_getattr_proxy_stream_follows_redirect -q`
+  timed out after 30 seconds in the local `pytest-httpbin` redirect path, so
+  the result is materialized with `candidate_validation_timeout`, not
+  validated. Artifacts:
+  `docs/MAT_020_REQUESTS_7433_SOURCE_REGION_CANDIDATE_2026-05-19.md`,
+  `/tmp/j3-mat-020-requests-7433-final/candidate.json`,
+  `/tmp/j3-mat-020-requests-7433-final/report.md`,
+  `/tmp/j3-mat-020-requests-7433-final/candidate.diff`, and
+  `/tmp/j3-mat-020-requests-7433-final/accepted.diff`.
 - `MAT-019`: reconciled constrained source/test materialization coverage before
   the next implementation row. `requests-7427` and `pytest-14475` are already
   materialized/live-validated held-out constrained rows from `MAT-008` and

@@ -31,10 +31,20 @@ HELDOUT_SOURCE_REGION_CANDIDATE_SCHEMA_VERSION = (
 )
 PYTEST_INSERTION_SCHEMA_VERSION = "repo-convention-pytest-insertion-v1"
 DEFAULT_REQUESTS_BASE_REF = "b684dcb9bbf3aa557d1238e72062c4a29737dd1c"
+DEFAULT_REQUESTS_STREAM_WRAPPER_BASE_REF = (
+    "0b401c76b6e80a4eecf3c690085b2553f6e261ca"
+)
+DEFAULT_REQUESTS_STREAM_WRAPPER_HEAD_REF = (
+    "ea1c36c1b1a8364e234b6ad49ea05e3261636f8a"
+)
 DEFAULT_PYTEST_SCANNER_BASE_REF = "7df5d80ff3a98714a1d3cdbe82941229e511f4b3"
 DEFAULT_VALIDATION_COMMAND = (
     "python -m pytest "
     "tests/test_utils.py::test_should_bypass_proxies_no_proxy_domain_boundary -q"
+)
+DEFAULT_REQUESTS_STREAM_WRAPPER_VALIDATION_COMMAND = (
+    "python -m pytest "
+    "tests/test_requests.py::TestRequests::test_getattr_proxy_stream_follows_redirect -q"
 )
 DEFAULT_PYTEST_SCANNER_VALIDATION_COMMAND = (
     "PYTHONPATH=src python -c "
@@ -47,6 +57,8 @@ DEFAULT_PYTEST_SCANNER_VALIDATION_COMMAND = (
 )
 REQUESTS_UTILS_PATH = "src/requests/utils.py"
 REQUESTS_TEST_UTILS_PATH = "tests/test_utils.py"
+REQUESTS_MODELS_PATH = "src/requests/models.py"
+REQUESTS_TEST_REQUESTS_PATH = "tests/test_requests.py"
 PYTEST_EXPRESSION_PATH = "src/_pytest/mark/expression.py"
 PYTEST_MARK_EXPRESSION_TEST_PATH = "testing/test_mark_expression.py"
 
@@ -70,12 +82,18 @@ class PytestInsertionAction:
     kind: str = "insert_pytest_function_after_anchor"
     schema_version: str = PYTEST_INSERTION_SCHEMA_VERSION
     max_added_lines: int = 40
+    surrounding_blank_lines: int | None = None
     rationale: str | None = None
 
     def __post_init__(self) -> None:
         _validate_relative_path(self.target_file)
         if self.max_added_lines < 1:
             raise ValueError("max_added_lines must be >= 1")
+        if (
+            self.surrounding_blank_lines is not None
+            and self.surrounding_blank_lines < 0
+        ):
+            raise ValueError("surrounding_blank_lines must be >= 0")
         if not self.anchor_function_name:
             raise ValueError("anchor_function_name is required")
         if not self.function_name:
@@ -95,6 +113,7 @@ class PytestInsertionAction:
                 "max_added_lines": self.max_added_lines,
                 "must_parse_ast": True,
                 "preserve_existing_imports": True,
+                "surrounding_blank_lines": self.surrounding_blank_lines,
             },
             "insertion_source": self.insertion_source,
             "rationale": self.rationale,
@@ -121,6 +140,7 @@ class HeldoutSourceRegionSpec:
     action_family_reuse_evidence: tuple[dict[str, object], ...] = field(
         default_factory=tuple
     )
+    accepted_head_ref: str | None = None
 
     def __post_init__(self) -> None:
         for path in (self.source_file, self.test_file, *self.allowed_write_paths):
@@ -175,6 +195,7 @@ class HeldoutSourceRegionCandidate:
     repo_split: str
     base_ref: str
     reference_pr_url: str
+    accepted_head_ref: str | None
     prompt: str
     status: str
     action_records: list[dict[str, object]]
@@ -199,6 +220,7 @@ class HeldoutSourceRegionCandidate:
             "repo_url": self.repo_url,
             "repo_split": self.repo_split,
             "base_ref": self.base_ref,
+            "accepted_head_ref": self.accepted_head_ref,
             "reference_pr_url": self.reference_pr_url,
             "prompt": self.prompt,
             "status": self.status,
@@ -335,6 +357,72 @@ def build_pytest_mark_expression_scanner_spec(
                 "evidence": (
                     "same repo-convention pytest insertion shape; target "
                     "test file, anchor function, and inserted function are parameters"
+                ),
+            },
+        ),
+    )
+
+
+def build_requests_stream_wrapper_spec(
+    repo_path: Path,
+    *,
+    base_ref: str = DEFAULT_REQUESTS_STREAM_WRAPPER_BASE_REF,
+    accepted_head_ref: str = DEFAULT_REQUESTS_STREAM_WRAPPER_HEAD_REF,
+    validation_command: str = DEFAULT_REQUESTS_STREAM_WRAPPER_VALIDATION_COMMAND,
+) -> HeldoutSourceRegionSpec:
+    """Build the held-out Requests stream-wrapper detection candidate spec."""
+
+    source_text = _repo_file(repo_path, REQUESTS_MODELS_PATH).read_text(
+        encoding="utf-8"
+    )
+    source_action = _requests_stream_wrapper_source_action(source_text)
+    test_action = PytestInsertionAction(
+        target_file=REQUESTS_TEST_REQUESTS_PATH,
+        anchor_function_name="test_rewind_body_failed_tell",
+        function_name="test_getattr_proxy_stream_follows_redirect",
+        insertion_source=_requests_stream_wrapper_test_source(),
+        max_added_lines=20,
+        surrounding_blank_lines=1,
+        rationale=(
+            "insert a focused redirect/body regression after existing rewind "
+            "body stream tests"
+        ),
+    )
+    return HeldoutSourceRegionSpec(
+        candidate_id="mat-020-requests-stream-wrapper",
+        repo_id="psf/requests",
+        repo_url="https://github.com/psf/requests",
+        repo_split="held_out",
+        base_ref=base_ref,
+        accepted_head_ref=accepted_head_ref,
+        reference_pr_url="https://github.com/psf/requests/pull/7433",
+        prompt=(
+            "Fix prepare_body stream detection so file wrappers that expose "
+            "__iter__ through __getattr__ are treated as streamed bodies and "
+            "can follow redirects with their request body preserved."
+        ),
+        source_file=REQUESTS_MODELS_PATH,
+        test_file=REQUESTS_TEST_REQUESTS_PATH,
+        validation_command=validation_command,
+        allowed_write_paths=(REQUESTS_MODELS_PATH, REQUESTS_TEST_REQUESTS_PATH),
+        source_action=source_action,
+        test_action=test_action,
+        action_family_reuse_evidence=(
+            {
+                "action_kind": SourceRegionActionKind.REPLACE_FUNCTION_REGION.value,
+                "reused_from": ["MAT-008", "MAT-009"],
+                "evidence": (
+                    "same bounded function-region action schema; target file, "
+                    "method, local predicate region, and replacement are parameters"
+                ),
+            },
+            {
+                "action_kind": "insert_pytest_function_after_anchor",
+                "reused_from": ["MAT-008", "MAT-009", "GS7-008", "GS7-009"],
+                "evidence": (
+                    "same repo-convention pytest insertion shape; target "
+                    "test file, anchor method/function, and inserted pytest "
+                    "body are parameters"
                 ),
             },
         ),
@@ -484,6 +572,7 @@ def materialize_heldout_source_region_candidate(
         repo_url=spec.repo_url,
         repo_split=spec.repo_split,
         base_ref=spec.base_ref,
+        accepted_head_ref=spec.accepted_head_ref,
         reference_pr_url=spec.reference_pr_url,
         prompt=spec.prompt,
         status=status,
@@ -559,11 +648,13 @@ def materialize_pytest_insertion(
     insert_index = anchor.end_lineno
     while insert_index < len(source_lines) and not source_lines[insert_index].strip():
         insert_index += 1
+    blank_lines = _surrounding_blank_lines(action)
+    separator = ["\n"] * blank_lines
     patched = "".join(
         source_lines[: anchor.end_lineno]
-        + ["\n", "\n"]
+        + separator
         + insertion_lines
-        + ["\n", "\n"]
+        + separator
         + source_lines[insert_index:]
     )
     _parse_python(patched, filename=action.target_file, field="test_insertion")
@@ -575,7 +666,7 @@ def materialize_pytest_insertion(
         status="materialized" if write else "candidate_after",
         target_file=action.target_file,
         function_name=action.function_name,
-        insertion_line=anchor.end_lineno + 2,
+        insertion_line=anchor.end_lineno + blank_lines,
         added_line_count=sum(1 for line in insertion_lines if line.strip()),
         diff=diff,
         diff_summary=_diff_summary(diff),
@@ -624,6 +715,7 @@ def render_candidate_report(candidate: HeldoutSourceRegionCandidate) -> str:
         f"- Candidate: `{candidate.candidate_id}`",
         f"- Repo: `{candidate.repo_id}`",
         f"- Base ref: `{candidate.base_ref}`",
+        f"- Accepted head ref: `{candidate.accepted_head_ref}`",
         f"- Reference PR: {candidate.reference_pr_url}",
         f"- Status: `{candidate.status}`",
         f"- Changed files: `{candidate.mutation_scope.get('actual_changed_files')}`",
@@ -656,6 +748,9 @@ def render_candidate_report(candidate: HeldoutSourceRegionCandidate) -> str:
                 f"- `{blocker['field']}`: `{blocker['reason']}` - "
                 f"{blocker['message']}"
             )
+    elif candidate.residual_labels:
+        for label in candidate.residual_labels:
+            lines.append(f"- `{label}`")
     else:
         lines.append("- none")
     lines.append("")
@@ -785,6 +880,70 @@ def _mark_expression_scanner_test_source() -> str:
     )
 
 
+def _requests_stream_wrapper_source_action(source: str) -> SourceRegionAction:
+    already_applied = (
+        "        # data that proxies attributes to underlying objects needs hasattr"
+    )
+    original = "        if isinstance(data, Iterable) and not isinstance("
+    if already_applied in source:
+        start_line = _line_number(source, already_applied)
+        end_line = _first_line_after(
+            source,
+            start_line,
+            "        if is_iterable and not isinstance(data, (str, bytes, list, tuple, Mapping)):",
+        )
+    else:
+        start_line = _line_number(source, original)
+        end_line = _first_line_after(source, start_line, "        ):")
+    return SourceRegionAction(
+        kind=SourceRegionActionKind.REPLACE_FUNCTION_REGION,
+        target=SourceRegionTarget(
+            file_path=REQUESTS_MODELS_PATH,
+            function_name="prepare_body",
+            region_name="stream_wrapper_iterable_predicate",
+            start_line=start_line,
+            end_line=end_line,
+        ),
+        replacement_source=_requests_stream_wrapper_source_replacement(),
+        constraints=SourceRegionConstraints(max_changed_source_lines=6),
+        rationale=(
+            "treat __getattr__-proxied iterators as streamed request bodies "
+            "inside prepare_body"
+        ),
+    )
+
+
+def _requests_stream_wrapper_source_replacement() -> str:
+    return "\n".join(
+        [
+            "        # data that proxies attributes to underlying objects needs hasattr",
+            '        is_iterable = isinstance(data, Iterable) or hasattr(data, "__iter__")',
+            "        if is_iterable and not isinstance(data, (str, bytes, list, tuple, Mapping)):",
+        ]
+    )
+
+
+def _requests_stream_wrapper_test_source() -> str:
+    return "\n".join(
+        [
+            "    def test_getattr_proxy_stream_follows_redirect(self, httpbin):",
+            '        """Ensure stream wrappers that don\'t implement __iter__ directly are still detected."""',
+            "",
+            "        class AttrProxy:",
+            "            def __init__(self):",
+            '                self._file = io.BytesIO(b"data")',
+            "",
+            "            def __getattr__(self, name):",
+            "                return getattr(self._file, name)",
+            "",
+            "        r = requests.post(",
+            '            httpbin("redirect-to?url=/post&status_code=307"), data=AttrProxy()',
+            "        )",
+            '        assert r.json()["data"] == "data"',
+        ]
+    )
+
+
 def _line_number(source: str, needle: str) -> int:
     for index, line in enumerate(source.splitlines(), start=1):
         if line == needle:
@@ -857,6 +1016,16 @@ def _insertion_lines(source: str) -> list[str]:
     if lines and not lines[-1].endswith("\n"):
         lines[-1] += "\n"
     return lines
+
+
+def _surrounding_blank_lines(action: PytestInsertionAction) -> int:
+    if action.surrounding_blank_lines is not None:
+        return action.surrounding_blank_lines
+    for line in action.insertion_source.splitlines():
+        if not line.strip():
+            continue
+        return 1 if line.startswith((" ", "\t")) else 2
+    return 2
 
 
 def _file_hashes(repo: Path, paths: Sequence[str]) -> dict[str, str]:
@@ -1099,7 +1268,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     parser.add_argument(
         "--candidate",
-        choices=("requests-7427", "pytest-14475"),
+        choices=("requests-7427", "pytest-14475", "requests-7433"),
         default="requests-7427",
     )
     parser.add_argument("--repo-path", type=Path, required=True)
@@ -1114,6 +1283,8 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.candidate == "pytest-14475":
         spec = build_pytest_mark_expression_scanner_spec(args.repo_path)
+    elif args.candidate == "requests-7433":
+        spec = build_requests_stream_wrapper_spec(args.repo_path)
     else:
         spec = build_requests_no_proxy_domain_boundary_spec(args.repo_path)
     candidate = materialize_heldout_source_region_candidate(

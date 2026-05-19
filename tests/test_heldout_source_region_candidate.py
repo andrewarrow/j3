@@ -9,6 +9,7 @@ from j3.heldout_source_region_candidate import (
     _mark_expression_scanner_source_replacement,
     build_pytest_mark_expression_scanner_spec,
     build_requests_no_proxy_domain_boundary_spec,
+    build_requests_stream_wrapper_spec,
     materialize_heldout_source_region_candidate,
 )
 from j3.source_region_materializer import SourceRegionActionKind
@@ -188,6 +189,84 @@ def test_materializes_pytest_scanner_candidate_with_reusable_actions(
     assert "test_backslash_in_identifier_with_string_literal" in test_after["diff"]
 
 
+def test_requests_stream_wrapper_spec_uses_reusable_action_kinds(
+    tmp_path: Path,
+) -> None:
+    repo = _write_requests_stream_wrapper_fixture_repo(tmp_path / "requests")
+
+    spec = build_requests_stream_wrapper_spec(repo)
+
+    assert spec.source_action.kind == SourceRegionActionKind.REPLACE_FUNCTION_REGION
+    assert spec.test_action.kind == "insert_pytest_function_after_anchor"
+    assert "requests_7433" not in spec.source_action.kind.value
+    assert "requests_7433" not in spec.test_action.kind
+    assert spec.base_ref == "0b401c76b6e80a4eecf3c690085b2553f6e261ca"
+    assert spec.accepted_head_ref == "ea1c36c1b1a8364e234b6ad49ea05e3261636f8a"
+    assert spec.allowed_write_paths == (
+        "src/requests/models.py",
+        "tests/test_requests.py",
+    )
+
+
+def test_materializes_requests_stream_wrapper_candidate_with_reusable_actions(
+    tmp_path: Path,
+) -> None:
+    accepted_repo = _write_requests_stream_wrapper_fixture_repo(tmp_path / "accepted")
+    accepted_candidate = materialize_heldout_source_region_candidate(
+        accepted_repo,
+        build_requests_stream_wrapper_spec(
+            accepted_repo,
+            base_ref=_repo_head(accepted_repo),
+        ),
+        write=True,
+        validate=False,
+    )
+    accepted_diff = tmp_path / "accepted.diff"
+    accepted_diff.write_text(
+        str(accepted_candidate.candidate_after["candidate_diff"]),
+        encoding="utf-8",
+    )
+
+    repo = _write_requests_stream_wrapper_fixture_repo(tmp_path / "candidate")
+    candidate = materialize_heldout_source_region_candidate(
+        repo,
+        build_requests_stream_wrapper_spec(repo, base_ref=_repo_head(repo)),
+        write=True,
+        validate=False,
+        accepted_diff_path=accepted_diff,
+    )
+    record = candidate.to_record()
+
+    assert record["status"] == "materialized"
+    assert record["accepted_head_ref"] == "ea1c36c1b1a8364e234b6ad49ea05e3261636f8a"
+    assert record["residual_labels"] == ["candidate_validation_deferred"]
+    assert record["mutation_scope"]["actual_changed_files"] == [
+        "src/requests/models.py",
+        "tests/test_requests.py",
+    ]
+    assert record["mutation_scope"]["writes_outside_allowlist"] == []
+    assert record["accepted_diff_comparison"]["accepted_changed_files"] == [
+        "src/requests/models.py",
+        "tests/test_requests.py",
+    ]
+    assert record["accepted_diff_comparison"]["normalized_diff_equal"] is True
+    assert record["accepted_diff_comparison"]["scoped_normalized_diff_equal"] is True
+    assert record["zero_hosted_llm_source_judgment"] is True
+    action_kinds = [action["kind"] for action in record["action_records"]]
+    assert action_kinds == [
+        "replace_function_region",
+        "insert_pytest_function_after_anchor",
+    ]
+    source_after = record["candidate_after"]["source_file"]["candidate_after"]
+    assert source_after["ast_parse_ok"] is True
+    assert source_after["signature_preserved"] is True
+    assert 'hasattr(data, "__iter__")' in source_after["diff"]
+    assert "is_iterable and not isinstance" in source_after["diff"]
+    test_after = record["candidate_after"]["test_file"]["candidate_after"]
+    assert test_after["ast_parse_ok"] is True
+    assert "test_getattr_proxy_stream_follows_redirect" in test_after["diff"]
+
+
 def _write_requests_fixture_repo(repo: Path) -> Path:
     (repo / "src" / "requests").mkdir(parents=True)
     (repo / "tests").mkdir(parents=True)
@@ -239,6 +318,83 @@ def _write_requests_fixture_repo(repo: Path) -> Path:
             def test_should_bypass_proxies_no_proxy(url, expected, monkeypatch):
                 no_proxy = "localhost"
                 assert should_bypass_proxies(url, no_proxy=no_proxy) == expected
+            '''
+        ).lstrip(),
+        encoding="utf-8",
+    )
+    subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+    subprocess.run(["git", "add", "."], cwd=repo, check=True)
+    subprocess.run(
+        [
+            "git",
+            "-c",
+            "user.name=j3-test",
+            "-c",
+            "user.email=j3-test@example.invalid",
+            "commit",
+            "-q",
+            "-m",
+            "base",
+        ],
+        cwd=repo,
+        check=True,
+    )
+    return repo
+
+
+def _write_requests_stream_wrapper_fixture_repo(repo: Path) -> Path:
+    (repo / "src" / "requests").mkdir(parents=True)
+    (repo / "tests").mkdir(parents=True)
+    (repo / "src" / "requests" / "models.py").write_text(
+        dedent(
+            '''
+            from collections.abc import Iterable, Mapping
+            from io import UnsupportedOperation
+
+
+            class PreparedRequest:
+                def prepare_body(self, data, files, json=None):
+                    body = None
+
+                    if isinstance(data, Iterable) and not isinstance(
+                        data, (str, bytes, list, tuple, Mapping)
+                    ):
+                        try:
+                            length = super_len(data)
+                        except (TypeError, AttributeError, UnsupportedOperation):
+                            length = None
+
+                        body = data
+
+                    return body
+            '''
+        ).lstrip(),
+        encoding="utf-8",
+    )
+    (repo / "tests" / "test_requests.py").write_text(
+        dedent(
+            '''
+            """Tests for Requests."""
+
+            import io
+
+            import requests
+
+
+            class TestRequests:
+                def test_rewind_body_failed_tell(self):
+                    class BadFileObj:
+                        def tell(self):
+                            raise OSError()
+
+                        def __iter__(self):
+                            return
+
+                    assert BadFileObj()
+
+                def _patch_adapter_gzipped_redirect(self, session, url):
+                    adapter = session.get_adapter(url=url)
+                    assert adapter
             '''
         ).lstrip(),
         encoding="utf-8",

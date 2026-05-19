@@ -4359,7 +4359,8 @@ meaningful work. Do not replace this file with a daily reset.
   mapping key/value target evidence for `change_dict_key`,
   `change_dict_value`, `add_dict_key`, and `change_subscript_key` competing on
   the same mapping. Production ranking gates remain unchanged and shadow-only.
-- Commit: pending.
-- Push: pending.
-- Next: dispatch a worker for `MODEL-004` after plan consistency checks pass.
+- Commit: e61a249.
+- Push: succeeded.
+- Next: worker Bernoulli (`019e3e0d-7779-7831-9884-589e7f6fc9ac`) is running
+  `MODEL-004`.
 - Blockers: none.

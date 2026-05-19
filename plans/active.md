@@ -59,7 +59,7 @@ This is the live coordinator board. Keep it current and compact.
 
 - `MODEL-004`: distinguish mapping key and value target evidence in the
   transition scorer.
-  - Owner: coordinator dispatch in progress; worker pending.
+  - Owner: worker Bernoulli (`019e3e0d-7779-7831-9884-589e7f6fc9ac`).
   - Scope: transition scorer/advice/ranking fixtures, features, and focused
     tests for mapping key/value target evidence only.
   - Acceptance: scorer evidence distinguishes `change_dict_key`,

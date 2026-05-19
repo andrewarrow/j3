@@ -6778,3 +6778,44 @@ meaningful work. Do not replace this file with a daily reset.
   advice residual fixes in full replay, and identify the next bounded
   GreenShot-5 semantic API scorer/advice task or blocker.
 - Blockers: none.
+
+### 2026-05-19 - TRANS-013 - Expanded standard residual evidence after advice fixes
+
+- Owner: worker TRANS-013.
+- Files changed:
+  `docs/TRANS_013_EXPANDED_STANDARD_AFTER_MODEL012_EVIDENCE_2026-05-19.md`,
+  `plans/active.md`, `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `python cli.py run-transition-shadow-matrix --matrix
+  examples/transition_shadow_matrix.json --out
+  /tmp/j3-trans-013-expanded-standard-after-model012 --json` -> passed;
+  `shasum -a 256 -c
+  /tmp/j3-trans-013-expanded-standard-after-model012/evidence/checksums.sha256`
+  -> passed; `python cli.py report-transition-residuals --matrix
+  /tmp/j3-trans-013-expanded-standard-after-model012 --out
+  /tmp/j3-trans-013-expanded-standard-after-model012-residual-report.json
+  --json` -> 3 residual-report examples; `python cli.py
+  decide-transition-guarded-trial --matrix
+  /tmp/j3-trans-013-expanded-standard-after-model012 --out
+  /tmp/j3-trans-013-expanded-standard-after-model012-guarded-decision.json
+  --json` -> `remain_shadow_only`; `pytest tests/test_plan_consistency.py -q`
+  -> 6 passed; `git diff --check` -> passed.
+- Result: reran the expanded standard transition matrix after `MODEL-011` and
+  `MODEL-012`. Totals are unchanged from `TRANS-012`: 5 suites, 60 tasks, 60
+  ranked solved tasks, 12,753 candidates, 19 held-out groups, 0 matrix
+  residuals, 4 baseline residuals, and zero hosted usage. The residual report
+  narrowed from 8 to 3 `greenshot_5_subset` shadow-advice-only examples. The
+  four tail-index residuals (`last_item`, `final_score_tail`,
+  `last_order_id_tail`, and `newest_event_tail`) and `missing_guard` are gone
+  in full replay. Guarded decision remains `remain_shadow_only` because not
+  all suite gates are `ready_for_guarded_opt_in`; product routing remains
+  shadow-only.
+- Commit: pending.
+- Push: pending.
+- Next: dispatch `MODEL-013`, a bounded nested-package missing-import
+  shadow-advice scorer task for
+  `greenshot_5_subset/receipt_label_nested_module_import_decoy`. Keep
+  `profile_signature_propagation` and `visible_balance_attribute_decoys` as
+  separate semantic API scorer work unless shared candidate-after/source
+  semantic evidence emerges.
+- Blockers: none for evidence replay; a broad GreenShot-5 semantic API scorer
+  tweak is under-specified without candidate-after/source semantic evidence.

@@ -755,7 +755,7 @@ Long-term target:
 
 ### TRANS-013: Rerun expanded standard residual evidence after advice fixes
 
-- Status: active
+- Status: done
 - Owner: worker TRANS-013, assigned on 2026-05-19.
 - Why: `MODEL-011` and `MODEL-012` changed only shadow-advice/V1 scoring and
   directly replayed five `TRANS-012` residual examples, but the committed
@@ -773,6 +773,42 @@ Long-term target:
   and identify the next bounded scorer/advice task or blocker.
 - Tests: `run-transition-shadow-matrix`, checksum verification,
   `report-transition-residuals --matrix`, `decide-transition-guarded-trial`,
+  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+- Completion note: reran the expanded standard matrix under
+  `/tmp/j3-trans-013-expanded-standard-after-model012`. Totals are unchanged
+  from `TRANS-012`: 5 suites, 60 tasks, 60 ranked solved tasks, 12,753
+  candidates, 19 held-out groups, 0 matrix residuals, 4 baseline residuals,
+  and zero hosted usage. The residual report narrowed from 8 to 3 examples,
+  all `greenshot_5_subset` shadow-advice-only `scorer_ranking_gap` cases.
+  The four tail-index residuals (`last_item`, `final_score_tail`,
+  `last_order_id_tail`, `newest_event_tail`) and `missing_guard` are gone in
+  full replay. Guarded decision remains `remain_shadow_only` because not all
+  suite gates are `ready_for_guarded_opt_in`; product routing remains
+  shadow-only. Recommended next bounded task: `MODEL-013`.
+
+### MODEL-013: Add nested-package missing-import shadow-advice evidence
+
+- Status: ready
+- Why: after `TRANS-013`, the remaining residual report has three
+  GreenShot-5 shadow-advice-only examples. The most concrete bounded shape is
+  `receipt_label_nested_module_import_decoy`, where V3 selects the passing
+  nested-package `add_import` candidate at rank 2, production selects a wrong
+  top-level import at rank 1, and shadow advice selects a non-import literal
+  decoy at rank 3.
+- Write scope: likely `j3/transition_action_scoring.py`, focused tests in
+  `tests/test_transition_action_scoring.py`, optional saved-artifact replay or
+  evidence doc under `docs/MODEL_013_*`, and plan updates. Do not edit product
+  routing, matrix manifests, candidate generation, ranker routing,
+  guarded-trial policy, local-knowledge records, materializer code, or
+  `plans/strategy.md`.
+- Acceptance: add narrow shadow-advice evidence that promotes a passing
+  `add_import` candidate whose module path points to an existing nested package
+  file over a wrong top-level package import and non-import literal decoys for
+  `greenshot_5_subset/receipt_label_nested_module_import_decoy`; prove with
+  focused tests or saved-artifact replay that advisory scoring no longer
+  selects the literal decoy for that example; keep product routing shadow-only.
+- Tests: `pytest tests/test_transition_action_scoring.py -q`, focused
+  residual/advice replay for `receipt_label_nested_module_import_decoy`,
   `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
 
 ## Workstream E: Repo State, Actions, And Models

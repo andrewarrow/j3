@@ -67,7 +67,12 @@ This is the live coordinator board. Keep it current and compact.
   moving from 8 to 12 tasks. The guarded decision remains
   `remain_shadow_only` because not all suite gates are
   `ready_for_guarded_opt_in`. Shadow-advice-only residual-report examples
-  remain separate from matrix residuals and suite gates.
+  remain separate from matrix residuals and suite gates. `TRANS-013` reran
+  the same expanded standard matrix after `MODEL-011` and `MODEL-012`: matrix
+  totals and suite gates stayed unchanged, the residual report narrowed from
+  8 to 3 shadow-advice-only GreenShot-5 examples, the four tail-index
+  residuals and `missing_guard` are gone in full replay, and the guarded
+  decision remains `remain_shadow_only`.
   Tests-only wedge guarded opt-in also remains
   blocked after `REAL-003` scored `pass@3 = 0/4`; `GS7-008` now materializes
   and live-validates the `iniconfig` calibration candidate. `REAL-005` extends
@@ -230,39 +235,26 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-### `TRANS-013`: Rerun expanded standard residual evidence after advice fixes
-
-- Status: active
-- Owner: worker TRANS-013, assigned on 2026-05-19.
-- Scope: generated outputs under `/tmp/j3-trans-013-expanded-standard-after-model012`,
-  a concise evidence doc under `docs/TRANS_013_*`, and plan updates.
-- Acceptance: rerun the expanded standard transition matrix after `MODEL-011`
-  and `MODEL-012`, regenerate matrix residual, advice/residual, checksum, and
-  guarded-decision evidence, compare against `TRANS-012`, and record whether
-  the tail-index and `missing_guard` shadow-advice residuals are gone and which
-  GreenShot-5 semantic API residuals remain.
-- Guardrails: do not edit scorer logic, candidate generation, product routing,
-  matrix manifests, guarded-trial policy, or local-knowledge records.
-- Expected tests: `python cli.py run-transition-shadow-matrix --matrix
-  examples/transition_shadow_matrix.json --out
-  /tmp/j3-trans-013-expanded-standard-after-model012`, checksum verification,
-  `python cli.py report-transition-residuals --matrix
-  /tmp/j3-trans-013-expanded-standard-after-model012`, `python cli.py
-  decide-transition-guarded-trial --matrix
-  /tmp/j3-trans-013-expanded-standard-after-model012`,
-  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+No active worker tasks are currently recorded.
 
 ## Ready Queue
 
-No ready worker tasks are currently recorded while `TRANS-013` is active.
+- `MODEL-013`: Add nested-package missing-import shadow-advice evidence for
+  `greenshot_5_subset/receipt_label_nested_module_import_decoy`. Scope should
+  stay limited to scorer/advice logic, focused scorer tests, optional
+  saved-artifact replay, and plan updates; product routing remains
+  shadow-only.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
 ## Paused Or Blocked
 
-- Three GreenShot-5 semantic API shadow-advice examples remain visible from
-  `TRANS-012` until `TRANS-013` confirms the post-`MODEL-012` narrowed
-  residual set. They are not matrix residuals in `TRANS-012`.
+- Three GreenShot-5 shadow-advice-only examples remain after `TRANS-013`:
+  `profile_signature_propagation`, `receipt_label_nested_module_import_decoy`,
+  and `visible_balance_attribute_decoys`. They are not matrix residuals or
+  suite-gate failures. The signature-propagation and attribute-repair examples
+  likely need separate candidate-after/source semantic evidence unless
+  `MODEL-013` exposes a shared feature.
 - `MODEL-002`: superseded by bounded scorer subtasks in the backlog, beginning
   with `MODEL-003` through `MODEL-009`.
 
@@ -277,6 +269,39 @@ Review before assigning more work if:
 - the next useful task is unclear
 
 ## Recently Completed
+
+### `TRANS-013`: Rerun expanded standard residual evidence after advice fixes
+
+- Status: completed by worker TRANS-013 on 2026-05-19.
+- Result: reran the expanded standard transition matrix after `MODEL-011` and
+  `MODEL-012` under
+  `/tmp/j3-trans-013-expanded-standard-after-model012`. Totals are unchanged
+  from `TRANS-012`: 5 suites, 60 tasks, 60 ranked solved tasks, 12,753
+  candidates, 19 held-out groups, 0 matrix residuals, 4 baseline residuals,
+  and zero hosted usage. The residual report narrowed from 8 to 3
+  shadow-advice-only examples; `last_item`, `final_score_tail`,
+  `last_order_id_tail`, `newest_event_tail`, and `missing_guard` are gone in
+  full replay. Guarded decision remains `remain_shadow_only` because not all
+  suite gates are `ready_for_guarded_opt_in`; product routing remains
+  shadow-only.
+- Commit: pending.
+- Push: pending.
+- Tests: matrix run -> passed; checksum verification -> passed;
+  residual report generation -> 3 examples; guarded decision ->
+  `remain_shadow_only`; `pytest tests/test_plan_consistency.py -q` ->
+  6 passed; `git diff --check` -> passed.
+- Artifacts:
+  `docs/TRANS_013_EXPANDED_STANDARD_AFTER_MODEL012_EVIDENCE_2026-05-19.md`,
+  `/tmp/j3-trans-013-expanded-standard-after-model012`,
+  `/tmp/j3-trans-013-expanded-standard-after-model012-residual-report.json`,
+  and
+  `/tmp/j3-trans-013-expanded-standard-after-model012-guarded-decision.json`.
+- Recommended next: `MODEL-013`, a bounded nested-package missing-import
+  shadow-advice scorer task using
+  `greenshot_5_subset/receipt_label_nested_module_import_decoy`.
+- Blockers: none for evidence replay; broader GreenShot-5 signature and
+  attribute semantic API scoring remains under-specified without
+  candidate-after/source semantic evidence.
 
 ### `MODEL-012`: Add guard-insertion advice over unrelated operator decoy evidence
 

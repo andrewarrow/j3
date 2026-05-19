@@ -124,14 +124,14 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-No active worker task is currently assigned.
+- `MAT-018`: assigned to refresh the real PR materialization coverage panel
+  after `MAT-014` through `MAT-017`. Update coverage counts, covered-row risk
+  classes, remaining gap counts, and next recommended materialization
+  workstream using docs/plan artifacts only.
 
 ## Ready Queue
 
-- `MAT-018`: refresh the real PR materialization coverage panel after
-  `MAT-014` through `MAT-017`, updating the remaining typed/general-AST gap
-  counts and risk classes without editing transition scoring, issue/PR
-  ranking, validation policy, local knowledge, or matrix manifests.
+No ready worker task is currently queued while `MAT-018` is active.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 

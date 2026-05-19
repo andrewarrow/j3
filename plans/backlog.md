@@ -3151,7 +3151,7 @@ Long-term target:
 
 ### MAT-018: Refresh real PR materialization coverage after MAT-017
 
-- Status: ready
+- Status: active
 - Why: `MAT-014` through `MAT-017` completed the four unresolved MAT-013
   typed/general-AST rows after the original coverage refresh. The coverage
   panel should now separate pure typed-builder wins, reusable filesystem idiom

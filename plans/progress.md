@@ -6930,9 +6930,8 @@ meaningful work. Do not replace this file with a daily reset.
   `from shop.reports.money import format_receipt_total` candidate. Guarded
   decision remains `remain_shadow_only` because not all suite gates are
   `ready_for_guarded_opt_in`; product routing remains shadow-only.
-- Commit: documentation/evidence commit for this task; hash reported in
-  worker final.
-- Push: documentation/evidence commit pushed by worker after verification.
+- Commit: `65a0221` documentation/evidence.
+- Push: documentation/evidence commit pushed successfully to `origin/main`.
 - Next: coordinator should review `TRANS-014`, then dispatch `MODEL-014`, a
   bounded signature-propagation shadow-advice scorer task for
   `greenshot_5_subset/profile_signature_propagation`. Keep
@@ -6940,3 +6939,30 @@ meaningful work. Do not replace this file with a daily reset.
   exposes shared source or candidate-after semantic evidence.
 - Blockers: none for evidence replay; broad GreenShot-5 semantic API scoring
   remains under-specified without source or candidate-after semantic evidence.
+
+### 2026-05-19 - Coordinator Review And Dispatch - MODEL-014
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, and
+  `plans/progress.md`.
+- Tests: parsed
+  `/tmp/j3-trans-014-expanded-standard-after-model013/matrix-summary.json`,
+  `/tmp/j3-trans-014-expanded-standard-after-model013-residual-report.json`,
+  and
+  `/tmp/j3-trans-014-expanded-standard-after-model013-guarded-decision.json`;
+  checksum verification passed for
+  `/tmp/j3-trans-014-expanded-standard-after-model013/evidence/checksums.sha256`;
+  `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check`
+  -> passed.
+- Result: reviewed and closed `TRANS-014`. Matrix totals and suite gates are
+  unchanged from `TRANS-013`, `receipt_label_nested_module_import_decoy` is
+  gone in full replay, the residual report now has only
+  `profile_signature_propagation` and `visible_balance_attribute_decoys`, and
+  guarded decision remains `remain_shadow_only`.
+- Next: dispatch `MODEL-014` for the signature-propagation residual. The
+  concrete local evidence is a `TypeError` naming `username`, a passing
+  `propagate_signature` candidate on `render_profile` from `name` to
+  `username`, a failing call-site `rename_symbol` decoy from `username` to
+  `name`, and an unrelated failing propagation on `user_badge_label`.
+- Blockers: none for `MODEL-014`; keep `visible_balance_attribute_decoys`
+  separate.

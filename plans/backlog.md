@@ -856,7 +856,8 @@ Long-term target:
 
 ### MODEL-014: Add signature-propagation shadow-advice evidence
 
-- Status: ready
+- Status: active
+- Owner: worker MODEL-014, assigned on 2026-05-19.
 - Why: after `TRANS-014`, one of the two remaining GreenShot-5
   shadow-advice-only examples is
   `greenshot_5_subset/profile_signature_propagation`. The failure is a

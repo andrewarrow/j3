@@ -239,16 +239,31 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-No active worker tasks are currently recorded. The coordinator should review
-`TRANS-014` and then dispatch the next bounded ready task if continuing the
-loop.
+### `MODEL-014`: Add signature-propagation shadow-advice evidence
+
+- Status: active
+- Owner: worker MODEL-014, assigned on 2026-05-19.
+- Scope: `j3/transition_action_scoring.py`, focused tests in
+  `tests/test_transition_action_scoring.py`, optional concise evidence doc
+  under `docs/MODEL_014_*`, and plan updates.
+- Acceptance: add narrow shadow-advice evidence that promotes the passing
+  `propagate_signature` candidate for
+  `greenshot_5_subset/profile_signature_propagation` when the new parameter
+  matches the `TypeError` keyword name and failure context names the same
+  source file or function; prove the passing `render_profile` propagation
+  ranks ahead of the failing call-site `rename_symbol` decoy and the unrelated
+  `user_badge_label` propagation; keep product routing shadow-only.
+- Guardrails: do not edit product routing, matrix manifests, candidate
+  generation, ranker routing, guarded-trial policy, local-knowledge records,
+  materializer code, or `plans/strategy.md`; keep
+  `visible_balance_attribute_decoys` separate.
+- Expected tests: `pytest tests/test_transition_action_scoring.py -q`,
+  focused residual/advice replay for `profile_signature_propagation`,
+  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
 
 ## Ready Queue
 
-1. `MODEL-014`: add narrow signature-propagation shadow-advice evidence for
-   `greenshot_5_subset/profile_signature_propagation`, using TypeError
-   missing-keyword evidence to promote the symbol-aligned
-   `propagate_signature` candidate over the failing call-site rename decoy.
+No ready worker tasks are currently recorded while `MODEL-014` is active.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
@@ -288,9 +303,8 @@ Review before assigning more work if:
   `from shop.reports.money import format_receipt_total` candidate. Guarded
   decision remains `remain_shadow_only` because not all suite gates are
   `ready_for_guarded_opt_in`; product routing remains shadow-only.
-- Commit: documentation/evidence commit for this task; hash reported in
-  worker final.
-- Push: documentation/evidence commit pushed by worker after verification.
+- Commit: `65a0221` documentation/evidence.
+- Push: documentation/evidence commit pushed successfully to `origin/main`.
 - Tests: matrix run -> passed; checksum verification -> passed; residual
   report generation -> 2 examples; guarded decision -> `remain_shadow_only`;
   `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check`

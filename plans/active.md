@@ -166,16 +166,32 @@ This is the live coordinator board. Keep it current and compact.
   Remaining non-materialized MAT-007 counts are now
   `current_structured_action = 4`, `general_typed_builder = 0`,
   `repo_convention_builder = 4`, `constrained_local_generator = 0`, and
-  `not_currently_expressible = 2`.
+  `not_currently_expressible = 2`. `MAT-026` is now assigned to refresh the
+  coverage panel and recommend the next workstream after the constrained
+  bucket closed.
 
 ## Active Tasks
 
-No active worker task is assigned after `MAT-025`.
+### `MAT-026`: Refresh constrained-source closure coverage
+
+- Status: active
+- Owner: worker.
+- Scope: focused `docs/MAT_026_*`, optional copied JSONL artifact under
+  `/tmp`, and plan updates. Avoid materializer code, transition scoring,
+  issue/PR ranking, validation-policy changes, local-knowledge records, matrix
+  manifests, and unrelated tests.
+- Acceptance: account for all seven original held-out
+  `constrained_local_generator` rows from MAT-007/MAT-019, including the two
+  earlier wins (`requests-7427`, `pytest-14475`) and the five MAT-020 through
+  MAT-025 rows. Keep DATA-029 and DATA-035 as validated reference rows outside
+  the held-out count. Update remaining non-materialized counts and recommend
+  the next bounded workstream/row from the remaining MAT-007 panel.
+- Tests: JSONL parse check if a JSONL artifact is written,
+  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
 
 ## Ready Queue
 
-No separate ready worker task is queued after `MAT-025`; coordinator review
-should choose the next bounded task from the backlog.
+No separate ready worker task is queued while `MAT-026` is active.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 

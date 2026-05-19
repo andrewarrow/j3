@@ -3463,12 +3463,33 @@ Long-term target:
   `/tmp/j3-mat-025-click-3420/final/accepted.diff`, and
   `/tmp/j3-mat-025-click-3420/final/accepted-files.txt`.
 
+### MAT-026: Refresh constrained-source closure coverage
+
+- Status: active
+- Why: `MAT-020` through `MAT-025`, combined with earlier `MAT-008` and
+  `MAT-009`, have now materialized and validated all seven held-out
+  constrained rows from the MAT-007/MAT-019 panel. Before assigning the next
+  implementation row, reconcile the coverage counts and recommend the next
+  bounded workstream from the remaining current-action, repo-convention, and
+  not-currently-expressible rows.
+- Write scope: focused `docs/MAT_026_*`, optional copied JSONL artifact under
+  `/tmp`, and plan updates. Avoid materializer code, transition scoring,
+  issue/PR ranking, validation-policy changes, local-knowledge records, matrix
+  manifests, and tests.
+- Acceptance: account for all seven original held-out
+  `constrained_local_generator` rows: `requests-7427`, `pytest-14475`,
+  `requests-7433`, `requests-7328`, `click-3434`, `click-3364`, and
+  `click-3420`. Keep DATA-029 and DATA-035 as validated reference rows outside
+  the held-out count. Update the remaining non-materialized MAT-007 counts and
+  recommend the next bounded workstream/row with evidence.
+- Tests: JSONL parse check if a JSONL artifact is written,
+  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+
 ## Next Recommended Queue
 
 Start with these unless fresh evidence changes the order:
 
-1. Coordinator review should refresh constrained-source coverage counts now
-   that the MAT-019 constrained held-out panel has no remaining
-   `constrained_local_generator` rows.
+1. Complete `MAT-026` to refresh constrained-source closure coverage and pick
+   the next bounded row from the remaining MAT-007 panel.
 2. Separately decide whether to pursue the `TRANS-012` shadow-advice-only
    residual examples; product transition routing remains shadow-only.

@@ -957,7 +957,7 @@ Long-term target:
 
 ### KNOW-006: Held-out h11 import-style knowledge gap
 
-- Status: active
+- Status: done
 - Why: KNOW-003 made missing attribution machine-readable, and the h11
   tests-only row now honestly reports `missing_knowledge` for `import_style`.
   The next proof is whether local knowledge can represent held-out relative
@@ -973,6 +973,12 @@ Long-term target:
   exact schema/materialization blocker and focused next step.
 - Tests: focused real-repo tests-only/local-knowledge tests, plan consistency,
   and `git diff --check`.
+- Completion note: added a generic `test_import_style` local-knowledge idiom
+  record for package-relative test imports and made tests-only attribution cite
+  matching relative-import records for `import_style`. The h11 row now cites
+  the observed `from .._util import bytesify` style without changing
+  `REQUIRED_KNOWLEDGE_PURPOSES`; no-record and partial-record tests still
+  report missing attribution.
 
 ### WEDGE-001: Product wedge decision
 

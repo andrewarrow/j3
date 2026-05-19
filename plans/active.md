@@ -71,27 +71,11 @@ This is the live coordinator board. Keep it current and compact.
   precise blocker showing why pure typed-builder action records are
   insufficient.
 
-### `KNOW-006`: Held-out h11 import-style knowledge gap
-
-- Status: active
-- Owner: worker James (`019e3dfa-a857-7941-8a7a-827462b044cf`).
-- Write scope: local knowledge and tests-only planning attribution, especially
-  `j3/local_knowledge.py`, `j3/real_repo_tests_planner.py`,
-  `tests/test_local_knowledge.py`, `tests/test_real_repo_tests_planner.py`,
-  optional `docs/KNOW_006_*`, generated artifacts under `/tmp`, and
-  task-specific planning updates. Avoid typed-builder materialization and
-  issue/PR ranking modules.
-- Acceptance: add or correct citeable local knowledge so
-  `h11-tests-bytesify-memoryview` records `import_style` attribution rather
-  than `missing_knowledge`, without weakening `REQUIRED_KNOWLEDGE_PURPOSES` or
-  hiding missing attribution for other rows. If the h11 relative-import style
-  cannot be represented honestly by current knowledge records, record the
-  exact schema/materialization blocker and focused next step.
-
 ## Ready Queue
 
-The active set is at the default parallelism limit. Reassess after `MAT-014`
-or `KNOW-006` returns.
+The active set is below the default parallelism limit after `KNOW-006`
+completed. Reassess after `MAT-014` returns, or dispatch one disjoint ready
+task if the coordinator loop continues before then.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
@@ -115,6 +99,14 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `KNOW-006`: added citeable local knowledge for package-relative test import
+  style and wired tests-only attribution to cite it. The held-out
+  `h11-tests-bytesify-memoryview` row now records `import_style` attribution
+  for `from .._util import bytesify`; `missing_purposes` is empty,
+  residual labels do not include `missing_knowledge`, and
+  `REQUIRED_KNOWLEDGE_PURPOSES` remains `test_location`, `import_style`,
+  `validation`. The existing no-knowledge and partial-knowledge planner tests
+  still report attribution gaps.
 - `VAL-004`: added a reusable behavior-negative-only issue/PR shadow gate over
   VAL-003-style policy rows. Strict issue/PR ranking remains `blocked` because
   two coverage-gap product blockers depend on decoy labels;

@@ -4231,3 +4231,27 @@ meaningful work. Do not replace this file with a daily reset.
   `MAT-014`; worker James (`019e3dfa-a857-7941-8a7a-827462b044cf`) is running
   `KNOW-006`.
 - Blockers: none.
+
+### 2026-05-19 - KNOW-006 - Held-out h11 import-style knowledge gap
+
+- Owner: worker James (`019e3dfa-a857-7941-8a7a-827462b044cf`).
+- Files changed: `j3/local_knowledge.py`, `j3/real_repo_tests_planner.py`,
+  `tests/test_local_knowledge.py`, `tests/test_real_repo_tests_planner.py`,
+  `plans/active.md`, `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `pytest tests/test_local_knowledge.py -q` -> 9 passed;
+  `pytest tests/test_real_repo_tests_planner.py -q` -> 7 passed;
+  `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check`
+  -> passed.
+- Result: added a compact `library_idiom_record` for package-relative test
+  imports and made tests-only import-style attribution cite matching relative
+  import records. `h11-tests-bytesify-memoryview` now cites the observed
+  `from .._util import bytesify` style for `import_style`; its missing purposes
+  are empty and residual labels no longer include `missing_knowledge` when all
+  required purposes are cited. `REQUIRED_KNOWLEDGE_PURPOSES` remains
+  `test_location`, `import_style`, `validation`, and the no-record and
+  partial-record planner tests still report missing attribution.
+- Commit: pending.
+- Push: pending.
+- Next: keep tests-only attribution gates intact while the coordinator chooses
+  the next ready task after `MAT-014` or another disjoint slice returns.
+- Blockers: none.

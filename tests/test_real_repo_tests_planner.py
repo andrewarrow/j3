@@ -9,6 +9,7 @@ from j3.local_knowledge import (
 )
 from j3.real_repo_tests_planner import (
     CANDIDATE_VALIDATION_DEFERRED,
+    REQUIRED_KNOWLEDGE_PURPOSES,
     plan_real_repo_tests_only_candidate,
 )
 
@@ -549,10 +550,12 @@ def test_real_repo_tests_planner_materializes_h11_bytesify_cases(
     assert row["validation_commands"] == [
         "python -m pytest h11/tests/test_util.py -q"
     ]
-    assert row["residual_labels"] == [
-        CANDIDATE_VALIDATION_DEFERRED,
-        "missing_knowledge",
-    ]
+    assert REQUIRED_KNOWLEDGE_PURPOSES == (
+        "test_location",
+        "import_style",
+        "validation",
+    )
+    assert row["residual_labels"] == [CANDIDATE_VALIDATION_DEFERRED]
     assert row["blockers"] == []
 
     select_test_file = row["actions"][1]
@@ -573,6 +576,17 @@ def test_real_repo_tests_planner_materializes_h11_bytesify_cases(
         (item["module"], item["imported"])
         for item in import_evidence["repo_state_imports"]
     }
+    assert import_evidence["selected_public_imports"] == []
+    assert import_evidence["local_knowledge_relative_import_examples"] == [
+        {
+            "path": "h11/tests/test_util.py",
+            "import": ".._util",
+            "names": ["bytesify"],
+            "kind": "from_import",
+            "level": 2,
+            "line": 3,
+        }
+    ]
 
     mutation_scope = row["mutation_scope"]
     assert mutation_scope["mode"] == "tests_only"
@@ -628,14 +642,17 @@ def test_real_repo_tests_planner_materializes_h11_bytesify_cases(
     }
 
     citations = row["knowledge_citations"]
-    assert {"pytest_style", "test_location", "validation"} <= set(citations)
-    assert row["knowledge_attribution"]["missing_purposes"] == ["import_style"]
-    assert row["knowledge_attribution"]["residual_labels"] == ["missing_knowledge"]
+    assert {"import_style", "pytest_style", "test_location", "validation"} <= set(
+        citations
+    )
+    assert row["knowledge_attribution"]["missing_purposes"] == []
+    assert row["knowledge_attribution"]["residual_labels"] == []
     knowledge_use = row["knowledge_use_record"]
     assert isinstance(knowledge_use, dict)
     validate_local_knowledge_record(knowledge_use)
     assert knowledge_use["record_type"] == "knowledge_use_record"
     assert knowledge_use["split"] == "heldout"
+    assert knowledge_use["data"]["missing_purposes"] == []
     assert knowledge_use["data"]["validation_result"] == {
         "status": "materialized",
         "command": "python -m pytest h11/tests/test_util.py -q",

@@ -1402,18 +1402,36 @@ def _import_style_evidence(
         if _is_public_import(_mapping(item, field="repo_state_import"))
     ]
     examples: list[dict[str, object]] = []
+    relative_examples: list[dict[str, object]] = []
     record_ids: list[str] = []
     for record in knowledge_records:
-        if record.get("record_type") != "public_api_record":
-            continue
         data = _mapping(record.get("data"), field="public_api.data")
-        for example in _sequence(
-            data.get("test_import_examples", []),
-            field="test_import_examples",
+        if record.get("record_type") == "public_api_record":
+            for example in _sequence(
+                data.get("test_import_examples", []),
+                field="test_import_examples",
+            ):
+                example_record = _mapping(example, field="test_import_example")
+                if example_record.get("path") == target_test_file:
+                    examples.append(dict(example_record))
+                    record_ids.append(_required_str(record, "id"))
+        elif (
+            record.get("record_type") == "library_idiom_record"
+            and data.get("knowledge_category") == "test_import_style"
         ):
-            example_record = _mapping(example, field="test_import_example")
-            if example_record.get("path") == target_test_file:
-                examples.append(dict(example_record))
+            for example in _sequence(
+                data.get("relative_import_examples", []),
+                field="relative_import_examples",
+            ):
+                example_record = _mapping(example, field="relative_import_example")
+                if example_record.get("path") != target_test_file:
+                    continue
+                if not _relative_import_example_matches_repo_state(
+                    example_record,
+                    repo_state_imports,
+                ):
+                    continue
+                relative_examples.append(dict(example_record))
                 record_ids.append(_required_str(record, "id"))
 
     return {
@@ -1421,8 +1439,29 @@ def _import_style_evidence(
         "repo_state_imports": repo_state_imports,
         "selected_public_imports": public_imports,
         "local_knowledge_import_examples": examples,
+        "local_knowledge_relative_import_examples": relative_examples,
         "knowledge_record_ids": _unique(record_ids),
     }
+
+
+def _relative_import_example_matches_repo_state(
+    example: Mapping[str, object],
+    repo_state_imports: Sequence[Mapping[str, object]],
+) -> bool:
+    module = str(example.get("import", ""))
+    level = example.get("level")
+    names = set(
+        _string_sequence(example.get("names", []), field="relative_import.names")
+    )
+    if not module or not names or not isinstance(level, int):
+        return False
+    matched_names = {
+        str(import_record.get("imported", ""))
+        for import_record in repo_state_imports
+        if str(import_record.get("module", "")) == module
+        and import_record.get("level") == level
+    }
+    return bool(names & matched_names)
 
 
 def _production_python_files(coverage: Mapping[str, object]) -> list[str]:

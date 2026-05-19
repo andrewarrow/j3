@@ -90,6 +90,28 @@ def test_slugify_rejects_none() -> None:
     )
 
 
+def _write_relative_import_repo(repo: Path) -> None:
+    (repo / "pkg" / "tests").mkdir(parents=True)
+    (repo / "pkg" / "__init__.py").write_text("", encoding="utf-8")
+    (repo / "pkg" / "_util.py").write_text(
+        """def bytesify(value: object) -> bytes:
+    return bytes(value)
+""",
+        encoding="utf-8",
+    )
+    (repo / "pkg" / "tests" / "test_util.py").write_text(
+        """import pytest
+
+from .._util import bytesify
+
+
+def test_bytesify() -> None:
+    assert bytesify(bytearray(b"abc")) == b"abc"
+""",
+        encoding="utf-8",
+    )
+
+
 def _tasks() -> list[dict[str, object]]:
     return [
         {
@@ -1118,6 +1140,63 @@ def test_extract_local_knowledge_records_emit_wedge_record_families(
         and data["decorator_shape"]["parametrize"]["case_count"] == 2  # type: ignore[index]
         for data in pattern_data
     )
+
+
+def test_extract_local_knowledge_records_cites_relative_test_import_style(
+    tmp_path: Path,
+) -> None:
+    _write_relative_import_repo(tmp_path)
+
+    records = extract_local_knowledge_records(
+        tmp_path,
+        repo_id="pkg",
+        repo_ref="0123456789abcdef0123456789abcdef01234567",
+        split="heldout",
+        tasks=[
+            {
+                "id": "pkg-tests-bytesify",
+                "task_type": "tests_only",
+                "allowed_write_paths": ["pkg/tests/test_util.py"],
+                "public_validation_commands": [
+                    "python -m pytest pkg/tests/test_util.py -q"
+                ],
+            }
+        ],
+    )
+
+    import_style_records = [
+        record
+        for record in records
+        if record["record_type"] == "library_idiom_record"
+        and record["data"]["knowledge_category"] == "test_import_style"
+    ]
+    assert len(import_style_records) == 1
+    record = import_style_records[0]
+    validate_local_knowledge_record(record)
+    assert record["source"]["path"] == "pkg/tests/test_util.py"
+    assert record["data"] == {
+        "knowledge_category": "test_import_style",
+        "import_style": "package_relative_from_import",
+        "source_path": "pkg/tests/test_util.py",
+        "relative_import_examples": [
+            {
+                "path": "pkg/tests/test_util.py",
+                "import": ".._util",
+                "names": ["bytesify"],
+                "kind": "from_import",
+                "level": 2,
+                "line": 3,
+            }
+        ],
+        "neighboring_imports": [
+            {"kind": "import", "module": "pytest"},
+            {
+                "kind": "from_import",
+                "module": "_util",
+                "names": "bytesify",
+            },
+        ],
+    }
 
 
 def test_local_knowledge_jsonl_and_use_record_are_stable(tmp_path: Path) -> None:

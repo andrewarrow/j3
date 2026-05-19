@@ -129,6 +129,7 @@ def extract_local_knowledge_records(
         _pytest_layout_record(resolved, context, pyproject, pytest_ini, test_files),
     ]
     records.extend(_public_api_records(resolved, context, python_files))
+    records.extend(_relative_import_style_records(resolved, context, test_files))
     records.extend(
         _validation_recipe_records(
             resolved,
@@ -1976,6 +1977,69 @@ def _pytest_pattern_records(
                 )
             )
     return tuple(records)
+
+
+def _relative_import_style_records(
+    repo: Path,
+    context: Mapping[str, str],
+    test_files: Sequence[str],
+) -> tuple[dict[str, object], ...]:
+    records: list[dict[str, object]] = []
+    for path in test_files:
+        tree = _parse_python(repo / path)
+        examples = _relative_import_examples(tree, path)
+        if not examples:
+            continue
+        data = {
+            "knowledge_category": "test_import_style",
+            "import_style": "package_relative_from_import",
+            "source_path": path,
+            "relative_import_examples": examples,
+            "neighboring_imports": list(_imports(tree)),
+        }
+        records.append(
+            _source_record(
+                record_type="library_idiom_record",
+                repo=repo,
+                context=context,
+                source_kind="repo_file",
+                source_path=path,
+                provenance_paths=[path],
+                confidence="observed",
+                links={"task_ids": [], "outcome_ids": [], "residual_labels": []},
+                data=data,
+            )
+        )
+    return tuple(records)
+
+
+def _relative_import_examples(
+    tree: ast.Module,
+    path: str,
+) -> list[dict[str, object]]:
+    examples: list[dict[str, object]] = []
+    for node in tree.body:
+        if not isinstance(node, ast.ImportFrom) or node.level <= 0:
+            continue
+        module = "." * node.level + (node.module or "")
+        names = [
+            alias.asname or alias.name
+            for alias in node.names
+            if alias.name != "*"
+        ]
+        if not names:
+            continue
+        examples.append(
+            {
+                "path": path,
+                "import": module,
+                "names": names,
+                "kind": "from_import",
+                "level": node.level,
+                "line": node.lineno,
+            }
+        )
+    return examples[:10]
 
 
 def _pytest_pattern_from_function(

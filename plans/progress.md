@@ -4345,3 +4345,21 @@ meaningful work. Do not replace this file with a daily reset.
   `test_patch_solves_httpx_async_client_sync_request_article`,
   `test_patch_solves_jinja_async_loop_filter_error_message`, and
   `test_patch_solves_greenshot_6_dictionary_literal_value`.
+
+### 2026-05-19 - Coordinator Dispatch - MODEL-004
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, and
+  `plans/progress.md`.
+- Tests: `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check -- plans/active.md plans/backlog.md plans/progress.md` ->
+  passed.
+- Result: reviewed the completed `MODEL-003` scorer slice and selected the next
+  bounded residual task, `MODEL-004`. The new worker scope is limited to
+  mapping key/value target evidence for `change_dict_key`,
+  `change_dict_value`, `add_dict_key`, and `change_subscript_key` competing on
+  the same mapping. Production ranking gates remain unchanged and shadow-only.
+- Commit: pending.
+- Push: pending.
+- Next: dispatch a worker for `MODEL-004` after plan consistency checks pass.
+- Blockers: none.

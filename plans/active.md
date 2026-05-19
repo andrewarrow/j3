@@ -57,15 +57,23 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-No active worker tasks are recorded after `MODEL-003` completed. The
-coordinator should either dispatch the next bounded ready task or record the
-blocker that prevents dispatch.
+- `MODEL-004`: distinguish mapping key and value target evidence in the
+  transition scorer.
+  - Owner: coordinator dispatch in progress; worker pending.
+  - Scope: transition scorer/advice/ranking fixtures, features, and focused
+    tests for mapping key/value target evidence only.
+  - Acceptance: scorer evidence distinguishes `change_dict_key`,
+    `change_dict_value`, `add_dict_key`, and `change_subscript_key` when the
+    same mapping appears in competing candidates.
+  - Expected tests: focused transition action scoring/ranking tests,
+    `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
 
 ## Ready Queue
 
-The active set is below the default parallelism limit after `MODEL-003`
-completed. Reassess the remaining scorer residuals and dispatch the next
-bounded ready task if the coordinator loop continues.
+`MODEL-004` is being dispatched as the next bounded scorer residual slice.
+After it completes, reassess the remaining scorer residuals and choose between
+`MODEL-005` boundary/literal ranking, targeted residual evidence, or another
+bounded ready task.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 

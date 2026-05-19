@@ -444,7 +444,7 @@ Long-term target:
 
 ### MODEL-004: Distinguish mapping key and value targets
 
-- Status: ready
+- Status: active
 - Why: remaining residuals confuse mapping key mutation with value mutation
   despite existing structured actions.
 - Write scope: transition scorer fixtures/features/tests for mapping
@@ -2624,5 +2624,6 @@ Long-term target:
 
 Start with these unless fresh evidence changes the order:
 
-1. Review MAT-014 and KNOW-006 results, then dispatch the next bounded ready
-   task.
+1. Integrate `MODEL-004`, then choose between `MODEL-005` boundary/literal
+   ranking, targeted residual evidence, or another bounded ready task based on
+   the scorer residuals that remain.

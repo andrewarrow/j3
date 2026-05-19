@@ -131,13 +131,16 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-No active worker task is currently assigned.
+- `MAT-019`: assigned to reconcile the constrained source/test materialization
+  coverage panel before any new constrained implementation row. Account for
+  already-completed `MAT-008` (`psf/requests#7427`) and `MAT-009`
+  (`pytest-dev/pytest#14475`) plus DATA reference rows, correct the stale
+  `MAT-018` next-row recommendation, and identify the next genuinely
+  uncovered constrained-source/test row.
 
 ## Ready Queue
 
-- `MAT-019`: materialize a bounded `psf/requests#7427` constrained source/test
-  replay row using reusable action records, or record the exact source
-  generation blocker without adding PR-specific materializer code.
+No ready worker task is currently queued while `MAT-019` is active.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 

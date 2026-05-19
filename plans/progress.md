@@ -5552,9 +5552,29 @@ meaningful work. Do not replace this file with a daily reset.
   `flask-5903` and `click-3430` are explicitly reusable materializer coverage,
   not pure typed-builder coverage. Source-scoped and full-diff parity are
   separated for rows with RST companion files.
-- Commit: pending.
-- Push: pending.
-- Next: assign `MAT-019` for `psf/requests#7427` constrained source/test
-  materialization, with `pytest-dev/pytest#14475` as the next alternate if
-  the first row exposes a source-synthesis blocker.
+- Commit: 9088ecc evidence; completion metadata: 427db4d.
+- Push: succeeded.
+- Next: reconcile the constrained-source/test coverage panel before assigning
+  another implementation row, because the recorded `MAT-018` recommended next
+  row (`psf/requests#7427`) and alternate (`pytest-dev/pytest#14475`) were
+  already materialized by `MAT-008` and `MAT-009`.
+- Blockers: none.
+
+### 2026-05-19 - Coordinator Review And Dispatch - MAT-019
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, and
+  `plans/progress.md`.
+- Tests: `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check` -> passed.
+- Result: reviewed `MAT-018` against earlier source-region evidence. The
+  coverage-refresh artifact is valid for the typed/general bucket, but its
+  recommended constrained next row is stale: `psf/requests#7427` was already
+  materialized and live-validated in `MAT-008`, and `pytest-dev/pytest#14475`
+  was already materialized and live-validated in `MAT-009`. The next bounded
+  step is a docs/data reconciliation of constrained-source coverage, not a
+  duplicate implementation attempt.
+- Next: dispatch a worker for `MAT-019` with ownership of focused
+  `docs/MAT_019_*`, optional copied JSONL artifact under `/tmp`, and plan
+  updates. Do not edit materializer code or tests.
 - Blockers: none.

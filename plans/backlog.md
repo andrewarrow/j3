@@ -3184,37 +3184,35 @@ Long-term target:
   and
   `/tmp/j3-mat-018-real-pr-materialization-refresh/MAT_018_REAL_PR_MATERIALIZATION_COVERAGE_REFRESH_2026-05-19.jsonl`.
 
-### MAT-019: Requests #7427 constrained source/test materialization probe
+### MAT-019: Reconcile constrained source/test materialization coverage
 
-- Status: ready
-- Why: after `MAT-018`, the MAT-007 `general_typed_builder` bucket has no
-  unresolved rows. The largest remaining non-materialized bucket is
-  `constrained_local_generator = 7`, and `psf/requests#7427` is a bounded
-  source-plus-test row for testing whether source-region and test-placement
-  mechanisms can be reusable rather than PR-specific.
-- Write scope: a focused constrained materializer module/tests if assigned,
-  optional `docs/MAT_019_*`, generated artifacts under `/tmp`, and plan
-  updates. Avoid transition scoring, issue/PR ranking, validation-policy,
-  local-knowledge, matrix manifests, and typed-builder-only refactors unless
-  the assigned worker scope explicitly includes them.
-- Acceptance: attempt `psf/requests#7427` using reusable action records for the
-  source edit and accepted proof tests. Record base/head refs, accepted changed
-  files, mutation scope, source-scoped vs full-diff parity, candidate-after
-  diff/AST metadata, validation result or exact blocker, and whether the row
-  requires constrained local generation. Do not add a PR-named materializer;
-  if a reusable source/test action family is insufficient, record the precise
-  blocker.
-- Tests: focused materializer tests selected by the implementation scope,
-  `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and live
-  validation or a recorded validation blocker.
+- Status: active
+- Why: `MAT-018` correctly closed the original `general_typed_builder` bucket,
+  but its recommended constrained next row was stale: `psf/requests#7427` and
+  the alternate `pytest-dev/pytest#14475` were already materialized and
+  live-validated by `MAT-008` and `MAT-009`. Before assigning another
+  constrained implementation row, reconcile the coverage panel with the
+  existing constrained-source evidence.
+- Write scope: focused `docs/MAT_019_*`, optional copied JSONL artifact under
+  `/tmp`, and plan updates. Avoid materializer code, transition scoring,
+  issue/PR ranking, validation-policy, local-knowledge, matrix manifests, and
+  tests.
+- Acceptance: account for `MAT-008` (`requests-7427`), `MAT-009`
+  (`pytest-14475`), and the DATA-029/DATA-035 validated reference rows in the
+  constrained-source/test panel; update remaining constrained row counts;
+  explicitly correct the stale `MAT-018` next recommendation; and recommend
+  the next genuinely uncovered constrained-source/test implementation row
+  with a reason.
+- Tests: JSONL parse check if a JSONL artifact is written,
+  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
 
 ## Next Recommended Queue
 
 Start with these unless fresh evidence changes the order:
 
-1. Assign `MAT-019` for `psf/requests#7427` constrained source/test
-   materialization.
-2. If `MAT-019` blocks on source synthesis, try `pytest-dev/pytest#14475` as a
-   second constrained-source/test row with the same reusable-action rule.
+1. Finish `MAT-019` constrained-source coverage reconciliation so the next
+   implementation row is not a duplicate of `MAT-008` or `MAT-009`.
+2. Assign the next genuinely uncovered constrained-source/test row identified
+   by `MAT-019`.
 3. Separately decide whether to pursue the `TRANS-012` shadow-advice-only
    residual examples; product transition routing remains shadow-only.

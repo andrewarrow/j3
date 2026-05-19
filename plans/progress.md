@@ -5436,8 +5436,9 @@ meaningful work. Do not replace this file with a daily reset.
   PR-named action kind or `statement_block_replace` was used. The RST tutorial
   file is fully materialized for accepted-diff parity, with expected
   non-Python AST parse metadata recorded rather than hidden.
-- Commit: pending in this worker commit.
-- Push: pending.
+- Commit: e13b858 implementation; completion metadata recorded in follow-up
+  plan-only commit.
+- Push: succeeded.
 - Next: coordinator should review MAT-016 and decide whether to attempt the
   remaining `click-3430` helper extraction row or return to shadow scorer
   advice residuals from `TRANS-012`; product transition routing remains

@@ -4037,8 +4037,8 @@ meaningful work. Do not replace this file with a daily reset.
   and `MAT-012` workers initialize. `KNOW-003` attacks whether tests-only
   candidate/outcome rows use local knowledge as explicit attribution rather
   than incidental planner context.
-- Commit: pending.
-- Push: pending.
+- Commit: 61af1ba.
+- Push: succeeded.
 - Next: worker Lorentz (`019e3de6-2a58-7e01-8efe-d09e29652ac7`) is running
   `KNOW-003`; keep the active set capped until one worker returns.
 - Blockers: none.

@@ -4689,8 +4689,8 @@ meaningful work. Do not replace this file with a daily reset.
   GreenShot-6 one-row smoke solved the task with one tested ranked candidate
   and recorded the preferred `change_literal` outcome at rank 1. Production
   transition ranking gates remain unchanged and shadow-only.
-- Commit: pending; final worker report will include the pushed commit hash.
-- Push: pending.
+- Commit: 6fa8859.
+- Push: succeeded.
 - Next: coordinator should review the completed `TRANS-006` / `ACT-003`
   residual batch before choosing the next transition residual task.
 - Blockers: none for `ACT-003`; unrelated existing full patching-suite

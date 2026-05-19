@@ -135,14 +135,14 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-No active worker task is currently assigned.
+- `MAT-020`: assigned to implement the next genuinely uncovered constrained
+  source/test row, `psf/requests#7433`, using reusable source-region and
+  pytest insertion action records. Keep `requests-7328` as the compact
+  alternate only if setup or target selection blocks.
 
 ## Ready Queue
 
-- `MAT-020`: implement the next genuinely uncovered constrained source/test
-  row, `psf/requests#7433`, using reusable source-region and pytest insertion
-  action records. Keep `requests-7328` as the compact alternate if
-  `requests-7433` exposes a setup or target-selection blocker.
+No ready worker task is currently queued while `MAT-020` is active.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 

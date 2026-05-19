@@ -5597,8 +5597,25 @@ meaningful work. Do not replace this file with a daily reset.
   `requests-7328`. DATA-029 `pytest-14466` and DATA-035 `scrapy-7351` remain
   validated reference rows outside the held-out count. The stale MAT-018 next
   recommendation naming `requests-7427` and `pytest-14475` is corrected.
-- Commit: pending worker commit.
-- Push: pending.
+- Commit: 454743c.
+- Push: succeeded.
 - Next: assign `MAT-020` for `psf/requests#7433`, with `requests-7328` as the
   compact alternate if setup or target selection blocks.
+- Blockers: none.
+
+### 2026-05-19 - Coordinator Review And Dispatch - MAT-020
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, and
+  `plans/progress.md`.
+- Tests: `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check` -> passed.
+- Result: reviewed `MAT-019`; the constrained-source/test queue is now
+  corrected. `requests-7433` is the next genuinely uncovered compact row,
+  while `requests-7427` and `pytest-14475` are already covered by earlier
+  MAT tasks. The next bounded step is an implementation attempt using reusable
+  source-region and pytest insertion action records, not PR-specific code.
+- Next: dispatch a worker for `MAT-020` with ownership of the constrained
+  source-region materializer surface, focused tests/docs, generated `/tmp`
+  artifacts, and plan updates.
 - Blockers: none.

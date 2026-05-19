@@ -3222,7 +3222,7 @@ Long-term target:
 
 ### MAT-020: Held-out requests stream-wrapper source/test candidate
 
-- Status: ready
+- Status: active
 - Why: MAT-019 identified `psf/requests#7433` as the smallest genuinely
   uncovered constrained source/test row after removing the already-covered
   `requests-7427` and `pytest-14475` rows. It is compact enough for one

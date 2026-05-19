@@ -6989,10 +6989,35 @@ meaningful work. Do not replace this file with a daily reset.
   promoted. Call-site `rename_symbol` decoys are demoted only when a
   symbol-aligned propagation candidate is present. Product routing remains
   shadow-only.
-- Commit: implementation/evidence commit.
+- Commit: `ae73e2a` implementation/evidence.
 - Push: implementation/evidence commit pushed successfully to `origin/main`.
-- Next: coordinator should review `MODEL-014`, then either run a focused
-  post-scorer residual replay or dispatch the separate
+- Next: coordinator should review `MODEL-014`, then dispatch `TRANS-015` to
+  confirm the remaining report shape before the separate
   `visible_balance_attribute_decoys` shadow-advice scorer task.
 - Blockers: none for signature propagation; keep attribute-repair decoys
   separate.
+
+### 2026-05-19 - Coordinator Review And Dispatch - TRANS-015
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, and
+  `plans/progress.md`.
+- Tests: `python -m py_compile j3/transition_action_scoring.py
+  tests/test_transition_action_scoring.py` -> passed; `pytest
+  tests/test_transition_action_scoring.py -q` -> 32 passed; direct replay over
+  `/tmp/j3-trans-014-expanded-standard-after-model013/suite/greenshot_5_subset/candidate-outcomes.jsonl`
+  for `profile_signature_propagation` -> rank 1 passing
+  `propagate_signature` on `render_profile` scored `2.890000000000`, rank 2
+  failing call-site `rename_symbol` scored `1.380000000000`, rank 3 failing
+  `propagate_signature` on `user_badge_label` scored `0.840000000000`;
+  `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check`
+  -> passed.
+- Result: reviewed and closed `MODEL-014`. The signature-propagation scorer
+  change is narrow to TypeError keyword failures where the target
+  `propagate_signature` candidate matches the hinted file and function symbol.
+  Product routing remains shadow-only.
+- Next: dispatch `TRANS-015` to rerun the expanded standard matrix and
+  residual evidence after `MODEL-014`, confirm the signature-propagation
+  residual is gone in full replay, and decide the exact scope for the
+  remaining attribute-repair residual.
+- Blockers: none.

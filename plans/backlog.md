@@ -895,6 +895,28 @@ Long-term target:
   ahead of the failing call-site rename and unrelated propagation. Product
   routing remains shadow-only.
 
+### TRANS-015: Rerun expanded standard residual evidence after MODEL-014
+
+- Status: active
+- Owner: worker TRANS-015, assigned on 2026-05-19.
+- Why: `MODEL-014` directly replayed the signature-propagation residual, but
+  the committed expanded-standard residual evidence still predates that scorer
+  change. A fresh evidence run should confirm whether
+  `profile_signature_propagation` leaves the residual report and whether only
+  `visible_balance_attribute_decoys` remains.
+- Write scope: generated outputs under
+  `/tmp/j3-trans-015-expanded-standard-after-model014`, a concise evidence doc
+  under `docs/TRANS_015_*`, and plan updates. Do not edit scorer logic,
+  candidate generation, product routing, matrix manifests, guarded-trial
+  policy, local-knowledge records, materializer code, or `plans/strategy.md`.
+- Acceptance: rerun the expanded standard matrix, regenerate residual and
+  guarded-decision evidence, compare against `TRANS-014`, prove whether the
+  signature-propagation residual is resolved in full replay, and identify the
+  next bounded attribute-repair scorer task or blocker.
+- Tests: `run-transition-shadow-matrix`, checksum verification,
+  `report-transition-residuals --matrix`, `decide-transition-guarded-trial`,
+  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+
 ## Workstream E: Repo State, Actions, And Models
 
 ### REPO-001: Summarize repo-state encoder coverage

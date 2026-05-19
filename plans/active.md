@@ -239,23 +239,41 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-No active worker tasks are currently recorded after `MODEL-014`; coordinator
-review should decide whether to dispatch a post-scorer residual replay or the
-separate `visible_balance_attribute_decoys` scorer slice.
+### `TRANS-015`: Rerun expanded standard residual evidence after MODEL-014
+
+- Status: active
+- Owner: worker TRANS-015, assigned on 2026-05-19.
+- Scope: generated outputs under `/tmp/j3-trans-015-expanded-standard-after-model014`,
+  a concise evidence doc under `docs/TRANS_015_*`, and plan updates.
+- Acceptance: rerun the expanded standard transition matrix after
+  `MODEL-014`, regenerate matrix residual, advice/residual, checksum, and
+  guarded-decision evidence, compare against `TRANS-014`, and record whether
+  `profile_signature_propagation` is gone and whether only
+  `visible_balance_attribute_decoys` remains.
+- Guardrails: do not edit scorer logic, candidate generation, product routing,
+  matrix manifests, guarded-trial policy, local-knowledge records,
+  materializer code, or `plans/strategy.md`.
+- Expected tests: `python cli.py run-transition-shadow-matrix --matrix
+  examples/transition_shadow_matrix.json --out
+  /tmp/j3-trans-015-expanded-standard-after-model014`, checksum verification,
+  `python cli.py report-transition-residuals --matrix
+  /tmp/j3-trans-015-expanded-standard-after-model014`, `python cli.py
+  decide-transition-guarded-trial --matrix
+  /tmp/j3-trans-015-expanded-standard-after-model014`,
+  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
 
 ## Ready Queue
 
-No ready worker tasks are currently recorded after `MODEL-014`.
+No ready worker tasks are currently recorded while `TRANS-015` is active.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
 ## Paused Or Blocked
 
-- `visible_balance_attribute_decoys` remains a separate GreenShot-5
-  shadow-advice-only semantic API scorer task after `TRANS-014`. It is not a
-  matrix residual or suite-gate failure. Keep it separate from
-  `MODEL-014` unless source or candidate-after semantic evidence shows a
-  shared implementation shape.
+- `visible_balance_attribute_decoys` is expected to remain as the separate
+  GreenShot-5 shadow-advice-only attribute scorer task after the `MODEL-014`
+  direct replay. It is not a matrix residual or suite-gate failure; `TRANS-015`
+  should confirm the full replay shape before implementation continues.
 - `MODEL-002`: superseded by bounded scorer subtasks in the backlog, beginning
   with `MODEL-003` through `MODEL-009`.
 
@@ -283,7 +301,7 @@ Review before assigning more work if:
   passing `render_profile` propagation ahead of the failing call-site rename
   and the unrelated `user_badge_label` propagation. Product routing remains
   shadow-only.
-- Commit: implementation/evidence commit.
+- Commit: `ae73e2a` implementation/evidence.
 - Push: implementation/evidence commit pushed successfully to `origin/main`.
 - Tests: `python -m py_compile j3/transition_action_scoring.py
   tests/test_transition_action_scoring.py` -> passed; `pytest

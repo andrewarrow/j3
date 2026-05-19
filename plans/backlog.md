@@ -630,7 +630,7 @@ Long-term target:
 
 ### TRANS-012: Rerun expanded standard matrix evidence
 
-- Status: active
+- Status: done
 - Why: `TRANS-003` expanded the standard manifest's `greenshot_5_subset` from
   8 to 12 tasks, but that was intentionally manifest-only. The matrix,
   residual, and guarded-decision evidence must be refreshed in a separate
@@ -647,6 +647,18 @@ Long-term target:
 - Tests: `run-transition-shadow-matrix`, checksum verification,
   `report-transition-residuals --matrix`, `decide-transition-guarded-trial`,
   `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+- Completion note: reran the expanded standard matrix under
+  `/tmp/j3-trans-012-expanded-standard`. Totals were 5 suites, 60 tasks, 60
+  ranked solved tasks, 12,753 candidates, 19 held-out groups, 0 matrix
+  residuals, 4 baseline residuals, and zero hosted usage. Compared with
+  `TRANS-011`, `greenshot_5_subset` moved from 8 to 12 tasks and from 680 to
+  1,020 candidates while preserving 0 matrix residuals, 2 baseline residuals,
+  3 held-out groups, and `ready_for_guarded_opt_in`. The residual report has
+  8 examples, all `shadow_scorer_top_candidate_failed`; the expansion exposes
+  one new shadow-advice-only GreenShot-5 example,
+  `receipt_label_nested_module_import_decoy`. Guarded decision remains
+  `remain_shadow_only` because not all suite gates are
+  `ready_for_guarded_opt_in`; product routing remains shadow-only.
 
 ## Workstream E: Repo State, Actions, And Models
 

@@ -60,9 +60,14 @@ This is the live coordinator board. Keep it current and compact.
   `TRANS-003` can resume coordinator-reviewed standard matrix manifest
   expansion. `TRANS-003` then expanded only `greenshot_5_subset` from 8 to
   12 tasks in manifest/test/docs, preserving suites and runner parameters;
-  the expanded matrix run remains a separate follow-up evidence step.
-  Shadow-advice-only residual-report examples remain separate from matrix
-  residuals and suite gates.
+  `TRANS-012` reran the expanded standard matrix: 5 suites, 60 tasks, 60
+  ranked solved tasks, 12,753 candidates, 19 held-out groups, 0 matrix
+  residuals, 4 baseline residuals, 8 residual-report examples, and zero
+  hosted usage. `greenshot_5_subset` remains `ready_for_guarded_opt_in` after
+  moving from 8 to 12 tasks. The guarded decision remains
+  `remain_shadow_only` because not all suite gates are
+  `ready_for_guarded_opt_in`. Shadow-advice-only residual-report examples
+  remain separate from matrix residuals and suite gates.
   Tests-only wedge guarded opt-in also remains
   blocked after `REAL-003` scored `pass@3 = 0/4`; `GS7-008` now materializes
   and live-validates the `iniconfig` calibration candidate. `REAL-005` extends
@@ -108,24 +113,21 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-- `TRANS-012`: assigned to rerun the full expanded standard transition shadow
-  matrix after the `TRANS-003` manifest expansion. Compare against the
-  zero-matrix-residual `TRANS-011` baseline, regenerate residual and
-  guarded-decision evidence, and keep product routing shadow-only unless the
-  checked-in guarded-trial policy says otherwise.
+No active worker task is recorded after `TRANS-012`; coordinator should review
+the expanded matrix evidence and choose the next bounded task.
 
 ## Ready Queue
 
-No ready worker task is currently queued while `TRANS-012` is active.
+No ready worker task is currently queued after `TRANS-012`.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
 ## Paused Or Blocked
 
 - Shadow-advice-only residual-report examples from `greenshot_bugs`,
-  `greenshot_4`, and two `greenshot_5_subset` tasks remain visible for a
+  `greenshot_4`, and three `greenshot_5_subset` tasks remain visible for a
   separate scorer/advice follow-up, but they are not matrix residuals in
-  `TRANS-011`.
+  `TRANS-012`.
 - `MODEL-002`: superseded by bounded scorer subtasks in the backlog, beginning
   with `MODEL-003` through `MODEL-009`.
 
@@ -141,6 +143,18 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `TRANS-012`: reran the expanded standard transition matrix after
+  `TRANS-003`. The run covered 5 suites, 60 tasks, 60 ranked solved tasks,
+  12,753 candidates, and 19 held-out groups, with 0 matrix residuals, 4
+  baseline residuals, 8 residual-report examples, and zero hosted usage.
+  Compared with `TRANS-011`, the only suite expansion is
+  `greenshot_5_subset`: 8 -> 12 tasks, 680 -> 1,020 candidates, 0 matrix
+  residuals preserved, 2 baseline residuals preserved, and
+  `ready_for_guarded_opt_in` preserved. The residual report adds one
+  shadow-advice-only example,
+  `receipt_label_nested_module_import_decoy`; no `v3_top_candidate_failed`
+  examples remain. Guarded decision remains `remain_shadow_only`; product
+  routing remains shadow-only.
 - `TRANS-003`: expanded the standard matrix manifest's `greenshot_5_subset`
   from 8 to 12 selected GreenShot-5 tasks by adding
   `profile_badge_public_api_signature_propagation`,

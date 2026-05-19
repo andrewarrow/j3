@@ -5283,3 +5283,53 @@ meaningful work. Do not replace this file with a daily reset.
   guarded-decision evidence. Do not edit scorer/ranker/candidate-generation,
   product-routing, guarded-trial policy, or the matrix manifest in this slice.
 - Blockers: none.
+
+### 2026-05-19 - TRANS-012 - Expanded standard matrix evidence
+
+- Owner: worker Codex.
+- Files changed:
+  `docs/TRANS_012_EXPANDED_STANDARD_MATRIX_EVIDENCE_2026-05-19.md`,
+  `plans/active.md`, `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `python cli.py run-transition-shadow-matrix --matrix
+  examples/transition_shadow_matrix.json --out
+  /tmp/j3-trans-012-expanded-standard --force --json` -> passed;
+  `python -m json.tool
+  /tmp/j3-trans-012-expanded-standard/matrix-summary.json >/dev/null` ->
+  passed; `shasum -a 256 -c
+  /tmp/j3-trans-012-expanded-standard/evidence/checksums.sha256` -> passed;
+  `python cli.py report-transition-residuals --matrix
+  /tmp/j3-trans-012-expanded-standard --out
+  /tmp/j3-trans-012-expanded-standard-residual-report.json --json` ->
+  passed; `python -m json.tool
+  /tmp/j3-trans-012-expanded-standard-residual-report.json >/dev/null` ->
+  passed; `python cli.py decide-transition-guarded-trial --matrix
+  /tmp/j3-trans-012-expanded-standard --out
+  /tmp/j3-trans-012-expanded-standard-guarded-decision.json --json` ->
+  passed; `python -m json.tool
+  /tmp/j3-trans-012-expanded-standard-guarded-decision.json >/dev/null` ->
+  passed; `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check` -> passed.
+- Result: refreshed the full expanded standard transition matrix after the
+  `TRANS-003` manifest expansion. The run covered 5 suites, 60 tasks, 60
+  ranked solved tasks, 12,753 candidates, and 19 held-out groups, with 0
+  matrix residuals, 4 baseline residuals, 8 residual-report examples, and zero
+  hosted usage. Compared with `TRANS-011`, `greenshot_5_subset` moved from 8
+  to 12 tasks and from 680 to 1,020 candidates while preserving 0 matrix
+  residuals, 2 baseline residuals, 3 held-out groups, and
+  `ready_for_guarded_opt_in`. The residual report has 8
+  `scorer_ranking_gap` examples, all `shadow_scorer_top_candidate_failed`; no
+  `v3_top_candidate_failed` examples remain. The expansion exposes one new
+  shadow-advice-only GreenShot-5 example,
+  `receipt_label_nested_module_import_decoy`. Guarded decision remains
+  `remain_shadow_only` because not all suite gates are
+  `ready_for_guarded_opt_in`.
+- Commit: pending.
+- Push: pending.
+- Next: coordinator should review whether to assign a bounded shadow-scorer
+  advice follow-up for the 8 residual-report examples, prioritizing the new
+  `greenshot_5_subset/receipt_label_nested_module_import_decoy` nested import
+  decoy only if shadow-advice parity is the next target. Product transition
+  routing should remain shadow-only.
+- Blockers: full standard transition ranking remains shadow-only because
+  `greenshot_bugs`, `greenshot_3`, and `greenshot_4` are
+  `ready_for_shadow_mode`, not `ready_for_guarded_opt_in`.

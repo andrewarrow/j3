@@ -71,14 +71,19 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-No active worker tasks are recorded after `TRANS-007`; coordinator review
-should choose the next bounded scorer-ranking residual task before assigning
-more transition matrix evidence.
+- `MODEL-007` -> worker pending: fix the GreenShot-6 mapping-key advice
+  residual from `TRANS-007`. Scope is deterministic transition scorer/advice
+  ranking only, focused on the `project_urls_header_dict_key` shape where
+  `change_dict_key Project_URL -> Project-URL` should outrank the
+  `add_dict_key Project-URL = None` decoy when public missing-key and
+  same-mapping evidence support a rename. Do not change production routing or
+  V3 product gates in this slice.
 
 ## Ready Queue
 
-No ready task is currently staged on this board. Do not broaden the standard
-matrix manifest until the `TRANS-007` subset result is reviewed.
+No additional ready task is currently staged on this board. Do not broaden the
+standard matrix manifest until the `MODEL-007` scorer residual is integrated
+and a follow-up targeted subset rerun is assigned.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
@@ -90,7 +95,7 @@ Run at most two tasks in parallel unless write scopes are plainly disjoint.
   `not_ready_underperforms_existing_rank_order`, and a guarded decision of
   `remain_shadow_only`.
 - `MODEL-002`: superseded by bounded scorer subtasks in the backlog, beginning
-  with `MODEL-003` through `MODEL-006`.
+  with `MODEL-003` through `MODEL-007`.
 
 ## Coordinator Review Triggers
 

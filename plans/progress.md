@@ -4782,3 +4782,21 @@ meaningful work. Do not replace this file with a daily reset.
   first. `TRANS-003` remains blocked.
 - Blockers: nonzero subset residuals and a non-guarded suite gate keep
   transition ranking shadow-only.
+
+### 2026-05-19 - Coordinator Dispatch - MODEL-007
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, and
+  `plans/progress.md`.
+- Tests: pending.
+- Result: reviewed `TRANS-007` residuals before broadening the standard
+  matrix. The next bounded worker slice is the deterministic V1/advice
+  `project_urls_header_dict_key` miss: prefer an existing-key rename
+  (`change_dict_key Project_URL -> Project-URL`) over an add-key placeholder
+  when public missing-key and same-mapping evidence support a rename. V3
+  product-gate/fallback policy remains a separate follow-up because it touches
+  the same scorer module.
+- Commit: pending.
+- Push: pending.
+- Next: dispatch `MODEL-007` after plan verification.
+- Blockers: none.

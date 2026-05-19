@@ -615,6 +615,29 @@ Long-term target:
   diff-size, and AST-delta features for issue/PR candidate attempts. No
   production ranking or guarded-use decision changed.
 
+### MODEL-007: Fix GreenShot-6 mapping-key advice residual
+
+- Status: active
+- Why: `TRANS-007` still has a real deterministic shadow-advice residual for
+  `greenshot_6_subset/project_urls_header_dict_key`: the passing
+  `change_dict_key Project_URL -> Project-URL` candidate is outranked by an
+  `add_dict_key Project-URL = None` decoy even though the public failure
+  evidence points to a missing header key and both candidates compete in the
+  same mapping.
+- Write scope: deterministic transition scorer/advice ranking only:
+  `j3/transition_action_scoring.py`, `tests/test_transition_action_scoring.py`,
+  `tests/test_transition_scorer_advice.py`, and plan updates. Avoid V3 product
+  gate policy, matrix runner behavior, and repair candidate generation in this
+  slice.
+- Acceptance: add a focused fixture matching the residual shape, then make
+  the V1/advice scorer prefer the existing-key rename over the add-key
+  placeholder using public target-context and failure-hint evidence rather
+  than preferred labels. Keep existing mapping value, subscript-key,
+  add-keyword, boundary/literal, and advice tests green. Production routing
+  remains unchanged and shadow-only.
+- Tests: focused transition scorer/advice tests,
+  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+
 ## Workstream F: Long-Term Training Scale
 
 ### SCALE-001: Draft local pretraining feasibility inventory

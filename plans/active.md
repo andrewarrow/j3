@@ -276,7 +276,12 @@ No active worker tasks are currently recorded after `TRANS-017` completed.
 
 ## Ready Queue
 
-No additional ready worker tasks are currently recorded.
+The next loop should pivot product-facing work toward normal prompt-to-repo
+greenfield CLI authoring while preserving the real-repo repair/eval gates.
+
+1. `CLI-001`: define the greenfield CLI capability ladder.
+2. `CLI-002`: mine Apache-2.0 Python CLI capability evidence with `gh`.
+3. `CLI-003`: implement the first normal-prompt filesystem CLI builder.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
@@ -295,6 +300,9 @@ Run at most two tasks in parallel unless write scopes are plainly disjoint.
   `flask-5812` and `flask-5727`, both explicitly parked behind multi-step
   architecture/tooling migration planner capability rather than ordinary
   one-slice materialization.
+- `CLI-004`: blocked until `CLI-001` defines the capability atoms and
+  `CLI-002` or docs ingestion provides enough HTTP JSON client and mocked-test
+  evidence for a GitHub API CLI demo without a bespoke source blob.
 
 ## Coordinator Review Triggers
 
@@ -303,6 +311,8 @@ Review before assigning more work if:
 - `TRANS-001` reports a gate worse than expected
 - `GS7-001` reveals missing actions rather than simple ranking failures
 - `DATA-001` shows prompt split leakage or weak schema consistency
+- a greenfield CLI demo works only through a one-prompt source blob instead of
+  reusable capability actions
 - two workers need the same files
 - the next useful task is unclear
 

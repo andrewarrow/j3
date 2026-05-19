@@ -7327,3 +7327,26 @@ meaningful work. Do not replace this file with a daily reset.
 - Blockers: continuing the loop would require a product-policy decision or a
   new migration-planner capability direction rather than another bounded
   ready task.
+
+### 2026-05-19 - Product Direction - Greenfield CLI Wedge
+
+- Owner: coordinator.
+- Files changed: `plans/strategy.md`, `plans/active.md`,
+  `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `gh search repos --help` confirmed the local GitHub CLI supports
+  `--language`, `--license`, `--stars`, `--archived`, `--topic`, `--json`,
+  and `--limit` for corpus discovery; `pytest tests/test_plan_consistency.py
+  -q` -> 6 passed; `git diff --check` -> passed.
+- Result: updated the north-star plan to make normal prompt-to-repo Python CLI
+  authoring the product-facing wedge while keeping existing repair,
+  materialization, and real-repo gates as the scientific proof harness. Added
+  a Greenfield CLI Authoring Ladder, explicit capability atoms for filesystem,
+  data-transform, and HTTP API CLIs, and a `gh search repos` based policy for
+  expanding `../python-apache` with Apache-2.0 Python repos when local
+  capability evidence is thin.
+- Next: dispatch `CLI-001` to define the capability ladder, `CLI-002` to mine
+  Apache-2.0 CLI capability evidence through `gh`, and `CLI-003` to implement
+  the first normal-prompt filesystem CLI builder.
+- Blockers: the GitHub API CLI demo remains blocked as `CLI-004` until HTTP
+  JSON client capability records, API semantics, and mocked network validation
+  are explicit enough to avoid a bespoke demo blob.

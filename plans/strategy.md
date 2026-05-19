@@ -74,8 +74,9 @@ giant next-token model as the runtime code-writing engine.
 ## Six-Month Target
 
 The six-month target is not a Codex replacement. It is a credible local Python
-repo maintenance agent with a narrow but real wedge:
+coding agent with a narrow but real wedge:
 
+- author small greenfield Python CLI tools from normal coding-agent prompts
 - add tests to small existing Python libraries without changing production code
 - make small library and CLI feature edits following local conventions
 - repair common failing-test patterns with structured actions
@@ -153,6 +154,8 @@ tracebacks, docs, and idioms because they were pretrained on huge corpora. `j3`
 must acquire useful subsets of that knowledge locally:
 
 - mine issue/PR transitions with provenance and stable splits
+- mine Apache-2.0 Python repos for reusable CLI, filesystem, HTTP, pytest,
+  packaging, and data-processing implementation patterns
 - index package docs and README examples
 - learn repo conventions from the current project
 - store outcomes from every candidate it tries
@@ -380,6 +383,49 @@ Only after repeated real-repo success:
 - docs and tests together
 - broader package ecosystem support
 
+## Greenfield CLI Authoring Ladder
+
+The product-facing demo should move toward normal Codex-style prompts, but the
+scope must stay narrow enough to validate locally and avoid canned one-offs.
+The first authoring wedge is:
+
+```text
+build a small Python CLI tool with tests
+```
+
+Representative prompts:
+
+- build me a CLI tool that scans a directory and shows the 100 biggest files
+- build me a CLI tool that finds duplicate files by hash
+- build me a CLI tool that filters CSV rows and writes JSON
+- build me a CLI tool to hit the GitHub API and list repos with more than 100
+  stars
+- build me a CLI tool that checks a list of URLs and reports failures
+
+The planner should decompose these into capability atoms, not retrieve an
+entire matching program:
+
+- `argparse` or small `click` command surface
+- filesystem traversal with permission handling
+- record collection, sorting, limiting, and formatting
+- JSON/CSV parsing and writing
+- HTTP JSON request with timeout, headers, errors, and optional env token
+- pytest fixtures using `tmp_path`, subprocess smoke checks, and mocked HTTP
+- package/module layout, entrypoint, README, and validation command
+
+The ladder should advance in this order:
+
+1. Filesystem-only CLIs with deterministic temp-dir tests.
+2. Data-transform CLIs with local input/output fixtures.
+3. HTTP API CLIs with mocked network tests and documented endpoint semantics.
+4. Multi-module CLIs with config, cache, package metadata, and entrypoints.
+5. Existing-repo CLI feature additions that follow local conventions.
+
+Success is not "generate arbitrary Python." Success is prompt-to-spec,
+spec-to-capabilities, capability-to-typed-builders, generated tests, local
+validation, and outcome records. Any demo that works only because one prompt
+has a bespoke source blob should be treated as a residual, not a product win.
+
 ## Data Strategy
 
 Data is the product moat if this approach works.
@@ -405,6 +451,7 @@ Prioritize:
 - candidate outcomes from actual repair attempts
 - prompt/spec rows written in coding-agent English
 - docs and README examples linked to behavior
+- Apache-2.0 Python CLI/library repos mined into capability records
 - hard negatives where tempting edits are wrong
 - clarification examples, not only success cases
 
@@ -416,6 +463,46 @@ Quality rules:
 - source licenses and terms recorded
 - generated artifacts kept out of git unless small and intentional
 - exact command lines recorded for reproducibility
+
+### Corpus Expansion With `gh`
+
+`../python-apache` is a seed corpus, not a fixed boundary. When a greenfield
+CLI capability is weak, expand the local corpus with additional Apache-2.0
+Python repos found through the GitHub CLI, then mine them into capability
+records.
+
+Example discovery commands:
+
+```bash
+gh search repos --language=Python --license=apache-2.0 \
+  --stars ">=20" --archived=false --topic cli \
+  --json fullName,url,description,license,stargazersCount,defaultBranch \
+  --limit 50
+
+gh search repos "argparse OR click OR typer" --language=Python \
+  --license=apache-2.0 --stars ">=20" --archived=false \
+  --json fullName,url,description,license,stargazersCount,defaultBranch \
+  --limit 50
+```
+
+Rules for adding repos:
+
+- verify `license.key == "apache-2.0"` from GitHub metadata and keep the exact
+  metadata row
+- exclude archived repos, generated-code-heavy repos, vendored examples, and
+  repos whose tests cannot run locally enough to provide signal
+- clone to local scratch paths such as `../python-apache/OWNER__REPO`; do not
+  commit cloned repos or large mined artifacts
+- record repo URL, default branch, checkout SHA, license metadata, selected
+  capability families, extraction command, and split assignment
+- prefer targeted searches for missing capabilities over bulk harvesting
+- mine patterns into structured records such as `argparse_cli`,
+  `filesystem_walk`, `http_json_client`, `pytest_tmp_path`, `mock_http`,
+  `sort_limit_records`, and `entrypoint_package_layout`
+
+This corpus should answer questions like "how do Apache-2.0 Python CLIs walk a
+directory safely?" or "how do tests mock HTTP JSON APIs?", not "which repo can
+I copy for this exact prompt?"
 
 Scale targets:
 
@@ -565,6 +652,8 @@ Do not add a new action when:
 
 Near-term action priorities:
 
+- greenfield CLI builders for argparse, filesystem scanning, data transforms,
+  HTTP JSON clients, package entrypoints, and generated tests
 - existing-repo tests-only edits
 - repo-state-aware package convention edits
 - small library and CLI builders
@@ -576,11 +665,13 @@ Near-term action priorities:
 The first usable product should be narrow and trustworthy:
 
 ```text
-local Python repo maintenance for small projects
+local Python CLI authoring plus small-repo maintenance
 ```
 
 Start with:
 
+- greenfield CLI tools from normal prompts, especially filesystem and
+  data-transform utilities with deterministic tests
 - tests-only edits for one-file and small-package libraries
 - conservative repair suggestions for failing pytest tasks
 - small feature additions following obvious local conventions

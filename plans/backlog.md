@@ -7,6 +7,8 @@ j3 from a repair prototype toward a serious local Python coding agent.
 
 Near-term realistic target:
 
+- normal prompt-to-repo authoring for small Python CLI tools, backed by
+  reusable capability records and local validation
 - serious narrow Python authoring for CLIs, small libraries, tests, configs, and
   repo-local feature additions
 - structured prompt/spec/action/outcome data
@@ -4357,11 +4359,108 @@ Long-term target:
   `docs/MAT_036_CURRENT_ACTION_CLOSURE_COVERAGE_2026-05-19.jsonl`, and
   `/tmp/j3-mat-036-current-action-closure/MAT_036_CURRENT_ACTION_CLOSURE_COVERAGE_2026-05-19.jsonl`.
 
+## Workstream H: Greenfield CLI Product Wedge
+
+This workstream turns the product-facing story toward normal Codex-style
+authoring prompts while keeping the implementation local, structured, and
+validated. It must not become a pile of one-prompt source blobs. Each demo
+should prove a reusable capability atom, builder, retrieval record, validator,
+or residual.
+
+### CLI-001: Define greenfield CLI capability ladder
+
+- Status: ready
+- Why: prompts like "build me a CLI tool that scans my hard drive and shows
+  the 100 biggest files" will sell the product better than repair-only demos,
+  but only if the plan decomposes them into reusable no-LLM capabilities.
+- Write scope: a focused ladder doc or manifest under `docs/` or `examples/`,
+  small schema/checker tests if useful, and plan updates. Do not implement
+  builders in this task.
+- Acceptance: define 12 to 20 representative user prompts across filesystem,
+  data-transform, and HTTP API CLIs; decompose each prompt into capability
+  atoms such as `argparse_cli`, `filesystem_walk`, `sort_limit_records`,
+  `render_table`, `csv_json_transform`, `http_json_client`, `env_token`,
+  `pytest_tmp_path`, `mock_http`, and `entrypoint_package_layout`; define
+  validation commands, generated-test expectations, ambiguity fields, and
+  explicit residual labels. Mark which prompts are first-week feasible versus
+  blocked on docs/API knowledge.
+- Tests: `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and
+  any focused manifest/schema test added by the worker.
+
+### CLI-002: Mine Apache-2.0 Python CLI capability corpus
+
+- Status: ready
+- Why: greenfield authoring should retrieve local capability knowledge from
+  real Apache-2.0 Python repos, not copy one exact program or depend on
+  frontier LLM priors.
+- Write scope: corpus discovery manifest/checker, extraction notes, and plan
+  updates. Cloned repos and large mined outputs stay in local scratch paths
+  such as `../python-apache/OWNER__REPO` or `/tmp`; do not commit them.
+- Acceptance: use `gh search repos` to find candidate Apache-2.0 Python repos
+  for missing CLI capabilities. Start with targeted searches such as
+  `--language=Python --license=apache-2.0 --stars ">=20" --archived=false`
+  plus topics or query terms for `cli`, `argparse`, `click`, `typer`,
+  `requests`, `httpx`, `csv`, and filesystem tools. Verify GitHub license
+  metadata, clone only accepted repos locally, record full name, URL, default
+  branch, checkout SHA, license metadata, rejection reason if rejected,
+  capability families found, split assignment, and extraction command. Produce
+  at least one small checked-in manifest/report proving the acquisition path
+  and at least 20 capability evidence rows or a precise blocker if the current
+  extractor cannot emit them yet.
+- Tests: focused manifest/checker tests if code is added,
+  `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and JSON
+  parse checks for any emitted manifest rows.
+
+### CLI-003: First normal-prompt filesystem CLI builder
+
+- Status: ready
+- Why: the first product demo should accept a normal prompt and author a
+  working local Python CLI repo, not just repair an already broken function.
+- Write scope: prompt/spec parsing for the selected filesystem CLI slice,
+  greenfield CLI builders, generated tests, focused fixtures, and plan updates.
+  Avoid HTTP/API code in this task.
+- Acceptance: for a prompt equivalent to "build me a CLI tool that scans a
+  directory and shows the 100 biggest files", emit a structured request spec
+  and build a validated repo using reusable actions for argparse parsing,
+  recursive file walking, permission-error handling, size collection, descending
+  sort, limit, human-readable output, and pytest `tmp_path` tests. The output
+  must not be a single canned source blob; the action record should expose the
+  capability atoms. Validate with generated pytest plus at least one subprocess
+  smoke check, record zero hosted usage, and block honestly on ambiguity such
+  as units or symlink policy if not specified.
+- Tests: focused prompt/spec and builder tests, generated-repo validation,
+  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+
+### CLI-004: HTTP API CLI authoring spike
+
+- Status: blocked
+- Blocker: depends on `CLI-001` capability definitions and either `CLI-002`
+  corpus evidence or docs/API records for HTTP JSON clients and mocked network
+  tests.
+- Why: "build me a CLI tool to hit the GitHub API and find repos with more
+  than 100 stars" is a strong demo, but it needs API semantics, env-token
+  policy, errors, pagination choices, and mocked tests. Building it before the
+  capability layer exists would produce another bespoke fixture.
+- Write scope: prompt/spec parser, HTTP JSON client builder, mocked tests,
+  generated repo validation, and plan updates once unblocked.
+- Acceptance: author a GitHub search CLI from a normal prompt using structured
+  capabilities for endpoint construction, `q=stars:>100`, sorting, optional
+  `GITHUB_TOKEN`, timeout, error handling, JSON parsing, and mocked tests.
+  Network calls must be mocked in validation by default. Record residuals for
+  pagination, rate limits, auth policy, and docs knowledge if not solved.
+- Tests: focused prompt/spec and builder tests, generated-repo pytest,
+  subprocess smoke with mocked fixtures, plan consistency, and `git diff
+  --check`.
+
 ## Next Recommended Queue
 
 Start with these unless fresh evidence changes the order:
 
-1. Review `MODEL-010`, then dispatch the recommended bounded scorer/advice
-   slice if the residual grouping is consistent.
-2. Product transition routing remains shadow-only unless a separate guarded
+1. `CLI-001`: define the greenfield CLI capability ladder before adding more
+   demo-specific code.
+2. `CLI-002`: expand and mine Apache-2.0 Python CLI capability evidence with
+   `gh search repos` where `../python-apache` is thin.
+3. `CLI-003`: implement the first normal-prompt filesystem CLI builder once
+   the reusable capability shape is explicit.
+4. Product transition routing remains shadow-only unless a separate guarded
    opt-in task explicitly changes that policy with fresh evidence.

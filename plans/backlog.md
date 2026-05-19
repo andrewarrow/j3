@@ -753,6 +753,28 @@ Long-term target:
   `remain_shadow_only` because not all suite gates are
   `ready_for_guarded_opt_in`; product routing remains shadow-only.
 
+### TRANS-013: Rerun expanded standard residual evidence after advice fixes
+
+- Status: active
+- Owner: worker TRANS-013, assigned on 2026-05-19.
+- Why: `MODEL-011` and `MODEL-012` changed only shadow-advice/V1 scoring and
+  directly replayed five `TRANS-012` residual examples, but the committed
+  expanded-standard matrix and residual evidence still predates both scorer
+  fixes. A fresh evidence run should confirm the narrowed residual set before
+  targeting the harder GreenShot-5 semantic API cases.
+- Write scope: generated outputs under
+  `/tmp/j3-trans-013-expanded-standard-after-model012`, a concise evidence doc
+  under `docs/TRANS_013_*`, and plan updates. Do not edit scorer logic,
+  candidate generation, product routing, matrix manifests, guarded-trial
+  policy, or local-knowledge records.
+- Acceptance: rerun the expanded standard matrix, regenerate residual and
+  guarded-decision evidence, compare against `TRANS-012`, prove whether the
+  four tail-index residuals and `missing_guard` are resolved in full replay,
+  and identify the next bounded scorer/advice task or blocker.
+- Tests: `run-transition-shadow-matrix`, checksum verification,
+  `report-transition-residuals --matrix`, `decide-transition-guarded-trial`,
+  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+
 ## Workstream E: Repo State, Actions, And Models
 
 ### REPO-001: Summarize repo-state encoder coverage

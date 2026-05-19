@@ -5090,7 +5090,9 @@ meaningful work. Do not replace this file with a daily reset.
 - Owner: coordinator.
 - Files changed: `plans/active.md`, `plans/backlog.md`, and
   `plans/progress.md`.
-- Tests: pending.
+- Tests: `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check -- plans/active.md plans/backlog.md plans/progress.md` ->
+  passed.
 - Result: reviewed `TRANS-010` residuals and separated the four matrix
   residuals from shadow-advice-only examples. The next bounded scorer slice is
   the V3 structural-action residual cluster: `wrap_try_except`, the
@@ -5141,9 +5143,30 @@ meaningful work. Do not replace this file with a daily reset.
   groups. Production routing, matrix runner behavior, repair candidate
   generation, manifest contents, and V3 product-gate policy remain unchanged
   and shadow-only.
-- Commit: pending.
-- Push: pending.
+- Commit: 016b7e4 implementation, 3d61cb7 plan metadata.
+- Push: succeeded.
 - Next: run `TRANS-011`, a full current standard matrix rerun after
   `MODEL-009`, before resuming `TRANS-003` manifest expansion.
 - Blockers: full standard transition ranking remains shadow-only until
   `TRANS-011` refreshes matrix, residual, and guarded-decision evidence.
+
+### 2026-05-19 - Coordinator Integration And Dispatch - TRANS-011
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, and
+  `plans/progress.md`.
+- Tests: `pytest tests/test_transition_action_scoring.py
+  tests/test_transition_shadow_scorer.py tests/test_transition_scorer_advice.py
+  tests/test_transition_residuals.py tests/test_transition_shadow_matrix.py -q`
+  -> 47 passed; `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check` -> passed.
+- Result: reviewed `MODEL-009` in the coordinator workspace. The focused
+  scorer, shadow-scorer, advice, residual, and matrix tests pass locally, and
+  the saved-artifact replays reported zero V3 residuals for the GreenShot-3
+  and GreenShot-5 held-out groups that blocked `TRANS-010`. The next bounded
+  step is evidence-only: rerun the full current standard matrix before any
+  `TRANS-003` manifest expansion.
+- Commit: pending.
+- Push: pending.
+- Next: dispatch `TRANS-011` after plan verification.
+- Blockers: none.

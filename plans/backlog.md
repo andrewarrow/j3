@@ -588,7 +588,7 @@ Long-term target:
 
 ### TRANS-011: Rerun standard matrix after MODEL-009
 
-- Status: ready
+- Status: active
 - Why: `MODEL-009` fixes the four saved `TRANS-010`
   `v3_top_candidate_failed` shapes in focused tests and suite-level artifact
   replays, but the committed full standard matrix evidence still predates the

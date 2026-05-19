@@ -102,13 +102,18 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-No active worker tasks.
+- `TRANS-011` -> worker pending: rerun the full current standard transition
+  shadow matrix after `MODEL-009`, regenerate residual and guarded-decision
+  evidence, and compare against `TRANS-010` before any `TRANS-003` manifest
+  expansion. Scope is evidence only: generated outputs under `/tmp`, optional
+  concise evidence doc, and plan updates. Do not edit
+  `examples/transition_shadow_matrix.json` in this slice.
 
 ## Ready Queue
 
-- `TRANS-011` -> ready: rerun the full current standard transition matrix after
-  `MODEL-009`, regenerate residual and guarded-decision evidence, and compare
-  against `TRANS-010` before any `TRANS-003` manifest expansion.
+No additional ready task is currently staged on this board. Wait for
+`TRANS-011` before deciding whether `TRANS-003` can resume manifest expansion
+or must return to residual work.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 

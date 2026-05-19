@@ -58,7 +58,7 @@ This is the live coordinator board. Keep it current and compact.
 ## Active Tasks
 
 - `MODEL-005`: improve boundary and literal action ranking.
-  - Owner: coordinator dispatch in progress; worker pending.
+  - Owner: worker Socrates (`019e3e16-acdb-7df3-a07e-1f740aa4537e`).
   - Scope: transition scorer fixtures/features/tests for boundary/literal
     action-family and file/symbol alignment.
   - Acceptance: focused residual fixtures improve ranking for
@@ -66,7 +66,7 @@ This is the live coordinator board. Keep it current and compact.
   - Expected tests: focused transition action scoring/ranking tests,
     `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
 - `SCALE-002`: define data provenance and release policy.
-  - Owner: coordinator dispatch in progress; worker pending.
+  - Owner: worker Planck (`019e3e16-dbaf-7400-9ff1-824e8753e4ef`).
   - Scope: focused docs policy under `docs/` plus required plan updates.
   - Acceptance: policy covers local scratch corpora, checked-in examples,
     release archives, synthetic rows, issue/PR mining, generated artifacts,

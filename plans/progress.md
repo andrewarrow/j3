@@ -4457,8 +4457,9 @@ meaningful work. Do not replace this file with a daily reset.
   two disjoint write scopes: `MODEL-005` continues the scorer residual series
   with boundary/literal ranking, while `SCALE-002` defines provenance and
   release policy for local data artifacts.
-- Commit: pending.
-- Push: pending.
-- Next: dispatch workers for `MODEL-005` and `SCALE-002` after plan
-  consistency checks pass.
+- Commit: 0534a94.
+- Push: succeeded.
+- Next: worker Socrates (`019e3e16-acdb-7df3-a07e-1f740aa4537e`) is running
+  `MODEL-005`; worker Planck (`019e3e16-dbaf-7400-9ff1-824e8753e4ef`) is
+  running `SCALE-002`.
 - Blockers: none.

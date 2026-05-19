@@ -3502,7 +3502,7 @@ Long-term target:
 
 ### MAT-027: Held-out Requests conftest convention candidate
 
-- Status: ready
+- Status: active
 - Why: after `MAT-026`, the original constrained-source bucket is closed and
   the remaining bounded capability gap is the 4-row
   `repo_convention_builder` bucket. `psf/requests#7423` is the smallest
@@ -3532,7 +3532,7 @@ Long-term target:
 
 Start with these unless fresh evidence changes the order:
 
-1. Dispatch `MAT-027` to attempt `psf/requests#7423`, the smallest remaining
+1. Complete active `MAT-027` for `psf/requests#7423`, the smallest remaining
    `repo_convention_builder` row from the MAT-007 panel.
 2. Separately decide whether to pursue the `TRANS-012` shadow-advice-only
    residual examples; product transition routing remains shadow-only.

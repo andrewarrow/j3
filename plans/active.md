@@ -174,14 +174,33 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-No active worker task is recorded after `MAT-026`; the ready queue lists the
-next recommended bounded assignment.
+### `MAT-027`: Held-out Requests conftest convention candidate
+
+- Status: active
+- Owner: worker.
+- Scope: attempt `psf/requests#7423` with reusable repo-local pytest
+  fixture/conftest convention action records. Allowed writes are focused
+  repo-convention materializer/planner extensions and tests as needed, focused
+  `docs/MAT_027_*`, generated artifacts under `/tmp`, and plan updates. Avoid
+  transition scoring, issue/PR ranking, validation-policy changes,
+  local-knowledge records, matrix manifests, and unrelated materializer
+  families.
+- Acceptance: determine pinned base/head refs, accepted changed files,
+  validation command, mutation scope, candidate-after diff/hash metadata,
+  accepted-diff comparison, and live validation result for `requests-7423`.
+  Use reusable convention action kinds rather than a PR-named action. Requests
+  validation must import checkout-local source with `PYTHONPATH=src` or use the
+  DATA-008 editable-venv recipe. If target selection, conftest insertion,
+  local fixture convention detection, parity, or validation blocks, record the
+  exact blocker without broadening scope silently.
+- Tests: focused repo-convention/materializer tests if code changes are made,
+  JSON/report checks if artifacts are written,
+  `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and live
+  focused validation when materialized.
 
 ## Ready Queue
 
-- `MAT-027`: attempt `psf/requests#7423`, the smallest remaining
-  `repo_convention_builder` row from the MAT-007 panel, with a reusable
-  repo-local pytest fixture/conftest convention record.
+No separate ready worker task is queued while `MAT-027` is active.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 

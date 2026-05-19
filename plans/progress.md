@@ -6007,9 +6007,25 @@ meaningful work. Do not replace this file with a daily reset.
   counts are `current_structured_action = 4`, `general_typed_builder = 0`,
   `repo_convention_builder = 4`, `constrained_local_generator = 0`, and
   `not_currently_expressible = 2`.
-- Commit: final MAT-026 worker commit.
-- Push: final MAT-026 worker push.
+- Commit: 7585956.
+- Push: succeeded to `origin/main`.
 - Next: dispatch `MAT-027` for `psf/requests#7423`, the smallest remaining
   `repo_convention_builder` row, with reusable repo-local pytest
   fixture/conftest convention evidence.
+- Blockers: none.
+
+### 2026-05-19 - Coordinator Review And Dispatch - MAT-027
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, and
+  `plans/progress.md`.
+- Tests: JSONL parse check for repo and `/tmp` MAT-026 artifacts -> 20 records
+  parsed in each copy; `pytest tests/test_plan_consistency.py -q` -> 6
+  passed; `git diff --check` -> passed.
+- Result: reviewed `MAT-026`; the constrained-source closure accounting and
+  next-workstream recommendation are consistent. The remaining bounded
+  capability gap is now the repo-convention bucket, and `requests-7423` is the
+  smallest convention-dependent row.
+- Next: dispatch a worker for `MAT-027` to attempt `psf/requests#7423` with
+  reusable repo-local pytest fixture/conftest convention action records.
 - Blockers: none.

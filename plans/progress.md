@@ -6513,3 +6513,49 @@ meaningful work. Do not replace this file with a daily reset.
   reusable redirect default literal updates and accepted docs/changelog text
   action records.
 - Blockers: none.
+
+### 2026-05-19 - MAT-035 - Flask #5898 redirect-default current action materialization
+
+- Owner: worker MAT-035.
+- Files changed: `j3/heldout_source_region_candidate.py`,
+  `tests/test_heldout_source_region_candidate.py`,
+  `docs/MAT_035_FLASK_5898_REDIRECT_DEFAULT_CANDIDATE_2026-05-19.md`,
+  `plans/active.md`, `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `python -m py_compile j3/heldout_source_region_candidate.py
+  tests/test_heldout_source_region_candidate.py` -> passed; `pytest
+  tests/test_heldout_source_region_candidate.py -q` -> 23 passed; live fresh
+  checkout run `PYTHONPATH=/Users/aa/os/j3 python -m
+  j3.heldout_source_region_candidate --candidate flask-5898 --repo-path
+  /tmp/j3-mat-035-flask-5898-live/repo --accepted-diff
+  /tmp/j3-mat-035-flask-5898-live/accepted.diff --out
+  /tmp/j3-mat-035-flask-5898-live/final/candidate.json --report
+  /tmp/j3-mat-035-flask-5898-live/final/report.md --diff-out
+  /tmp/j3-mat-035-flask-5898-live/final/candidate.diff --validate
+  --validation-timeout-seconds 90` -> validated; validation command
+  `PYTHONPATH=src python -c "from flask import Flask, redirect; app =
+  Flask(__name__); ctx = app.app_context(); ctx.push(); assert
+  redirect('/target').status_code == 303; assert app.redirect('/target').status_code
+  == 303; assert redirect('/target', 302).status_code == 302; ctx.pop()"` ->
+  passed; `python -m json.tool
+  /tmp/j3-mat-035-flask-5898-live/final/candidate.json` -> passed; normalized
+  accepted-vs-candidate diff check -> no differences; `pytest
+  tests/test_plan_consistency.py -q` -> 6 passed.
+- Result: materialized `pallets/flask#5898` from PR API base
+  `eb58d862cc4a8f31a369b6e9ad1724e9e642f13f` to accepted head
+  `eca5fd1dfdc614c2df876cc32018a7d71f84ea82`; `git ls-remote` confirmed the
+  PR head. The candidate changed `CHANGES.rst`, `docs/api.rst`,
+  `src/flask/helpers.py`, and `src/flask/sansio/app.py`, recorded
+  candidate-after diff/hash metadata plus mutation scope, and used reusable
+  `replace_function_region`, `insert_text_around_anchor`, and
+  `replace_text_span` records for redirect default literal updates and
+  accepted text updates. Full accepted-diff parity, source-only scoped parity,
+  source/docs scoped parity, and changed-file parity are true. Remaining
+  non-materialized MAT-007 counts are now `current_structured_action = 0`,
+  `general_typed_builder = 0`, `repo_convention_builder = 0`,
+  `constrained_local_generator = 0`, and `not_currently_expressible = 2`.
+- Commit: pending.
+- Push: pending.
+- Next: coordinator should review `MAT-035`, then record MAT-007
+  materializable-panel closure or move to the separate shadow-advice-only
+  residual workstream.
+- Blockers: none.

@@ -31,6 +31,7 @@ HELDOUT_SOURCE_REGION_CANDIDATE_SCHEMA_VERSION = (
 )
 PYTEST_INSERTION_SCHEMA_VERSION = "repo-convention-pytest-insertion-v1"
 TEXT_INSERTION_SCHEMA_VERSION = "bounded-text-insertion-v1"
+TEXT_REPLACEMENT_SCHEMA_VERSION = "bounded-text-replacement-v1"
 TEXT_FILE_CREATION_SCHEMA_VERSION = "bounded-text-file-creation-v1"
 DEFAULT_REQUESTS_BASE_REF = "b684dcb9bbf3aa557d1238e72062c4a29737dd1c"
 DEFAULT_REQUESTS_STREAM_WRAPPER_BASE_REF = (
@@ -74,6 +75,12 @@ DEFAULT_FLASK_AUTOESCAPE_BASE_REF = (
 )
 DEFAULT_FLASK_AUTOESCAPE_HEAD_REF = (
     "9368fb3f3c52d74534d14c1bef03c79c103356cd"
+)
+DEFAULT_FLASK_REDIRECT_DEFAULT_BASE_REF = (
+    "eb58d862cc4a8f31a369b6e9ad1724e9e642f13f"
+)
+DEFAULT_FLASK_REDIRECT_DEFAULT_HEAD_REF = (
+    "eca5fd1dfdc614c2df876cc32018a7d71f84ea82"
 )
 DEFAULT_PYTEST_ARRAY_INTERFACE_BASE_REF = (
     "7df5d80ff3a98714a1d3cdbe82941229e511f4b3"
@@ -129,6 +136,17 @@ DEFAULT_FLASK_AUTOESCAPE_VALIDATION_COMMAND = (
     "assert app.select_jinja_autoescape('template.SVG'); "
     "assert not app.select_jinja_autoescape('readme.TXT')\""
 )
+DEFAULT_FLASK_REDIRECT_DEFAULT_VALIDATION_COMMAND = (
+    "PYTHONPATH=src python -c "
+    "\"from flask import Flask, redirect; "
+    "app = Flask(__name__); "
+    "ctx = app.app_context(); "
+    "ctx.push(); "
+    "assert redirect('/target').status_code == 303; "
+    "assert app.redirect('/target').status_code == 303; "
+    "assert redirect('/target', 302).status_code == 302; "
+    "ctx.pop()\""
+)
 DEFAULT_PYTEST_ARRAY_INTERFACE_VALIDATION_COMMAND = (
     "PYTHONPATH=src python -c "
     "\"import numpy as np; "
@@ -163,6 +181,8 @@ CLICK_COMMANDS_DOC_PATH = "docs/commands.md"
 CLICK_DOCS_CONF_PATH = "docs/conf.py"
 CLICK_CHANGES_PATH = "CHANGES.rst"
 FLASK_APP_PATH = "src/flask/sansio/app.py"
+FLASK_HELPERS_PATH = "src/flask/helpers.py"
+FLASK_API_DOC_PATH = "docs/api.rst"
 FLASK_CHANGES_PATH = "CHANGES.rst"
 PYTEST_AUTHORS_PATH = "AUTHORS"
 PYTEST_CHANGELOG_ARRAY_INTERFACE_PATH = "changelog/14456.bugfix.rst"
@@ -276,6 +296,49 @@ class TextInsertionAction:
 
 
 @dataclass(frozen=True, slots=True)
+class TextReplacementAction:
+    """Reusable bounded text replacement for docs and prose files."""
+
+    target_file: str
+    old_text: str
+    new_text: str
+    replace_once_contains: str
+    kind: str = "replace_text_span"
+    schema_version: str = TEXT_REPLACEMENT_SCHEMA_VERSION
+    max_changed_lines: int = 8
+    rationale: str | None = None
+
+    def __post_init__(self) -> None:
+        _validate_relative_path(self.target_file)
+        if not self.old_text:
+            raise ValueError("old_text is required")
+        if not self.new_text:
+            raise ValueError("new_text is required")
+        if not self.replace_once_contains:
+            raise ValueError("replace_once_contains is required")
+        if self.max_changed_lines < 1:
+            raise ValueError("max_changed_lines must be >= 1")
+
+    def to_record(self) -> dict[str, object]:
+        return {
+            "schema_version": self.schema_version,
+            "kind": self.kind,
+            "target": {
+                "file_path": self.target_file,
+                "position": "bounded_text_span",
+            },
+            "constraints": {
+                "max_changed_lines": self.max_changed_lines,
+                "old_text_must_occur_once": True,
+                "replace_once_contains": self.replace_once_contains,
+            },
+            "old_text": self.old_text,
+            "new_text": self.new_text,
+            "rationale": self.rationale,
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class TextFileCreationAction:
     """Reusable bounded creation for small text files such as changelog entries."""
 
@@ -329,6 +392,9 @@ class HeldoutSourceRegionSpec:
     test_action: PytestInsertionAction | None = None
     extra_source_actions: tuple[SourceRegionAction, ...] = field(default_factory=tuple)
     text_actions: tuple[TextInsertionAction, ...] = field(default_factory=tuple)
+    text_replacement_actions: tuple[TextReplacementAction, ...] = field(
+        default_factory=tuple
+    )
     text_file_actions: tuple[TextFileCreationAction, ...] = field(default_factory=tuple)
     action_family_reuse_evidence: tuple[dict[str, object], ...] = field(
         default_factory=tuple
@@ -354,6 +420,8 @@ class HeldoutSourceRegionSpec:
         if self.test_action is not None:
             _validate_relative_path(self.test_action.target_file)
         for action in self.text_actions:
+            _validate_relative_path(action.target_file)
+        for action in self.text_replacement_actions:
             _validate_relative_path(action.target_file)
         for action in self.text_file_actions:
             _validate_relative_path(action.target_file)
@@ -421,6 +489,36 @@ class TextInsertionResult:
             "wrote_file": self.wrote_file,
             "candidate_after": {
                 "added_line_count": self.added_line_count,
+                "diff_summary": dict(self.diff_summary),
+                "diff": self.diff,
+                "sha256_before": self.sha256_before,
+                "sha256_after": self.sha256_after,
+            },
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class TextReplacementResult:
+    """Candidate-after metadata for a bounded text replacement action."""
+
+    status: str
+    target_file: str
+    changed_line_count: int
+    diff: str
+    diff_summary: dict[str, object]
+    sha256_before: str
+    sha256_after: str
+    patched_source: str = field(repr=False)
+    wrote_file: bool = False
+
+    def to_record(self) -> dict[str, object]:
+        return {
+            "schema_version": "bounded-text-replacement-candidate-after-v1",
+            "status": self.status,
+            "target_file": self.target_file,
+            "wrote_file": self.wrote_file,
+            "candidate_after": {
+                "changed_line_count": self.changed_line_count,
                 "diff_summary": dict(self.diff_summary),
                 "diff": self.diff,
                 "sha256_before": self.sha256_before,
@@ -1219,6 +1317,144 @@ def build_flask_autoescape_spec(
     )
 
 
+def build_flask_redirect_default_spec(
+    repo_path: Path,
+    *,
+    base_ref: str = DEFAULT_FLASK_REDIRECT_DEFAULT_BASE_REF,
+    accepted_head_ref: str = DEFAULT_FLASK_REDIRECT_DEFAULT_HEAD_REF,
+    validation_command: str = DEFAULT_FLASK_REDIRECT_DEFAULT_VALIDATION_COMMAND,
+) -> HeldoutSourceRegionSpec:
+    """Build the held-out Flask redirect default-status candidate."""
+
+    helpers_source = _repo_file(repo_path, FLASK_HELPERS_PATH).read_text(
+        encoding="utf-8"
+    )
+    app_source = _repo_file(repo_path, FLASK_APP_PATH).read_text(encoding="utf-8")
+    source_action = _flask_helpers_redirect_default_source_action(helpers_source)
+    app_action = _flask_app_redirect_default_source_action(app_source)
+    text_actions = (
+        TextInsertionAction(
+            target_file=FLASK_CHANGES_PATH,
+            anchor_text=(
+                "-   ``template_filter``, ``template_test``, and "
+                "``template_global`` decorators\n"
+                "    can be used without parentheses. :issue:`5729`\n"
+            ),
+            insertion_source=_flask_redirect_default_changelog_source(),
+            insert_once_contains="``redirect`` returns a ``303`` status code",
+            max_added_lines=6,
+            rationale=(
+                "record the public redirect default status-code change in the "
+                "current changelog section"
+            ),
+        ),
+        TextInsertionAction(
+            target_file=FLASK_HELPERS_PATH,
+            anchor_text=(
+                "    :param Response: The response class to use. Not used when\n"
+                "        ``current_app`` is active, which uses ``app.response_class``.\n\n"
+            ),
+            insertion_source=_flask_redirect_default_helpers_versionchanged_source(),
+            insert_once_contains="``code`` defaults to ``303`` instead of ``302``.",
+            max_added_lines=3,
+            rationale=(
+                "record the flask.redirect default status-code change in the "
+                "public helper docstring"
+            ),
+        ),
+        TextInsertionAction(
+            target_file=FLASK_APP_PATH,
+            anchor_text=(
+                "        :param location: The URL to redirect to.\n"
+                "        :param code: The status code for the redirect.\n\n"
+            ),
+            insertion_source=_flask_redirect_default_app_versionchanged_source(),
+            insert_once_contains="``code`` defaults to ``303`` instead of ``302``.",
+            max_added_lines=3,
+            rationale=(
+                "record the Flask.redirect default status-code change in the "
+                "method docstring"
+            ),
+        ),
+    )
+    text_replacement_actions = (
+        TextReplacementAction(
+            target_file=FLASK_API_DOC_PATH,
+            old_text=(
+                "If a URL contains a default value, it will be redirected to its "
+                "simpler\n"
+                "form with a 301 redirect. In the above example, ``/users/page/1`` will\n"
+            ),
+            new_text=(
+                "If a URL contains a default value, it will be redirected to its "
+                "simpler\n"
+                "form with a 308 redirect. In the above example, ``/users/page/1`` will\n"
+            ),
+            replace_once_contains="form with a 308 redirect",
+            max_changed_lines=2,
+            rationale=(
+                "update the API docs default-route redirect status text with a "
+                "bounded prose replacement"
+            ),
+        ),
+    )
+    return HeldoutSourceRegionSpec(
+        candidate_id="mat-035-flask-redirect-default",
+        repo_id="pallets/flask",
+        repo_url="https://github.com/pallets/flask",
+        repo_split="held_out",
+        base_ref=base_ref,
+        accepted_head_ref=accepted_head_ref,
+        reference_pr_url="https://github.com/pallets/flask/pull/5898",
+        prompt=(
+            "Change Flask redirect helpers to default to HTTP 303 instead of "
+            "302, and update the public changelog and API documentation for "
+            "the redirect status-code behavior."
+        ),
+        source_file=FLASK_HELPERS_PATH,
+        validation_command=validation_command,
+        allowed_write_paths=(
+            FLASK_CHANGES_PATH,
+            FLASK_API_DOC_PATH,
+            FLASK_HELPERS_PATH,
+            FLASK_APP_PATH,
+        ),
+        source_action=source_action,
+        extra_source_actions=(app_action,),
+        text_actions=text_actions,
+        text_replacement_actions=text_replacement_actions,
+        source_test_scope_paths=(FLASK_HELPERS_PATH, FLASK_APP_PATH),
+        action_family_reuse_evidence=(
+            {
+                "action_kind": SourceRegionActionKind.REPLACE_FUNCTION_REGION.value,
+                "reused_from": ["MAT-008", "MAT-009", "MAT-033", "MAT-034"],
+                "evidence": (
+                    "same bounded source-region schema; target file, function "
+                    "or method signature line, replacement literal, and "
+                    "signature-change allowance are parameters"
+                ),
+            },
+            {
+                "action_kind": "insert_text_around_anchor",
+                "reused_from": ["MAT-017", "MAT-024", "MAT-025", "MAT-033"],
+                "evidence": (
+                    "same bounded text insertion shape; target file, anchor, "
+                    "and inserted changelog or docstring text are parameters"
+                ),
+            },
+            {
+                "action_kind": "replace_text_span",
+                "reused_from": ["bounded-text-update-family"],
+                "evidence": (
+                    "generic bounded prose replacement for docs where the "
+                    "accepted change edits existing text rather than inserting "
+                    "a new paragraph"
+                ),
+            },
+        ),
+    )
+
+
 def build_pytest_array_interface_spec(
     repo_path: Path,
     *,
@@ -1329,6 +1565,7 @@ def materialize_heldout_source_region_candidate(
         *[action.to_record() for action in spec.extra_source_actions],
         *([] if spec.test_action is None else [spec.test_action.to_record()]),
         *[action.to_record() for action in spec.text_actions],
+        *[action.to_record() for action in spec.text_replacement_actions],
         *[action.to_record() for action in spec.text_file_actions],
     ]
 
@@ -1346,6 +1583,7 @@ def materialize_heldout_source_region_candidate(
     source_results: list[SourceRegionMaterializationResult] = []
     test_result: PytestInsertionResult | None = None
     text_results: list[TextInsertionResult] = []
+    text_replacement_results: list[TextReplacementResult] = []
     text_file_results: list[TextFileCreationResult] = []
 
     for source_action in (spec.source_action, *spec.extra_source_actions):
@@ -1383,6 +1621,20 @@ def materialize_heldout_source_region_candidate(
             try:
                 text_results.append(
                     materialize_text_insertion(repo, text_action, write=write)
+                )
+            except HeldoutSourceRegionCandidateError as error:
+                blockers.append(error.blocker)
+                break
+
+    if not blockers:
+        for text_replacement_action in spec.text_replacement_actions:
+            try:
+                text_replacement_results.append(
+                    materialize_text_replacement(
+                        repo,
+                        text_replacement_action,
+                        write=write,
+                    )
                 )
             except HeldoutSourceRegionCandidateError as error:
                 blockers.append(error.blocker)
@@ -1460,6 +1712,7 @@ def materialize_heldout_source_region_candidate(
 
     text_records = [
         *[result.to_record() for result in text_results],
+        *[result.to_record() for result in text_replacement_results],
         *[result.to_record() for result in text_file_results],
     ]
     candidate_after = {
@@ -1490,6 +1743,7 @@ def materialize_heldout_source_region_candidate(
             ],
             *([] if spec.test_file is None else [spec.test_file]),
             *[action.target_file for action in spec.text_actions],
+            *[action.target_file for action in spec.text_replacement_actions],
             *[action.target_file for action in spec.text_file_actions],
         ],
         "actual_changed_files": changed_files,
@@ -1697,6 +1951,86 @@ def materialize_text_insertion(
         target_file=action.target_file,
         insertion_line=insertion_line,
         added_line_count=added_line_count,
+        diff=diff,
+        diff_summary=_diff_summary(diff),
+        sha256_before=_sha256_text(before),
+        sha256_after=_sha256_text(patched),
+        patched_source=patched,
+        wrote_file=write,
+    )
+
+
+def materialize_text_replacement(
+    repo_path: Path,
+    action: TextReplacementAction,
+    *,
+    write: bool = False,
+) -> TextReplacementResult:
+    """Replace one bounded text span and record candidate-after metadata."""
+
+    repo = repo_path.expanduser().resolve()
+    target_path = _repo_file(repo, action.target_file)
+    before = target_path.read_text(encoding="utf-8")
+    if action.old_text not in before and action.new_text in before:
+        return TextReplacementResult(
+            status="already_applied",
+            target_file=action.target_file,
+            changed_line_count=0,
+            diff="",
+            diff_summary={"hunk_count": 0, "changed_line_count": 0},
+            sha256_before=_sha256_text(before),
+            sha256_after=_sha256_text(before),
+            patched_source=before,
+            wrote_file=False,
+        )
+
+    occurrence_count = before.count(action.old_text)
+    if occurrence_count != 1:
+        raise HeldoutSourceRegionCandidateError(
+            f"text span occurrence count in {action.target_file}: {occurrence_count}",
+            blocker={
+                "field": "text_replacement",
+                "reason": "bounded_text_replacement_blocked",
+                "message": (
+                    f"expected exactly one old_text occurrence in "
+                    f"{action.target_file}, found {occurrence_count}"
+                ),
+            },
+        )
+
+    changed_line_count = max(
+        len(action.old_text.splitlines()),
+        len(action.new_text.splitlines()),
+    )
+    if changed_line_count > action.max_changed_lines:
+        raise HeldoutSourceRegionCandidateError(
+            "text replacement changed-line budget exceeded",
+            blocker={
+                "field": "text_replacement",
+                "reason": "bounded_text_replacement_blocked",
+                "message": "text replacement changed-line budget exceeded",
+            },
+        )
+
+    patched = before.replace(action.old_text, action.new_text, 1)
+    if action.replace_once_contains not in patched:
+        raise HeldoutSourceRegionCandidateError(
+            "replacement confirmation text missing after patch",
+            blocker={
+                "field": "text_replacement",
+                "reason": "bounded_text_replacement_blocked",
+                "message": "replacement confirmation text missing after patch",
+            },
+        )
+
+    if write:
+        target_path.write_text(patched, encoding="utf-8")
+
+    diff = _unified_diff(before, patched, action.target_file)
+    return TextReplacementResult(
+        status="materialized" if write else "candidate_after",
+        target_file=action.target_file,
+        changed_line_count=changed_line_count,
         diff=diff,
         diff_summary=_diff_summary(diff),
         sha256_before=_sha256_text(before),
@@ -2842,6 +3176,108 @@ def _flask_autoescape_versionchanged_source() -> str:
     )
 
 
+def _flask_helpers_redirect_default_source_action(source: str) -> SourceRegionAction:
+    original = (
+        "    location: str, code: int = 302, Response: type[BaseResponse] | None = None"
+    )
+    already_applied = (
+        "    location: str, code: int = 303, Response: type[BaseResponse] | None = None"
+    )
+    if original not in source and already_applied not in source:
+        raise SourceRegionMaterializationError(
+            "flask.redirect default code signature line not found",
+            residual="target_selection",
+        )
+    target_line = already_applied if already_applied in source else original
+    line = _line_number(source, target_line)
+    return SourceRegionAction(
+        kind=SourceRegionActionKind.REPLACE_FUNCTION_REGION,
+        target=SourceRegionTarget(
+            file_path=FLASK_HELPERS_PATH,
+            function_name="redirect",
+            region_name="redirect_helper_default_status_code",
+            start_line=line,
+            end_line=line,
+        ),
+        replacement_source=_flask_helpers_redirect_default_source_replacement(),
+        constraints=SourceRegionConstraints(
+            max_changed_source_lines=2,
+            must_preserve_signature=False,
+        ),
+        rationale="change flask.redirect default status code from 302 to 303",
+    )
+
+
+def _flask_helpers_redirect_default_source_replacement() -> str:
+    return "    location: str, code: int = 303, Response: type[BaseResponse] | None = None"
+
+
+def _flask_app_redirect_default_source_action(source: str) -> SourceRegionAction:
+    original = "    def redirect(self, location: str, code: int = 302) -> BaseResponse:"
+    already_applied = "    def redirect(self, location: str, code: int = 303) -> BaseResponse:"
+    if original not in source and already_applied not in source:
+        raise SourceRegionMaterializationError(
+            "Flask.redirect default code signature line not found",
+            residual="target_selection",
+        )
+    target_line = already_applied if already_applied in source else original
+    line = _line_number(source, target_line)
+    return SourceRegionAction(
+        kind=SourceRegionActionKind.REPLACE_FUNCTION_REGION,
+        target=SourceRegionTarget(
+            file_path=FLASK_APP_PATH,
+            function_name="redirect",
+            region_name="app_redirect_default_status_code",
+            start_line=line,
+            end_line=line,
+        ),
+        replacement_source=_flask_app_redirect_default_source_replacement(),
+        constraints=SourceRegionConstraints(
+            max_changed_source_lines=2,
+            must_preserve_signature=False,
+        ),
+        rationale="change Flask.redirect default status code from 302 to 303",
+    )
+
+
+def _flask_app_redirect_default_source_replacement() -> str:
+    return "    def redirect(self, location: str, code: int = 303) -> BaseResponse:"
+
+
+def _flask_redirect_default_changelog_source() -> str:
+    return "\n".join(
+        [
+            "-   ``redirect`` returns a ``303`` status code by default instead of ``302``.",
+            "    This tells the client to always switch to ``GET``, rather than only",
+            "    switching ``POST`` to ``GET``. This preserves the current behavior of",
+            "    ``GET`` and ``POST`` redirects, and is also correct for frontend libraries",
+            "    such as HTMX. :issue:`5895`",
+        ]
+    ) + "\n"
+
+
+def _flask_redirect_default_helpers_versionchanged_source() -> str:
+    return "\n".join(
+        [
+            "    .. versionchanged:: 3.2",
+            "        ``code`` defaults to ``303`` instead of ``302``.",
+            "",
+            "",
+        ]
+    )
+
+
+def _flask_redirect_default_app_versionchanged_source() -> str:
+    return "\n".join(
+        [
+            "        .. versionchanged:: 3.2",
+            "            ``code`` defaults to ``303`` instead of ``302``.",
+            "",
+            "",
+        ]
+    )
+
+
 def _pytest_array_interface_source_action(source: str) -> SourceRegionAction:
     original = '        elif hasattr(obj, "__array__") or hasattr("obj", "__array_interface__"):'
     already_applied = (
@@ -3267,6 +3703,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             "click-3420",
             "click-3423",
             "flask-6013",
+            "flask-5898",
             "pytest-14472",
         ),
         default="requests-7427",
@@ -3297,6 +3734,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         spec = build_click_deprecated_help_spec(args.repo_path)
     elif args.candidate == "flask-6013":
         spec = build_flask_autoescape_spec(args.repo_path)
+    elif args.candidate == "flask-5898":
+        spec = build_flask_redirect_default_spec(args.repo_path)
     elif args.candidate == "pytest-14472":
         spec = build_pytest_array_interface_spec(args.repo_path)
     else:

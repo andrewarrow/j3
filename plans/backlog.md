@@ -3825,7 +3825,7 @@ Long-term target:
 
 ### MAT-035: Held-out Flask redirect-default current action candidate
 
-- Status: active
+- Status: done
 - Why: after `MAT-034`, `flask-5898` is the final remaining materializable
   MAT-007 `current_structured_action` row. It covers redirect default literal
   updates in two Flask APIs plus accepted docs and changelog text updates.
@@ -3852,6 +3852,21 @@ Long-term target:
   changes are made, JSON/report checks if artifacts are written,
   `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and live
   focused Flask validation when materialized.
+- Completion note: materialized and live-validated `pallets/flask#5898` from
+  base `eb58d862cc4a8f31a369b6e9ad1724e9e642f13f` to accepted head
+  `eca5fd1dfdc614c2df876cc32018a7d71f84ea82` with exact full accepted-diff
+  parity across `CHANGES.rst`, `docs/api.rst`, `src/flask/helpers.py`, and
+  `src/flask/sansio/app.py`. The candidate uses reusable
+  `replace_function_region`, `insert_text_around_anchor`, and
+  `replace_text_span` records for redirect default literal updates and
+  accepted text updates. Remaining non-materialized MAT-007 counts are
+  `current_structured_action = 0`, `general_typed_builder = 0`,
+  `repo_convention_builder = 0`, `constrained_local_generator = 0`, and
+  `not_currently_expressible = 2`. Artifacts:
+  `docs/MAT_035_FLASK_5898_REDIRECT_DEFAULT_CANDIDATE_2026-05-19.md`,
+  `/tmp/j3-mat-035-flask-5898-live/final/candidate.json`,
+  `/tmp/j3-mat-035-flask-5898-live/final/report.md`, and
+  `/tmp/j3-mat-035-flask-5898-live/final/candidate.diff`.
 
 ## Next Recommended Queue
 

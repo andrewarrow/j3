@@ -11,6 +11,7 @@ from j3.heldout_source_region_candidate import (
     build_click_deprecated_help_spec,
     build_click_write_usage_spec,
     build_flask_autoescape_spec,
+    build_flask_redirect_default_spec,
     _mark_expression_scanner_source_replacement,
     build_pytest_array_interface_spec,
     build_pytest_mark_expression_scanner_spec,
@@ -853,6 +854,151 @@ def test_materializes_flask_autoescape_candidate_with_reusable_actions(
     assert "versionchanged:: 3.2" in text_files[1]["candidate_after"]["diff"]
 
 
+def test_flask_redirect_default_spec_uses_reusable_action_kinds(
+    tmp_path: Path,
+) -> None:
+    repo = _write_flask_redirect_default_fixture_repo(tmp_path / "flask")
+
+    spec = build_flask_redirect_default_spec(repo)
+
+    assert spec.source_action.kind == SourceRegionActionKind.REPLACE_FUNCTION_REGION
+    assert [action.kind for action in spec.extra_source_actions] == [
+        SourceRegionActionKind.REPLACE_FUNCTION_REGION,
+    ]
+    assert spec.test_action is None
+    assert [action.kind for action in spec.text_actions] == [
+        "insert_text_around_anchor",
+        "insert_text_around_anchor",
+        "insert_text_around_anchor",
+    ]
+    assert [action.kind for action in spec.text_replacement_actions] == [
+        "replace_text_span"
+    ]
+    action_kind_text = " ".join(
+        [spec.source_action.kind.value]
+        + [action.kind.value for action in spec.extra_source_actions]
+        + [action.kind for action in spec.text_actions]
+        + [action.kind for action in spec.text_replacement_actions]
+    )
+    assert "flask_5898" not in action_kind_text
+    assert spec.base_ref == "eb58d862cc4a8f31a369b6e9ad1724e9e642f13f"
+    assert spec.accepted_head_ref == "eca5fd1dfdc614c2df876cc32018a7d71f84ea82"
+    assert spec.validation_command.startswith("PYTHONPATH=src ")
+    assert spec.allowed_write_paths == (
+        "CHANGES.rst",
+        "docs/api.rst",
+        "src/flask/helpers.py",
+        "src/flask/sansio/app.py",
+    )
+    assert spec.source_test_scope_paths == (
+        "src/flask/helpers.py",
+        "src/flask/sansio/app.py",
+    )
+
+
+def test_materializes_flask_redirect_default_candidate_with_reusable_actions(
+    tmp_path: Path,
+) -> None:
+    accepted_repo = _write_flask_redirect_default_fixture_repo(tmp_path / "accepted")
+    accepted_candidate = materialize_heldout_source_region_candidate(
+        accepted_repo,
+        build_flask_redirect_default_spec(
+            accepted_repo,
+            base_ref=_repo_head(accepted_repo),
+        ),
+        write=True,
+        validate=False,
+    )
+    accepted_diff = tmp_path / "accepted.diff"
+    accepted_diff.write_text(
+        str(accepted_candidate.candidate_after["candidate_diff"]),
+        encoding="utf-8",
+    )
+
+    repo = _write_flask_redirect_default_fixture_repo(tmp_path / "candidate")
+    candidate = materialize_heldout_source_region_candidate(
+        repo,
+        build_flask_redirect_default_spec(repo, base_ref=_repo_head(repo)),
+        write=True,
+        validate=False,
+        accepted_diff_path=accepted_diff,
+    )
+    record = candidate.to_record()
+
+    assert record["status"] == "materialized"
+    assert record["accepted_head_ref"] == "eca5fd1dfdc614c2df876cc32018a7d71f84ea82"
+    assert record["residual_labels"] == ["candidate_validation_deferred"]
+    assert record["target_test_file"] is None
+    assert record["mutation_scope"]["mode"] == "heldout_source_region_source_only"
+    assert record["mutation_scope"]["actual_changed_files"] == [
+        "CHANGES.rst",
+        "docs/api.rst",
+        "src/flask/helpers.py",
+        "src/flask/sansio/app.py",
+    ]
+    assert record["mutation_scope"]["planned_write_files"] == [
+        "src/flask/helpers.py",
+        "src/flask/sansio/app.py",
+        "CHANGES.rst",
+        "src/flask/helpers.py",
+        "src/flask/sansio/app.py",
+        "docs/api.rst",
+    ]
+    assert record["mutation_scope"]["writes_outside_allowlist"] == []
+    assert record["accepted_diff_comparison"]["accepted_changed_files"] == [
+        "CHANGES.rst",
+        "docs/api.rst",
+        "src/flask/helpers.py",
+        "src/flask/sansio/app.py",
+    ]
+    assert record["accepted_diff_comparison"]["normalized_diff_equal"] is True
+    assert (
+        record["accepted_diff_comparison"]["scope_comparisons"]["source_test"][
+            "normalized_diff_equal"
+        ]
+        is True
+    )
+    assert (
+        record["accepted_diff_comparison"]["scope_comparisons"]["source_docs_test"][
+            "normalized_diff_equal"
+        ]
+        is True
+    )
+    action_kinds = [action["kind"] for action in record["action_records"]]
+    assert action_kinds == [
+        "replace_function_region",
+        "replace_function_region",
+        "insert_text_around_anchor",
+        "insert_text_around_anchor",
+        "insert_text_around_anchor",
+        "replace_text_span",
+    ]
+    source_files = record["candidate_after"]["source_files"]
+    assert [item["file_path"] for item in source_files] == [
+        "src/flask/helpers.py",
+        "src/flask/sansio/app.py",
+    ]
+    assert source_files[0]["candidate_after"]["ast_parse_ok"] is True
+    assert source_files[0]["candidate_after"]["signature_preserved"] is False
+    assert "code: int = 303" in source_files[0]["candidate_after"]["diff"]
+    assert source_files[1]["candidate_after"]["ast_parse_ok"] is True
+    assert source_files[1]["candidate_after"]["signature_preserved"] is False
+    assert "code: int = 303" in source_files[1]["candidate_after"]["diff"]
+    text_files = record["candidate_after"]["text_files"]
+    assert [item["target_file"] for item in text_files] == [
+        "CHANGES.rst",
+        "src/flask/helpers.py",
+        "src/flask/sansio/app.py",
+        "docs/api.rst",
+    ]
+    assert "``redirect`` returns a ``303`` status code" in text_files[0][
+        "candidate_after"
+    ]["diff"]
+    assert "versionchanged:: 3.2" in text_files[1]["candidate_after"]["diff"]
+    assert "versionchanged:: 3.2" in text_files[2]["candidate_after"]["diff"]
+    assert "form with a 308 redirect" in text_files[3]["candidate_after"]["diff"]
+
+
 def test_pytest_array_interface_spec_uses_reusable_action_kinds(
     tmp_path: Path,
 ) -> None:
@@ -1071,6 +1217,120 @@ def _write_flask_autoescape_fixture_repo(repo: Path) -> Path:
 
             Version 3.1.3
             -------------
+            '''
+        ).lstrip(),
+        encoding="utf-8",
+    )
+    subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+    subprocess.run(["git", "add", "."], cwd=repo, check=True)
+    subprocess.run(
+        [
+            "git",
+            "-c",
+            "user.name=j3-test",
+            "-c",
+            "user.email=j3-test@example.invalid",
+            "commit",
+            "-q",
+            "-m",
+            "base",
+        ],
+        cwd=repo,
+        check=True,
+    )
+    return repo
+
+
+def _write_flask_redirect_default_fixture_repo(repo: Path) -> Path:
+    (repo / "src" / "flask" / "sansio").mkdir(parents=True)
+    (repo / "docs").mkdir(parents=True)
+    (repo / "src" / "flask" / "helpers.py").write_text(
+        dedent(
+            '''
+            from werkzeug.wrappers import Response as BaseResponse
+
+
+            def url_for(endpoint: str) -> str:
+                return endpoint
+
+
+            def redirect(
+                location: str, code: int = 302, Response: type[BaseResponse] | None = None
+            ) -> BaseResponse:
+                """Create a redirect response object.
+
+                :param location: The URL to redirect to.
+                :param code: The status code for the redirect.
+                :param Response: The response class to use. Not used when
+                    ``current_app`` is active, which uses ``app.response_class``.
+
+                .. versionadded:: 2.2
+                    Calls ``current_app.redirect`` if available instead of always
+                    using Werkzeug's default ``redirect``.
+                """
+                return BaseResponse("", code)
+            '''
+        ).lstrip(),
+        encoding="utf-8",
+    )
+    (repo / "src" / "flask" / "sansio" / "app.py").write_text(
+        dedent(
+            '''
+            from werkzeug.wrappers import Response as BaseResponse
+
+
+            class App:
+                def should_ignore_error(self, error: BaseException | None) -> bool:
+                    """Return whether an error should be ignored."""
+                    return False
+
+                def redirect(self, location: str, code: int = 302) -> BaseResponse:
+                    """Create a redirect response object.
+
+                    This is called by :func:`flask.redirect`, and can be called
+                    directly as well.
+
+                    :param location: The URL to redirect to.
+                    :param code: The status code for the redirect.
+
+                    .. versionadded:: 2.2
+                        Moved from ``flask.redirect``, which calls this method.
+                    """
+                    return BaseResponse("", code)
+            '''
+        ).lstrip(),
+        encoding="utf-8",
+    )
+    (repo / "CHANGES.rst").write_text(
+        dedent(
+            '''
+            Unreleased
+            ----------
+
+            -   Update the ``SECRET_KEY_FALLBACKS`` config docs to mention extensions
+                may need to consider fallbacks during the config key's supported
+                deprecation period. :issue:`5815`
+            -   ``template_filter``, ``template_test``, and ``template_global`` decorators
+                can be used without parentheses. :issue:`5729`
+
+
+            Version 3.1.2
+            -------------
+            '''
+        ).lstrip(),
+        encoding="utf-8",
+    )
+    (repo / "docs" / "api.rst").write_text(
+        dedent(
+            '''
+            This specifies that ``/users/`` will be the URL for page one and
+            ``/users/page/N`` will be the URL for page ``N``.
+
+            If a URL contains a default value, it will be redirected to its simpler
+            form with a 301 redirect. In the above example, ``/users/page/1`` will
+            be redirected to ``/users/``. If your route handles ``GET`` and ``POST``
+            requests, make sure the default route only handles ``GET``, as redirects
+            can't preserve form data. ::
             '''
         ).lstrip(),
         encoding="utf-8",

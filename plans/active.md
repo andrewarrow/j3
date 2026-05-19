@@ -63,7 +63,7 @@ This is the live coordinator board. Keep it current and compact.
 
 - `TRANS-006`: surface candidate-after evidence from transition outcome
   metadata.
-  - Owner: coordinator dispatch in progress; worker pending.
+  - Owner: worker Parfit (`019e3e2c-0c10-7ee1-b753-752bccc3e617`).
   - Scope: transition action-choice/residual evidence plumbing and focused
     tests only.
   - Acceptance: candidate outcome rows that already carry diff or AST-delta
@@ -73,7 +73,7 @@ This is the live coordinator board. Keep it current and compact.
   - Expected tests: focused transition action-choice/residual/scorer tests,
     `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
 - `ACT-003`: reduce the `dynamic_field_error_message` search-budget gap.
-  - Owner: coordinator dispatch in progress; worker pending.
+  - Owner: worker Anscombe (`019e3e2c-4810-7811-979d-70f54413a6b5`).
   - Scope: repair candidate ranking/generation around exception-message
     literal candidates and focused tests for the GreenShot-6 row.
   - Acceptance: the `dynamic_field_error_message` preferred literal candidate

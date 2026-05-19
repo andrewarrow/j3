@@ -4614,8 +4614,9 @@ meaningful work. Do not replace this file with a daily reset.
   next dispatch splits these into two bounded tasks: `TRANS-006` makes existing
   diff/AST-delta metadata visible as candidate-after evidence, while `ACT-003`
   addresses the exception-message search-budget gap.
-- Commit: pending.
-- Push: pending.
-- Next: dispatch workers for `TRANS-006` and `ACT-003` after plan consistency
-  checks pass.
+- Commit: 63ab94f.
+- Push: succeeded.
+- Next: worker Parfit (`019e3e2c-0c10-7ee1-b753-752bccc3e617`) is running
+  `TRANS-006`; worker Anscombe (`019e3e2c-4810-7811-979d-70f54413a6b5`) is
+  running `ACT-003`.
 - Blockers: none.

@@ -273,8 +273,9 @@ Review before assigning more work if:
   coherent cluster is four tail-index literal decoys where the advisory scorer
   prefers `0 -> -2` literal changes over passing `seq[-1]` expression
   replacements. Product routing remains shadow-only.
-- Commit: pending.
-- Push: pending.
+- Commit: `74b24da` documentation/evidence; push-result metadata recorded in
+  follow-up planning update.
+- Push: documentation/evidence commit pushed successfully to `origin/main`.
 - Artifacts:
   `docs/MODEL_010_TRANS_012_SHADOW_ADVICE_TRIAGE_2026-05-19.md`,
   `/tmp/j3-model-010-trans-012-shadow-advice-triage/residual-examples.json`,

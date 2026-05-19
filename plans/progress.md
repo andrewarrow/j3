@@ -6650,8 +6650,9 @@ meaningful work. Do not replace this file with a daily reset.
   `/tmp/j3-model-010-trans-012-shadow-advice-triage/residual-examples.json`
   and
   `/tmp/j3-model-010-trans-012-shadow-advice-triage/residual-examples.jsonl`.
-- Commit: pending.
-- Push: pending.
+- Commit: `74b24da` documentation/evidence; push-result metadata recorded in
+  follow-up planning update.
+- Push: documentation/evidence commit pushed successfully to `origin/main`.
 - Next: dispatch `MODEL-011` to add shadow-advice tail-index decoy scoring
   evidence in `j3/transition_action_scoring.py` with focused scorer tests;
   product routing remains shadow-only.

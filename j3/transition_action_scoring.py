@@ -58,6 +58,7 @@ def score_transition_action_candidate(
         + 1.00 * features["failure_hint_score"]
         + 0.04 * min(features["failure_hint_count"], 3.0)
         + 0.02 * min(features["failure_hint_assertion_count"], 5.0)
+        - 3.25 * features["unvalidated_add_keyword_arg_without_hint"]
         + _action_prior(str(features["action_kind"]))
         + _param_prior(str(features["action_kind"]), features["param_signature"])
     )
@@ -977,6 +978,8 @@ def _candidate_score_features(
     failure_hints = _list(validation.get("failure_hints"))
 
     action_kind = str(action.get("kind", ""))
+    validated = validation.get("validated") is True
+    keyword_hint_match = _failure_hints_name_keyword_path(params, failure_hints)
     ranker_score = _score_value(scores.get("ranker_score"))
     model_score = _score_value(scores.get("model_score"))
     failure_hint_score = _score_value(scores.get("failure_hint_score"))
@@ -988,6 +991,16 @@ def _candidate_score_features(
         "action_kind": action_kind,
         "action_has_params": 1.0 if params else 0.0,
         "param_signature": _json_signature(params),
+        "validation_known": 1.0 if validated else 0.0,
+        "candidate_unvalidated": 0.0 if validated else 1.0,
+        "failure_hint_names_keyword_path": 1.0 if keyword_hint_match else 0.0,
+        "unvalidated_add_keyword_arg_without_hint": (
+            1.0
+            if action_kind == "add_keyword_arg"
+            and not validated
+            and not keyword_hint_match
+            else 0.0
+        ),
         "source_embedding_available": _bool_float(
             source_context.get("embedding_available")
         ),
@@ -1032,6 +1045,14 @@ def _candidate_v2_features(
         "model_score": float(base["model_score"]),
         "ranker_score": float(base["ranker_score"]),
         "failure_hint_score": float(base["failure_hint_score"]),
+        "validation_known": float(base["validation_known"]),
+        "candidate_unvalidated": float(base["candidate_unvalidated"]),
+        "failure_hint_names_keyword_path": float(
+            base["failure_hint_names_keyword_path"]
+        ),
+        "unvalidated_add_keyword_arg_without_hint": float(
+            base["unvalidated_add_keyword_arg_without_hint"]
+        ),
         "failure_hint_count": min(float(base["failure_hint_count"]), 5.0),
         "failure_hint_assertion_count": min(
             float(base["failure_hint_assertion_count"]),
@@ -1806,6 +1827,43 @@ def _score_value(value: object) -> float:
     if numeric < -1.0:
         return numeric / 100.0
     return numeric
+
+
+def _failure_hints_name_keyword_path(
+    params: Mapping[str, object],
+    failure_hints: Sequence[object],
+) -> bool:
+    keyword_tokens = _keyword_path_tokens(params)
+    if not keyword_tokens:
+        return False
+    for raw_hint in failure_hints:
+        hint = _mapping(raw_hint)
+        for field in (
+            "missing_keys",
+            "type_error_names",
+            "missing_names",
+            "asserted_mapping_keys",
+        ):
+            if keyword_tokens & _string_token_set(hint.get(field)):
+                return True
+    return False
+
+
+def _keyword_path_tokens(params: Mapping[str, object]) -> set[str]:
+    tokens: set[str] = set()
+    for field in ("keyword", "keyword_path", "path"):
+        tokens.update(_string_token_set(params.get(field)))
+    return tokens
+
+
+def _string_token_set(value: object) -> set[str]:
+    if isinstance(value, str) and value:
+        return {value}
+    if isinstance(value, (set, frozenset)):
+        return {str(item) for item in value if isinstance(item, str) and item}
+    if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+        return {str(item) for item in value if isinstance(item, str) and item}
+    return set()
 
 
 def _float_list_or_empty(value: object) -> list[float]:

@@ -3944,7 +3944,7 @@ meaningful work. Do not replace this file with a daily reset.
 - Result: recorded worker Locke
   (`019e3cf2-f35a-7271-b4e1-a88cfd426e2b`) for `VAL-002` and worker
   Confucius (`019e3cf2-f37e-76a2-89ac-5f106d630add`) for `MAT-011`.
-- Commit: pending.
+- Commit: pending; final hash reported by worker.
 - Push: pending.
 - Next: continue non-overlapping coordinator review while both workers run.
 - Blockers: none.
@@ -4309,3 +4309,39 @@ meaningful work. Do not replace this file with a daily reset.
   the next bounded ready task from the remaining materialization/ranking
   blockers.
 - Blockers: none.
+
+### 2026-05-19 - MODEL-003 - Penalize add-keyword decoys
+
+- Owner: worker Laplace (`019e3e00-fb6c-7462-a03e-aca348bf9807`).
+- Files changed: `j3/transition_action_scoring.py`,
+  `j3/transition_scorer_advice.py`, `tests/test_transition_action_scoring.py`,
+  `tests/test_transition_scorer_advice.py`, `plans/active.md`,
+  `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `python -m py_compile j3/transition_action_scoring.py
+  j3/transition_scorer_advice.py tests/test_transition_action_scoring.py
+  tests/test_transition_scorer_advice.py` -> passed; `pytest
+  tests/test_transition_action_scoring.py -q` -> 14 passed; `pytest
+  tests/test_transition_scorer_advice.py -q` -> 4 passed; `pytest
+  tests/test_transition_shadow_scorer.py -q` -> 4 passed; `pytest
+  tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check` ->
+  passed. Final combined focused run `pytest tests/test_transition_action_scoring.py
+  tests/test_transition_scorer_advice.py tests/test_transition_shadow_scorer.py
+  -q` -> 22 passed.
+- Result: added a narrow scorer penalty for unvalidated `add_keyword_arg`
+  candidates unless failure hints name the candidate keyword path. V1/V2
+  features now expose validation-known, unvalidated, keyword-hint-match, and
+  unvalidated-add-keyword-without-hint signals. Transition-scorer advice
+  preserves missing-name, missing-key, asserted-key, and type-error-name fields
+  from `PytestFailureHint`, so real patch ranking can avoid false add-keyword
+  priority while still preserving keyword additions for matching missing
+  keyword hints. Production ranking gates remain unchanged and shadow-only.
+- Commit: pending.
+- Push: pending.
+- Next: rerun transition matrix or targeted residual evidence for add-keyword
+  clusters, then continue with `MODEL-004` mapping key/value target scoring if
+  the add-keyword residuals stay reduced.
+- Blockers: broader `pytest tests/test_patching.py -q` was sampled and failed
+  in three patch-planner fixtures that do not enable transition scoring:
+  `test_patch_solves_httpx_async_client_sync_request_article`,
+  `test_patch_solves_jinja_async_loop_filter_error_message`, and
+  `test_patch_solves_greenshot_6_dictionary_literal_value`.

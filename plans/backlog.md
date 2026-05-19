@@ -427,7 +427,7 @@ Long-term target:
 
 ### MODEL-003: Penalize add-keyword decoys
 
-- Status: active
+- Status: done
 - Why: `ACT-001` and `TRANS-002` show unvalidated `add_keyword_arg` candidates
   outranking passing candidates in several residual clusters.
 - Write scope: transition scorer fixtures/features/tests for add-keyword
@@ -435,6 +435,12 @@ Long-term target:
 - Acceptance: focused residual fixtures reduce false priority for unvalidated
   `add_keyword_arg` candidates unless failure hints name a missing keyword path.
 - Tests: focused transition action scoring/ranking tests.
+- Completion note: added an explicit transition-scorer feature and penalty for
+  unvalidated `add_keyword_arg` candidates when failure hints do not name the
+  candidate keyword path. Failure hint records now preserve missing-name,
+  missing-key, asserted-key, and type-error-name fields for scorer advice.
+  Focused scorer/advice fixtures show decoys demoted without a matching
+  keyword hint and preserved when the hint names the missing keyword path.
 
 ### MODEL-004: Distinguish mapping key and value targets
 

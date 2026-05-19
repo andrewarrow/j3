@@ -81,6 +81,56 @@ def test_future_scorer_ranking_uses_local_non_label_features() -> None:
     assert passed_score["score"] > failed_score["score"]
 
 
+def test_future_scorer_penalizes_unvalidated_add_keyword_decoy_without_hint() -> None:
+    group = {"candidate_count": 2}
+    decoy = _scoring_candidate(
+        action="add_keyword_arg",
+        params={"keyword": "timeout", "value": True, "callee": "fetch"},
+        validated=False,
+        model_score=1.0,
+        ranker_score=1.0,
+        failure_hint_score=1.0,
+        failure_hints=[],
+    )
+    passing = _scoring_candidate(
+        action="change_literal",
+        params={"to": 30},
+        validated=True,
+        passed=True,
+        model_score=0.0,
+        ranker_score=0.0,
+        failure_hint_score=0.0,
+        failure_hints=[],
+    )
+
+    decoy_score = score_transition_action_candidate(decoy, group=group)
+    passing_score = score_transition_action_candidate(passing, group=group)
+
+    assert decoy_score["features"]["candidate_unvalidated"] == 1.0
+    assert decoy_score["features"]["failure_hint_names_keyword_path"] == 0.0
+    assert decoy_score["features"]["unvalidated_add_keyword_arg_without_hint"] == 1.0
+    assert passing_score["score"] > decoy_score["score"]
+
+
+def test_future_scorer_keeps_add_keyword_when_failure_hint_names_keyword() -> None:
+    group = {"candidate_count": 2}
+    candidate = _scoring_candidate(
+        action="add_keyword_arg",
+        params={"keyword": "timeout", "value": True, "callee": "fetch"},
+        validated=False,
+        model_score=1.0,
+        ranker_score=1.0,
+        failure_hint_score=1.0,
+        failure_hints=[{"type_error_names": ["timeout"]}],
+    )
+
+    score = score_transition_action_candidate(candidate, group=group)
+
+    assert score["features"]["candidate_unvalidated"] == 1.0
+    assert score["features"]["failure_hint_names_keyword_path"] == 1.0
+    assert score["features"]["unvalidated_add_keyword_arg_without_hint"] == 0.0
+
+
 def test_baseline_orders_are_stable_and_distinct() -> None:
     group = build_transition_action_choice_groups(
         _fixture_candidate_rows(),
@@ -552,4 +602,51 @@ def _candidate_row(
         "overlapping_candidate_ranks": [],
         "equivalent_passing_candidate_ranks": [],
         "overlapping_passing_candidate_ranks": [],
+    }
+
+
+def _scoring_candidate(
+    *,
+    action: str,
+    params: dict[str, object],
+    validated: bool,
+    model_score: float,
+    ranker_score: float,
+    failure_hint_score: float,
+    failure_hints: list[dict[str, object]],
+    passed: bool | None = None,
+) -> dict[str, object]:
+    return {
+        "rank_index": 1,
+        "action": {
+            "kind": action,
+            "file_path": "client.py",
+            "symbol": "load",
+            "start_line": 2,
+            "end_line": 2,
+            "node_kind": "Call",
+            "params": params,
+        },
+        "target_context": {"function_name": "load", "line_span": [2, 2]},
+        "source_context": {
+            "available": True,
+            "kind": "candidate_original_source",
+            "embedding_available": False,
+        },
+        "candidate_after": {
+            "available": True,
+            "kind": "candidate_patched_source",
+            "embedding_available": False,
+        },
+        "scores": {
+            "model_score": model_score,
+            "failure_hint_score": failure_hint_score,
+            "ranker_score": ranker_score,
+        },
+        "validation": {
+            "validated": validated,
+            "passed": passed if validated else None,
+            "status": "passed" if passed else ("failed" if validated else "not_validated"),
+            "failure_hints": failure_hints,
+        },
     }

@@ -57,25 +57,15 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-### `MODEL-003`: Penalize add-keyword decoys
-
-- Status: active
-- Owner: worker Laplace (`019e3e00-fb6c-7462-a03e-aca348bf9807`).
-- Write scope: transition scorer/advice fixtures, features, and tests for
-  add-keyword decoy ranking only, especially `j3/transition_action_scoring.py`,
-  `j3/transition_scorer_advice.py`, `j3/transition_ranking.py`,
-  `tests/test_transition_action_scoring.py`,
-  `tests/test_transition_shadow_scorer.py`, and task-specific planning
-  updates. Avoid typed-builder materialization and local-knowledge modules.
-- Acceptance: focused residual fixtures reduce false priority for unvalidated
-  `add_keyword_arg` candidates unless failure hints name a missing keyword
-  path, without changing production ranking gates.
+No active worker tasks are recorded after `MODEL-003` completed. The
+coordinator should either dispatch the next bounded ready task or record the
+blocker that prevents dispatch.
 
 ## Ready Queue
 
-The active set is below the default parallelism limit after `MAT-014`
-completed. Reassess after `MODEL-003` returns, or dispatch one disjoint ready
-task if the coordinator loop continues before then.
+The active set is below the default parallelism limit after `MODEL-003`
+completed. Reassess the remaining scorer residuals and dispatch the next
+bounded ready task if the coordinator loop continues.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
@@ -99,6 +89,13 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `MODEL-003`: added an explicit scorer feature and penalty for unvalidated
+  `add_keyword_arg` candidates when failure hints do not name the candidate
+  keyword path. Failure hint records now preserve missing-name, missing-key,
+  asserted-key, and type-error-name fields for transition-scorer advice.
+  Focused fixtures show add-keyword decoys demoted without a matching keyword
+  hint and kept when the hint names the missing keyword path. Production
+  ranking gates remain unchanged and shadow-only.
 - `MAT-014`: materialized and live-validated `psf/requests#7437` from base
   `0b401c76b6e80a4eecf3c690085b2553f6e261ca` to accepted head
   `dfe9ab8143fb71c72673738f25f0571347226b63`. The candidate changed only

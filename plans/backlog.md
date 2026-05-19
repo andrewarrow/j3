@@ -930,7 +930,8 @@ Long-term target:
 
 ### MODEL-015: Add visible-balance attribute-repair shadow-advice evidence
 
-- Status: ready
+- Status: active
+- Owner: worker MODEL-015, assigned on 2026-05-19.
 - Why: after `TRANS-015`, the only remaining residual-report example is
   `greenshot_5_subset/visible_balance_attribute_decoys`. It is a
   shadow-advice-only scorer gap, not a matrix residual or suite-gate failure.

@@ -246,25 +246,30 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-No active worker tasks are currently recorded.
+### `MODEL-015`: Add visible-balance attribute-repair shadow-advice evidence
+
+- Status: active
+- Owner: worker MODEL-015, assigned on 2026-05-19.
+- Scope: `j3/transition_action_scoring.py`, focused tests in
+  `tests/test_transition_action_scoring.py`, optional concise evidence doc
+  under `docs/MODEL_015_*`, and plan updates.
+- Acceptance: add narrow shadow-advice evidence that ranks the passing
+  `change_attribute amount_cents -> balance_cents` candidate for
+  `greenshot_5_subset/visible_balance_attribute_decoys` ahead of same-location
+  failing decoys `available_cents` and `pending_cents`, using local public
+  API/test-name evidence for visible balance behavior; prove direct replay
+  top-ranks the passing candidate; keep product routing shadow-only.
+- Guardrails: do not edit product routing, matrix manifests, candidate
+  generation, ranker routing, guarded-trial policy, local-knowledge records,
+  materializer code, or `plans/strategy.md`; avoid broad attribute-repair
+  scoring without source or candidate-after semantic evidence.
+- Expected tests: `pytest tests/test_transition_action_scoring.py -q`,
+  focused residual/advice replay for `visible_balance_attribute_decoys`,
+  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
 
 ## Ready Queue
 
-### `MODEL-015`: Add visible-balance attribute-repair shadow-advice evidence
-
-- Status: ready.
-- Goal: add a bounded shadow-advice scorer slice for
-  `greenshot_5_subset/visible_balance_attribute_decoys` after `TRANS-015`
-  confirmed it is the only remaining residual-report example.
-- Write scope: scorer logic/tests and plan updates only if assigned by the
-  coordinator. Do not change product routing or guarded-trial policy.
-- Acceptance: direct replay should rank the passing
-  `change_attribute amount_cents -> balance_cents` candidate ahead of the
-  failing `available_cents` and `pending_cents` decoys using narrow local
-  public API/test-name evidence for visible balance behavior.
-- Expected tests: focused transition action scoring tests, direct saved-artifact
-  replay for `visible_balance_attribute_decoys`,
-  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+No ready worker tasks are currently recorded while `MODEL-015` is active.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 

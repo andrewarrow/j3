@@ -7054,11 +7054,38 @@ meaningful work. Do not replace this file with a daily reset.
   not all suite gates are `ready_for_guarded_opt_in`; product routing remains
   shadow-only.
 - Commit: `b19fe75` documentation/evidence.
-- Push: documentation/evidence commit pushed successfully to `origin/main`.
+- Push: documentation/evidence commit pushed successfully to `origin/main`;
+  push-result metadata recorded in `7818e66`.
 - Next: dispatch `MODEL-015`, a bounded attribute-repair shadow-advice scorer
   task for `greenshot_5_subset/visible_balance_attribute_decoys`. The concrete
   evidence is an `AttributeError` in `shop/accounts.py`, public
   `visible_balance` context, and three same-location `change_attribute`
   candidates where only `amount_cents -> balance_cents` passes.
 - Blockers: none for evidence replay; broad attribute-repair scoring remains
+  under-specified without source or candidate-after semantic evidence.
+
+### 2026-05-19 - Coordinator Review And Dispatch - MODEL-015
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, and
+  `plans/progress.md`.
+- Tests: parsed
+  `/tmp/j3-trans-015-expanded-standard-after-model014/matrix-summary.json`,
+  `/tmp/j3-trans-015-expanded-standard-after-model014-residual-report.json`,
+  and
+  `/tmp/j3-trans-015-expanded-standard-after-model014-guarded-decision.json`;
+  checksum verification passed for
+  `/tmp/j3-trans-015-expanded-standard-after-model014/evidence/checksums.sha256`;
+  `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check`
+  -> passed.
+- Result: reviewed and closed `TRANS-015`. Matrix totals and suite gates are
+  unchanged from `TRANS-014`, `profile_signature_propagation` is gone in full
+  replay, the residual report now has only
+  `visible_balance_attribute_decoys`, and guarded decision remains
+  `remain_shadow_only`.
+- Next: dispatch `MODEL-015`. The concrete local evidence is an
+  `AttributeError` in `shop/accounts.py`, public test and function context
+  naming visible balance, and three same-location `change_attribute`
+  candidates where only `amount_cents -> balance_cents` passes.
+- Blockers: none for `MODEL-015`; broad attribute-repair scoring remains
   under-specified without source or candidate-after semantic evidence.

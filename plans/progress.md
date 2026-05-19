@@ -4094,3 +4094,36 @@ meaningful work. Do not replace this file with a daily reset.
 - Blockers: none for MAT-012; bounded `statement_block_replace` is a broader
   general AST action family and should be tracked as higher-risk than the
   previous pure typed-builder actions.
+
+### 2026-05-18 - VAL-003 - Coverage-gap decoy policy and ranking-denominator probe
+
+- Owner: worker Aquinas (`019e3d05-21cc-79a1-a0df-0dc14d36d2eb`) with
+  coordinator integration after worker pause.
+- Files changed: `j3/issue_pr_coverage_gap_policy.py`,
+  `tests/test_issue_pr_coverage_gap_policy.py`, `plans/active.md`,
+  `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `python -m py_compile j3/issue_pr_coverage_gap_policy.py
+  tests/test_issue_pr_coverage_gap_policy.py` -> passed; `pytest
+  tests/test_issue_pr_coverage_gap_policy.py -q` -> 6 passed; `pytest
+  tests/test_issue_pr_coverage_gap_policy.py
+  tests/test_issue_pr_candidate_ranking.py
+  tests/test_issue_pr_validation_strength_probe.py -q` -> 19 passed;
+  `python -m j3.issue_pr_coverage_gap_policy --out-dir
+  /tmp/j3-val-003-coverage-gap-policy-probe` -> passed.
+- Result: added a shadow-only policy probe that separates
+  behavior-observable hard negatives from coverage-gap product blockers.
+  Strict issue/PR ranking remains `blocked` because two pass-pass
+  coverage-gap product blockers are not behavior-observable hard negatives
+  and their classification depends on decoy labels or accepted-test
+  structure. Behavior-negative-only issue/PR ranking is `ranked_shadow_only`
+  with `pass@1 = 1.0`, `pass@k = 1.0`, six behavior-observable negatives,
+  two product blockers, leakage risk `blocked_high`, and blocker
+  `coverage_gap_product_blocker_classification_depends_on_decoy_labels`.
+- Commit: pending.
+- Push: pending.
+- Next: dispatch `VAL-004` to make the behavior-negative-only policy reusable
+  as a shadow gate, and `MAT-013` to refresh materialization coverage after
+  the broader MAT-012 general-AST action expansion.
+- Blockers: strict issue/PR ranking remains blocked by label-dependent
+  coverage-gap product blocker classification; behavior-negative-only metrics
+  must remain shadow-only.

@@ -2477,7 +2477,7 @@ Long-term target:
 
 ### VAL-003: Coverage-gap decoy policy and ranking-denominator probe
 
-- Status: active
+- Status: done
 - Why: VAL-002 proved stronger behavior validation can catch a missed semantic
   decoy, but source-equivalent coverage-gap decoys remain indistinguishable
   without leaking accepted tests or accepted diffs. The next hard question is
@@ -2495,12 +2495,57 @@ Long-term target:
   observable candidate/validation evidence.
 - Tests: focused ranking/policy tests, `git diff --check`, and a CLI or smoke
   command that writes the VAL-003 artifact bundle.
+- Completion note: added a shadow-only coverage-gap policy probe over DATA-039,
+  DATA-040, and VAL-002 artifacts. Strict issue/PR ranking remains `blocked`
+  because two coverage-gap product blockers are not behavior-observable hard
+  negatives and their classification depends on decoy labels or accepted-test
+  structure. Behavior-negative-only ranking is `ranked_shadow_only` with
+  `pass@1 = 1.0`, `pass@k = 1.0`, six behavior-observable negatives, two
+  product blockers, leakage risk `blocked_high`, and blocker
+  `coverage_gap_product_blocker_classification_depends_on_decoy_labels`.
+
+### VAL-004: Reusable behavior-negative-only issue/PR shadow gate
+
+- Status: ready
+- Why: VAL-003 proved behavior-observable hard negatives can be ranked without
+  label leakage, but the result lives in a one-off policy probe. The next
+  step is to make that distinction reusable without changing production gates.
+- Write scope: issue/PR ranking or validation-policy helper code/tests,
+  optional `docs/VAL_004_*`, generated artifacts under `/tmp`, and plan
+  updates. Avoid typed-builder materialization modules.
+- Acceptance: expose a reusable shadow gate record that consumes VAL-003-style
+  policy rows and reports strict readiness, behavior-negative-only readiness,
+  pass@1/pass@k, blocker counts, leakage risk, and the exact production-gate
+  stance. The gate must keep strict issue/PR ranking blocked when coverage-gap
+  product blockers are label-dependent and must not promote behavior-only
+  metrics beyond shadow-only.
+- Tests: focused ranking/policy tests, plan consistency, `git diff --check`,
+  and a smoke command that writes a VAL-004 artifact bundle.
+
+### MAT-013: Refresh real PR materialization coverage after general-AST expansion
+
+- Status: ready
+- Why: MAT-012 turned a hard held-out row green, but it did so by adding
+  bounded `statement_block_replace`, which is broader and riskier than prior
+  pure typed-builder action families. The materialization coverage map should
+  be refreshed before treating the action vocabulary as broadly proven.
+- Write scope: materialization coverage analysis docs/data, optional small
+  helper tests if needed, generated artifacts under `/tmp`, and plan updates.
+  Avoid issue/PR ranking or validation-policy modules.
+- Acceptance: rerun or update the MAT-007 real PR materialization panel using
+  MAT-010 through MAT-012 evidence; record remaining bucket counts, which rows
+  are now covered by reusable typed/general-AST actions, whether
+  `statement_block_replace` changes any risk classification, and the next
+  bounded materialization row or blocker.
+- Tests: focused analysis command/test if present, plan consistency, and
+  `git diff --check`.
 
 ## Next Recommended Queue
 
 Start with these unless fresh evidence changes the order:
 
-1. `VAL-003`: coverage-gap decoy policy and ranking-denominator probe.
-2. `MAT-012`: third held-out typed-builder/general-AST materialization stress
-   row.
-3. `KNOW-003`: wire knowledge-use attribution into tests-only planning.
+1. `VAL-004`: reusable behavior-negative-only issue/PR shadow gate.
+2. `MAT-013`: refresh real PR materialization coverage after general-AST
+   expansion.
+3. Follow-up from `KNOW-003`: add or review local import-style knowledge
+   records for held-out tests-only rows that now report `missing_knowledge`.

@@ -40,29 +40,26 @@ This is the live coordinator board. Keep it current and compact.
   `humanize-feature-naturalsize-zero-format`, and
   `boltons-feature-slugify-max-length` when candidate validation passes,
   writes stay inside task allowlists, only the task's single allowlisted
-  production file changes, and hidden-like checks do not disagree.
+  production file changes, and hidden-like checks do not disagree. `VAL-003`
+  separates behavior-observable issue/PR hard negatives from coverage-gap
+  product blockers. Behavior-negative-only issue/PR ranking is
+  `ranked_shadow_only` at `pass@1 = 1.0` and `pass@k = 1.0`, but strict
+  issue/PR ranking remains blocked because two pass-pass coverage-gap product
+  blockers depend on decoy labels or accepted-test structure rather than
+  observable validation failure evidence.
 
 ## Active Tasks
 
-### `VAL-003`: Coverage-gap decoy policy and ranking-denominator probe
-
-- Status: active
-- Owner: worker Aquinas (`019e3d05-21cc-79a1-a0df-0dc14d36d2eb`).
-- Write scope: issue/PR ranking or validation-policy helper code/tests,
-  optional `docs/VAL_003_*`, and generated artifacts under `/tmp`. Avoid
-  materialization modules.
-- Acceptance: define and run a shadow-only policy experiment over the DATA-039,
-  DATA-040, and VAL-002 artifacts that separates behavior-observable hard
-  negatives from coverage-gap product blockers without using accepted-label
-  leakage. Record strict ranking readiness, behavior-negative-only ranking
-  readiness, blocker counts, pass@1/pass@k if rankable, runtime, and the exact
-  reason if the separation itself depends on decoy labels rather than
-  observable candidate/validation evidence.
+No active workers while the coordinator records the next assignments.
 
 ## Ready Queue
 
-`VAL-003` has a local completed worker result pending scoped integration.
-Reassess after that commit lands.
+These are good next assignments after the VAL-003 integration commit:
+
+1. `VAL-004`: wire behavior-negative-only issue/PR ranking policy into a
+   reusable shadow gate report.
+2. `MAT-013`: refresh real PR materialization coverage after the MAT-012
+   general-AST action expansion.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
@@ -86,6 +83,16 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `VAL-003`: added a shadow-only coverage-gap decoy policy probe over DATA-039,
+  DATA-040, and VAL-002 artifacts. Strict issue/PR ranking remains `blocked`
+  because two coverage-gap product blockers are not behavior-observable hard
+  negatives and their classification depends on decoy labels or accepted-test
+  structure. Behavior-negative-only issue/PR ranking is `ranked_shadow_only`
+  with `pass@1 = 1.0`, `pass@k = 1.0`, six behavior-observable negatives, two
+  product blockers, and leakage risk `blocked_high`. Artifacts:
+  `/tmp/j3-val-003-coverage-gap-policy-probe/val-003-policy-report.json`,
+  `/tmp/j3-val-003-coverage-gap-policy-probe/val-003-policy-report.md`, and
+  `/tmp/j3-val-003-coverage-gap-policy-probe/val-003-decoy-policy-records.jsonl`.
 - `MAT-012`: materialized and live-validated held-out `pallets/click#3396`
   from base `fed9049f7a07550d560a91b30c5b0b3e17d54981` to accepted head
   `3df4d601a5f1d1db50cbf0b33e5b0816189bc5a8`. The candidate changed only

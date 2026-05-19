@@ -549,7 +549,10 @@ def test_real_repo_tests_planner_materializes_h11_bytesify_cases(
     assert row["validation_commands"] == [
         "python -m pytest h11/tests/test_util.py -q"
     ]
-    assert row["residual_labels"] == [CANDIDATE_VALIDATION_DEFERRED]
+    assert row["residual_labels"] == [
+        CANDIDATE_VALIDATION_DEFERRED,
+        "missing_knowledge",
+    ]
     assert row["blockers"] == []
 
     select_test_file = row["actions"][1]
@@ -626,6 +629,8 @@ def test_real_repo_tests_planner_materializes_h11_bytesify_cases(
 
     citations = row["knowledge_citations"]
     assert {"pytest_style", "test_location", "validation"} <= set(citations)
+    assert row["knowledge_attribution"]["missing_purposes"] == ["import_style"]
+    assert row["knowledge_attribution"]["residual_labels"] == ["missing_knowledge"]
     knowledge_use = row["knowledge_use_record"]
     assert isinstance(knowledge_use, dict)
     validate_local_knowledge_record(knowledge_use)
@@ -1049,3 +1054,101 @@ def test_real_repo_tests_planner_cites_import_style_and_knowledge_use(
         "reason": CANDIDATE_VALIDATION_DEFERRED,
     }
     assert knowledge_use["data"]["cited_purposes"] == citations
+    assert knowledge_use["data"]["required_purposes"] == [
+        "test_location",
+        "import_style",
+        "validation",
+    ]
+    assert knowledge_use["data"]["missing_purposes"] == []
+    assert row["knowledge_attribution"] == {
+        "retrieved_record_ids": knowledge_use["data"]["retrieved_record_ids"],
+        "cited_purposes": citations,
+        "required_purposes": ["test_location", "import_style", "validation"],
+        "missing_purposes": [],
+        "residual_labels": [],
+    }
+
+
+def test_real_repo_tests_planner_marks_partial_knowledge_gap(
+    tmp_path: Path,
+) -> None:
+    repo, task = _manifest_iniconfig_rows()
+    _write_synthetic_iniconfig_checkout(tmp_path)
+    records = _knowledge_records(tmp_path, repo, task)
+    public_api_records = tuple(
+        record for record in records if record["record_type"] == "public_api_record"
+    )
+
+    row = plan_real_repo_tests_only_candidate(
+        tmp_path,
+        repo=repo,
+        task=task,
+        local_knowledge_records=public_api_records,
+    ).to_record()
+
+    public_api_record_ids = [str(record["id"]) for record in public_api_records]
+    assert set(row["knowledge_citations"]) == {"import_style"}
+    assert row["knowledge_citations"]["import_style"] == public_api_record_ids
+    assert row["knowledge_attribution"] == {
+        "retrieved_record_ids": public_api_record_ids,
+        "cited_purposes": {"import_style": public_api_record_ids},
+        "required_purposes": ["test_location", "import_style", "validation"],
+        "missing_purposes": ["test_location", "validation"],
+        "residual_labels": ["missing_knowledge"],
+    }
+    assert row["residual_labels"] == [
+        CANDIDATE_VALIDATION_DEFERRED,
+        "missing_knowledge",
+    ]
+
+    knowledge_use = row["knowledge_use_record"]
+    assert isinstance(knowledge_use, dict)
+    validate_local_knowledge_record(knowledge_use)
+    assert knowledge_use["data"]["retrieved_record_ids"] == public_api_record_ids
+    assert knowledge_use["data"]["cited_purposes"] == {
+        "import_style": public_api_record_ids
+    }
+    assert knowledge_use["data"]["missing_purposes"] == [
+        "test_location",
+        "validation",
+    ]
+    assert "missing_knowledge" in knowledge_use["links"]["residual_labels"]
+
+
+def test_real_repo_tests_planner_marks_knowledge_not_used_when_no_records(
+    tmp_path: Path,
+) -> None:
+    repo, task = _manifest_iniconfig_rows()
+    _write_synthetic_iniconfig_checkout(tmp_path)
+
+    row = plan_real_repo_tests_only_candidate(
+        tmp_path,
+        repo=repo,
+        task=task,
+        local_knowledge_records=(),
+    ).to_record()
+
+    assert row["knowledge_citations"] == {}
+    assert row["knowledge_attribution"] == {
+        "retrieved_record_ids": [],
+        "cited_purposes": {},
+        "required_purposes": ["test_location", "import_style", "validation"],
+        "missing_purposes": ["test_location", "import_style", "validation"],
+        "residual_labels": ["knowledge_not_used"],
+    }
+    assert row["residual_labels"] == [
+        CANDIDATE_VALIDATION_DEFERRED,
+        "knowledge_not_used",
+    ]
+
+    knowledge_use = row["knowledge_use_record"]
+    assert isinstance(knowledge_use, dict)
+    validate_local_knowledge_record(knowledge_use)
+    assert knowledge_use["data"]["retrieved_record_ids"] == []
+    assert knowledge_use["data"]["cited_purposes"] == {}
+    assert knowledge_use["data"]["missing_purposes"] == [
+        "test_location",
+        "import_style",
+        "validation",
+    ]
+    assert "knowledge_not_used" in knowledge_use["links"]["residual_labels"]

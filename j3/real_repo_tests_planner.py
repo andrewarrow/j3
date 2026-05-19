@@ -21,6 +21,7 @@ REAL_REPO_TESTS_CANDIDATE_SCHEMA_VERSION = "real-repo-tests-candidate-v1"
 REAL_REPO_TESTS_CANDIDATE_KIND = "real_repo_tests_only_candidate"
 REAL_REPO_TESTS_ACTION_FAMILY = "tests_only_existing_repo_pytest"
 TEST_CASE_MATERIALIZATION_BLOCKER = "test_case_materialization_gap"
+REQUIRED_KNOWLEDGE_PURPOSES = ("test_location", "import_style", "validation")
 INICONFIG_PARSE_COMMENTS_TASK_ID = "iniconfig-tests-parse-comments"
 H11_BYTESIFY_MEMORYVIEW_TASK_ID = "h11-tests-bytesify-memoryview"
 HUMANIZE_NATURALSIZE_NEGATIVE_STRINGS_TASK_ID = (
@@ -99,6 +100,7 @@ class RealRepoTestsCandidate:
     candidate_after: dict[str, object] = field(default_factory=dict)
     validation: dict[str, object] = field(default_factory=dict)
     knowledge_citations: dict[str, list[str]] = field(default_factory=dict)
+    knowledge_attribution: dict[str, object] = field(default_factory=dict)
     knowledge_use_record: dict[str, object] | None = None
     blockers: list[dict[str, str]] = field(default_factory=list)
     residual_labels: list[str] = field(default_factory=list)
@@ -134,6 +136,7 @@ class RealRepoTestsCandidate:
                 purpose: list(record_ids)
                 for purpose, record_ids in self.knowledge_citations.items()
             },
+            "knowledge_attribution": _json_copy(self.knowledge_attribution),
             "knowledge_use_record": (
                 _json_copy(self.knowledge_use_record)
                 if self.knowledge_use_record is not None
@@ -235,6 +238,13 @@ def plan_real_repo_tests_only_candidate(
                 ),
             ]
         )
+    retrieved_record_ids = _knowledge_record_ids(knowledge_records)
+    missing_knowledge_purposes = _missing_knowledge_purposes(citations)
+    knowledge_residual_labels = _knowledge_residual_labels(
+        retrieved_record_ids=retrieved_record_ids,
+        citations=citations,
+        missing_purposes=missing_knowledge_purposes,
+    )
 
     production_files = _production_python_files(coverage)
     production_hashes = _file_hashes(resolved_repo, production_files)
@@ -283,8 +293,9 @@ def plan_real_repo_tests_only_candidate(
         residual_labels.extend(blocker["reason"] for blocker in blockers)
     else:
         residual_labels.append(CANDIDATE_VALIDATION_DEFERRED)
-    if not citations:
-        residual_labels.append("knowledge_not_used")
+    residual_labels.extend(
+        label for label in knowledge_residual_labels if label not in residual_labels
+    )
 
     status = str(materialization["status"])
     if blockers:
@@ -333,25 +344,31 @@ def plan_real_repo_tests_only_candidate(
             field="candidate_after.test_case_ids",
         ),
     )
-    retrieved_record_ids = _unique(
-        [record_id for record_ids in citations.values() for record_id in record_ids]
+    knowledge_attribution = {
+        "retrieved_record_ids": list(retrieved_record_ids),
+        "cited_purposes": {
+            purpose: list(record_ids) for purpose, record_ids in citations.items()
+        },
+        "required_purposes": list(REQUIRED_KNOWLEDGE_PURPOSES),
+        "missing_purposes": list(missing_knowledge_purposes),
+        "residual_labels": list(knowledge_residual_labels),
+    }
+    knowledge_use_record = build_knowledge_use_record(
+        candidate_id=candidate_id,
+        task_id=task_id,
+        retrieved_record_ids=retrieved_record_ids,
+        action_family=REAL_REPO_TESTS_ACTION_FAMILY,
+        validation_result={
+            "status": status,
+            "command": selected_validation_command,
+            "reason": validation_not_run_reason,
+        },
+        split=repo_split,
+        residual_labels=residual_labels,
+        cited_purposes=citations,
+        required_purposes=REQUIRED_KNOWLEDGE_PURPOSES,
+        missing_purposes=missing_knowledge_purposes,
     )
-    knowledge_use_record = None
-    if retrieved_record_ids:
-        knowledge_use_record = build_knowledge_use_record(
-            candidate_id=candidate_id,
-            task_id=task_id,
-            retrieved_record_ids=retrieved_record_ids,
-            action_family=REAL_REPO_TESTS_ACTION_FAMILY,
-            validation_result={
-                "status": status,
-                "command": selected_validation_command,
-                "reason": validation_not_run_reason,
-            },
-            split=repo_split,
-            residual_labels=residual_labels,
-            cited_purposes=citations,
-        )
 
     actions = [
         RealRepoTestsAction(
@@ -428,6 +445,7 @@ def plan_real_repo_tests_only_candidate(
         candidate_after=dict(candidate_after),
         validation=validation,
         knowledge_citations=citations,
+        knowledge_attribution=knowledge_attribution,
         knowledge_use_record=knowledge_use_record,
         blockers=blockers,
         residual_labels=residual_labels,
@@ -1219,6 +1237,33 @@ def _validated_knowledge_records(
         if source_repo == repo_id or task_id in task_ids:
             validated.append(record)
     return tuple(validated)
+
+
+def _knowledge_record_ids(records: Sequence[Mapping[str, object]]) -> list[str]:
+    return _unique([_required_str(record, "id") for record in records])
+
+
+def _missing_knowledge_purposes(
+    citations: Mapping[str, Sequence[str]],
+) -> list[str]:
+    return [
+        purpose
+        for purpose in REQUIRED_KNOWLEDGE_PURPOSES
+        if not citations.get(purpose)
+    ]
+
+
+def _knowledge_residual_labels(
+    *,
+    retrieved_record_ids: Sequence[str],
+    citations: Mapping[str, Sequence[str]],
+    missing_purposes: Sequence[str],
+) -> list[str]:
+    if not retrieved_record_ids or not citations:
+        return ["knowledge_not_used"]
+    if missing_purposes:
+        return ["missing_knowledge"]
+    return []
 
 
 def _knowledge_citations(

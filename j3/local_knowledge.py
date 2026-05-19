@@ -157,6 +157,8 @@ def build_knowledge_use_record(
     outcome_id: str | None = None,
     residual_labels: Sequence[str] = (),
     cited_purposes: Mapping[str, Sequence[str]] | None = None,
+    required_purposes: Sequence[str] = (),
+    missing_purposes: Sequence[str] = (),
 ) -> dict[str, object]:
     """Build the citation row a tests-only planner can attach to a candidate."""
 
@@ -167,6 +169,8 @@ def build_knowledge_use_record(
         "cited_purposes": {
             key: list(value) for key, value in (cited_purposes or {}).items()
         },
+        "required_purposes": list(required_purposes),
+        "missing_purposes": list(missing_purposes),
         "action_family": action_family,
         "validation_result": _json_copy(validation_result),
     }

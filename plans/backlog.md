@@ -875,7 +875,7 @@ Long-term target:
 
 ### KNOW-003: Wire knowledge-use attribution into tests-only planning
 
-- Status: active
+- Status: done
 - Why: `KNOW-002` created citeable records, but wedge candidates must record
   whether they actually used layout, import, and validation knowledge.
 - Write scope: tests-only planning/outcome attribution, focused tests, and plan
@@ -885,6 +885,11 @@ Long-term target:
   `knowledge_not_used` or `missing_knowledge` residual rather than prose only.
 - Tests: focused existing-repo/local-knowledge tests, plan consistency, and
   `git diff --check`.
+- Completion note: tests-only candidates now expose explicit knowledge
+  attribution with all retrieved record IDs, cited purposes, required purposes,
+  missing purposes, and structured attribution residuals. Knowledge-use records
+  are always emitted for tests-only planning, including no-citation cases, so
+  missing local-knowledge use is machine-readable.
 
 ### KNOW-004: Click replay local knowledge records
 

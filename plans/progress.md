@@ -4042,3 +4042,25 @@ meaningful work. Do not replace this file with a daily reset.
 - Next: worker Lorentz (`019e3de6-2a58-7e01-8efe-d09e29652ac7`) is running
   `KNOW-003`; keep the active set capped until one worker returns.
 - Blockers: none.
+
+### 2026-05-18 - KNOW-003 - Tests-only knowledge attribution
+
+- Owner: worker Lorentz (`019e3de6-2a58-7e01-8efe-d09e29652ac7`).
+- Files changed: `j3/real_repo_tests_planner.py`, `j3/local_knowledge.py`,
+  `tests/test_real_repo_tests_planner.py`, `tests/test_local_knowledge.py`,
+  `plans/active.md`, `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `pytest tests/test_real_repo_tests_planner.py -q` -> 7 passed;
+  `pytest tests/test_local_knowledge.py -q` -> 8 passed;
+  `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check`
+  -> passed.
+- Result: tests-only candidate rows now record all retrieved local-knowledge
+  record IDs, cited record IDs by purpose, required purposes, missing purposes,
+  and attribution residual labels. Knowledge-use records include the same
+  cited/missing purpose fields and are emitted even when no local knowledge is
+  cited. Partial citation gaps produce `missing_knowledge`; no retrieved or
+  cited knowledge produces `knowledge_not_used`.
+- Commit: pending.
+- Push: pending.
+- Next: review whether held-out tests-only rows that now report
+  `missing_knowledge` need additional local import-style records.
+- Blockers: none.

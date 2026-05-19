@@ -1154,6 +1154,8 @@ def test_local_knowledge_jsonl_and_use_record_are_stable(tmp_path: Path) -> None
             "import_style": [str(record_ids_by_type["public_api_record"])],
             "validation": [str(record_ids_by_type["validation_recipe_record"])],
         },
+        required_purposes=["test_location", "import_style", "validation"],
+        missing_purposes=[],
         action_family="tests_only_existing_repo_pytest",
         validation_result={
             "status": "passed",
@@ -1172,6 +1174,12 @@ def test_local_knowledge_jsonl_and_use_record_are_stable(tmp_path: Path) -> None
     assert len(rows) == len(first) + 1
     assert rows[-1]["record_type"] == "knowledge_use_record"
     assert rows[-1]["data"]["action_family"] == "tests_only_existing_repo_pytest"
+    assert rows[-1]["data"]["required_purposes"] == [
+        "test_location",
+        "import_style",
+        "validation",
+    ]
+    assert rows[-1]["data"]["missing_purposes"] == []
     assert rows[-1]["links"]["task_ids"] == ["mini-lib-tests-slugify"]
 
 

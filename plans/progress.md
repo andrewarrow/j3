@@ -5737,3 +5737,41 @@ meaningful work. Do not replace this file with a daily reset.
   that imports checkout-local source via `PYTHONPATH=src` or the DATA-008
   editable-venv recipe.
 - Blockers: none.
+
+### 2026-05-19 - MAT-022 - Requests #7328 redirect-history materialization
+
+- Owner: worker MAT-022.
+- Files changed: `j3/heldout_source_region_candidate.py`,
+  `tests/test_heldout_source_region_candidate.py`,
+  `docs/MAT_022_REQUESTS_7328_SOURCE_REGION_CANDIDATE_2026-05-19.md`,
+  `plans/active.md`, `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `python -m py_compile j3/heldout_source_region_candidate.py
+  tests/test_heldout_source_region_candidate.py` -> passed; `pytest
+  tests/test_heldout_source_region_candidate.py -q` -> 9 passed; live fresh
+  checkout run `PYTHONPATH=/Users/aa/os/j3 python -m
+  j3.heldout_source_region_candidate --candidate requests-7328 --repo-path
+  /tmp/j3-mat-022-requests-7328/base --accepted-diff
+  /tmp/j3-mat-022-requests-7328/final/accepted.diff --out
+  /tmp/j3-mat-022-requests-7328/final/candidate.json --report
+  /tmp/j3-mat-022-requests-7328/final/report.md --diff-out
+  /tmp/j3-mat-022-requests-7328/final/candidate.diff --validate
+  --validation-timeout-seconds 30` -> validated; validation command
+  `PYTHONPATH=src python -m pytest
+  tests/test_requests.py::TestRequests::test_redirect_history_no_self_reference
+  -q` -> `1 passed in 0.62s`; `python -m json.tool
+  /tmp/j3-mat-022-requests-7328/final/candidate.json` -> passed.
+- Result: materialized `psf/requests#7328` from base
+  `cbce031327be4f1b4b5fd041ff4dcaa8efa2ce53` to PR head
+  `3ee28b806f8bc414b29f7b4561e53c161924fe66`. The candidate changed only
+  `src/requests/sessions.py` and `tests/test_requests.py`, matched the
+  accepted source/test diff exactly after normalization, and recorded source
+  and test candidate-after diff/AST/hash metadata plus mutation scope. The row
+  uses reusable `replace_function_region` and
+  `insert_pytest_function_after_anchor` action records; no PR-named action kind
+  was added. Requests validation imported checkout-local source with
+  `PYTHONPATH=src`, avoiding the MAT-021 ambient site-packages import leak.
+- Commit: pending.
+- Push: pending.
+- Next: continue constrained source/test materialization with `click-3434`, the
+  next formatter-family row, after coordinator review.
+- Blockers: none.

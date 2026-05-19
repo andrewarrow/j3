@@ -141,41 +141,24 @@ This is the live coordinator board. Keep it current and compact.
   DATA-008 editable-venv recipe. Count `requests-7433` as live-validated by
   the MAT-021 corrected-harness evidence; the original MAT-020 artifact remains
   an accurate record of the first invalid import-path timeout. Remaining
-  non-materialized MAT-007 counts are now `current_structured_action = 4`,
+  non-materialized MAT-007 counts were then `current_structured_action = 4`,
   `general_typed_builder = 0`, `repo_convention_builder = 4`,
   `constrained_local_generator = 4`, and `not_currently_expressible = 2`.
-  `MAT-022` is now assigned to the compact remaining Requests row,
-  `psf/requests#7328`.
+  `MAT-022` now materializes and live-validates the compact remaining Requests
+  row, `psf/requests#7328`, with exact accepted-diff parity under
+  checkout-local `PYTHONPATH=src` validation. Remaining non-materialized
+  MAT-007 counts are now `current_structured_action = 3`,
+  `general_typed_builder = 0`, `repo_convention_builder = 4`,
+  `constrained_local_generator = 3`, and `not_currently_expressible = 2`.
 
 ## Active Tasks
 
-### `MAT-022`: Held-out requests redirect-history source/test candidate
-
-- Status: active
-- Owner: worker.
-- Scope: materialize `psf/requests#7328` with reusable source-region and pytest
-  insertion action records. Allowed writes are focused extensions to
-  `j3/heldout_source_region_candidate.py`,
-  `tests/test_heldout_source_region_candidate.py`, focused `docs/MAT_022_*`,
-  generated artifacts under `/tmp`, and plan updates. Avoid transition
-  scoring, issue/PR ranking, local-knowledge records, matrix manifests, and
-  unrelated materializer families.
-- Acceptance: determine pinned base/head refs, accepted changed files,
-  validation command, mutation scope, candidate-after diff/AST/hash metadata,
-  accepted-diff comparison, and live validation result for `requests-7328`.
-  Use reusable action kinds rather than a PR-named action. For Requests live
-  validation, use checkout-local source (`PYTHONPATH=src`) or the DATA-008
-  editable-venv recipe so MAT-021's import-path leak is not repeated. If target
-  selection, source-region materialization, pytest insertion, parity, or
-  validation blocks, record the exact blocker.
-- Tests: focused source-region candidate tests, JSON/report checks if added,
-  `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and live
-  focused validation when materialized.
+No active worker task is recorded. The coordinator should dispatch the next
+bounded ready task if the loop continues.
 
 ## Ready Queue
 
-No separate ready worker task is queued while `MAT-022` is active. After
-`requests-7328`, `click-3434` is the next formatter-family constrained row.
+`click-3434` is the next formatter-family constrained source/test row.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
@@ -200,6 +183,20 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `MAT-022`: materialized `psf/requests#7328` from base
+  `cbce031327be4f1b4b5fd041ff4dcaa8efa2ce53` to PR head
+  `3ee28b806f8bc414b29f7b4561e53c161924fe66`. The candidate changed only
+  `src/requests/sessions.py` and `tests/test_requests.py`, matched the
+  accepted source/test diff exactly after normalization, and recorded
+  candidate-after diff/AST/hash metadata plus mutation scope. Live focused
+  validation used checkout-local source with `PYTHONPATH=src` and passed:
+  `tests/test_requests.py::TestRequests::test_redirect_history_no_self_reference`.
+  Artifacts:
+  `docs/MAT_022_REQUESTS_7328_SOURCE_REGION_CANDIDATE_2026-05-19.md`,
+  `/tmp/j3-mat-022-requests-7328/final/candidate.json`,
+  `/tmp/j3-mat-022-requests-7328/final/report.md`,
+  `/tmp/j3-mat-022-requests-7328/final/candidate.diff`, and
+  `/tmp/j3-mat-022-requests-7328/final/accepted.diff`.
 - `MAT-021`: classified the `MAT-020` `psf/requests#7433` validation timeout
   as a local setup/import-path issue, not a candidate regression or
   accepted-head behavior. Fresh `/tmp` checkouts showed the original ambient

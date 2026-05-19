@@ -37,6 +37,12 @@ DEFAULT_REQUESTS_STREAM_WRAPPER_BASE_REF = (
 DEFAULT_REQUESTS_STREAM_WRAPPER_HEAD_REF = (
     "ea1c36c1b1a8364e234b6ad49ea05e3261636f8a"
 )
+DEFAULT_REQUESTS_REDIRECT_HISTORY_BASE_REF = (
+    "cbce031327be4f1b4b5fd041ff4dcaa8efa2ce53"
+)
+DEFAULT_REQUESTS_REDIRECT_HISTORY_HEAD_REF = (
+    "3ee28b806f8bc414b29f7b4561e53c161924fe66"
+)
 DEFAULT_PYTEST_SCANNER_BASE_REF = "7df5d80ff3a98714a1d3cdbe82941229e511f4b3"
 DEFAULT_VALIDATION_COMMAND = (
     "python -m pytest "
@@ -45,6 +51,10 @@ DEFAULT_VALIDATION_COMMAND = (
 DEFAULT_REQUESTS_STREAM_WRAPPER_VALIDATION_COMMAND = (
     "python -m pytest "
     "tests/test_requests.py::TestRequests::test_getattr_proxy_stream_follows_redirect -q"
+)
+DEFAULT_REQUESTS_REDIRECT_HISTORY_VALIDATION_COMMAND = (
+    "PYTHONPATH=src python -m pytest "
+    "tests/test_requests.py::TestRequests::test_redirect_history_no_self_reference -q"
 )
 DEFAULT_PYTEST_SCANNER_VALIDATION_COMMAND = (
     "PYTHONPATH=src python -c "
@@ -58,6 +68,7 @@ DEFAULT_PYTEST_SCANNER_VALIDATION_COMMAND = (
 REQUESTS_UTILS_PATH = "src/requests/utils.py"
 REQUESTS_TEST_UTILS_PATH = "tests/test_utils.py"
 REQUESTS_MODELS_PATH = "src/requests/models.py"
+REQUESTS_SESSIONS_PATH = "src/requests/sessions.py"
 REQUESTS_TEST_REQUESTS_PATH = "tests/test_requests.py"
 PYTEST_EXPRESSION_PATH = "src/_pytest/mark/expression.py"
 PYTEST_MARK_EXPRESSION_TEST_PATH = "testing/test_mark_expression.py"
@@ -419,6 +430,72 @@ def build_requests_stream_wrapper_spec(
             {
                 "action_kind": "insert_pytest_function_after_anchor",
                 "reused_from": ["MAT-008", "MAT-009", "GS7-008", "GS7-009"],
+                "evidence": (
+                    "same repo-convention pytest insertion shape; target "
+                    "test file, anchor method/function, and inserted pytest "
+                    "body are parameters"
+                ),
+            },
+        ),
+    )
+
+
+def build_requests_redirect_history_spec(
+    repo_path: Path,
+    *,
+    base_ref: str = DEFAULT_REQUESTS_REDIRECT_HISTORY_BASE_REF,
+    accepted_head_ref: str = DEFAULT_REQUESTS_REDIRECT_HISTORY_HEAD_REF,
+    validation_command: str = DEFAULT_REQUESTS_REDIRECT_HISTORY_VALIDATION_COMMAND,
+) -> HeldoutSourceRegionSpec:
+    """Build the held-out Requests redirect-history candidate spec."""
+
+    source_text = _repo_file(repo_path, REQUESTS_SESSIONS_PATH).read_text(
+        encoding="utf-8"
+    )
+    source_action = _requests_redirect_history_source_action(source_text)
+    test_action = PytestInsertionAction(
+        target_file=REQUESTS_TEST_REQUESTS_PATH,
+        anchor_function_name="test_HTTP_302_ALLOW_REDIRECT_GET",
+        function_name="test_redirect_history_no_self_reference",
+        insertion_source=_requests_redirect_history_test_source(),
+        max_added_lines=10,
+        surrounding_blank_lines=1,
+        rationale=(
+            "insert a focused redirect history regression after the existing "
+            "302 redirect test"
+        ),
+    )
+    return HeldoutSourceRegionSpec(
+        candidate_id="mat-022-requests-redirect-history",
+        repo_id="psf/requests",
+        repo_url="https://github.com/psf/requests",
+        repo_split="held_out",
+        base_ref=base_ref,
+        accepted_head_ref=accepted_head_ref,
+        reference_pr_url="https://github.com/psf/requests/pull/7328",
+        prompt=(
+            "Fix redirect history mutation so each Response history snapshot "
+            "does not include the response itself and preserves prior redirects."
+        ),
+        source_file=REQUESTS_SESSIONS_PATH,
+        test_file=REQUESTS_TEST_REQUESTS_PATH,
+        validation_command=validation_command,
+        allowed_write_paths=(REQUESTS_SESSIONS_PATH, REQUESTS_TEST_REQUESTS_PATH),
+        source_action=source_action,
+        test_action=test_action,
+        action_family_reuse_evidence=(
+            {
+                "action_kind": SourceRegionActionKind.REPLACE_FUNCTION_REGION.value,
+                "reused_from": ["MAT-008", "MAT-009", "MAT-020"],
+                "evidence": (
+                    "same bounded function-region action schema; target file, "
+                    "method, redirect-history mutation region, and replacement "
+                    "are parameters"
+                ),
+            },
+            {
+                "action_kind": "insert_pytest_function_after_anchor",
+                "reused_from": ["MAT-008", "MAT-009", "MAT-020", "GS7-008"],
                 "evidence": (
                     "same repo-convention pytest insertion shape; target "
                     "test file, anchor method/function, and inserted pytest "
@@ -944,6 +1021,61 @@ def _requests_stream_wrapper_test_source() -> str:
     )
 
 
+def _requests_redirect_history_source_action(source: str) -> SourceRegionAction:
+    already_applied = "            resp.history = hist[:]"
+    original = "            # resp.history must ignore the original request in this loop"
+    if already_applied in source:
+        start_line = _line_number(source, already_applied)
+        end_line = _first_line_after(source, start_line, "            hist.append(resp)")
+    else:
+        start_line = _line_number(source, original)
+        end_line = _first_line_after(
+            source,
+            start_line,
+            "            resp.history = hist[1:]",
+        )
+    return SourceRegionAction(
+        kind=SourceRegionActionKind.REPLACE_FUNCTION_REGION,
+        target=SourceRegionTarget(
+            file_path=REQUESTS_SESSIONS_PATH,
+            function_name="resolve_redirects",
+            region_name="redirect_history_snapshot_order",
+            start_line=start_line,
+            end_line=end_line,
+        ),
+        replacement_source=_requests_redirect_history_source_replacement(),
+        constraints=SourceRegionConstraints(max_changed_source_lines=3),
+        rationale=(
+            "snapshot redirect history before appending the current response "
+            "so response histories never self-reference"
+        ),
+    )
+
+
+def _requests_redirect_history_source_replacement() -> str:
+    return "\n".join(
+        [
+            "            resp.history = hist[:]",
+            "            hist.append(resp)",
+            "",
+        ]
+    )
+
+
+def _requests_redirect_history_test_source() -> str:
+    return "\n".join(
+        [
+            "    def test_redirect_history_no_self_reference(self, httpbin):",
+            '        r = requests.get(httpbin("redirect", "3"))',
+            "        assert r.status_code == 200",
+            "        assert len(r.history) == 3",
+            "        for i, resp in enumerate(r.history):",
+            "            assert resp not in resp.history",
+            "            assert resp.history == r.history[:i]",
+        ]
+    )
+
+
 def _line_number(source: str, needle: str) -> int:
     for index, line in enumerate(source.splitlines(), start=1):
         if line == needle:
@@ -1268,7 +1400,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     parser.add_argument(
         "--candidate",
-        choices=("requests-7427", "pytest-14475", "requests-7433"),
+        choices=("requests-7427", "pytest-14475", "requests-7433", "requests-7328"),
         default="requests-7427",
     )
     parser.add_argument("--repo-path", type=Path, required=True)
@@ -1285,6 +1417,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         spec = build_pytest_mark_expression_scanner_spec(args.repo_path)
     elif args.candidate == "requests-7433":
         spec = build_requests_stream_wrapper_spec(args.repo_path)
+    elif args.candidate == "requests-7328":
+        spec = build_requests_redirect_history_spec(args.repo_path)
     else:
         spec = build_requests_no_proxy_domain_boundary_spec(args.repo_path)
     candidate = materialize_heldout_source_region_candidate(

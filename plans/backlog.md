@@ -3301,7 +3301,7 @@ Long-term target:
 
 ### MAT-022: Held-out requests redirect-history source/test candidate
 
-- Status: active
+- Status: done
 - Why: `MAT-021` reclassified `requests-7433` as live-validated by corrected
   checkout-local validation evidence. The next compact uncovered
   constrained-source/test row from MAT-019 is `psf/requests#7328`, which keeps
@@ -3323,12 +3323,28 @@ Long-term target:
 - Tests: focused source-region candidate tests, JSON/report checks if added,
   `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and live
   focused validation when materialized.
+- Completion note: materialized `psf/requests#7328` from base
+  `cbce031327be4f1b4b5fd041ff4dcaa8efa2ce53` to PR head
+  `3ee28b806f8bc414b29f7b4561e53c161924fe66` using reusable
+  `replace_function_region` and `insert_pytest_function_after_anchor` records.
+  The candidate changed only `src/requests/sessions.py` and
+  `tests/test_requests.py`, matched the accepted source/test diff exactly
+  after normalization, recorded candidate-after diff/AST/hash metadata and
+  mutation scope, and live-validated with checkout-local `PYTHONPATH=src`
+  using focused selector
+  `tests/test_requests.py::TestRequests::test_redirect_history_no_self_reference`.
+  Artifacts:
+  `docs/MAT_022_REQUESTS_7328_SOURCE_REGION_CANDIDATE_2026-05-19.md`,
+  `/tmp/j3-mat-022-requests-7328/final/candidate.json`,
+  `/tmp/j3-mat-022-requests-7328/final/report.md`,
+  `/tmp/j3-mat-022-requests-7328/final/candidate.diff`, and
+  `/tmp/j3-mat-022-requests-7328/final/accepted.diff`.
 
 ## Next Recommended Queue
 
 Start with these unless fresh evidence changes the order:
 
-1. Continue constrained source/test materialization with `MAT-022`
-   `requests-7328`; after that, `click-3434` is the next formatter-family row.
+1. Continue constrained source/test materialization with `click-3434`, the next
+   formatter-family row after the validated `requests-7328` candidate.
 2. Separately decide whether to pursue the `TRANS-012` shadow-advice-only
    residual examples; product transition routing remains shadow-only.

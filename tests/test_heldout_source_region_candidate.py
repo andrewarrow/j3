@@ -9,6 +9,7 @@ from j3.heldout_source_region_candidate import (
     _mark_expression_scanner_source_replacement,
     build_pytest_mark_expression_scanner_spec,
     build_requests_no_proxy_domain_boundary_spec,
+    build_requests_redirect_history_spec,
     build_requests_stream_wrapper_spec,
     materialize_heldout_source_region_candidate,
 )
@@ -267,6 +268,85 @@ def test_materializes_requests_stream_wrapper_candidate_with_reusable_actions(
     assert "test_getattr_proxy_stream_follows_redirect" in test_after["diff"]
 
 
+def test_requests_redirect_history_spec_uses_reusable_action_kinds(
+    tmp_path: Path,
+) -> None:
+    repo = _write_requests_redirect_history_fixture_repo(tmp_path / "requests")
+
+    spec = build_requests_redirect_history_spec(repo)
+
+    assert spec.source_action.kind == SourceRegionActionKind.REPLACE_FUNCTION_REGION
+    assert spec.test_action.kind == "insert_pytest_function_after_anchor"
+    assert "requests_7328" not in spec.source_action.kind.value
+    assert "requests_7328" not in spec.test_action.kind
+    assert spec.base_ref == "cbce031327be4f1b4b5fd041ff4dcaa8efa2ce53"
+    assert spec.accepted_head_ref == "3ee28b806f8bc414b29f7b4561e53c161924fe66"
+    assert spec.validation_command.startswith("PYTHONPATH=src ")
+    assert spec.allowed_write_paths == (
+        "src/requests/sessions.py",
+        "tests/test_requests.py",
+    )
+
+
+def test_materializes_requests_redirect_history_candidate_with_reusable_actions(
+    tmp_path: Path,
+) -> None:
+    accepted_repo = _write_requests_redirect_history_fixture_repo(tmp_path / "accepted")
+    accepted_candidate = materialize_heldout_source_region_candidate(
+        accepted_repo,
+        build_requests_redirect_history_spec(
+            accepted_repo,
+            base_ref=_repo_head(accepted_repo),
+        ),
+        write=True,
+        validate=False,
+    )
+    accepted_diff = tmp_path / "accepted.diff"
+    accepted_diff.write_text(
+        str(accepted_candidate.candidate_after["candidate_diff"]),
+        encoding="utf-8",
+    )
+
+    repo = _write_requests_redirect_history_fixture_repo(tmp_path / "candidate")
+    candidate = materialize_heldout_source_region_candidate(
+        repo,
+        build_requests_redirect_history_spec(repo, base_ref=_repo_head(repo)),
+        write=True,
+        validate=False,
+        accepted_diff_path=accepted_diff,
+    )
+    record = candidate.to_record()
+
+    assert record["status"] == "materialized"
+    assert record["accepted_head_ref"] == "3ee28b806f8bc414b29f7b4561e53c161924fe66"
+    assert record["residual_labels"] == ["candidate_validation_deferred"]
+    assert record["mutation_scope"]["actual_changed_files"] == [
+        "src/requests/sessions.py",
+        "tests/test_requests.py",
+    ]
+    assert record["mutation_scope"]["writes_outside_allowlist"] == []
+    assert record["accepted_diff_comparison"]["accepted_changed_files"] == [
+        "src/requests/sessions.py",
+        "tests/test_requests.py",
+    ]
+    assert record["accepted_diff_comparison"]["normalized_diff_equal"] is True
+    assert record["accepted_diff_comparison"]["scoped_normalized_diff_equal"] is True
+    assert record["zero_hosted_llm_source_judgment"] is True
+    action_kinds = [action["kind"] for action in record["action_records"]]
+    assert action_kinds == [
+        "replace_function_region",
+        "insert_pytest_function_after_anchor",
+    ]
+    source_after = record["candidate_after"]["source_file"]["candidate_after"]
+    assert source_after["ast_parse_ok"] is True
+    assert source_after["signature_preserved"] is True
+    assert "resp.history = hist[:]" in source_after["diff"]
+    assert "resp.history = hist[1:]" in source_after["diff"]
+    test_after = record["candidate_after"]["test_file"]["candidate_after"]
+    assert test_after["ast_parse_ok"] is True
+    assert "test_redirect_history_no_self_reference" in test_after["diff"]
+
+
 def _write_requests_fixture_repo(repo: Path) -> Path:
     (repo / "src" / "requests").mkdir(parents=True)
     (repo / "tests").mkdir(parents=True)
@@ -318,6 +398,104 @@ def _write_requests_fixture_repo(repo: Path) -> Path:
             def test_should_bypass_proxies_no_proxy(url, expected, monkeypatch):
                 no_proxy = "localhost"
                 assert should_bypass_proxies(url, no_proxy=no_proxy) == expected
+            '''
+        ).lstrip(),
+        encoding="utf-8",
+    )
+    subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+    subprocess.run(["git", "add", "."], cwd=repo, check=True)
+    subprocess.run(
+        [
+            "git",
+            "-c",
+            "user.name=j3-test",
+            "-c",
+            "user.email=j3-test@example.invalid",
+            "commit",
+            "-q",
+            "-m",
+            "base",
+        ],
+        cwd=repo,
+        check=True,
+    )
+    return repo
+
+
+def _write_requests_redirect_history_fixture_repo(repo: Path) -> Path:
+    (repo / "src" / "requests").mkdir(parents=True)
+    (repo / "tests").mkdir(parents=True)
+    (repo / "src" / "requests" / "sessions.py").write_text(
+        dedent(
+            '''
+            from urllib.parse import urlparse
+
+
+            class SessionRedirectMixin:
+                max_redirects = 30
+
+                def get_redirect_target(self, resp):
+                    return None
+
+                def resolve_redirects(
+                    self,
+                    resp,
+                    req,
+                    stream=False,
+                    timeout=None,
+                    verify=True,
+                    cert=None,
+                    proxies=None,
+                    yield_requests=False,
+                    **adapter_kwargs,
+                ):
+                    """Receives a Response. Returns a generator of Responses or Requests."""
+
+                    hist = []  # keep track of history
+
+                    url = self.get_redirect_target(resp)
+                    previous_fragment = urlparse(req.url).fragment
+                    while url:
+                        prepared_request = req.copy()
+
+                        # Update history and keep track of redirects.
+                        # resp.history must ignore the original request in this loop
+                        hist.append(resp)
+                        resp.history = hist[1:]
+
+                        if len(resp.history) >= self.max_redirects:
+                            raise RuntimeError("too many redirects")
+
+                        yield prepared_request
+            '''
+        ).lstrip(),
+        encoding="utf-8",
+    )
+    (repo / "tests" / "test_requests.py").write_text(
+        dedent(
+            '''
+            """Tests for Requests."""
+
+            import requests
+
+
+            class TestRequests:
+                def test_HTTP_302_ALLOW_REDIRECT_GET(self, httpbin):
+                    r = requests.get(httpbin("redirect", "1"))
+                    assert r.status_code == 200
+                    assert r.history[0].status_code == 302
+                    assert r.history[0].is_redirect
+
+                def test_HTTP_307_ALLOW_REDIRECT_POST(self, httpbin):
+                    r = requests.post(
+                        httpbin("redirect-to"),
+                        data="test",
+                        params={"url": "post", "status_code": 307},
+                    )
+                    assert r.status_code == 200
+                    assert r.history[0].status_code == 307
+                    assert r.history[0].is_redirect
+                    assert r.json()["data"] == "test"
             '''
         ).lstrip(),
         encoding="utf-8",

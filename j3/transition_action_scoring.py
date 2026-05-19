@@ -17,7 +17,7 @@ TRANSITION_ACTION_SCORER_V2_VERSION = "transition-action-future-scorer-v2"
 TRANSITION_ACTION_SCORER_V3_VERSION = "transition-action-future-scorer-v3"
 TRANSITION_ACTION_SCORER_FEATURE_VERSION = "transition-action-local-features-v1"
 TRANSITION_ACTION_SCORER_V2_FEATURE_VERSION = "transition-action-local-features-v2"
-TRANSITION_ACTION_SCORER_V3_FEATURE_VERSION = "transition-action-shadow-features-v4"
+TRANSITION_ACTION_SCORER_V3_FEATURE_VERSION = "transition-action-shadow-features-v5"
 TRANSITION_ACTION_SCORER_V2_CALIBRATION_VERSION = (
     "transition-action-future-scorer-v2-calibration-v1"
 )
@@ -133,7 +133,15 @@ def score_transition_action_candidate_v3(
         group=group,
         model=model,
     )
-    score = bias + sum(weights.get(name, 0.0) * value for name, value in features.items())
+    learned_score = bias + sum(
+        weights.get(name, 0.0) * value for name, value in features.items()
+    )
+    local_prior = _v3_local_evidence_prior(features)
+    features = {
+        **features,
+        "v3_local_evidence_prior": round(local_prior, 12),
+    }
+    score = learned_score + local_prior
     return {
         "scorer_version": TRANSITION_ACTION_SCORER_V3_VERSION,
         "feature_version": TRANSITION_ACTION_SCORER_V3_FEATURE_VERSION,
@@ -1706,6 +1714,14 @@ def _candidate_v3_features(
             _cosine_similarity(source_embedding, after_embedding),
         )
     _add_change_context_features(features, change_context)
+    _add_v3_local_evidence_features(
+        features,
+        action_kind=action_kind,
+        params=params,
+        target_context=target_context,
+        failure_hints=failure_hints,
+        group=group,
+    )
 
     scorer_position = _positive_int_or_none(shadow_candidate.get("scorer_rank_position"))
     if scorer_position is not None:
@@ -1772,6 +1788,189 @@ def _add_change_context_features(
                 f"change_ast_{side}:{name}",
                 min(max(value, 0.0), 5.0) / 5.0,
             )
+
+
+def _add_v3_local_evidence_features(
+    features: dict[str, float],
+    *,
+    action_kind: str,
+    params: Mapping[str, object],
+    target_context: Mapping[str, object],
+    failure_hints: Sequence[Mapping[str, object]],
+    group: Mapping[str, object],
+) -> None:
+    hint_exception_types = _hint_exception_types(failure_hints)
+    hint_function_names = _hint_function_names(failure_hints)
+
+    if action_kind == "wrap_try_except":
+        exception_name = params.get("exception")
+        if (
+            isinstance(exception_name, str)
+            and exception_name
+            and exception_name in hint_exception_types
+        ):
+            _add_feature(features, "v3_wrap_exception_matches_failure", 1.0)
+
+    if action_kind == "add_import" and not _import_matches_missing_name_hint(
+        params,
+        failure_hints,
+    ):
+        _add_feature(features, "v3_import_without_missing_name_hint", 1.0)
+
+    if action_kind == "swap_call_arg" and _swap_call_breaks_name_alignment(
+        target_context
+    ):
+        _add_feature(features, "v3_swap_call_breaks_name_alignment", 1.0)
+
+    if (
+        action_kind == "replace_expr"
+        and target_context.get("role") == "helper"
+        and _upstream_callers_match_failure_functions(
+            target_context,
+            hint_function_names,
+        )
+    ):
+        _add_feature(features, "v3_helper_expression_reaches_failure_symbol", 1.0)
+        if _has_numeric_assertion_delta(failure_hints):
+            _add_feature(features, "v3_helper_expression_numeric_assertion", 1.0)
+
+    if (
+        action_kind in _LITERAL_ACTION_KINDS
+        and "boundary" in _group_task_family_text(group)
+        and _numeric_from_to(params)
+    ):
+        _add_feature(features, "v3_boundary_literal_numeric_candidate", 1.0)
+
+    if (
+        action_kind == _MODULE_CONSTANT_ACTION_KIND
+        and features.get("literal_or_constant_matches_assertion_delta", 0.0) > 0.0
+        and features.get("module_constant_name_matches_symbol", 0.0) > 0.0
+    ):
+        _add_feature(features, "v3_module_constant_named_assertion_delta", 1.0)
+
+    if (
+        action_kind in (_LITERAL_ACTION_KINDS | {_MODULE_CONSTANT_ACTION_KIND})
+        and _literal_change_moves_expected_value_away(params, failure_hints)
+    ):
+        _add_feature(features, "v3_literal_change_moves_expected_value_away", 1.0)
+
+
+def _v3_local_evidence_prior(features: Mapping[str, float]) -> float:
+    return (
+        2.25 * features.get("v3_wrap_exception_matches_failure", 0.0)
+        - 1.15 * features.get("v3_import_without_missing_name_hint", 0.0)
+        - 1.35 * features.get("v3_swap_call_breaks_name_alignment", 0.0)
+        + 0.85 * features.get("v3_helper_expression_reaches_failure_symbol", 0.0)
+        + 0.75 * features.get("v3_helper_expression_numeric_assertion", 0.0)
+        + 1.10 * features.get("v3_boundary_literal_numeric_candidate", 0.0)
+        + 1.50 * features.get("v3_module_constant_named_assertion_delta", 0.0)
+        - 0.70 * features.get("v3_literal_change_moves_expected_value_away", 0.0)
+    )
+
+
+def _hint_exception_types(failure_hints: Sequence[Mapping[str, object]]) -> set[str]:
+    return {
+        str(hint.get("exception_type"))
+        for hint in failure_hints
+        if isinstance(hint.get("exception_type"), str) and hint.get("exception_type")
+    }
+
+
+def _hint_function_names(failure_hints: Sequence[Mapping[str, object]]) -> set[str]:
+    return {
+        str(name)
+        for hint in failure_hints
+        for name in _list(hint.get("function_names"))
+        if isinstance(name, str) and name
+    }
+
+
+def _import_matches_missing_name_hint(
+    params: Mapping[str, object],
+    failure_hints: Sequence[Mapping[str, object]],
+) -> bool:
+    module = params.get("module")
+    name = params.get("name")
+    import_text = params.get("import")
+    for hint in failure_hints:
+        missing_names = {
+            str(item) for item in _list(hint.get("missing_names")) if item
+        }
+        missing_modules = {
+            str(item) for item in _list(hint.get("missing_modules")) if item
+        }
+        if isinstance(name, str) and name in missing_names:
+            return True
+        if isinstance(module, str) and module in missing_modules:
+            return True
+        if isinstance(import_text, str) and import_text in missing_names:
+            return True
+    return False
+
+
+def _swap_call_breaks_name_alignment(target_context: Mapping[str, object]) -> bool:
+    if target_context.get("swap_call_breaks_name_alignment") is True:
+        return True
+    return (
+        target_context.get("swap_call_name_alignment_before") == "preserved"
+        and target_context.get("swap_call_name_alignment_after") == "broken"
+    )
+
+
+def _upstream_callers_match_failure_functions(
+    target_context: Mapping[str, object],
+    function_names: set[str],
+) -> bool:
+    if not function_names:
+        return False
+    for caller in _list(target_context.get("upstream_callers")):
+        caller_record = _mapping(caller)
+        symbol = caller_record.get("symbol")
+        if isinstance(symbol, str) and symbol in function_names:
+            return True
+    return False
+
+
+def _has_numeric_assertion_delta(
+    failure_hints: Sequence[Mapping[str, object]],
+) -> bool:
+    for hint in failure_hints:
+        for assertion in _list(hint.get("assertions")):
+            assertion_record = _mapping(assertion)
+            if _float_or_none(assertion_record.get("numeric_delta")) is not None:
+                return True
+            actual = assertion_record.get("actual")
+            expected = assertion_record.get("expected")
+            if isinstance(actual, (int, float)) and isinstance(expected, (int, float)):
+                return True
+    return False
+
+
+def _numeric_from_to(params: Mapping[str, object]) -> bool:
+    return isinstance(params.get("from"), (int, float)) and isinstance(
+        params.get("to"),
+        (int, float),
+    )
+
+
+def _literal_change_moves_expected_value_away(
+    params: Mapping[str, object],
+    failure_hints: Sequence[Mapping[str, object]],
+) -> bool:
+    original = params.get("from")
+    replacement = params.get("to")
+    if original is None or replacement is None:
+        return False
+    for hint in failure_hints:
+        for assertion in _list(hint.get("assertions")):
+            assertion_record = _mapping(assertion)
+            expected = assertion_record.get("expected")
+            if _same_json_scalar(original, expected) and not _same_json_scalar(
+                replacement,
+                expected,
+            ):
+                return True
+    return False
 
 
 def _v2_training_pairs(

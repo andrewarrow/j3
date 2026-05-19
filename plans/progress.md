@@ -5102,3 +5102,48 @@ meaningful work. Do not replace this file with a daily reset.
 - Next: worker Bohr (`019e3e70-1295-7d52-b9cb-5c3561fdbafe`) is running
   `MODEL-009`.
 - Blockers: none.
+
+### 2026-05-19 - MODEL-009 - V3 structural residual ranking
+
+- Owner: worker Bohr (`019e3e70-1295-7d52-b9cb-5c3561fdbafe`).
+- Files changed: `j3/transition_action_scoring.py`,
+  `tests/test_transition_action_scoring.py`, `plans/active.md`,
+  `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `pytest
+  tests/test_transition_action_scoring.py::test_v3_scorer_replays_model_009_structural_residuals
+  -q` -> 1 passed; `pytest tests/test_transition_action_scoring.py -q` ->
+  25 passed; `pytest tests/test_transition_shadow_scorer.py -q` -> 4
+  passed; `pytest tests/test_transition_scorer_advice.py -q` -> 8 passed;
+  `pytest tests/test_plan_consistency.py -q` -> 6 passed; `pytest
+  tests/test_transition_residuals.py -q` -> 4 passed; `pytest
+  tests/test_transition_shadow_matrix.py -q` -> 6 passed; `git diff
+  --check` -> passed. Saved-artifact replays: `python cli.py
+  evaluate-transition-shadow-scorer --shadow-outcomes
+  /tmp/j3-trans-010-standard-after-model008/suite/greenshot_3/transition-shadow-outcomes.jsonl
+  --candidate-outcomes
+  /tmp/j3-trans-010-standard-after-model008/suite/greenshot_3/candidate-outcomes.jsonl
+  --split-by order --validation-fraction 0.25 --top-k 3 --embedding-dim 8
+  --epochs 30 --out /tmp/j3-model-009-greenshot3-v3-report.json --json` ->
+  passed; same command for
+  `/tmp/j3-trans-010-standard-after-model008/suite/greenshot_5_subset` with
+  `--split-by task_family` and output
+  `/tmp/j3-model-009-greenshot5-v3-report.json` -> passed.
+- Result: added V3-only local structural evidence and a local evidence prior
+  for the four `TRANS-010` top-candidate failures. V3 now ranks
+  `wrap_try_except {"exception": "ValueError", "return": 0}` over the
+  `pathlib.Path` import decoy, ranks a passing boundary literal over the
+  name-alignment-breaking `swap_call_arg`, ranks
+  `change_module_constant FREE_SHIPPING_MINIMUM_CENTS 4999 -> 5000` over the
+  nearby failing literal, and ranks the helper `replace_expr` discount formula
+  over the failing `swap_call_arg` decoy. The GreenShot-3 artifact replay has
+  V3 residual count 0 for the held-out wrap group; the GreenShot-5 artifact
+  replay has V3 pass@1 3/3 and residual count 0 for its held-out validation
+  groups. Production routing, matrix runner behavior, repair candidate
+  generation, manifest contents, and V3 product-gate policy remain unchanged
+  and shadow-only.
+- Commit: pending.
+- Push: pending.
+- Next: run `TRANS-011`, a full current standard matrix rerun after
+  `MODEL-009`, before resuming `TRANS-003` manifest expansion.
+- Blockers: full standard transition ranking remains shadow-only until
+  `TRANS-011` refreshes matrix, residual, and guarded-decision evidence.

@@ -554,7 +554,7 @@ Long-term target:
 
 ### MODEL-009: Fix V3 structural-action residual cluster
 
-- Status: active
+- Status: done
 - Why: `TRANS-010` reduced the full standard matrix to 4 matrix residuals,
   all `v3_top_candidate_failed`: `greenshot_3/wrap_try_except`,
   `greenshot_5_subset/express_shipping_boundary_preferred_helper`,
@@ -574,6 +574,35 @@ Long-term target:
 - Tests: focused transition scorer tests,
   `pytest tests/test_transition_shadow_scorer.py -q` if V3 shared behavior is
   touched, `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+- Completion note: added V3 local structural evidence plus a V3-only local
+  evidence prior for exception-wrapper matches, missing-import evidence
+  absence, name-alignment-breaking swap-call decoys, helper expression edits
+  tied to failing public API assertions, boundary numeric literals, module
+  constant assertion deltas, and literal changes that move expected values
+  away. Focused residual replays cover all four `TRANS-010`
+  `v3_top_candidate_failed` cases. Saved-artifact V3 evaluator replays against
+  the `TRANS-010` GreenShot-3 and GreenShot-5 suite inputs produce zero V3
+  residuals for those held-out groups; production routing, matrix behavior,
+  repair candidate generation, manifest contents, and V3 product-gate policy
+  remain unchanged.
+
+### TRANS-011: Rerun standard matrix after MODEL-009
+
+- Status: ready
+- Why: `MODEL-009` fixes the four saved `TRANS-010`
+  `v3_top_candidate_failed` shapes in focused tests and suite-level artifact
+  replays, but the committed full standard matrix evidence still predates the
+  scorer change and remains `remain_shadow_only`.
+- Write scope: generated outputs under `/tmp`, a concise evidence doc if
+  useful, and plan updates only unless a local runner bug blocks evidence. Do
+  not edit `examples/transition_shadow_matrix.json` in this slice.
+- Acceptance: rerun the full current `examples/transition_shadow_matrix.json`,
+  regenerate residual and guarded-decision evidence, compare against
+  `TRANS-010`, and record whether `TRANS-003` can resume standard matrix
+  manifest expansion or still needs residual work.
+- Tests: `run-transition-shadow-matrix`, checksum verification,
+  `report-transition-residuals --matrix`, `decide-transition-guarded-trial`,
+  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
 
 ## Workstream E: Repo State, Actions, And Models
 

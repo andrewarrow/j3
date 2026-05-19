@@ -336,6 +336,96 @@ def test_v3_scorer_can_use_mapping_value_diff_line_feature() -> None:
     )
 
 
+def test_v3_scorer_replays_model_009_structural_residuals() -> None:
+    model = {
+        "weights": {
+            "v3_action_kind:add_import": 0.5,
+            "v3_action_kind:change_literal": -0.2,
+            "v3_action_kind:change_module_constant": -0.2,
+            "v3_action_kind:replace_expr": -0.2,
+            "v3_action_kind:swap_call_arg": 0.5,
+            "v3_action_kind:wrap_try_except": -0.5,
+        },
+        "allow_production_rank_feature": False,
+    }
+    cases = [
+        {
+            "task": "wrap_try_except",
+            "passing_ranks": {1},
+            "positive_rank": 1,
+            "positive_feature": "v3_wrap_exception_matches_failure",
+            "negative_rank": 2,
+            "negative_feature": "v3_import_without_missing_name_hint",
+            "rows": _model_009_wrap_try_except_rows(),
+        },
+        {
+            "task": "express_shipping_boundary_preferred_helper",
+            "passing_ranks": {2, 3},
+            "positive_rank": 2,
+            "positive_feature": "v3_boundary_literal_numeric_candidate",
+            "negative_rank": 1,
+            "negative_feature": "v3_swap_call_breaks_name_alignment",
+            "rows": _model_009_express_boundary_rows(),
+        },
+        {
+            "task": "free_shipping_threshold_module_constant",
+            "passing_ranks": {1},
+            "positive_rank": 1,
+            "positive_feature": "v3_module_constant_named_assertion_delta",
+            "negative_rank": 2,
+            "negative_feature": "v3_literal_change_moves_expected_value_away",
+            "rows": _model_009_module_constant_rows(),
+        },
+        {
+            "task": "quote_total_helper_discount",
+            "passing_ranks": {2},
+            "positive_rank": 2,
+            "positive_feature": "v3_helper_expression_reaches_failure_symbol",
+            "negative_rank": 1,
+            "negative_feature": "v3_swap_call_breaks_name_alignment",
+            "rows": _model_009_quote_total_rows(),
+        },
+    ]
+
+    for case in cases:
+        group = build_transition_action_choice_groups(
+            case["rows"],
+            embedding_dim=8,
+        )[0]
+
+        ranked = rank_transition_action_candidates(
+            group,
+            strategy=TRANSITION_ACTION_SCORER_V3_VERSION,
+            scorer_model=model,
+        )
+        positive = next(
+            candidate
+            for candidate in group["candidates"]
+            if candidate["rank_index"] == case["positive_rank"]
+        )
+        negative = next(
+            candidate
+            for candidate in group["candidates"]
+            if candidate["rank_index"] == case["negative_rank"]
+        )
+        positive_score = score_transition_action_candidate_v3(
+            positive,
+            group=group,
+            model=model,
+        )
+        negative_score = score_transition_action_candidate_v3(
+            negative,
+            group=group,
+            model=model,
+        )
+
+        assert int(ranked[0]["rank_index"]) in case["passing_ranks"], case["task"]
+        assert positive_score["features"][case["positive_feature"]] == 1.0
+        assert negative_score["features"][case["negative_feature"]] == 1.0
+        assert positive_score["features"]["v3_local_evidence_prior"] > 0.0
+        assert negative_score["features"]["v3_local_evidence_prior"] < 0.0
+
+
 def test_future_scorer_prefers_returned_mapping_subscript_key_over_add_key_decoy() -> None:
     groups = build_transition_action_choice_groups(
         [
@@ -1363,6 +1453,420 @@ def _boundary_literal_candidate_row(
         ],
         "equivalent_candidate_ranks": [1, 2],
         "overlapping_candidate_ranks": [1, 2],
+        "equivalent_passing_candidate_ranks": [],
+        "overlapping_passing_candidate_ranks": [],
+    }
+
+
+def _model_009_wrap_try_except_rows() -> list[dict[str, object]]:
+    hints = [
+        {
+            "exception_type": "ValueError",
+            "function_names": ["int", "parse_quantity"],
+            "source_files": ["bugs.py"],
+            "assertions": [],
+            "missing_names": [],
+            "missing_modules": [],
+        }
+    ]
+    return [
+        _model_009_candidate_row(
+            task="wrap_try_except",
+            task_family="unclassified",
+            split="validation",
+            rank_index=1,
+            first_passing_index=1,
+            action="wrap_try_except",
+            params={"exception": "ValueError", "return": 0},
+            passed=True,
+            file_path="bugs.py",
+            symbol="parse_quantity",
+            node_kind="Return",
+            target_context={
+                "callee_count": 0,
+                "caller_count": 0,
+                "qualified_symbol": "bugs.parse_quantity",
+                "role": "helper",
+            },
+            failure_hints=hints,
+            diff_added_lines=4,
+            diff_removed_lines=1,
+            diff_changed_lines=5,
+            edit_is_single_line=False,
+            ast_delta_added_features={
+                "name:ValueError": 1,
+                "node:ExceptHandler": 1,
+                "node:Try": 1,
+            },
+        ),
+        _model_009_candidate_row(
+            task="wrap_try_except",
+            task_family="unclassified",
+            split="validation",
+            rank_index=2,
+            first_passing_index=1,
+            action="add_import",
+            params={
+                "import": "from pathlib import Path",
+                "module": "pathlib",
+                "name": "Path",
+            },
+            passed=False,
+            file_path="bugs.py",
+            symbol="Path",
+            node_kind="Import",
+            target_context={"role": "helper"},
+            failure_hints=hints,
+            diff_added_lines=1,
+            diff_removed_lines=0,
+            diff_changed_lines=1,
+            ast_delta_added_features={"node:ImportFrom": 1, "node:alias": 1},
+        ),
+    ]
+
+
+def _model_009_express_boundary_rows() -> list[dict[str, object]]:
+    hints = [
+        {
+            "exception_type": "AssertionError",
+            "function_names": ["express_shipping_label"],
+            "assertion_diff_lines": ["- free", "+ paid"],
+            "assertions": [
+                {"actual": "paid", "operator": "==", "expected": "free"},
+            ],
+            "missing_names": [],
+            "missing_modules": [],
+        }
+    ]
+    return [
+        _model_009_candidate_row(
+            task="express_shipping_boundary_preferred_helper",
+            task_family="operator_boundary",
+            split="train",
+            rank_index=1,
+            first_passing_index=2,
+            action="swap_call_arg",
+            params={"left": 0, "right": 1},
+            passed=False,
+            file_path="shop/api.py",
+            symbol="express_shipping_label",
+            node_kind="Call",
+            target_context={
+                "callee_count": 1,
+                "caller_count": 0,
+                "qualified_symbol": "shop.api.express_shipping_label",
+                "role": "public_api",
+                "swap_call_breaks_name_alignment": True,
+                "swap_call_callee": "express_shipping_eligible",
+                "swap_call_left_arg_name": "subtotal_cents",
+                "swap_call_left_param": "subtotal_cents",
+                "swap_call_name_alignment_after": "broken",
+                "swap_call_name_alignment_before": "preserved",
+                "swap_call_right_arg_name": "minimum_cents",
+                "swap_call_right_param": "minimum_cents",
+            },
+            failure_hints=hints,
+        ),
+        _model_009_candidate_row(
+            task="express_shipping_boundary_preferred_helper",
+            task_family="operator_boundary",
+            split="train",
+            rank_index=2,
+            first_passing_index=2,
+            action="change_literal",
+            params={"from": 5000, "to": 4998},
+            passed=True,
+            file_path="shop/api.py",
+            symbol="express_shipping_label",
+            node_kind="Constant",
+            target_context={
+                "callee_count": 1,
+                "caller_count": 0,
+                "qualified_symbol": "shop.api.express_shipping_label",
+                "role": "public_api",
+            },
+            failure_hints=hints,
+            ast_delta_added_features={"literal:number:4998": 1},
+            ast_delta_removed_features={"literal:number:5000": 1},
+        ),
+        _model_009_candidate_row(
+            task="express_shipping_boundary_preferred_helper",
+            task_family="operator_boundary",
+            split="train",
+            rank_index=3,
+            first_passing_index=2,
+            action="change_literal",
+            params={"from": 5000, "to": 4999},
+            passed=True,
+            file_path="shop/api.py",
+            symbol="express_shipping_label",
+            node_kind="Constant",
+            target_context={
+                "callee_count": 1,
+                "caller_count": 0,
+                "qualified_symbol": "shop.api.express_shipping_label",
+                "role": "public_api",
+            },
+            failure_hints=hints,
+            ast_delta_added_features={"literal:number:4999": 1},
+            ast_delta_removed_features={"literal:number:5000": 1},
+        ),
+    ]
+
+
+def _model_009_module_constant_rows() -> list[dict[str, object]]:
+    hints = [
+        {
+            "exception_type": "AssertionError",
+            "function_names": ["free_shipping_threshold"],
+            "assertions": [
+                {
+                    "actual": 4999,
+                    "operator": "==",
+                    "expected": 5000,
+                    "numeric_delta": 1,
+                }
+            ],
+            "missing_names": [],
+            "missing_modules": [],
+        }
+    ]
+    return [
+        _model_009_candidate_row(
+            task="free_shipping_threshold_module_constant",
+            task_family="module_constant",
+            split="train",
+            rank_index=1,
+            first_passing_index=1,
+            action="change_module_constant",
+            params={
+                "from": 4999,
+                "name": "FREE_SHIPPING_MINIMUM_CENTS",
+                "to": 5000,
+            },
+            passed=True,
+            file_path="shop/shipping.py",
+            symbol="FREE_SHIPPING_MINIMUM_CENTS",
+            node_kind="Constant",
+            target_context={"role": "helper"},
+            failure_hints=hints,
+            ast_delta_added_features={"literal:number:5000": 1},
+            ast_delta_removed_features={"literal:number:4999": 1},
+        ),
+        _model_009_candidate_row(
+            task="free_shipping_threshold_module_constant",
+            task_family="module_constant",
+            split="train",
+            rank_index=2,
+            first_passing_index=1,
+            action="change_literal",
+            params={"from": 5000, "to": 5001},
+            passed=False,
+            file_path="shop/api.py",
+            symbol="express_shipping_label",
+            node_kind="Constant",
+            target_context={
+                "callee_count": 1,
+                "caller_count": 0,
+                "qualified_symbol": "shop.api.express_shipping_label",
+                "role": "public_api",
+            },
+            failure_hints=hints,
+            ast_delta_added_features={"literal:number:5001": 1},
+            ast_delta_removed_features={"literal:number:5000": 1},
+        ),
+    ]
+
+
+def _model_009_quote_total_rows() -> list[dict[str, object]]:
+    hints = [
+        {
+            "exception_type": "AssertionError",
+            "function_names": ["quote_total"],
+            "assertions": [
+                {
+                    "actual": 20.0,
+                    "operator": "==",
+                    "expected": 80,
+                    "numeric_delta": 60.0,
+                }
+            ],
+            "missing_names": [],
+            "missing_modules": [],
+        }
+    ]
+    return [
+        _model_009_candidate_row(
+            task="quote_total_helper_discount",
+            task_family="expression_helper",
+            split="test",
+            rank_index=1,
+            first_passing_index=2,
+            action="swap_call_arg",
+            params={"left": 0, "right": 1},
+            passed=False,
+            file_path="shop/api.py",
+            symbol="quote_total",
+            node_kind="Call",
+            target_context={
+                "callee_count": 1,
+                "caller_count": 0,
+                "qualified_symbol": "shop.api.quote_total",
+                "role": "public_api",
+                "swap_call_breaks_name_alignment": True,
+                "swap_call_callee": "discounted_subtotal",
+                "swap_call_left_arg_name": "subtotal",
+                "swap_call_left_param": "subtotal",
+                "swap_call_name_alignment_after": "broken",
+                "swap_call_name_alignment_before": "preserved",
+                "swap_call_right_arg_name": "discount_percent",
+                "swap_call_right_param": "discount_percent",
+            },
+            failure_hints=hints,
+        ),
+        _model_009_candidate_row(
+            task="quote_total_helper_discount",
+            task_family="expression_helper",
+            split="test",
+            rank_index=2,
+            first_passing_index=2,
+            action="replace_expr",
+            params={
+                "replacement": "subtotal - (subtotal * discount_percent / 100)"
+            },
+            passed=True,
+            file_path="shop/pricing.py",
+            symbol="discounted_subtotal",
+            node_kind="BinOp",
+            target_context={
+                "callee_count": 0,
+                "caller_count": 1,
+                "qualified_symbol": "shop.pricing.discounted_subtotal",
+                "role": "helper",
+                "upstream_callers": [{"distance": 1, "symbol": "quote_total"}],
+            },
+            failure_hints=hints,
+            ast_delta_added_count=6,
+            ast_delta_net_count=6,
+            ast_delta_added_features={
+                "binop:Sub": 1,
+                "name:subtotal": 1,
+                "node:BinOp": 1,
+                "node:Sub": 1,
+            },
+        ),
+        _model_009_candidate_row(
+            task="quote_total_helper_discount",
+            task_family="expression_helper",
+            split="test",
+            rank_index=3,
+            first_passing_index=2,
+            action="change_literal",
+            params={"from": 100, "to": 98},
+            passed=False,
+            file_path="shop/pricing.py",
+            symbol="discounted_subtotal",
+            node_kind="Constant",
+            target_context={
+                "callee_count": 0,
+                "caller_count": 1,
+                "qualified_symbol": "shop.pricing.discounted_subtotal",
+                "role": "helper",
+                "upstream_callers": [{"distance": 1, "symbol": "quote_total"}],
+            },
+            failure_hints=hints,
+            ast_delta_added_features={"literal:number:98": 1},
+            ast_delta_removed_features={"literal:number:100": 1},
+        ),
+    ]
+
+
+def _model_009_candidate_row(
+    *,
+    task: str,
+    task_family: str,
+    split: str,
+    rank_index: int,
+    first_passing_index: int,
+    action: str,
+    params: dict[str, object],
+    passed: bool,
+    file_path: str,
+    symbol: str,
+    node_kind: str,
+    target_context: dict[str, object],
+    failure_hints: list[dict[str, object]],
+    diff_added_lines: int = 1,
+    diff_removed_lines: int = 1,
+    diff_changed_lines: int = 2,
+    edit_is_single_line: bool = True,
+    ast_delta_added_count: int | None = None,
+    ast_delta_removed_count: int | None = None,
+    ast_delta_net_count: int | None = None,
+    ast_delta_added_features: dict[str, int] | None = None,
+    ast_delta_removed_features: dict[str, int] | None = None,
+) -> dict[str, object]:
+    added_features = ast_delta_added_features or {}
+    removed_features = ast_delta_removed_features or {}
+    added_count = (
+        ast_delta_added_count
+        if ast_delta_added_count is not None
+        else sum(added_features.values())
+    )
+    removed_count = (
+        ast_delta_removed_count
+        if ast_delta_removed_count is not None
+        else sum(removed_features.values())
+    )
+    net_count = (
+        ast_delta_net_count
+        if ast_delta_net_count is not None
+        else added_count - removed_count
+    )
+    return {
+        "task": task,
+        "task_family": task_family,
+        "source_type": "handcrafted",
+        "split": split,
+        "language": "python",
+        "phase": "ranked",
+        "repair_plan_id": f"patch-plan:model-009-{task}",
+        "file_path": file_path,
+        "action": action,
+        "symbol": symbol,
+        "start_line": 1,
+        "end_line": 1,
+        "node_kind": node_kind,
+        "params": params,
+        "reason": f"try {action}",
+        "model_score": 0.0,
+        "failure_hint_score": 0.0,
+        "ranker_score": None,
+        "target_context": target_context,
+        "passed": passed,
+        "preferred": False,
+        "rank_index": rank_index,
+        "first_passing_index": first_passing_index,
+        "is_first_pass": passed and rank_index == first_passing_index,
+        "passing_candidates": 1,
+        "failure_hints": failure_hints,
+        "diff_added_lines": diff_added_lines,
+        "diff_removed_lines": diff_removed_lines,
+        "diff_changed_lines": diff_changed_lines,
+        "edit_line_span": 1,
+        "edit_replacement_lines": diff_added_lines,
+        "edit_line_delta": diff_added_lines - diff_removed_lines,
+        "edit_target_line_distance": 0,
+        "edit_is_single_line": edit_is_single_line,
+        "edit_within_target_span": True,
+        "ast_parse_ok": True,
+        "ast_delta_added_count": added_count,
+        "ast_delta_removed_count": removed_count,
+        "ast_delta_net_count": net_count,
+        "ast_delta_added_features": added_features,
+        "ast_delta_removed_features": removed_features,
+        "equivalent_candidate_ranks": [],
+        "overlapping_candidate_ranks": [],
         "equivalent_passing_candidate_ranks": [],
         "overlapping_passing_candidate_ranks": [],
     }

@@ -51,7 +51,12 @@ This is the live coordinator board. Keep it current and compact.
   `greenshot_5_subset` still have
   `not_ready_underperforms_existing_rank_order` gates. The full standard
   guarded decision remains `remain_shadow_only`; `TRANS-003` should return to
-  residual work before any standard matrix manifest expansion.
+  residual work before any standard matrix manifest expansion. `MODEL-009`
+  now adds V3 local structural evidence for the four `TRANS-010`
+  `v3_top_candidate_failed` residuals. Focused artifact replays against the
+  saved `TRANS-010` GreenShot-3 and GreenShot-5 suite inputs reduce the V3
+  validation residual count to zero for those held-out groups, but the full
+  standard matrix gate remains unchanged until `TRANS-011` reruns evidence.
   Tests-only wedge guarded opt-in also remains
   blocked after `REAL-003` scored `pass@3 = 0/4`; `GS7-008` now materializes
   and live-validates the `iniconfig` calibration candidate. `REAL-005` extends
@@ -97,28 +102,21 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-- `MODEL-009` -> worker Bohr
-  (`019e3e70-1295-7d52-b9cb-5c3561fdbafe`): address the four V3
-  top-candidate failures that keep `TRANS-010` residual count nonzero:
-  `greenshot_3/wrap_try_except` and the `greenshot_5_subset` V3 residual cluster
-  (`express_shipping_boundary_preferred_helper`,
-  `free_shipping_threshold_module_constant`, and
-  `quote_total_helper_discount`). Scope is transition action scorer features
-  and focused tests only. Do not change production routing, matrix runner
-  behavior, candidate generation, or manifest contents in this slice.
+No active worker tasks.
 
 ## Ready Queue
 
-No additional ready task is currently staged on this board. `TRANS-003` should
-wait for `MODEL-009` and a targeted evidence rerun before manifest expansion.
+- `TRANS-011` -> ready: rerun the full current standard transition matrix after
+  `MODEL-009`, regenerate residual and guarded-decision evidence, and compare
+  against `TRANS-010` before any `TRANS-003` manifest expansion.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
 ## Paused Or Blocked
 
-- `TRANS-003`: blocked again after `TRANS-010`; the current full standard
-  matrix still has 4 matrix residuals, 11 residual-report examples, and guarded
-  decision `remain_shadow_only`.
+- `TRANS-003`: blocked pending `TRANS-011`; the last committed full standard
+  evidence is still `TRANS-010`, with 4 matrix residuals, 11 residual-report
+  examples, and guarded decision `remain_shadow_only`.
 - Shadow-advice-only residuals from `greenshot_bugs`, `greenshot_4`, and two
   `greenshot_5_subset` tasks remain visible for follow-up after the V3 matrix
   residuals are addressed.
@@ -137,6 +135,24 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `MODEL-009`: added V3 local structural evidence and a V3-only local evidence
+  prior for the four `TRANS-010` top-candidate failures. The scorer now
+  recognizes exception-wrapper candidates that match public failure exception
+  hints, demotes add-import candidates without missing-import evidence, demotes
+  swap-call candidates that break argument name alignment, promotes helper
+  expression edits that reach the failing public API assertion, promotes
+  numeric boundary literals in boundary tasks, and promotes named
+  module-constant assertion deltas while demoting literal changes that move an
+  expected value away. Focused tests replay
+  `greenshot_3/wrap_try_except`,
+  `greenshot_5_subset/express_shipping_boundary_preferred_helper`,
+  `greenshot_5_subset/free_shipping_threshold_module_constant`, and
+  `greenshot_5_subset/quote_total_helper_discount`. Saved-artifact V3
+  evaluator replays show `greenshot_3` residual count 0 for the held-out wrap
+  group and `greenshot_5_subset` V3 pass@1 3/3 with residual count 0 on its
+  held-out validation groups. Production routing, matrix runner behavior,
+  repair candidate generation, manifest contents, and V3 product-gate policy
+  remain unchanged.
 - `TRANS-010`: reran the full current standard transition matrix after
   `MODEL-007`, `MODEL-008`, and the clean `TRANS-009` subset. The run covered
   5 suites, 56 tasks, 56 ranked solved tasks, 12,413 candidates, and 19

@@ -3056,6 +3056,29 @@ Long-term target:
   pure typed-builder layer using reusable `type_annotation_update` and
   `assignment_type_ignore_update` actions without `statement_block_replace`.
 
+### MAT-015: Flask #5808 method annotation typed-builder probe
+
+- Status: active
+- Why: after `MAT-014`, the MAT-013 held-out typed/general-AST gap still has
+  three unresolved `general_typed_builder` rows. `pallets/flask#5808` is the
+  smallest remaining row: a one-file method annotation update that should stay
+  in the pure typed-builder layer and reuse signature/return annotation action
+  families instead of `statement_block_replace`.
+- Write scope: `j3/heldout_typed_builder_candidate.py`,
+  `tests/test_heldout_typed_builder_candidate.py`, optional `docs/MAT_015_*`,
+  generated artifacts under `/tmp`, and plan updates. Avoid transition
+  scoring, issue/PR ranking, validation-policy, local-knowledge, and matrix
+  manifest files.
+- Acceptance: attempt `pallets/flask#5808` using reusable typed-builder action
+  records. Determine and record base/head refs, accepted changed files,
+  mutation scope, candidate-after diff/AST metadata, accepted-diff comparison,
+  validation result or exact blocker, and whether the row stays in the pure
+  typed-builder layer. Do not use `statement_block_replace` unless the worker
+  records a precise blocker showing why pure typed-builder action records are
+  insufficient.
+- Tests: focused typed-builder materializer tests, plan consistency,
+  `git diff --check`, and live validation or a recorded validation blocker.
+
 ## Next Recommended Queue
 
 Start with these unless fresh evidence changes the order:

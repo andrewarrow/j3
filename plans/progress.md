@@ -5333,3 +5333,23 @@ meaningful work. Do not replace this file with a daily reset.
 - Blockers: full standard transition ranking remains shadow-only because
   `greenshot_bugs`, `greenshot_3`, and `greenshot_4` are
   `ready_for_shadow_mode`, not `ready_for_guarded_opt_in`.
+
+### 2026-05-19 - Coordinator Review And Dispatch - MAT-015
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, and
+  `plans/progress.md`.
+- Tests: `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check -- plans/active.md plans/backlog.md plans/progress.md` ->
+  passed.
+- Result: reviewed the `TRANS-012` evidence and current backlog. No durable
+  task remained marked `ready`; the next useful bounded slice is to return to
+  held-out real-repo materialization rather than continue synthetic matrix
+  expansion. Added `MAT-015` for `pallets/flask#5808`, the smallest unresolved
+  MAT-013 typed-builder row, to test whether a method annotation update stays
+  in the pure typed-builder layer without `statement_block_replace`.
+- Next: dispatch a worker for `MAT-015` with ownership of
+  `j3/heldout_typed_builder_candidate.py`,
+  `tests/test_heldout_typed_builder_candidate.py`, optional `docs/MAT_015_*`,
+  generated `/tmp` artifacts, and plan updates.
+- Blockers: none.

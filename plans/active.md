@@ -113,12 +113,16 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-No active worker task is recorded after `TRANS-012`; coordinator should review
-the expanded matrix evidence and choose the next bounded task.
+- `MAT-015`: assigned to materialize the remaining held-out
+  `pallets/flask#5808` method annotation row with reusable typed-builder
+  actions. Keep the slice in `j3/heldout_typed_builder_candidate.py`,
+  `tests/test_heldout_typed_builder_candidate.py`, optional focused docs, and
+  plan updates. Do not edit transition scoring, issue/PR ranking, validation
+  policy, local knowledge, or matrix manifests.
 
 ## Ready Queue
 
-No ready worker task is currently queued after `TRANS-012`.
+No ready worker task is currently queued while `MAT-015` is active.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 

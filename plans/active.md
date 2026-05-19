@@ -50,16 +50,38 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-No active workers while the coordinator records the next assignments.
+### `VAL-004`: Reusable behavior-negative-only issue/PR shadow gate
+
+- Status: active
+- Owner: pending worker spawn.
+- Write scope: issue/PR ranking or validation-policy helper code/tests,
+  optional `docs/VAL_004_*`, generated artifacts under `/tmp`, and
+  task-specific planning updates. Avoid typed-builder materialization modules.
+- Acceptance: expose a reusable shadow gate record that consumes
+  VAL-003-style policy rows and reports strict readiness,
+  behavior-negative-only readiness, pass@1/pass@k, blocker counts, leakage
+  risk, and the exact production-gate stance. The gate must keep strict
+  issue/PR ranking blocked when coverage-gap product blockers are
+  label-dependent and must not promote behavior-only metrics beyond
+  shadow-only.
+
+### `MAT-013`: Refresh real PR materialization coverage after general-AST expansion
+
+- Status: active
+- Owner: pending worker spawn.
+- Write scope: materialization coverage analysis docs/data, optional small
+  helper tests if needed, generated artifacts under `/tmp`, and task-specific
+  planning updates. Avoid issue/PR ranking or validation-policy modules.
+- Acceptance: rerun or update the MAT-007 real PR materialization panel using
+  MAT-010 through MAT-012 evidence; record remaining bucket counts, which rows
+  are now covered by reusable typed/general-AST actions, whether
+  `statement_block_replace` changes any risk classification, and the next
+  bounded materialization row or blocker.
 
 ## Ready Queue
 
-These are good next assignments after the VAL-003 integration commit:
-
-1. `VAL-004`: wire behavior-negative-only issue/PR ranking policy into a
-   reusable shadow gate report.
-2. `MAT-013`: refresh real PR materialization coverage after the MAT-012
-   general-AST action expansion.
+The active set is at the default parallelism limit. Reassess after `VAL-004`
+or `MAT-013` returns.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 

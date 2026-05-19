@@ -4127,3 +4127,20 @@ meaningful work. Do not replace this file with a daily reset.
 - Blockers: strict issue/PR ranking remains blocked by label-dependent
   coverage-gap product blocker classification; behavior-negative-only metrics
   must remain shadow-only.
+
+### 2026-05-18 - Coordinator Dispatch - VAL-004 / MAT-013
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, and
+  `plans/progress.md`.
+- Tests: pending.
+- Result: selected the next two bounded follow-ups from the VAL-003 and
+  MAT-012 residuals. `VAL-004` will turn the behavior-negative-only policy
+  into a reusable shadow gate without changing production ranking. `MAT-013`
+  will refresh the real PR materialization coverage map now that MAT-012 added
+  broader bounded general-AST actions.
+- Commit: pending.
+- Push: pending.
+- Next: spawn one worker for `VAL-004` and one worker for `MAT-013`, then
+  record their worker IDs.
+- Blockers: none.

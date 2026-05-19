@@ -2506,7 +2506,7 @@ Long-term target:
 
 ### VAL-004: Reusable behavior-negative-only issue/PR shadow gate
 
-- Status: ready
+- Status: active
 - Why: VAL-003 proved behavior-observable hard negatives can be ranked without
   label leakage, but the result lives in a one-off policy probe. The next
   step is to make that distinction reusable without changing production gates.
@@ -2524,7 +2524,7 @@ Long-term target:
 
 ### MAT-013: Refresh real PR materialization coverage after general-AST expansion
 
-- Status: ready
+- Status: active
 - Why: MAT-012 turned a hard held-out row green, but it did so by adding
   bounded `statement_block_replace`, which is broader and riskier than prior
   pure typed-builder action families. The materialization coverage map should

@@ -251,12 +251,32 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-No active worker tasks are currently recorded.
+### `TRANS-016`: Rerun expanded standard residual evidence after MODEL-015
+
+- Status: active
+- Owner: worker TRANS-016, assigned on 2026-05-19.
+- Scope: generated outputs under `/tmp/j3-trans-016-expanded-standard-after-model015`,
+  a concise evidence doc under `docs/TRANS_016_*`, and plan updates.
+- Acceptance: rerun the expanded standard transition matrix after
+  `MODEL-015`, regenerate matrix residual, advice/residual, checksum, and
+  guarded-decision evidence, compare against `TRANS-015`, and record whether
+  residual-report examples are now empty while product routing remains
+  shadow-only.
+- Guardrails: do not edit scorer logic, candidate generation, product routing,
+  matrix manifests, guarded-trial policy, local-knowledge records,
+  materializer code, or `plans/strategy.md`.
+- Expected tests: `python cli.py run-transition-shadow-matrix --matrix
+  examples/transition_shadow_matrix.json --out
+  /tmp/j3-trans-016-expanded-standard-after-model015`, checksum verification,
+  `python cli.py report-transition-residuals --matrix
+  /tmp/j3-trans-016-expanded-standard-after-model015`, `python cli.py
+  decide-transition-guarded-trial --matrix
+  /tmp/j3-trans-016-expanded-standard-after-model015`,
+  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
 
 ## Ready Queue
 
-1. `TRANS-016`: rerun expanded standard transition residual evidence after
-   `MODEL-015`.
+No ready worker tasks are currently recorded while `TRANS-016` is active.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 

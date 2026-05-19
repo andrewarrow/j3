@@ -7120,3 +7120,27 @@ meaningful work. Do not replace this file with a daily reset.
   the residual report and to refresh the guarded decision.
 - Blockers: none for the visible-balance attribute-repair slice; broad
   attribute-repair scoring remains intentionally out of scope.
+
+### 2026-05-19 - Coordinator Review And Dispatch - TRANS-016
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, and
+  `plans/progress.md`.
+- Tests: `python -m py_compile j3/transition_action_scoring.py
+  tests/test_transition_action_scoring.py` -> passed; `pytest
+  tests/test_transition_action_scoring.py -q` -> 33 passed; direct replay over
+  `/tmp/j3-trans-015-expanded-standard-after-model014/suite/greenshot_5_subset/candidate-outcomes.jsonl`
+  for `visible_balance_attribute_decoys` -> rank 1 passing
+  `change_attribute amount_cents -> balance_cents` scored
+  `3.220000000000`, rank 2 failing `available_cents` scored
+  `1.470000000000`, rank 3 failing `pending_cents` scored
+  `1.470000000000`; `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check` -> passed.
+- Result: reviewed and closed `MODEL-015`. The attribute-repair scorer change
+  is narrow to visible-balance AttributeError groups where missing-attribute,
+  hinted file/symbol, public visible-balance context, and test-name
+  replacement intent line up. Product routing remains shadow-only.
+- Next: dispatch `TRANS-016` to rerun the expanded standard matrix and
+  residual evidence after `MODEL-015`, confirm the final advisory residual is
+  gone in full replay, and refresh the guarded decision.
+- Blockers: none.

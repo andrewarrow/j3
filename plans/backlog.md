@@ -963,7 +963,8 @@ Long-term target:
 
 ### TRANS-016: Rerun expanded standard residual evidence after MODEL-015
 
-- Status: ready
+- Status: active
+- Owner: worker TRANS-016, assigned on 2026-05-19.
 - Why: `MODEL-015` directly replayed the final shadow-advice-only residual,
   but the standard evidence bundle should confirm whether
   `visible_balance_attribute_decoys` leaves the residual report and whether

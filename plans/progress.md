@@ -6846,3 +6846,33 @@ meaningful work. Do not replace this file with a daily reset.
   source/candidate-after evidence emerges.
 - Blockers: none for `MODEL-013`; broad GreenShot-5 semantic API scoring
   remains under-specified.
+
+### 2026-05-19 - MODEL-013 - Nested-package missing-import advice evidence
+
+- Owner: worker MODEL-013.
+- Files changed: `j3/transition_action_scoring.py`,
+  `tests/test_transition_action_scoring.py`, `plans/active.md`,
+  `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `python -m py_compile j3/transition_action_scoring.py
+  tests/test_transition_action_scoring.py` -> passed; `pytest
+  tests/test_transition_action_scoring.py -q` -> 31 passed; direct replay over
+  `/tmp/j3-trans-013-expanded-standard-after-model012/suite/greenshot_5_subset/candidate-outcomes.jsonl`
+  for `receipt_label_nested_module_import_decoy` -> rank 1 passing
+  `add_import` from `shop.reports.money` scored `3.533400378231`, rank 2
+  failing `add_import` from `shop.money` scored `1.633400378231`, rank 3
+  failing `change_literal` scored `1.63`.
+- Result: added narrow V1/advice scorer evidence for missing-import
+  `NameError` groups where an `add_import` candidate's nested module path
+  matches the target package and local group evidence ties that module to the
+  missing symbol. The direct replay now selects the passing nested import
+  ahead of the wrong top-level import and nearby literal decoy. Product
+  routing remains shadow-only.
+- Commit: implementation/evidence commit in this worker iteration; final hash
+  reported in worker handoff.
+- Push: pending at time of plan edit; final push result reported in worker
+  handoff.
+- Next: coordinator should review `MODEL-013`, then either run a small
+  post-MODEL-013 residual replay or dispatch separate semantic scorer tasks
+  for `profile_signature_propagation` and
+  `visible_balance_attribute_decoys`.
+- Blockers: none for the nested-package missing-import slice.

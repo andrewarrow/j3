@@ -77,6 +77,9 @@ def score_transition_action_candidate(
         - 0.70 * features["guard_operator_decoy_competes_with_guarded_symbol"]
         + 2.35 * features["tail_index_replace_expr_matches_tail_intent"]
         - 0.65 * features["tail_index_literal_decoy_competes_with_tail_expr"]
+        + 1.45 * features["missing_import_nested_module_matches_local_symbol"]
+        - 0.45 * features["missing_import_top_level_decoy_competes_with_nested_module"]
+        - 0.35 * features["missing_import_literal_decoy_competes_with_nested_import"]
         + 1.20 * features["failure_hint_file_match"]
         - 0.75 * features["failure_hint_file_mismatch"]
         + 1.00 * features["failure_hint_symbol_match"]
@@ -1062,6 +1065,15 @@ _GUARD_INSERTION_FEATURE_NAMES = (
     "guard_operator_decoy_competes_with_guarded_symbol",
 )
 
+_MISSING_IMPORT_FEATURE_NAMES = (
+    "missing_import_evidence_available",
+    "missing_import_name_matches_hint",
+    "missing_import_nested_module_matches_target_package",
+    "missing_import_nested_module_matches_local_symbol",
+    "missing_import_top_level_decoy_competes_with_nested_module",
+    "missing_import_literal_decoy_competes_with_nested_import",
+)
+
 _BOUNDARY_OPERATOR_ACTION_KINDS = {"change_operator", "modify_condition"}
 _LITERAL_ACTION_KINDS = {"change_literal", "change_return_value"}
 _MODULE_CONSTANT_ACTION_KIND = "change_module_constant"
@@ -1519,6 +1531,66 @@ def _guard_insertion_features(
     return features
 
 
+def _missing_import_features(
+    candidate: Mapping[str, object],
+    *,
+    action_kind: str,
+    params: Mapping[str, object],
+    failure_hints: Sequence[object],
+    group: Mapping[str, object] | None,
+) -> dict[str, float]:
+    features = {name: 0.0 for name in _MISSING_IMPORT_FEATURE_NAMES}
+    if action_kind not in {"add_import", *_LITERAL_ACTION_KINDS}:
+        return features
+
+    missing_names = _missing_import_name_hints(failure_hints)
+    if not missing_names:
+        return features
+
+    features["missing_import_evidence_available"] = 1.0
+    action = _mapping(candidate.get("action"))
+    symbol = action.get("symbol")
+    name = params.get("name")
+    if isinstance(name, str) and name in missing_names:
+        features["missing_import_name_matches_hint"] = 1.0
+    elif isinstance(symbol, str) and symbol in missing_names:
+        features["missing_import_name_matches_hint"] = 1.0
+
+    nested_modules = _nested_import_modules_with_local_symbol(
+        group,
+        missing_names=missing_names,
+    )
+    if action_kind == "add_import":
+        module = params.get("module")
+        if not isinstance(module, str) or not isinstance(name, str):
+            return features
+        if not name or name not in missing_names:
+            return features
+        if _import_module_matches_target_package(candidate, module):
+            features["missing_import_nested_module_matches_target_package"] = 1.0
+        if module in nested_modules:
+            features["missing_import_nested_module_matches_local_symbol"] = 1.0
+        elif _import_competes_with_nested_module(
+            module,
+            nested_modules=nested_modules,
+        ):
+            features[
+                "missing_import_top_level_decoy_competes_with_nested_module"
+            ] = 1.0
+        return features
+
+    if (
+        isinstance(symbol, str)
+        and symbol in missing_names
+        and _literal_candidate_targets_nested_import_module(
+            candidate,
+            nested_modules=nested_modules,
+        )
+    ):
+        features["missing_import_literal_decoy_competes_with_nested_import"] = 1.0
+    return features
+
+
 def _guard_condition_checks_empty_value(params: Mapping[str, object]) -> bool:
     if "return" not in params:
         return False
@@ -1756,6 +1828,144 @@ def _same_target_has_tail_replace_expr(
     return False
 
 
+def _missing_import_name_hints(failure_hints: Sequence[object]) -> set[str]:
+    names: set[str] = set()
+    for raw_hint in failure_hints:
+        hint = _mapping(raw_hint)
+        if hint.get("exception_type") != "NameError":
+            continue
+        names.update(
+            str(name)
+            for name in _list(hint.get("missing_names"))
+            if isinstance(name, str) and name
+        )
+    return names
+
+
+def _nested_import_modules_with_local_symbol(
+    group: Mapping[str, object] | None,
+    *,
+    missing_names: set[str],
+) -> set[str]:
+    if group is None or not missing_names:
+        return set()
+
+    modules: set[str] = set()
+    for raw_candidate in _list(group.get("candidates")):
+        candidate = _mapping(raw_candidate)
+        action = _mapping(candidate.get("action"))
+        if action.get("kind") != "add_import":
+            continue
+        params = _mapping(action.get("params"))
+        module = params.get("module")
+        name = params.get("name")
+        if not isinstance(module, str) or not isinstance(name, str):
+            continue
+        if name not in missing_names or not _module_path_is_nested(module):
+            continue
+        if not _import_module_matches_target_package(candidate, module):
+            continue
+        if _group_has_local_symbol_for_module(
+            group,
+            module=module,
+            name=name,
+        ):
+            modules.add(module)
+    return modules
+
+
+def _import_module_matches_target_package(
+    candidate: Mapping[str, object],
+    module: str,
+) -> bool:
+    if not _module_path_is_nested(module):
+        return False
+    action = _mapping(candidate.get("action"))
+    file_path = action.get("file_path")
+    if not isinstance(file_path, str):
+        return False
+    return _module_parent(module) == _file_parent_module(file_path)
+
+
+def _group_has_local_symbol_for_module(
+    group: Mapping[str, object],
+    *,
+    module: str,
+    name: str,
+) -> bool:
+    module_file_path = _module_path_to_file_path(module)
+    qualified_name = f"{module}.{name}"
+    for raw_candidate in _list(group.get("candidates")):
+        candidate = _mapping(raw_candidate)
+        action = _mapping(candidate.get("action"))
+        target_context = _mapping(candidate.get("target_context"))
+        if target_context.get("qualified_symbol") == qualified_name:
+            return True
+        if action.get("file_path") != module_file_path:
+            continue
+        if action.get("symbol") == name:
+            return True
+    return False
+
+
+def _import_competes_with_nested_module(
+    module: str,
+    *,
+    nested_modules: set[str],
+) -> bool:
+    if not nested_modules:
+        return False
+    module_root = module.partition(".")[0]
+    return any(
+        nested != module and nested.partition(".")[0] == module_root
+        for nested in nested_modules
+    )
+
+
+def _literal_candidate_targets_nested_import_module(
+    candidate: Mapping[str, object],
+    *,
+    nested_modules: set[str],
+) -> bool:
+    if not nested_modules:
+        return False
+    action = _mapping(candidate.get("action"))
+    file_path = action.get("file_path")
+    if not isinstance(file_path, str):
+        return False
+    target_context = _mapping(candidate.get("target_context"))
+    qualified_symbol = target_context.get("qualified_symbol")
+    for module in nested_modules:
+        if file_path == _module_path_to_file_path(module):
+            return True
+        if isinstance(qualified_symbol, str) and qualified_symbol.startswith(
+            f"{module}.",
+        ):
+            return True
+    return False
+
+
+def _module_path_is_nested(module: str) -> bool:
+    return module.count(".") >= 2
+
+
+def _module_parent(module: str) -> str:
+    return module.rpartition(".")[0]
+
+
+def _file_parent_module(file_path: str) -> str:
+    parts = file_path.split("/")
+    if len(parts) <= 1:
+        return ""
+    if parts[-1] == "__init__.py":
+        return ".".join(part for part in parts[:-1] if part)
+    return ".".join(part for part in parts[:-1] if part)
+
+
+def _module_path_to_file_path(module: str) -> str:
+    return f"{module.replace('.', '/')}.py"
+
+
 def _word_tokens(text: str) -> set[str]:
     normalized = "".join(char.lower() if char.isalnum() else " " for char in text)
     return {token for token in normalized.split() if token}
@@ -1864,6 +2074,13 @@ def _candidate_score_features(
         failure_hints=failure_hints,
         group=group,
     )
+    missing_import_features = _missing_import_features(
+        candidate,
+        action_kind=action_kind,
+        params=params,
+        failure_hints=failure_hints,
+        group=group,
+    )
     ranker_score = _score_value(scores.get("ranker_score"))
     model_score = _score_value(scores.get("model_score"))
     failure_hint_score = _score_value(scores.get("failure_hint_score"))
@@ -1904,6 +2121,7 @@ def _candidate_score_features(
         **boundary_literal_features,
         **tail_index_features,
         **guard_features,
+        **missing_import_features,
     }
 
 
@@ -1959,6 +2177,8 @@ def _candidate_v2_features(
     for name in _TAIL_INDEX_FEATURE_NAMES:
         features[name] = float(base[name])
     for name in _GUARD_INSERTION_FEATURE_NAMES:
+        features[name] = float(base[name])
+    for name in _MISSING_IMPORT_FEATURE_NAMES:
         features[name] = float(base[name])
     _add_feature(features, f"action:{action_kind}", 1.0)
 

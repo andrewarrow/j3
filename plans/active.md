@@ -235,43 +235,24 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-### `MODEL-013`: Add nested-package missing-import shadow-advice evidence
-
-- Status: active
-- Owner: worker MODEL-013, assigned on 2026-05-19.
-- Scope: `j3/transition_action_scoring.py`, focused tests in
-  `tests/test_transition_action_scoring.py`, optional saved-artifact replay or
-  evidence doc under `docs/MODEL_013_*`, and plan updates.
-- Acceptance: add narrow shadow-advice evidence that promotes the passing
-  `add_import` candidate for
-  `greenshot_5_subset/receipt_label_nested_module_import_decoy` whose module
-  path points to the existing nested package file
-  `shop/reports/money.py`, ahead of the wrong top-level `shop.money` import
-  and nearby literal decoy; prove with focused tests or saved-artifact replay
-  that advisory scoring no longer selects the failing candidate for that
-  example; keep product routing shadow-only.
-- Guardrails: do not edit product routing, matrix manifests, candidate
-  generation, ranker routing, guarded-trial policy, local-knowledge records,
-  materializer code, or `plans/strategy.md`.
-- Expected tests: `pytest tests/test_transition_action_scoring.py -q`,
-  focused residual/advice replay for
-  `receipt_label_nested_module_import_decoy`,
-  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+No active worker tasks are currently recorded pending coordinator review after
+`MODEL-013`.
 
 ## Ready Queue
 
-No ready worker tasks are currently recorded while `MODEL-013` is active.
+No ready worker tasks are currently recorded pending coordinator review after
+`MODEL-013`.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
 ## Paused Or Blocked
 
-- Three GreenShot-5 shadow-advice-only examples remain after `TRANS-013`:
-  `profile_signature_propagation`, `receipt_label_nested_module_import_decoy`,
-  and `visible_balance_attribute_decoys`. They are not matrix residuals or
-  suite-gate failures. The signature-propagation and attribute-repair examples
-  likely need separate candidate-after/source semantic evidence unless
-  `MODEL-013` exposes a shared feature.
+- Two GreenShot-5 shadow-advice-only examples remain as separate semantic API
+  scorer work after the `MODEL-013` direct saved-artifact replay:
+  `profile_signature_propagation` and `visible_balance_attribute_decoys`.
+  They are not matrix residuals or suite-gate failures, and likely need
+  separate candidate-after/source semantic evidence unless a coordinator
+  review finds a shared source/candidate-after signal.
 - `MODEL-002`: superseded by bounded scorer subtasks in the backlog, beginning
   with `MODEL-003` through `MODEL-009`.
 
@@ -286,6 +267,33 @@ Review before assigning more work if:
 - the next useful task is unclear
 
 ## Recently Completed
+
+### `MODEL-013`: Add nested-package missing-import shadow-advice evidence
+
+- Status: completed by worker MODEL-013 on 2026-05-19.
+- Result: added narrow V1/advice scorer evidence for missing-import
+  `NameError` groups where a nested `add_import` module matches the target
+  package and local group evidence ties that module path to the missing symbol.
+  The focused fixture and direct saved-artifact replay now top-rank the
+  passing `from shop.reports.money import format_receipt_total` candidate for
+  `greenshot_5_subset/receipt_label_nested_module_import_decoy` ahead of the
+  wrong top-level `shop.money` import and nearby `100 -> 98` literal decoy.
+  Product routing remains shadow-only.
+- Commit: implementation/evidence commit in this worker iteration; final hash
+  reported in worker handoff.
+- Push: pending at time of plan edit; final push result reported in worker
+  handoff.
+- Tests: `python -m py_compile j3/transition_action_scoring.py
+  tests/test_transition_action_scoring.py` -> passed; `pytest
+  tests/test_transition_action_scoring.py -q` -> 31 passed; direct
+  `/tmp/j3-trans-013-expanded-standard-after-model012/suite/greenshot_5_subset/candidate-outcomes.jsonl`
+  replay for `receipt_label_nested_module_import_decoy` -> passing nested
+  `add_import` ranked first.
+- Recommended next: coordinator should review `MODEL-013`, then choose between
+  a small residual replay to confirm the remaining report shape or separate
+  scorer tasks for `profile_signature_propagation` and
+  `visible_balance_attribute_decoys`.
+- Blockers: none for the nested-package missing-import slice.
 
 ### `TRANS-013`: Rerun expanded standard residual evidence after advice fixes
 

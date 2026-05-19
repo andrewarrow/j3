@@ -928,6 +928,169 @@ def test_future_scorer_does_not_reward_guard_without_empty_target_evidence() -> 
     )
 
 
+def test_future_scorer_prefers_nested_package_missing_import() -> None:
+    groups = build_transition_action_choice_groups(
+        [
+            _missing_import_candidate_row(
+                rank_index=1,
+                action="add_import",
+                params={
+                    "import": "from shop.money import format_receipt_total",
+                    "module": "shop.money",
+                    "name": "format_receipt_total",
+                },
+                file_path="shop/reports/summary.py",
+                symbol="format_receipt_total",
+                node_kind="Import",
+                passed=False,
+                model_score=0.8868007564616814,
+                failure_hint_score=120.0,
+            ),
+            _missing_import_candidate_row(
+                rank_index=2,
+                action="add_import",
+                params={
+                    "import": (
+                        "from shop.reports.money import format_receipt_total"
+                    ),
+                    "module": "shop.reports.money",
+                    "name": "format_receipt_total",
+                },
+                file_path="shop/reports/summary.py",
+                symbol="format_receipt_total",
+                node_kind="Import",
+                passed=True,
+                model_score=0.8868007564616814,
+                failure_hint_score=120.0,
+            ),
+            _missing_import_candidate_row(
+                rank_index=3,
+                action="change_literal",
+                params={"from": 100, "to": 98},
+                file_path="shop/reports/money.py",
+                symbol="format_receipt_total",
+                node_kind="Constant",
+                passed=False,
+                model_score=0.0,
+                failure_hint_score=40.0,
+                target_context={
+                    "callee_count": 0,
+                    "caller_count": 0,
+                    "qualified_symbol": "shop.reports.money.format_receipt_total",
+                    "role": "helper",
+                },
+            ),
+        ],
+        embedding_dim=8,
+    )
+
+    ranked = rank_transition_action_candidates(groups[0])
+    top_level_score = score_transition_action_candidate(
+        groups[0]["candidates"][0],
+        group=groups[0],
+    )
+    nested_score = score_transition_action_candidate(
+        groups[0]["candidates"][1],
+        group=groups[0],
+    )
+    literal_score = score_transition_action_candidate(
+        groups[0]["candidates"][2],
+        group=groups[0],
+    )
+
+    assert [candidate["rank_index"] for candidate in ranked] == [2, 1, 3]
+    assert nested_score["features"]["missing_import_name_matches_hint"] == 1.0
+    assert (
+        nested_score["features"][
+            "missing_import_nested_module_matches_target_package"
+        ]
+        == 1.0
+    )
+    assert (
+        nested_score["features"][
+            "missing_import_nested_module_matches_local_symbol"
+        ]
+        == 1.0
+    )
+    assert (
+        top_level_score["features"][
+            "missing_import_top_level_decoy_competes_with_nested_module"
+        ]
+        == 1.0
+    )
+    assert (
+        literal_score["features"][
+            "missing_import_literal_decoy_competes_with_nested_import"
+        ]
+        == 1.0
+    )
+    assert nested_score["score"] > top_level_score["score"]
+    assert nested_score["score"] > literal_score["score"]
+
+
+def test_future_scorer_does_not_reward_deep_import_without_local_symbol() -> None:
+    groups = build_transition_action_choice_groups(
+        [
+            _missing_import_candidate_row(
+                rank_index=1,
+                action="add_import",
+                params={
+                    "import": "from shop.reports.money import format_receipt_total",
+                    "module": "shop.reports.money",
+                    "name": "format_receipt_total",
+                },
+                file_path="shop/api.py",
+                symbol="format_receipt_total",
+                node_kind="Import",
+                passed=False,
+                model_score=0.8868007564616814,
+                failure_hint_score=120.0,
+            ),
+            _missing_import_candidate_row(
+                rank_index=2,
+                action="change_literal",
+                params={"from": 100, "to": 98},
+                file_path="shop/money.py",
+                symbol="format_receipt_total",
+                node_kind="Constant",
+                passed=True,
+                model_score=0.0,
+                failure_hint_score=40.0,
+                first_passing_index=2,
+            ),
+        ],
+        embedding_dim=8,
+    )
+
+    deep_import_score = score_transition_action_candidate(
+        groups[0]["candidates"][0],
+        group=groups[0],
+    )
+    literal_score = score_transition_action_candidate(
+        groups[0]["candidates"][1],
+        group=groups[0],
+    )
+
+    assert (
+        deep_import_score["features"][
+            "missing_import_nested_module_matches_target_package"
+        ]
+        == 0.0
+    )
+    assert (
+        deep_import_score["features"][
+            "missing_import_nested_module_matches_local_symbol"
+        ]
+        == 0.0
+    )
+    assert (
+        literal_score["features"][
+            "missing_import_literal_decoy_competes_with_nested_import"
+        ]
+        == 0.0
+    )
+
+
 def test_baseline_orders_are_stable_and_distinct() -> None:
     group = build_transition_action_choice_groups(
         _fixture_candidate_rows(),
@@ -1852,6 +2015,95 @@ def _guard_candidate_row(
                         "line": 20,
                     },
                 ],
+            }
+        ],
+        "equivalent_candidate_ranks": [],
+        "overlapping_candidate_ranks": [],
+        "equivalent_passing_candidate_ranks": [],
+        "overlapping_passing_candidate_ranks": [],
+    }
+
+
+def _missing_import_candidate_row(
+    *,
+    rank_index: int,
+    action: str,
+    params: dict[str, object],
+    file_path: str,
+    symbol: str,
+    node_kind: str,
+    passed: bool,
+    model_score: float,
+    failure_hint_score: float,
+    first_passing_index: int = 2,
+    target_context: dict[str, object] | None = None,
+) -> dict[str, object]:
+    return {
+        "task": "receipt_label_nested_module_import_decoy",
+        "task_family": "missing_import",
+        "source_type": "handcrafted",
+        "split": "validation",
+        "language": "python",
+        "phase": "ranked",
+        "repair_plan_id": "plan-receipt-label-nested-import",
+        "file_path": file_path,
+        "action": action,
+        "symbol": symbol,
+        "start_line": 1 if action == "add_import" else 2,
+        "end_line": 1 if action == "add_import" else 2,
+        "node_kind": node_kind,
+        "params": params,
+        "reason": (
+            f"add missing import for {symbol}"
+            if action == "add_import"
+            else "try nearby literal 98"
+        ),
+        "model_score": model_score,
+        "failure_hint_score": failure_hint_score,
+        "ranker_score": None,
+        "target_context": (
+            dict(target_context) if target_context is not None else {"role": "helper"}
+        ),
+        "before_source": "def receipt_label(total):\n    return format_receipt_total(total)\n",
+        "patched_source": "def receipt_label(total):\n    return format_receipt_total(total)\n",
+        "passed": passed,
+        "preferred": passed,
+        "rank_index": rank_index,
+        "first_passing_index": first_passing_index,
+        "is_first_pass": passed and rank_index == first_passing_index,
+        "passing_candidates": 1,
+        "failure_hints": [
+            {
+                "asserted_mapping_keys": [],
+                "assertion_diff_lines": [],
+                "assertions": [],
+                "exception_type": "NameError",
+                "expected_strings": [],
+                "function_names": [
+                    "format_receipt_total",
+                    "receipt_label",
+                    "receipt_total_label",
+                ],
+                "missing_attributes": [],
+                "missing_keys": [],
+                "missing_modules": [],
+                "missing_names": ["format_receipt_total"],
+                "nodeid": (
+                    "tests/test_shop.py::"
+                    "test_receipt_label_imports_nested_report_formatter"
+                ),
+                "source_files": ["shop/api.py", "shop/reports/summary.py"],
+                "summary": None,
+                "traceback_locations": [
+                    {"exception_type": None, "file_path": "tests/test_shop.py", "line": 73},
+                    {"exception_type": None, "file_path": "shop/api.py", "line": 67},
+                    {
+                        "exception_type": "NameError",
+                        "file_path": "shop/reports/summary.py",
+                        "line": 2,
+                    },
+                ],
+                "type_error_names": [],
             }
         ],
         "equivalent_candidate_ranks": [],

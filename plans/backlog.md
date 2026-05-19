@@ -788,7 +788,7 @@ Long-term target:
 
 ### MODEL-013: Add nested-package missing-import shadow-advice evidence
 
-- Status: active
+- Status: done
 - Owner: worker MODEL-013, assigned on 2026-05-19.
 - Why: after `TRANS-013`, the remaining residual report has three
   GreenShot-5 shadow-advice-only examples. The most concrete bounded shape is
@@ -811,6 +811,13 @@ Long-term target:
 - Tests: `pytest tests/test_transition_action_scoring.py -q`, focused
   residual/advice replay for `receipt_label_nested_module_import_decoy`,
   `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+- Completion note: added narrow missing-import V1/advice features that require
+  `NameError` missing-name evidence, a nested import module matching the
+  target package, and local group evidence tying that module path to the
+  missing symbol. Focused tests and direct saved-artifact replay now top-rank
+  the passing `from shop.reports.money import format_receipt_total` candidate
+  ahead of the wrong top-level `shop.money` import and the nearby
+  `100 -> 98` literal decoy. Product routing remains shadow-only.
 
 ## Workstream E: Repo State, Actions, And Models
 

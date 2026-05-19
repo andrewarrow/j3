@@ -3823,12 +3823,41 @@ Long-term target:
   `/tmp/j3-mat-034-pytest-14472-live/final/report.md`, and
   `/tmp/j3-mat-034-pytest-14472-live/final/candidate.diff`.
 
+### MAT-035: Held-out Flask redirect-default current action candidate
+
+- Status: active
+- Why: after `MAT-034`, `flask-5898` is the final remaining materializable
+  MAT-007 `current_structured_action` row. It covers redirect default literal
+  updates in two Flask APIs plus accepted docs and changelog text updates.
+- Write scope: focused current structured-action/source-region materializer
+  extensions and tests as needed, optional `docs/MAT_035_*`, generated
+  artifacts under `/tmp`, and plan updates. Likely code scope is
+  `j3/heldout_source_region_candidate.py` and
+  `tests/test_heldout_source_region_candidate.py`; avoid repo-convention
+  materializer code unless a concrete blocker requires it.
+- Acceptance: attempt `pallets/flask#5898`, the final remaining
+  `current_structured_action` row, using reusable current structured action
+  records for redirect default literal updates and accepted docs/changelog
+  text updates, not a PR-named action kind. Determine and record pinned
+  base/head refs, accepted changed files, validation command, mutation scope,
+  candidate-after diff/hash metadata, accepted-diff comparison, and live
+  validation result. The accepted diff appears to touch `CHANGES.rst`,
+  `docs/api.rst`, `src/flask/helpers.py`, and `src/flask/sansio/app.py`;
+  separate full accepted-diff parity from source-only or source/docs scoped
+  parity if the worker intentionally covers a narrower scope. If target
+  selection, literal/default replacement, docs/changelog text update, parity,
+  or validation blocks, record the exact blocker without broadening scope
+  silently.
+- Tests: focused source-region/current-action materializer tests if code
+  changes are made, JSON/report checks if artifacts are written,
+  `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and live
+  focused Flask validation when materialized.
+
 ## Next Recommended Queue
 
 Start with these unless fresh evidence changes the order:
 
-1. Review `MAT-034`, then dispatch the final remaining
-   `current_structured_action` row, `flask-5898`, if the pytest replay is
-   materialized cleanly.
+1. Review `MAT-035`, then reconcile current-structured-action closure coverage
+   if the final row is materialized cleanly.
 2. Separately decide whether to pursue the `TRANS-012` shadow-advice-only
    residual examples; product transition routing remains shadow-only.

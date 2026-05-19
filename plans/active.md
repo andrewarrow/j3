@@ -214,16 +214,42 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-No active worker task is currently recorded. The next coordinator action is to
-review `MAT-034` and dispatch the final remaining `current_structured_action`
-row, `flask-5898`, if the review is clean.
+### `MAT-035`: Held-out Flask redirect-default current action candidate
+
+- Status: active
+- Owner: worker MAT-035.
+- Started: 2026-05-19.
+- Write scope: focused current structured-action/source-region materializer
+  extensions and tests as needed, optional `docs/MAT_035_*`, generated
+  artifacts under `/tmp`, and plan updates. Likely code scope is
+  `j3/heldout_source_region_candidate.py` and
+  `tests/test_heldout_source_region_candidate.py`; avoid repo-convention
+  materializer code unless a concrete blocker requires it.
+- Acceptance: attempt `pallets/flask#5898`, the final remaining
+  `current_structured_action` row, using reusable current structured action
+  records for redirect default literal updates and accepted docs/changelog
+  text updates, not a PR-named action kind. Determine and record pinned
+  base/head refs, accepted changed files, validation command, mutation scope,
+  candidate-after diff/hash metadata, accepted-diff comparison, and live
+  validation result. The accepted diff appears to touch `CHANGES.rst`,
+  `docs/api.rst`, `src/flask/helpers.py`, and `src/flask/sansio/app.py`;
+  separate full accepted-diff parity from source-only or source/docs scoped
+  parity if the worker intentionally covers a narrower scope. If target
+  selection, literal/default replacement, docs/changelog text update, parity,
+  or validation blocks, record the exact blocker without broadening scope
+  silently.
+- Expected tests: focused source-region/current-action materializer tests if
+  code changes are made, JSON/report checks if artifacts are written,
+  `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and live
+  focused Flask validation when materialized.
 
 ## Ready Queue
 
-The remaining `current_structured_action` row after `pytest-14472` is
-`flask-5898`; the shadow-advice-only residual examples remain a separate
-workstream and should not be mixed into MAT-007 held-out materialization
-counts.
+No queued worker task remains while `MAT-035` is active. If `flask-5898`
+materializes cleanly, the original MAT-007 panel will have only the two
+`not_currently_expressible` rows parked; the shadow-advice-only residual
+examples remain a separate workstream and should not be mixed into MAT-007
+held-out materialization counts.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 

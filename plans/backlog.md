@@ -3694,12 +3694,37 @@ Long-term target:
   `docs/MAT_031_REPO_CONVENTION_CLOSURE_COVERAGE_2026-05-19.jsonl`, and
   `/tmp/j3-mat-031-repo-convention-closure/MAT_031_REPO_CONVENTION_CLOSURE_COVERAGE_2026-05-19.jsonl`.
 
+### MAT-032: Held-out Click deprecated-help current action candidate
+
+- Status: active
+- Why: after `MAT-031`, the only remaining materializable MAT-007 rows are the
+  four `current_structured_action` rows. `pallets/click#3423` is the smallest:
+  one source file and a targeted deprecated-help expression replacement.
+- Write scope: focused current structured-action/source-region materializer
+  extensions and tests as needed, optional `docs/MAT_032_*`, generated
+  artifacts under `/tmp`, and plan updates. Likely code scope is
+  `j3/heldout_source_region_candidate.py` and
+  `tests/test_heldout_source_region_candidate.py`; avoid repo-convention
+  materializer code unless a concrete blocker requires it.
+- Acceptance: attempt `pallets/click#3423` using reusable current structured
+  action records for the targeted deprecated-help expression replacement, not
+  a PR-named action kind. Determine and record pinned base/head refs, accepted
+  changed files, validation command, mutation scope, candidate-after
+  diff/hash metadata, accepted-diff comparison, and live validation result.
+  The expected accepted scope is `src/click/core.py`; if the PR or validation
+  requires more than the one source file, record that explicitly. If target
+  selection, expression replacement, parity, or validation blocks, record the
+  exact blocker without broadening scope silently.
+- Tests: focused source-region/current-action materializer tests if code
+  changes are made, JSON/report checks if artifacts are written,
+  `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and live
+  focused Click validation when materialized.
+
 ## Next Recommended Queue
 
 Start with these unless fresh evidence changes the order:
 
-1. Review `MAT-031`, then dispatch `pallets/click#3423` as the next bounded
-   `current_structured_action` materialization row if closure evidence is
-   consistent.
+1. Review `MAT-032`, then continue the remaining `current_structured_action`
+   rows if the Click replay is materialized cleanly.
 2. Separately decide whether to pursue the `TRANS-012` shadow-advice-only
    residual examples; product transition routing remains shadow-only.

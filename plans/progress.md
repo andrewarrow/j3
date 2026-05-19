@@ -5407,3 +5407,39 @@ meaningful work. Do not replace this file with a daily reset.
   `tests/test_heldout_typed_builder_candidate.py`, optional `docs/MAT_016_*`,
   generated `/tmp` artifacts, and plan updates.
 - Blockers: none.
+
+### 2026-05-19 - MAT-016 - Flask #5903 filesystem idiom materialization
+
+- Owner: worker Codex.
+- Files changed: `j3/heldout_typed_builder_candidate.py`,
+  `tests/test_heldout_typed_builder_candidate.py`,
+  `docs/MAT_016_FLASK_5903_FILESYSTEM_IDIOM_CANDIDATE_2026-05-19.md`,
+  `plans/active.md`, `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `python -m py_compile j3/heldout_typed_builder_candidate.py
+  tests/test_heldout_typed_builder_candidate.py` -> passed; `pytest
+  tests/test_heldout_typed_builder_candidate.py -q` -> 18 passed; live fresh
+  checkout run `python -m j3.heldout_typed_builder_candidate --candidate
+  flask-5903 --repo-path /tmp/j3-flask5903-base-check --accepted-diff
+  /tmp/flask5903.diff --out
+  /tmp/j3-mat-016-flask-5903-final/candidate.json --report
+  /tmp/j3-mat-016-flask-5903-final/report.md --diff-out
+  /tmp/j3-mat-016-flask-5903-final/candidate.diff --validate` -> passed;
+  `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check`
+  -> passed.
+- Result: materialized and live-validated `pallets/flask#5903` from base
+  `407eb76b27884848383a37c7274654f0271e4bc4` to accepted head
+  `3d03098a97ddc6a908aa4a50c2ef7381f8297d0a`. The candidate changed
+  `docs/tutorial/factory.rst` and `examples/tutorial/flaskr/__init__.py`,
+  matched the accepted PR diff after normalization, and passed
+  `python -m py_compile examples/tutorial/flaskr/__init__.py` in `0.021s`.
+  The row uses reusable `makedirs_exist_ok_rewrite` action records; no
+  PR-named action kind or `statement_block_replace` was used. The RST tutorial
+  file is fully materialized for accepted-diff parity, with expected
+  non-Python AST parse metadata recorded rather than hidden.
+- Commit: pending in this worker commit.
+- Push: pending.
+- Next: coordinator should review MAT-016 and decide whether to attempt the
+  remaining `click-3430` helper extraction row or return to shadow scorer
+  advice residuals from `TRANS-012`; product transition routing remains
+  shadow-only.
+- Blockers: none.

@@ -46,6 +46,13 @@ DEFAULT_FLASK_5808_BASE_REF = "85793d6c223dd845e8f218403a5ced83041d37e1"
 DEFAULT_FLASK_5808_HEAD_REF = "dbd4c2882593f6118103120aa96fa9acdf7deedb"
 DEFAULT_FLASK_5808_VALIDATION_COMMAND = "python -m py_compile src/flask/sansio/app.py"
 FLASK_SANSIO_APP_PATH = "src/flask/sansio/app.py"
+DEFAULT_FLASK_5903_BASE_REF = "407eb76b27884848383a37c7274654f0271e4bc4"
+DEFAULT_FLASK_5903_HEAD_REF = "3d03098a97ddc6a908aa4a50c2ef7381f8297d0a"
+DEFAULT_FLASK_5903_VALIDATION_COMMAND = (
+    "python -m py_compile examples/tutorial/flaskr/__init__.py"
+)
+FLASK_TUTORIAL_DOC_PATH = "docs/tutorial/factory.rst"
+FLASK_TUTORIAL_APP_PATH = "examples/tutorial/flaskr/__init__.py"
 
 
 class HeldoutTypedBuilderCandidateError(ValueError):
@@ -447,6 +454,53 @@ class StatementBlockReplaceAction:
 
 
 @dataclass(frozen=True, slots=True)
+class MakedirsExistOkRewriteAction:
+    """Rewrite an os.makedirs try/except/pass idiom to exist_ok=True."""
+
+    target_file: str
+    path_expression: str
+    function_name: str | None = None
+    class_name: str | None = None
+    exception_name: str = "OSError"
+    module_name: str = "os"
+    kind: str = "makedirs_exist_ok_rewrite"
+    schema_version: str = TYPED_ACTION_SCHEMA_VERSION
+    rationale: str | None = None
+
+    def __post_init__(self) -> None:
+        _validate_relative_path(self.target_file)
+        if not self.path_expression:
+            raise ValueError("path_expression is required")
+        if not self.exception_name:
+            raise ValueError("exception_name is required")
+        if not self.module_name:
+            raise ValueError("module_name is required")
+
+    def to_record(self) -> dict[str, object]:
+        return {
+            "schema_version": self.schema_version,
+            "kind": self.kind,
+            "target": {
+                "file_path": self.target_file,
+                "class_name": self.class_name,
+                "function_name": self.function_name,
+                "call": f"{self.module_name}.makedirs",
+            },
+            "path_expression": self.path_expression,
+            "replacement_keyword": {"name": "exist_ok", "value": True},
+            "constraints": {
+                "must_match_exactly_once": True,
+                "try_body_must_be_single_makedirs_call": True,
+                "except_handler_must_match": self.exception_name,
+                "except_body_must_be_pass": True,
+                "python_targets_must_parse_ast": True,
+                "rst_targets_may_rewrite_indented_code_example": True,
+            },
+            "rationale": self.rationale,
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class ReturnAnnotationUpdateAction:
     """Add or update one function return annotation."""
 
@@ -493,6 +547,7 @@ TypedAction = (
     | FunctionSignatureUpdateAction
     | BooleanConditionInsertAction
     | StatementBlockReplaceAction
+    | MakedirsExistOkRewriteAction
     | ReturnAnnotationUpdateAction
 )
 
@@ -1172,6 +1227,73 @@ def build_flask_jinja_autoescape_spec(
     )
 
 
+def build_flask_instance_folder_spec(
+    repo_path: Path,
+    *,
+    base_ref: str = DEFAULT_FLASK_5903_BASE_REF,
+    accepted_head_ref: str = DEFAULT_FLASK_5903_HEAD_REF,
+    validation_command: str = DEFAULT_FLASK_5903_VALIDATION_COMMAND,
+) -> HeldoutTypedBuilderSpec:
+    """Build the held-out flask#5903 instance-folder filesystem idiom spec."""
+
+    _repo_file(repo_path, FLASK_TUTORIAL_DOC_PATH)
+    _repo_file(repo_path, FLASK_TUTORIAL_APP_PATH)
+    return HeldoutTypedBuilderSpec(
+        candidate_id="mat-016-flask-instance-folder-exist-ok",
+        repo_id="pallets/flask",
+        repo_url="https://github.com/pallets/flask",
+        repo_split="held_out",
+        base_ref=base_ref,
+        accepted_head_ref=accepted_head_ref,
+        reference_pr_url="https://github.com/pallets/flask/pull/5903",
+        prompt=(
+            "Abort if the Flask tutorial instance folder cannot be created by "
+            "rewriting the os.makedirs try/except/pass idiom to exist_ok=True."
+        ),
+        target_file=FLASK_TUTORIAL_APP_PATH,
+        validation_command=validation_command,
+        allowed_write_paths=(FLASK_TUTORIAL_DOC_PATH, FLASK_TUTORIAL_APP_PATH),
+        typed_actions=(
+            MakedirsExistOkRewriteAction(
+                target_file=FLASK_TUTORIAL_DOC_PATH,
+                path_expression="app.instance_path",
+                rationale=(
+                    "rewrite the tutorial documentation code block to use the "
+                    "same reusable filesystem idiom as the Python source file"
+                ),
+            ),
+            MakedirsExistOkRewriteAction(
+                target_file=FLASK_TUTORIAL_APP_PATH,
+                function_name="create_app",
+                path_expression="app.instance_path",
+                rationale=(
+                    "replace the swallowed OSError around instance-folder "
+                    "creation with os.makedirs(..., exist_ok=True)"
+                ),
+            ),
+        ),
+        action_family_reuse_evidence=(
+            {
+                "action_kind": "makedirs_exist_ok_rewrite",
+                "reusable_parameters": [
+                    "target_file",
+                    "class_name",
+                    "function_name",
+                    "module_name",
+                    "path_expression",
+                    "exception_name",
+                ],
+                "evidence": (
+                    "targets the common os.makedirs try/except/pass filesystem "
+                    "idiom by call, path expression, and exception handler; it "
+                    "is not a flask#5903-specific action and does not use "
+                    "statement_block_replace"
+                ),
+            },
+        ),
+    )
+
+
 def materialize_heldout_typed_builder_candidate(
     repo_path: Path,
     spec: HeldoutTypedBuilderSpec,
@@ -1424,14 +1546,33 @@ def render_candidate_report(candidate: HeldoutTypedBuilderCandidate) -> str:
 def _typed_builder_layer_judgment(actions: Sequence[TypedAction]) -> dict[str, object]:
     action_kinds = [action.kind for action in actions]
     uses_statement_block_replace = "statement_block_replace" in action_kinds
+    pure_typed_action_kinds = {
+        "assignment_annotation_update",
+        "assignment_type_ignore_update",
+        "boolean_condition_insert",
+        "class_scope_annotation_move",
+        "function_signature_update",
+        "import_member_remove",
+        "return_annotation_update",
+        "type_alias_update",
+        "type_annotation_update",
+    }
+    stays_pure_typed_builder = (
+        not uses_statement_block_replace
+        and set(action_kinds) <= pure_typed_action_kinds
+    )
+    if uses_statement_block_replace:
+        layer = "general_ast_typed_builder"
+    elif stays_pure_typed_builder:
+        layer = "pure_typed_builder"
+    elif set(action_kinds) == {"makedirs_exist_ok_rewrite"}:
+        layer = "filesystem_idiom_builder"
+    else:
+        layer = "mixed_reusable_builder"
     return {
         "schema_version": "typed-builder-layer-judgment-v1",
-        "layer": (
-            "general_ast_typed_builder"
-            if uses_statement_block_replace
-            else "pure_typed_builder"
-        ),
-        "stays_pure_typed_builder_layer": not uses_statement_block_replace,
+        "layer": layer,
+        "stays_pure_typed_builder_layer": stays_pure_typed_builder,
         "uses_statement_block_replace": uses_statement_block_replace,
         "action_kinds": action_kinds,
     }
@@ -1522,6 +1663,16 @@ def _apply_typed_action(source: str, action: TypedAction) -> str:
             function_name=action.function_name,
             old_block=action.old_block,
             new_block=action.new_block,
+        )
+    if isinstance(action, MakedirsExistOkRewriteAction):
+        return _rewrite_makedirs_exist_ok_idiom(
+            source,
+            target_file=action.target_file,
+            class_name=action.class_name,
+            function_name=action.function_name,
+            module_name=action.module_name,
+            path_expression=action.path_expression,
+            exception_name=action.exception_name,
         )
     if isinstance(action, ReturnAnnotationUpdateAction):
         return _ensure_return_annotation(
@@ -2054,6 +2205,188 @@ def _replace_statement_block(
     )
     _parse_python(patched, filename=target_file, field="typed_builder")
     return patched
+
+
+def _rewrite_makedirs_exist_ok_idiom(
+    source: str,
+    *,
+    target_file: str,
+    class_name: str | None,
+    function_name: str | None,
+    module_name: str,
+    path_expression: str,
+    exception_name: str,
+) -> str:
+    _parse_expression(path_expression, target_file=target_file)
+    _parse_statement_block(
+        f"{module_name}.makedirs({path_expression}, exist_ok=True)",
+        target_file=target_file,
+    )
+    if target_file.endswith(".py"):
+        return _rewrite_python_makedirs_exist_ok_idiom(
+            source,
+            target_file=target_file,
+            class_name=class_name,
+            function_name=function_name,
+            module_name=module_name,
+            path_expression=path_expression,
+            exception_name=exception_name,
+        )
+    return _rewrite_text_makedirs_exist_ok_idiom(
+        source,
+        target_file=target_file,
+        module_name=module_name,
+        path_expression=path_expression,
+        exception_name=exception_name,
+    )
+
+
+def _rewrite_python_makedirs_exist_ok_idiom(
+    source: str,
+    *,
+    target_file: str,
+    class_name: str | None,
+    function_name: str | None,
+    module_name: str,
+    path_expression: str,
+    exception_name: str,
+) -> str:
+    tree = _parse_python(source, filename=target_file, field="typed_builder")
+    if function_name is not None:
+        scope = _find_scoped_function(
+            tree,
+            class_name=class_name,
+            parent_function_name=None,
+            function_name=function_name,
+        )
+        if scope is None or scope.end_lineno is None:
+            target = _function_target_label(class_name, None, function_name)
+            raise HeldoutTypedBuilderCandidateError(
+                f"function not found: {target}",
+                blocker={
+                    "field": "typed_builder",
+                    "reason": "typed_target_not_found",
+                    "message": f"function not found: {target}",
+                },
+            )
+        nodes = ast.walk(scope)
+    else:
+        nodes = ast.walk(tree)
+
+    call_name = f"{module_name}.makedirs"
+    matches = [
+        node
+        for node in nodes
+        if isinstance(node, ast.Try)
+        and _is_makedirs_try_except_pass(
+            node,
+            call_name=call_name,
+            path_expression=path_expression,
+            exception_name=exception_name,
+        )
+    ]
+    if len(matches) != 1:
+        raise HeldoutTypedBuilderCandidateError(
+            f"makedirs try/except/pass match count was {len(matches)}",
+            blocker={
+                "field": "typed_builder",
+                "reason": "makedirs_exist_ok_rewrite_blocked",
+                "message": (
+                    "os.makedirs try/except/pass idiom must match exactly once"
+                ),
+            },
+        )
+
+    match = matches[0]
+    if match.end_lineno is None:
+        raise HeldoutTypedBuilderCandidateError(
+            "makedirs try/except/pass line range is unavailable",
+            blocker={
+                "field": "typed_builder",
+                "reason": "makedirs_exist_ok_rewrite_blocked",
+                "message": "matched try node has no end line",
+            },
+        )
+
+    lines = source.splitlines(keepends=True)
+    original = lines[match.lineno - 1]
+    indent = original[: len(original) - len(original.lstrip())]
+    replacement = f"{indent}{call_name}({path_expression}, exist_ok=True)\n"
+    patched = "".join(
+        lines[: match.lineno - 1] + [replacement] + lines[match.end_lineno :]
+    )
+    _parse_python(patched, filename=target_file, field="typed_builder")
+    return patched
+
+
+def _is_makedirs_try_except_pass(
+    node: ast.Try,
+    *,
+    call_name: str,
+    path_expression: str,
+    exception_name: str,
+) -> bool:
+    if node.orelse or node.finalbody:
+        return False
+    if len(node.body) != 1 or len(node.handlers) != 1:
+        return False
+    statement = node.body[0]
+    if not isinstance(statement, ast.Expr) or not isinstance(statement.value, ast.Call):
+        return False
+    call = statement.value
+    if ast.unparse(call.func) != call_name:
+        return False
+    if len(call.args) != 1 or ast.unparse(call.args[0]) != path_expression:
+        return False
+    if call.keywords:
+        return False
+    handler = node.handlers[0]
+    if handler.type is None or ast.unparse(handler.type) != exception_name:
+        return False
+    return len(handler.body) == 1 and isinstance(handler.body[0], ast.Pass)
+
+
+def _rewrite_text_makedirs_exist_ok_idiom(
+    source: str,
+    *,
+    target_file: str,
+    module_name: str,
+    path_expression: str,
+    exception_name: str,
+) -> str:
+    lines = source.splitlines(keepends=True)
+    call_name = f"{module_name}.makedirs"
+    matches: list[tuple[int, str]] = []
+    for index in range(0, len(lines) - 3):
+        first = lines[index].rstrip("\n")
+        indent = first[: len(first) - len(first.lstrip())]
+        if first.strip() != "try:":
+            continue
+        expected = [
+            f"{indent}try:",
+            f"{indent}    {call_name}({path_expression})",
+            f"{indent}except {exception_name}:",
+            f"{indent}    pass",
+        ]
+        actual = [lines[index + offset].rstrip("\n") for offset in range(4)]
+        if actual == expected:
+            matches.append((index, indent))
+    if len(matches) != 1:
+        raise HeldoutTypedBuilderCandidateError(
+            f"makedirs text idiom match count was {len(matches)}",
+            blocker={
+                "field": "typed_builder",
+                "reason": "makedirs_exist_ok_rewrite_blocked",
+                "message": (
+                    "text os.makedirs try/except/pass idiom must match exactly "
+                    f"once in {target_file}"
+                ),
+            },
+        )
+
+    start, indent = matches[0]
+    replacement = f"{indent}{call_name}({path_expression}, exist_ok=True)\n"
+    return "".join(lines[:start] + [replacement] + lines[start + 4 :])
 
 
 def _remove_instance_assignment_annotations(
@@ -2837,6 +3170,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             "click-3396",
             "requests-7437",
             "flask-5808",
+            "flask-5903",
         ),
         default="click-3422",
     )
@@ -2852,6 +3186,8 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.candidate == "click-3396":
         spec = build_click_sentinel_parser_spec(args.repo_path)
+    elif args.candidate == "flask-5903":
+        spec = build_flask_instance_folder_spec(args.repo_path)
     elif args.candidate == "flask-5808":
         spec = build_flask_jinja_autoescape_spec(args.repo_path)
     elif args.candidate == "requests-7437":

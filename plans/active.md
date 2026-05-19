@@ -112,22 +112,19 @@ This is the live coordinator board. Keep it current and compact.
   actions; `statement_block_replace` was not needed. `MAT-015` materializes
   and live-validates `pallets/flask#5808` in the pure typed-builder layer
   using reusable `function_signature_update`; `statement_block_replace` was
-  not needed.
+  not needed. `MAT-016` materializes and live-validates `pallets/flask#5903`
+  in a reusable filesystem idiom builder layer using
+  `makedirs_exist_ok_rewrite` for both the tutorial docs code block and Python
+  source file; `statement_block_replace` was not needed.
 
 ## Active Tasks
 
-- `MAT-016`: assigned to attempt the remaining held-out
-  `pallets/flask#5903` try/except/pass filesystem idiom rewrite with reusable
-  materializer action records. Keep the slice in
-  `j3/heldout_typed_builder_candidate.py`,
-  `tests/test_heldout_typed_builder_candidate.py`, optional focused docs,
-  generated `/tmp` artifacts, and plan updates. Do not edit transition
-  scoring, issue/PR ranking, validation policy, local knowledge, or matrix
-  manifests.
+No active worker task is currently assigned in this workspace after `MAT-016`
+completion. Coordinator review should select the next bounded ready task.
 
 ## Ready Queue
 
-No ready worker task is currently queued while `MAT-016` is active.
+No ready worker task is currently queued pending coordinator review.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
@@ -152,6 +149,20 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `MAT-016`: materialized and live-validated `pallets/flask#5903` from base
+  `407eb76b27884848383a37c7274654f0271e4bc4` to accepted head
+  `3d03098a97ddc6a908aa4a50c2ef7381f8297d0a`. The candidate changed
+  `docs/tutorial/factory.rst` and `examples/tutorial/flaskr/__init__.py`,
+  matched the accepted PR diff after normalization, and passed
+  `python -m py_compile examples/tutorial/flaskr/__init__.py` in `0.021s`.
+  The row uses reusable `makedirs_exist_ok_rewrite` action records in a
+  filesystem idiom builder layer; no `statement_block_replace` was used.
+  The Python file has AST parse metadata, while the RST tutorial file records
+  expected non-Python AST parse failure plus diff/hash metadata. Artifacts:
+  `/tmp/j3-mat-016-flask-5903-final/candidate.json`,
+  `/tmp/j3-mat-016-flask-5903-final/report.md`,
+  `/tmp/j3-mat-016-flask-5903-final/candidate.diff`, and
+  `/tmp/j3-mat-016-flask-5903-final/accepted.diff`.
 - `MAT-015`: materialized and live-validated `pallets/flask#5808` from base
   `85793d6c223dd845e8f218403a5ced83041d37e1` to accepted head
   `dbd4c2882593f6118103120aa96fa9acdf7deedb`. The candidate changed only

@@ -7,6 +7,7 @@ from textwrap import dedent
 from j3.heldout_typed_builder_candidate import (
     build_click_sentinel_parser_spec,
     build_click_utils_annotation_spec,
+    build_flask_instance_folder_spec,
     build_flask_jinja_autoescape_spec,
     build_requests_headers_mapping_spec,
     build_requests_response_reason_spec,
@@ -440,6 +441,152 @@ def test_flask_jinja_autoescape_validation_command_can_pass(
     assert record["residual_labels"] == ["candidate_validation_passed"]
 
 
+def test_flask_instance_folder_spec_uses_reusable_filesystem_idiom(
+    tmp_path: Path,
+) -> None:
+    repo = _write_flask_5903_fixture_repo(tmp_path / "flask")
+
+    spec = build_flask_instance_folder_spec(repo)
+
+    assert [action.kind for action in spec.typed_actions] == [
+        "makedirs_exist_ok_rewrite",
+        "makedirs_exist_ok_rewrite",
+    ]
+    assert spec.allowed_write_paths == (
+        "docs/tutorial/factory.rst",
+        "examples/tutorial/flaskr/__init__.py",
+    )
+    for action in spec.typed_actions:
+        assert "flask" not in action.kind
+        assert "5903" not in action.kind
+        assert action.kind != "statement_block_replace"
+
+
+def test_materializes_flask_instance_folder_without_statement_block_replace(
+    tmp_path: Path,
+) -> None:
+    accepted_repo = _write_flask_5903_fixture_repo(tmp_path / "accepted")
+    (accepted_repo / "docs" / "tutorial" / "factory.rst").write_text(
+        _flask_5903_factory_after(),
+        encoding="utf-8",
+    )
+    (
+        accepted_repo / "examples" / "tutorial" / "flaskr" / "__init__.py"
+    ).write_text(
+        _flask_5903_app_after(),
+        encoding="utf-8",
+    )
+    accepted_diff = tmp_path / "accepted.diff"
+    accepted_diff.write_text(
+        _git_stdout(
+            accepted_repo,
+            "diff",
+            "--",
+            "docs/tutorial/factory.rst",
+            "examples/tutorial/flaskr/__init__.py",
+        ),
+        encoding="utf-8",
+    )
+
+    repo = _write_flask_5903_fixture_repo(tmp_path / "candidate")
+    candidate = materialize_heldout_typed_builder_candidate(
+        repo,
+        build_flask_instance_folder_spec(repo, base_ref=_repo_head(repo)),
+        write=True,
+        validate=False,
+        accepted_diff_path=accepted_diff,
+    )
+    record = candidate.to_record()
+
+    assert record["status"] == "materialized"
+    assert record["residual_labels"] == ["candidate_validation_deferred"]
+    assert record["mutation_scope"]["mode"] == "heldout_typed_builder_multi_file"
+    assert record["mutation_scope"]["actual_changed_files"] == [
+        "docs/tutorial/factory.rst",
+        "examples/tutorial/flaskr/__init__.py",
+    ]
+    assert record["mutation_scope"]["writes_outside_allowlist"] == []
+    assert record["accepted_diff_comparison"]["accepted_changed_files"] == [
+        "docs/tutorial/factory.rst",
+        "examples/tutorial/flaskr/__init__.py",
+    ]
+    assert record["accepted_diff_comparison"]["normalized_diff_equal"] is True
+    assert record["typed_builder_layer_judgment"] == {
+        "schema_version": "typed-builder-layer-judgment-v1",
+        "layer": "filesystem_idiom_builder",
+        "stays_pure_typed_builder_layer": False,
+        "uses_statement_block_replace": False,
+        "action_kinds": [
+            "makedirs_exist_ok_rewrite",
+            "makedirs_exist_ok_rewrite",
+        ],
+    }
+
+    files = record["candidate_after"]["files"]
+    assert set(files) == {
+        "docs/tutorial/factory.rst",
+        "examples/tutorial/flaskr/__init__.py",
+    }
+    assert (
+        files["examples/tutorial/flaskr/__init__.py"]["candidate_after"][
+            "ast_parse_ok"
+        ]
+        is True
+    )
+    assert (
+        files["docs/tutorial/factory.rst"]["candidate_after"]["ast_parse_ok"]
+        is False
+    )
+    candidate_diff = record["candidate_after"]["candidate_diff"]
+    assert "-        try:\n" in candidate_diff
+    assert "-            os.makedirs(app.instance_path)\n" in candidate_diff
+    assert "-        except OSError:\n" in candidate_diff
+    assert "+        os.makedirs(app.instance_path, exist_ok=True)\n" in candidate_diff
+    action_kinds = [action["kind"] for action in record["action_records"]]
+    assert "statement_block_replace" not in action_kinds
+
+
+def test_flask_instance_folder_validation_command_can_pass(
+    tmp_path: Path,
+) -> None:
+    accepted_repo = _write_flask_5903_fixture_repo(tmp_path / "accepted")
+    (accepted_repo / "docs" / "tutorial" / "factory.rst").write_text(
+        _flask_5903_factory_after(),
+        encoding="utf-8",
+    )
+    (
+        accepted_repo / "examples" / "tutorial" / "flaskr" / "__init__.py"
+    ).write_text(
+        _flask_5903_app_after(),
+        encoding="utf-8",
+    )
+    accepted_diff = tmp_path / "accepted.diff"
+    accepted_diff.write_text(
+        _git_stdout(
+            accepted_repo,
+            "diff",
+            "--",
+            "docs/tutorial/factory.rst",
+            "examples/tutorial/flaskr/__init__.py",
+        ),
+        encoding="utf-8",
+    )
+
+    repo = _write_flask_5903_fixture_repo(tmp_path / "candidate")
+    candidate = materialize_heldout_typed_builder_candidate(
+        repo,
+        build_flask_instance_folder_spec(repo, base_ref=_repo_head(repo)),
+        write=True,
+        validate=True,
+        accepted_diff_path=accepted_diff,
+    )
+    record = candidate.to_record()
+
+    assert record["status"] == "validated"
+    assert record["validation"]["status"] == "passed"
+    assert record["residual_labels"] == ["candidate_validation_passed"]
+
+
 def test_click_sentinel_parser_spec_uses_general_action_families(
     tmp_path: Path,
 ) -> None:
@@ -692,6 +839,33 @@ def _write_flask_5808_fixture_repo(repo: Path) -> Path:
     (repo / "src" / "flask" / "sansio").mkdir(parents=True)
     (repo / "src" / "flask" / "sansio" / "app.py").write_text(
         _flask_5808_app_before(),
+        encoding="utf-8",
+    )
+    subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+    subprocess.run(["git", "add", "."], cwd=repo, check=True)
+    subprocess.run(
+        ["git", "commit", "-q", "-m", "fixture"],
+        cwd=repo,
+        check=True,
+        env={
+            "GIT_AUTHOR_NAME": "Tester",
+            "GIT_AUTHOR_EMAIL": "tester@example.com",
+            "GIT_COMMITTER_NAME": "Tester",
+            "GIT_COMMITTER_EMAIL": "tester@example.com",
+        },
+    )
+    return repo
+
+
+def _write_flask_5903_fixture_repo(repo: Path) -> Path:
+    (repo / "docs" / "tutorial").mkdir(parents=True)
+    (repo / "examples" / "tutorial" / "flaskr").mkdir(parents=True)
+    (repo / "docs" / "tutorial" / "factory.rst").write_text(
+        _flask_5903_factory_before(),
+        encoding="utf-8",
+    )
+    (repo / "examples" / "tutorial" / "flaskr" / "__init__.py").write_text(
+        _flask_5903_app_before(),
         encoding="utf-8",
     )
     subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
@@ -1650,5 +1824,121 @@ def _flask_5808_app_after() -> str:
                 if filename is None:
                     return True
                 return filename.endswith((".html", ".htm", ".xml", ".xhtml", ".svg"))
+        '''
+    ).lstrip()
+
+
+def _flask_5903_factory_before() -> str:
+    return dedent(
+        '''
+        Application Setup
+        =================
+
+        .. code-block:: python
+
+            def create_app(test_config=None):
+                app = Flask(__name__, instance_relative_config=True)
+
+                if test_config is None:
+                    app.config.from_pyfile("config.py", silent=True)
+                else:
+                    app.config.from_mapping(test_config)
+
+                # ensure the instance folder exists
+                try:
+                    os.makedirs(app.instance_path)
+                except OSError:
+                    pass
+
+                # a simple page that says hello
+                @app.route('/hello')
+                def hello():
+                    return 'Hello, World!'
+        '''
+    ).lstrip()
+
+
+def _flask_5903_factory_after() -> str:
+    return dedent(
+        '''
+        Application Setup
+        =================
+
+        .. code-block:: python
+
+            def create_app(test_config=None):
+                app = Flask(__name__, instance_relative_config=True)
+
+                if test_config is None:
+                    app.config.from_pyfile("config.py", silent=True)
+                else:
+                    app.config.from_mapping(test_config)
+
+                # ensure the instance folder exists
+                os.makedirs(app.instance_path, exist_ok=True)
+
+                # a simple page that says hello
+                @app.route('/hello')
+                def hello():
+                    return 'Hello, World!'
+        '''
+    ).lstrip()
+
+
+def _flask_5903_app_before() -> str:
+    return dedent(
+        '''
+        import os
+
+        from flask import Flask
+
+
+        def create_app(test_config=None):
+            app = Flask(__name__, instance_relative_config=True)
+
+            if test_config is None:
+                app.config.from_pyfile("config.py", silent=True)
+            else:
+                app.config.update(test_config)
+
+            # ensure the instance folder exists
+            try:
+                os.makedirs(app.instance_path)
+            except OSError:
+                pass
+
+            @app.route("/hello")
+            def hello():
+                return "Hello, World!"
+
+            return app
+        '''
+    ).lstrip()
+
+
+def _flask_5903_app_after() -> str:
+    return dedent(
+        '''
+        import os
+
+        from flask import Flask
+
+
+        def create_app(test_config=None):
+            app = Flask(__name__, instance_relative_config=True)
+
+            if test_config is None:
+                app.config.from_pyfile("config.py", silent=True)
+            else:
+                app.config.update(test_config)
+
+            # ensure the instance folder exists
+            os.makedirs(app.instance_path, exist_ok=True)
+
+            @app.route("/hello")
+            def hello():
+                return "Hello, World!"
+
+            return app
         '''
     ).lstrip()

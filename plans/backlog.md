@@ -3088,7 +3088,7 @@ Long-term target:
 
 ### MAT-016: Flask #5903 filesystem idiom materialization probe
 
-- Status: active
+- Status: done
 - Why: after `MAT-015`, the MAT-013 held-out typed/general-AST gap still has
   two unresolved rows. `pallets/flask#5903` tests whether a common
   try/except/pass filesystem idiom can be represented as a reusable
@@ -3109,6 +3109,14 @@ Long-term target:
   action is insufficient.
 - Tests: focused materializer tests, plan consistency, `git diff --check`, and
   live validation or a recorded validation blocker.
+- Completion note: materialized and live-validated `pallets/flask#5903` from
+  base `407eb76b27884848383a37c7274654f0271e4bc4` to accepted head
+  `3d03098a97ddc6a908aa4a50c2ef7381f8297d0a`. The candidate changed the two
+  accepted files, `docs/tutorial/factory.rst` and
+  `examples/tutorial/flaskr/__init__.py`, matched the accepted PR diff after
+  normalization, passed `python -m py_compile
+  examples/tutorial/flaskr/__init__.py`, and used reusable
+  `makedirs_exist_ok_rewrite` actions without `statement_block_replace`.
 
 ## Next Recommended Queue
 

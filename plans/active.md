@@ -65,23 +65,10 @@ This is the live coordinator board. Keep it current and compact.
   label-dependent and must not promote behavior-only metrics beyond
   shadow-only.
 
-### `MAT-013`: Refresh real PR materialization coverage after general-AST expansion
-
-- Status: active
-- Owner: worker Mendel (`019e3df2-7640-7c03-a84a-0064de8a88c8`).
-- Write scope: materialization coverage analysis docs/data, optional small
-  helper tests if needed, generated artifacts under `/tmp`, and task-specific
-  planning updates. Avoid issue/PR ranking or validation-policy modules.
-- Acceptance: rerun or update the MAT-007 real PR materialization panel using
-  MAT-010 through MAT-012 evidence; record remaining bucket counts, which rows
-  are now covered by reusable typed/general-AST actions, whether
-  `statement_block_replace` changes any risk classification, and the next
-  bounded materialization row or blocker.
-
 ## Ready Queue
 
-The active set is at the default parallelism limit. Reassess after `VAL-004`
-or `MAT-013` returns.
+One active worker remains. Reassess after `VAL-004` returns or assign the next
+non-overlapping materialization task.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
@@ -105,6 +92,21 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `MAT-013`: refreshed the MAT-007 real PR materialization coverage panel using
+  MAT-010 through MAT-012 evidence. Three of the seven held-out
+  `general_typed_builder` rows are now materialized and live-validated:
+  `click-3422` and `requests-7441` by pure typed-builder actions, and
+  `click-3396` by broader general-AST actions. Remaining counts after this
+  overlay are `current_structured_action = 4`, `general_typed_builder = 4`,
+  `repo_convention_builder = 4`, `constrained_local_generator = 7`, and
+  `not_currently_expressible = 2`. Bounded `statement_block_replace` changes
+  only the `click-3396` risk classification: covered, but higher risk than the
+  pure typed-builder rows and not a reason to reclassify any remaining row as
+  covered. Next bounded materialization row: `psf/requests#7437`. Artifacts:
+  `docs/MAT_013_REAL_PR_MATERIALIZATION_COVERAGE_REFRESH_2026-05-18.md`,
+  `docs/MAT_013_REAL_PR_MATERIALIZATION_COVERAGE_REFRESH_2026-05-18.jsonl`,
+  and
+  `/tmp/j3-mat-013-real-pr-materialization-refresh/MAT_013_REAL_PR_MATERIALIZATION_COVERAGE_REFRESH_2026-05-18.jsonl`.
 - `VAL-003`: added a shadow-only coverage-gap decoy policy probe over DATA-039,
   DATA-040, and VAL-002 artifacts. Strict issue/PR ranking remains `blocked`
   because two coverage-gap product blockers are not behavior-observable hard

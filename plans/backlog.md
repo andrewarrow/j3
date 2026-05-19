@@ -2524,7 +2524,7 @@ Long-term target:
 
 ### MAT-013: Refresh real PR materialization coverage after general-AST expansion
 
-- Status: active
+- Status: done
 - Why: MAT-012 turned a hard held-out row green, but it did so by adding
   bounded `statement_block_replace`, which is broader and riskier than prior
   pure typed-builder action families. The materialization coverage map should
@@ -2539,13 +2539,29 @@ Long-term target:
   bounded materialization row or blocker.
 - Tests: focused analysis command/test if present, plan consistency, and
   `git diff --check`.
+- Completion note: refreshed the MAT-007 held-out panel with a MAT-010 through
+  MAT-012 overlay. Three of seven held-out `general_typed_builder` rows are now
+  materialized and live-validated: `click-3422` and `requests-7441` by pure
+  typed-builder actions, and `click-3396` by broader general-AST actions.
+  Remaining counts after the overlay are `current_structured_action = 4`,
+  `general_typed_builder = 4`, `repo_convention_builder = 4`,
+  `constrained_local_generator = 7`, and `not_currently_expressible = 2`.
+  Bounded `statement_block_replace` changes only `click-3396`'s risk
+  classification: it is covered, but as higher-risk broader general-AST
+  evidence, not as a pure typed-builder row. Next bounded materialization row:
+  `psf/requests#7437`. Artifacts:
+  `docs/MAT_013_REAL_PR_MATERIALIZATION_COVERAGE_REFRESH_2026-05-18.md`,
+  `docs/MAT_013_REAL_PR_MATERIALIZATION_COVERAGE_REFRESH_2026-05-18.jsonl`,
+  and
+  `/tmp/j3-mat-013-real-pr-materialization-refresh/MAT_013_REAL_PR_MATERIALIZATION_COVERAGE_REFRESH_2026-05-18.jsonl`.
 
 ## Next Recommended Queue
 
 Start with these unless fresh evidence changes the order:
 
 1. `VAL-004`: reusable behavior-negative-only issue/PR shadow gate.
-2. `MAT-013`: refresh real PR materialization coverage after general-AST
-   expansion.
+2. Follow-up from `MAT-013`: materialize `psf/requests#7437` to test whether
+   assignment annotation/type-ignore placement stays in the pure typed-builder
+   layer without relying on `statement_block_replace`.
 3. Follow-up from `KNOW-003`: add or review local import-style knowledge
    records for held-out tests-only rows that now report `missing_knowledge`.

@@ -4147,3 +4147,30 @@ meaningful work. Do not replace this file with a daily reset.
   `VAL-004`; worker Mendel (`019e3df2-7640-7c03-a84a-0064de8a88c8`) is
   running `MAT-013`.
 - Blockers: none.
+
+### 2026-05-18 - MAT-013 - Typed/general-AST materialization coverage refresh
+
+- Owner: worker Mendel (`019e3df2-7640-7c03-a84a-0064de8a88c8`).
+- Files changed:
+  `docs/MAT_013_REAL_PR_MATERIALIZATION_COVERAGE_REFRESH_2026-05-18.md`,
+  `docs/MAT_013_REAL_PR_MATERIALIZATION_COVERAGE_REFRESH_2026-05-18.jsonl`,
+  `plans/active.md`, `plans/backlog.md`, and `plans/progress.md`.
+- Tests: focused MAT-007 overlay count command -> passed; `pytest
+  tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check` ->
+  passed.
+- Result: refreshed the MAT-007 held-out panel using MAT-010 through MAT-012
+  evidence. Three of the seven held-out `general_typed_builder` rows are now
+  materialized and live-validated: `click-3422` and `requests-7441` by pure
+  typed-builder actions, and `click-3396` by broader general-AST actions.
+  Remaining counts after the overlay are `current_structured_action = 4`,
+  `general_typed_builder = 4`, `repo_convention_builder = 4`,
+  `constrained_local_generator = 7`, and `not_currently_expressible = 2`.
+  Bounded `statement_block_replace` changes only `click-3396`'s risk
+  classification: it is covered, but higher-risk broader general-AST evidence
+  rather than pure typed-builder evidence.
+- Commit: pending.
+- Push: pending.
+- Next: materialize `psf/requests#7437` as the next bounded typed row, with a
+  hard check that assignment annotation/type-ignore placement stays in the pure
+  typed-builder layer before using `statement_block_replace`.
+- Blockers: none.

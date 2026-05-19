@@ -4652,10 +4652,8 @@ meaningful work. Do not replace this file with a daily reset.
   `source_embedding_unavailable` and
   `candidate_after_embedding_unavailable` as missing feature evidence.
   Production transition ranking remains unchanged and shadow-only.
-- Commit: 3903982 implementation/evidence; commit metadata: fcd7515;
-  push-result metadata: 0430157.
-- Push: implementation/evidence, commit-metadata, and push-result commits
-  pushed successfully to `origin/main`.
+- Commit: pending.
+- Push: pending.
 - Next: coordinator should review `TRANS-006` together with the active
   `ACT-003` search-budget result before assigning more transition residual
   work.
@@ -5896,8 +5894,10 @@ meaningful work. Do not replace this file with a daily reset.
   an exact target-selection blocker for function-name targeting because
   `consume_value` is ambiguous in Click; the final row uses bounded delimited
   source-region markers rather than adding class-qualified target selection.
-- Commit: pending.
-- Push: pending.
+- Commit: 3903982 implementation/evidence; commit metadata: fcd7515;
+  push-result metadata: 0430157; final metadata in this commit.
+- Push: implementation/evidence, commit-metadata, push-result, and final
+  metadata commits pushed successfully to `origin/main`.
 - Next: coordinator should review `MAT-024` and decide whether to attempt the
   broader `click-3420` ANSI wrapping constrained row.
 - Blockers: none.

@@ -4775,8 +4775,8 @@ meaningful work. Do not replace this file with a daily reset.
   `candidate_after_embedding_unavailable`. Suite gate:
   `not_ready_underperforms_existing_rank_order`. Guarded-trial decision:
   `remain_shadow_only`.
-- Commit: pending.
-- Push: pending.
+- Commit: 8027be3.
+- Push: succeeded.
 - Next: do not spend on a full standard matrix rerun as the next step from
   this subset result alone; address the remaining scorer-ranking residuals
   first. `TRANS-003` remains blocked.

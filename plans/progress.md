@@ -5901,3 +5901,22 @@ meaningful work. Do not replace this file with a daily reset.
 - Next: coordinator should review `MAT-024` and decide whether to attempt the
   broader `click-3420` ANSI wrapping constrained row.
 - Blockers: none.
+
+### 2026-05-19 - Coordinator Review And Dispatch - MAT-025
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, and
+  `plans/progress.md`.
+- Tests: `python -m py_compile j3/heldout_source_region_candidate.py
+  tests/test_heldout_source_region_candidate.py` -> passed; `pytest
+  tests/test_heldout_source_region_candidate.py -q` -> 13 passed; `pytest
+  tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check` ->
+  passed.
+- Result: reviewed `MAT-024`; full accepted-diff parity, source/test scoped
+  parity, source/docs/test scoped parity, mutation scope, JSON artifact, and
+  live Click validation are consistent. `click-3420` is now the final
+  remaining constrained held-out row from the MAT-019 panel.
+- Next: dispatch a worker for `MAT-025` to attempt `pallets/click#3420`, the
+  broader ANSI wrapping source/test row, with reusable source-region and pytest
+  insertion/refinement actions.
+- Blockers: none.

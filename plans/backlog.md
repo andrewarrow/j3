@@ -3421,11 +3421,37 @@ Long-term target:
   `/tmp/j3-mat-024-click-3364/final/accepted.diff`, and
   `/tmp/j3-mat-024-click-3364/final/accepted-files.txt`.
 
+### MAT-025: Held-out Click ANSI wrapping source/test candidate
+
+- Status: active
+- Why: after `MAT-024`, `pallets/click#3420` is the final remaining
+  constrained held-out row from the MAT-019 panel. It is broader than
+  `click-3434` and `click-3364`: ANSI-aware text wrapping requires local
+  text-measurement behavior plus formatter regression tests.
+- Write scope: held-out source-region candidate materializer extensions and
+  focused tests as needed, optional `docs/MAT_025_*`, generated artifacts
+  under `/tmp`, and plan updates. Avoid transition scoring, issue/PR ranking,
+  validation-policy changes, local-knowledge records, matrix manifests, and
+  unrelated materializer families.
+- Acceptance: attempt `pallets/click#3420` using reusable bounded
+  source-region and pytest insertion/refinement action records, not a
+  PR-named action kind. Determine and record pinned base/head refs, accepted
+  changed files, validation command, mutation scope, candidate-after
+  diff/AST/hash metadata, accepted-diff comparison, and live validation result.
+  Explicitly separate full accepted-diff parity from source/test scoped parity
+  if the accepted PR spans docs, changelog, or other companion files. If target
+  selection, source-region materialization, pytest insertion/refinement,
+  parity, or validation blocks, record the exact blocker without broadening
+  silently.
+- Tests: focused source-region candidate tests, JSON/report checks if added,
+  `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and live
+  focused validation when materialized.
+
 ## Next Recommended Queue
 
 Start with these unless fresh evidence changes the order:
 
-1. Reassess the broader `click-3420` ANSI wrapping constrained row after
-   `MAT-024`.
+1. Complete `MAT-025` for the broader `click-3420` ANSI wrapping constrained
+   row, then refresh constrained-source coverage counts.
 2. Separately decide whether to pursue the `TRANS-012` shadow-advice-only
    residual examples; product transition routing remains shadow-only.

@@ -599,6 +599,8 @@ def _failure_hint_record(hint: PytestFailureHint) -> dict[str, object]:
         "missing_keys": sorted(hint.missing_keys),
         "asserted_mapping_keys": sorted(hint.asserted_mapping_keys),
         "type_error_names": sorted(hint.type_error_names),
+        "expected_strings": sorted(hint.expected_strings),
+        "assertion_diff_lines": list(hint.assertion_diff_lines),
         "assertions": [
             {
                 "operator": assertion.operator,

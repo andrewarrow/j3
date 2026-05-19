@@ -1074,7 +1074,11 @@ def _mapping_target_features(
         key = params.get("key", target_context.get("dict_value_key"))
         if isinstance(key, str) and key in asserted_keys:
             features["mapping_value_key_matches_asserted_key"] = 1.0
-        if _mapping_value_matches_assertion_delta(params, assertions):
+        if _mapping_value_matches_assertion_delta(
+            params,
+            assertions,
+            failure_hints=failure_hints,
+        ):
             features["mapping_value_matches_assertion_delta"] = 1.0
 
     if action_kind == "change_dict_key":
@@ -1165,6 +1169,8 @@ def _mapping_hint_key_sets(failure_hints: Sequence[object]) -> tuple[set[str], s
 def _mapping_value_matches_assertion_delta(
     params: Mapping[str, object],
     assertions: Sequence[Mapping[str, object]],
+    *,
+    failure_hints: Sequence[object] = (),
 ) -> bool:
     original = params.get("from")
     replacement = params.get("to")
@@ -1174,7 +1180,50 @@ def _mapping_value_matches_assertion_delta(
             assertion.get("expected"),
         ):
             return True
-    return False
+    return _mapping_value_matches_assertion_diff_lines(
+        original,
+        replacement,
+        failure_hints,
+    )
+
+
+def _mapping_value_matches_assertion_diff_lines(
+    original: object,
+    replacement: object,
+    failure_hints: Sequence[object],
+) -> bool:
+    if not isinstance(original, str) or not isinstance(replacement, str):
+        return False
+
+    actual_lines: list[str] = []
+    expected_lines: list[str] = []
+    for hint in failure_hints:
+        record = _mapping(hint)
+        for raw_line in _list(record.get("assertion_diff_lines")):
+            if not isinstance(raw_line, str):
+                continue
+            line = _normalized_assertion_diff_line(raw_line)
+            if not line:
+                continue
+            left, separator, right = line.partition(" != ")
+            if separator and original in left and replacement in right:
+                return True
+            if line.startswith("+ "):
+                actual_lines.append(line[2:].strip())
+            elif line.startswith("- "):
+                expected_lines.append(line[2:].strip())
+
+    return (
+        any(original in line for line in actual_lines)
+        and any(replacement in line for line in expected_lines)
+    )
+
+
+def _normalized_assertion_diff_line(line: str) -> str:
+    stripped = line.strip()
+    if stripped.startswith("E "):
+        stripped = stripped[2:].strip()
+    return stripped
 
 
 def _mapping_existing_key_rename_to_missing_key(
@@ -1351,7 +1400,11 @@ def _boundary_literal_features(
             for hint in failure_hints
             for assertion in _list(_mapping(hint).get("assertions"))
         ]
-        if _mapping_value_matches_assertion_delta(params, assertions):
+        if _mapping_value_matches_assertion_delta(
+            params,
+            assertions,
+            failure_hints=failure_hints,
+        ):
             features["literal_or_constant_matches_assertion_delta"] = 1.0
 
     constant_name = params.get("name")

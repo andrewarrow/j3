@@ -13,6 +13,7 @@ from j3.transition_action_scoring import (
     TRANSITION_ACTION_SCORER_VERSION,
     TRANSITION_ACTION_SCORER_V2_CALIBRATION_VERSION,
     TRANSITION_ACTION_SCORER_V2_VERSION,
+    TRANSITION_ACTION_SCORER_V3_VERSION,
     TRANSITION_ACTION_SCORING_EVAL_VERSION,
     TRANSITION_PRODUCT_READINESS_VERSION,
     calibrate_transition_action_scorer_v2,
@@ -272,6 +273,67 @@ def test_future_scorer_prefers_existing_key_rename_over_placeholder_add() -> Non
     assert rename_score["features"]["mapping_same_mapping_competitor_count"] == 1.0
     assert add_score["features"]["mapping_same_mapping_competitor_count"] == 1.0
     assert rename_score["score"] > add_score["score"]
+
+
+def test_future_scorer_uses_assertion_diff_lines_for_mapping_value_delta() -> None:
+    groups = build_transition_action_choice_groups(
+        _apache_license_mapping_candidate_rows(),
+        embedding_dim=8,
+    )
+
+    ranked = rank_transition_action_candidates(groups[0])
+    passing_score = score_transition_action_candidate(
+        groups[0]["candidates"][2],
+        group=groups[0],
+    )
+    mit_decoy_score = score_transition_action_candidate(
+        groups[0]["candidates"][0],
+        group=groups[0],
+    )
+
+    assert [candidate["rank_index"] for candidate in ranked[:3]] == [5, 1, 2]
+    assert (
+        passing_score["features"]["mapping_value_matches_assertion_delta"]
+        == 1.0
+    )
+    assert passing_score["features"]["mapping_value_key_matches_asserted_key"] == 1.0
+    assert (
+        mit_decoy_score["features"]["mapping_value_matches_assertion_delta"]
+        == 0.0
+    )
+    assert passing_score["score"] > mit_decoy_score["score"]
+
+
+def test_v3_scorer_can_use_mapping_value_diff_line_feature() -> None:
+    groups = build_transition_action_choice_groups(
+        _apache_license_mapping_candidate_rows(),
+        embedding_dim=8,
+    )
+    model = {
+        "weights": {
+            "mapping_value_matches_assertion_delta": 4.0,
+            "mapping_value_key_matches_asserted_key": 1.0,
+        },
+        "allow_production_rank_feature": False,
+    }
+
+    ranked = rank_transition_action_candidates(
+        groups[0],
+        strategy=TRANSITION_ACTION_SCORER_V3_VERSION,
+        scorer_model=model,
+    )
+    passing_score = score_transition_action_candidate_v3(
+        groups[0]["candidates"][2],
+        group=groups[0],
+        model=model,
+    )
+
+    assert ranked[0]["rank_index"] == 5
+    assert {candidate["rank_index"] for candidate in ranked[1:3]} == {1, 2}
+    assert (
+        passing_score["features"]["mapping_value_matches_assertion_delta"]
+        == 1.0
+    )
 
 
 def test_future_scorer_prefers_returned_mapping_subscript_key_over_add_key_decoy() -> None:
@@ -1085,6 +1147,131 @@ def _mapping_candidate_row(
         "rank_index": rank_index,
         "first_passing_index": 2,
         "is_first_pass": passed and rank_index == 2,
+        "passing_candidates": 1,
+        "failure_hints": hints,
+        "equivalent_candidate_ranks": [],
+        "overlapping_candidate_ranks": [],
+        "equivalent_passing_candidate_ranks": [],
+        "overlapping_passing_candidate_ranks": [],
+    }
+
+
+APACHE_LICENSE_ACTUAL = "License :: OSI Approved :: Apache License"
+APACHE_LICENSE_EXPECTED = "License :: OSI Approved :: Apache Software License"
+
+
+def _apache_license_mapping_candidate_rows() -> list[dict[str, object]]:
+    hints = [
+        {
+            "asserted_mapping_keys": ["Apache-2.0"],
+            "assertions": [
+                {
+                    "actual": "License :: OSI Approved :: Apache...",
+                    "operator": "==",
+                    "expected": "License :: OSI Approved :: Apache Software...",
+                }
+            ],
+            "assertion_diff_lines": [
+                "Differing items:",
+                (
+                    "{'Apache-2.0': 'License :: OSI Approved :: Apache License'} "
+                    "!= {'Apache-2.0': "
+                    "'License :: OSI Approved :: Apache Software License'}"
+                ),
+                "Full diff:",
+                (
+                    "- {'Apache-2.0': "
+                    "'License :: OSI Approved :: Apache Software License'}"
+                ),
+                "+ {'Apache-2.0': 'License :: OSI Approved :: Apache License'}",
+            ],
+        }
+    ]
+    return [
+        _apache_license_mapping_candidate_row(
+            rank_index=1,
+            key="MIT",
+            original="License :: OSI Approved :: MIT License",
+            replacement=APACHE_LICENSE_ACTUAL,
+            passed=False,
+            hints=hints,
+            score=0.6,
+        ),
+        _apache_license_mapping_candidate_row(
+            rank_index=2,
+            key="MIT",
+            original="License :: OSI Approved :: MIT License",
+            replacement=APACHE_LICENSE_EXPECTED,
+            passed=False,
+            hints=hints,
+            score=0.35,
+        ),
+        _apache_license_mapping_candidate_row(
+            rank_index=5,
+            key="Apache-2.0",
+            original=APACHE_LICENSE_ACTUAL,
+            replacement=APACHE_LICENSE_EXPECTED,
+            passed=True,
+            hints=hints,
+            score=0.0,
+        ),
+    ]
+
+
+def _apache_license_mapping_candidate_row(
+    *,
+    rank_index: int,
+    key: str,
+    original: str,
+    replacement: str,
+    passed: bool,
+    hints: list[dict[str, object]],
+    score: float,
+) -> dict[str, object]:
+    return {
+        "task": "apache_license_classifier_dict_value",
+        "task_family": "mapping_key_value_target",
+        "source_type": "handcrafted",
+        "split": "validation",
+        "language": "python",
+        "phase": "ranked",
+        "repair_plan_id": "plan-apache-license-classifier",
+        "file_path": "setup_metadata.py",
+        "action": "change_dict_value",
+        "symbol": "license_classifiers",
+        "start_line": 4,
+        "end_line": 8,
+        "node_kind": "Dict",
+        "params": {"key": key, "from": original, "to": replacement},
+        "reason": f"try {key} classifier value",
+        "model_score": score,
+        "failure_hint_score": score,
+        "ranker_score": score,
+        "target_context": {
+            "mapping_name": "classifiers",
+            "dict_value_key": key,
+            "dict_value_key_in_same_mapping": True,
+            "dict_literal_key_count": 2,
+            "dict_literal_keys": ["Apache-2.0", "MIT"],
+        },
+        "before_source": (
+            "CLASSIFIERS = {\n"
+            "    'MIT': 'License :: OSI Approved :: MIT License',\n"
+            "    'Apache-2.0': 'License :: OSI Approved :: Apache License',\n"
+            "}\n"
+        ),
+        "patched_source": (
+            "CLASSIFIERS = {\n"
+            "    'MIT': 'License :: OSI Approved :: MIT License',\n"
+            "    'Apache-2.0': 'License :: OSI Approved :: Apache License',\n"
+            f"    {key!r}: {replacement!r},\n"
+            "}\n"
+        ),
+        "passed": passed,
+        "preferred": passed,
+        "rank_index": rank_index,
+        "first_passing_index": 5,
+        "is_first_pass": passed and rank_index == 5,
         "passing_candidates": 1,
         "failure_hints": hints,
         "equivalent_candidate_ranks": [],

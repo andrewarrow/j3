@@ -208,6 +208,61 @@ def test_ranked_candidates_use_same_mapping_key_value_target_evidence() -> None:
     assert ranked == (value_candidate, key_decoy)
 
 
+def test_ranked_candidates_use_assertion_diff_lines_for_mapping_value_delta(
+    tmp_path,
+) -> None:
+    mit_to_actual = _apache_license_patch_candidate(
+        key="MIT",
+        original="License :: OSI Approved :: MIT License",
+        replacement=APACHE_LICENSE_ACTUAL,
+        score=0.6,
+    )
+    mit_to_expected = _apache_license_patch_candidate(
+        key="MIT",
+        original="License :: OSI Approved :: MIT License",
+        replacement=APACHE_LICENSE_EXPECTED,
+        score=0.35,
+    )
+    apache_to_expected = _apache_license_patch_candidate(
+        key="Apache-2.0",
+        original=APACHE_LICENSE_ACTUAL,
+        replacement=APACHE_LICENSE_EXPECTED,
+        score=0.0,
+    )
+    hints = (_apache_license_failure_hint(),)
+
+    ranked = transition_scorer_ranked_candidates(
+        [mit_to_actual, mit_to_expected, apache_to_expected],
+        candidate_hints=[hints, hints, hints],
+        context={
+            "task": "apache_license_classifier_dict_value",
+            "task_family": "mapping_key_value_target",
+        },
+    )
+    advice = build_transition_scorer_advice(
+        repo=tmp_path,
+        test_command="python -m pytest tests/test_metadata.py",
+        baseline_exit_code=1,
+        candidates=[mit_to_actual, mit_to_expected, apache_to_expected],
+        selected=apache_to_expected,
+        tested_candidates=[mit_to_actual, mit_to_expected, apache_to_expected],
+        passing_candidates=[apache_to_expected],
+        candidate_hints=[hints, hints, hints],
+        first_passing_index=3,
+        context={
+            "task": "apache_license_classifier_dict_value",
+            "task_family": "mapping_key_value_target",
+        },
+    )
+
+    assert ranked == (apache_to_expected, mit_to_actual, mit_to_expected)
+    assert advice["mode"] == "shadow"
+    assert advice["decision"] == "shadow_only_not_wired_to_routing"
+    assert advice["scorer_ranked_candidate_ranks"] == [3, 1, 2]
+    assert advice["scorer_top_candidate"]["params"]["key"] == "Apache-2.0"
+    assert advice["validation_comparison"]["would_have"] == "improved"
+
+
 def test_advice_prefers_existing_key_rename_over_placeholder_add(tmp_path) -> None:
     rename_candidate = _patch_candidate(
         kind=PatchActionKind.CHANGE_DICT_KEY,
@@ -450,4 +505,67 @@ def _patch_candidate(
             if target_context is not None
             else {"function_name": symbol, "line_span": [2, 2]}
         ),
+    )
+
+
+APACHE_LICENSE_ACTUAL = "License :: OSI Approved :: Apache License"
+APACHE_LICENSE_EXPECTED = "License :: OSI Approved :: Apache Software License"
+
+
+def _apache_license_failure_hint() -> PytestFailureHint:
+    return PytestFailureHint(
+        asserted_mapping_keys={"Apache-2.0"},
+        expected_strings={APACHE_LICENSE_EXPECTED},
+        assertions=[
+            AssertionComparison(
+                actual="License :: OSI Approved :: Apache...",
+                operator="==",
+                expected="License :: OSI Approved :: Apache Software...",
+            )
+        ],
+        assertion_diff_lines=[
+            "Differing items:",
+            (
+                "{'Apache-2.0': 'License :: OSI Approved :: Apache License'} "
+                "!= {'Apache-2.0': "
+                "'License :: OSI Approved :: Apache Software License'}"
+            ),
+            "Full diff:",
+            (
+                "- {'Apache-2.0': "
+                "'License :: OSI Approved :: Apache Software License'}"
+            ),
+            "+ {'Apache-2.0': 'License :: OSI Approved :: Apache License'}",
+        ],
+    )
+
+
+def _apache_license_patch_candidate(
+    *,
+    key: str,
+    original: str,
+    replacement: str,
+    score: float,
+) -> CandidatePatch:
+    return _patch_candidate(
+        kind=PatchActionKind.CHANGE_DICT_VALUE,
+        params={"key": key, "from": original, "to": replacement},
+        patched_source=(
+            "CLASSIFIERS = {\n"
+            f"    {key!r}: {replacement!r},\n"
+            "}\n"
+        ),
+        model_score=score,
+        ranker_score=score,
+        failure_hint_score=score,
+        target_context={
+            "mapping_name": "classifiers",
+            "dict_value_key": key,
+            "dict_value_key_in_same_mapping": True,
+            "dict_literal_key_count": 2,
+            "dict_literal_keys": ["Apache-2.0", "MIT"],
+        },
+        file_path="setup_metadata.py",
+        symbol="license_classifiers",
+        node_kind="Dict",
     )

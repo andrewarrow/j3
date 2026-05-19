@@ -349,13 +349,11 @@ Long-term target:
 ### TRANS-003: Expand standard matrix manifest cautiously
 
 - Status: blocked
-- Blocker: `TRANS-008` targeted `greenshot_6_subset` evidence improved the
-  subset gate to `ready_for_shadow_mode` and resolved the
-  `project_urls_header_dict_key` V1/advice residual, but it still reports 1
-  matrix residual, 1 residual-report example, and a guarded decision of
-  `remain_shadow_only`. Review the remaining
-  `apache_license_classifier_dict_value` V3 residual before broadening the
-  standard matrix manifest.
+- Blocker: `MODEL-008` addressed the public assertion-diff evidence gap behind
+  the `apache_license_classifier_dict_value` V3 residual, but the standard
+  matrix manifest should not broaden until a fresh targeted
+  `greenshot_6_subset` rerun verifies the residual count, suite gate, and
+  guarded decision after that scorer/advice change.
 - Why: product gates need broader held-out suites without making local runs
   impractical.
 - Write scope: `examples/transition_shadow_matrix.json`, tests, docs.
@@ -684,7 +682,7 @@ Long-term target:
 
 ### MODEL-008: Use assertion diff lines for mapping-value deltas
 
-- Status: active
+- Status: done
 - Why: `TRANS-008` narrowed `greenshot_6_subset` to one V3 residual,
   `apache_license_classifier_dict_value`. The passing candidate changes
   `Apache-2.0` from `License :: OSI Approved :: Apache License` to
@@ -707,6 +705,15 @@ Long-term target:
 - Tests: focused transition scorer/advice tests,
   `pytest tests/test_transition_shadow_scorer.py -q` if V3 behavior is
   touched, `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+- Completion note: scorer/advice failure-hint evidence now preserves and uses
+  public `assertion_diff_lines` for string mapping-value deltas when parsed
+  `assertions.actual` / `assertions.expected` values are truncated. Focused
+  Apache-style action-choice and advice fixtures rank the
+  `Apache-2.0: Apache License -> Apache Software License` candidate ahead of
+  nearby `MIT` decoys, and a focused V3 scorer replay ranks the Apache
+  candidate first using the diff-line feature. Production routing, matrix
+  runner behavior, repair candidate generation, full matrix evidence, and V3
+  product-gate policy were left unchanged.
 
 ## Workstream F: Long-Term Training Scale
 

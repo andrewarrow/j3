@@ -30,9 +30,10 @@ This is the live coordinator board. Keep it current and compact.
   now has 1 matrix residual, 2 baseline residuals, and 1 residual-report
   example. The mapping-key residual is resolved, no V1/advice residual remains
   in the report, and the suite gate improved to `ready_for_shadow_mode`.
-  Guarded decision remains `remain_shadow_only`, so `TRANS-003` remains
-  blocked pending review of the remaining
-  `apache_license_classifier_dict_value` V3 residual.
+  Guarded decision remains `remain_shadow_only`. `MODEL-008` now addresses
+  the remaining `apache_license_classifier_dict_value` V3 residual's public
+  assertion-diff evidence, but `TRANS-003` remains blocked until a targeted
+  subset rerun confirms the residual count and gate result.
   Tests-only wedge guarded opt-in also remains
   blocked after `REAL-003` scored `pass@3 = 0/4`; `GS7-008` now materializes
   and live-validates the `iniconfig` calibration candidate. `REAL-005` extends
@@ -78,14 +79,8 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-- `MODEL-008` -> worker Jason
-  (`019e3e56-52e6-7582-a2fe-b4387235c40e`): address the remaining
-  `apache_license_classifier_dict_value` V3 mapping-value residual from
-  `TRANS-008`. Scope is transition scorer/advice failure-hint evidence only,
-  focused on using public assertion diff lines to recognize mapping-value
-  `from` -> `to` deltas when pytest truncates assertion actual/expected
-  strings. Do not change production routing, matrix runner behavior, or
-  candidate generation in this slice.
+No active worker tasks are recorded after `MODEL-008`; the coordinator should
+review the commit and decide the next targeted evidence rerun.
 
 ## Ready Queue
 
@@ -97,11 +92,10 @@ Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
 ## Paused Or Blocked
 
-- `TRANS-003`: remains blocked after `TRANS-008`; do not expand the standard
-  matrix manifest while the targeted `greenshot_6_subset` rerun still has 1
-  matrix residual, 1 residual-report example, a suite gate of
-  `ready_for_shadow_mode` rather than `ready_for_guarded_opt_in`, and a
-  guarded decision of `remain_shadow_only`.
+- `TRANS-003`: remains blocked after `MODEL-008`; do not expand the standard
+  matrix manifest until a fresh targeted `greenshot_6_subset` rerun verifies
+  whether the Apache mapping-value V3 residual is resolved and records the
+  suite gate and guarded decision.
 - `MODEL-002`: superseded by bounded scorer subtasks in the backlog, beginning
   with `MODEL-003` through `MODEL-008`.
 
@@ -117,6 +111,16 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `MODEL-008`: fixed the Apache mapping-value scorer/advice evidence gap. The
+  scorer now treats public pytest assertion diff lines as mapping-value
+  `actual` -> `expected` evidence when parsed assertion fields are truncated.
+  Focused action-choice fixtures rank the rank-5
+  `Apache-2.0: Apache License -> Apache Software License` candidate first over
+  the nearby `MIT` decoys, advice preserves `assertion_diff_lines` and
+  expected strings in failure-hint records, and a focused V3 scorer replay uses
+  the diff-line feature to rank the Apache candidate first. Production
+  routing, matrix runner behavior, and V3 product-gate policy remain
+  unchanged and shadow-only.
 - `TRANS-008`: reran targeted `greenshot_6_subset` transition evidence after
   `MODEL-007`. The subset covered 12 tasks, 12 ranked solved tasks, 9,696
   candidates, and 7 held-out groups, with 1 matrix residual and 2 baseline

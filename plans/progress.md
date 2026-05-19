@@ -4919,3 +4919,34 @@ meaningful work. Do not replace this file with a daily reset.
 - Next: worker Jason (`019e3e56-52e6-7582-a2fe-b4387235c40e`) is running
   `MODEL-008`.
 - Blockers: none.
+
+### 2026-05-19 - MODEL-008 - Assertion diff-line mapping-value evidence
+
+- Owner: worker Jason (`019e3e56-52e6-7582-a2fe-b4387235c40e`).
+- Files changed: `j3/transition_action_scoring.py`,
+  `j3/transition_scorer_advice.py`,
+  `tests/test_transition_action_scoring.py`,
+  `tests/test_transition_scorer_advice.py`, `plans/active.md`,
+  `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `pytest tests/test_transition_action_scoring.py
+  tests/test_transition_scorer_advice.py -q` -> 32 passed; `pytest
+  tests/test_transition_action_scoring.py tests/test_transition_scorer_advice.py
+  tests/test_transition_shadow_scorer.py -q` -> 36 passed; `pytest
+  tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check` ->
+  passed.
+- Result: fixed the remaining Apache mapping-value scorer/advice evidence gap
+  without changing production routing, matrix runner behavior, repair
+  candidate generation, full matrix evidence, or V3 product-gate policy. The
+  scorer now uses public pytest `assertion_diff_lines` as string
+  mapping-value `actual` -> `expected` evidence when parsed assertion
+  actual/expected fields are truncated. Advice failure-hint records preserve
+  `assertion_diff_lines` and expected strings. Focused Apache fixtures rank the
+  `Apache-2.0` `change_dict_value` candidate first over nearby `MIT` decoys,
+  and a focused V3 scorer replay ranks the Apache candidate first via the
+  diff-line feature.
+- Commit: pending.
+- Push: pending.
+- Next: coordinator should rerun targeted `greenshot_6_subset` evidence after
+  integrating `MODEL-008`; do not broaden the standard matrix manifest before
+  that rerun confirms the residual count and gate.
+- Blockers: none.

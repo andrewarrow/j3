@@ -239,31 +239,13 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-### `MODEL-014`: Add signature-propagation shadow-advice evidence
-
-- Status: active
-- Owner: worker MODEL-014, assigned on 2026-05-19.
-- Scope: `j3/transition_action_scoring.py`, focused tests in
-  `tests/test_transition_action_scoring.py`, optional concise evidence doc
-  under `docs/MODEL_014_*`, and plan updates.
-- Acceptance: add narrow shadow-advice evidence that promotes the passing
-  `propagate_signature` candidate for
-  `greenshot_5_subset/profile_signature_propagation` when the new parameter
-  matches the `TypeError` keyword name and failure context names the same
-  source file or function; prove the passing `render_profile` propagation
-  ranks ahead of the failing call-site `rename_symbol` decoy and the unrelated
-  `user_badge_label` propagation; keep product routing shadow-only.
-- Guardrails: do not edit product routing, matrix manifests, candidate
-  generation, ranker routing, guarded-trial policy, local-knowledge records,
-  materializer code, or `plans/strategy.md`; keep
-  `visible_balance_attribute_decoys` separate.
-- Expected tests: `pytest tests/test_transition_action_scoring.py -q`,
-  focused residual/advice replay for `profile_signature_propagation`,
-  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+No active worker tasks are currently recorded after `MODEL-014`; coordinator
+review should decide whether to dispatch a post-scorer residual replay or the
+separate `visible_balance_attribute_decoys` scorer slice.
 
 ## Ready Queue
 
-No ready worker tasks are currently recorded while `MODEL-014` is active.
+No ready worker tasks are currently recorded after `MODEL-014`.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
@@ -288,6 +270,34 @@ Review before assigning more work if:
 - the next useful task is unclear
 
 ## Recently Completed
+
+### `MODEL-014`: Add signature-propagation shadow-advice evidence
+
+- Status: completed by worker MODEL-014 on 2026-05-19.
+- Result: added narrow V1/advice scorer evidence for `TypeError`
+  signature-propagation groups. A `propagate_signature` candidate is promoted
+  only when its new parameter matches the TypeError keyword and the failure
+  context names the same file and symbol; a call-site `rename_symbol` decoy is
+  demoted only when a symbol-aligned propagation candidate is present. Direct
+  replay of `greenshot_5_subset/profile_signature_propagation` now ranks the
+  passing `render_profile` propagation ahead of the failing call-site rename
+  and the unrelated `user_badge_label` propagation. Product routing remains
+  shadow-only.
+- Commit: implementation/evidence commit.
+- Push: implementation/evidence commit pushed successfully to `origin/main`.
+- Tests: `python -m py_compile j3/transition_action_scoring.py
+  tests/test_transition_action_scoring.py` -> passed; `pytest
+  tests/test_transition_action_scoring.py -q` -> 32 passed; direct
+  `/tmp/j3-trans-014-expanded-standard-after-model013/suite/greenshot_5_subset/candidate-outcomes.jsonl`
+  replay for `profile_signature_propagation` -> rank 1 passing
+  `propagate_signature` on `render_profile` scored `2.890000000000`, rank 2
+  failing call-site `rename_symbol` scored `1.380000000000`, rank 3 failing
+  `propagate_signature` on `user_badge_label` scored `0.840000000000`.
+- Recommended next: coordinator should review `MODEL-014`, then either run a
+  focused `TRANS-015` residual replay after the scorer change or dispatch the
+  separate `visible_balance_attribute_decoys` shadow-advice scorer task.
+- Blockers: none for signature propagation; keep attribute-repair decoys as a
+  separate slice.
 
 ### `TRANS-014`: Rerun expanded standard residual evidence after MODEL-013
 

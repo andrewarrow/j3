@@ -856,7 +856,7 @@ Long-term target:
 
 ### MODEL-014: Add signature-propagation shadow-advice evidence
 
-- Status: active
+- Status: done
 - Owner: worker MODEL-014, assigned on 2026-05-19.
 - Why: after `TRANS-014`, one of the two remaining GreenShot-5
   shadow-advice-only examples is
@@ -884,6 +884,16 @@ Long-term target:
 - Notes: keep `visible_balance_attribute_decoys` separate unless the
   implementation exposes reusable source or candidate-after semantic evidence
   shared with attribute repair.
+- Completion note: added narrow signature-propagation V1/advice features for
+  TypeError keyword failures. The passing `propagate_signature` candidate is
+  promoted only when `params.to` matches the TypeError keyword and the failure
+  context names the same source file and function symbol; same-file unrelated
+  propagation such as `user_badge_label` is not promoted. Call-site
+  `rename_symbol` decoys for the same missing keyword are demoted only when a
+  symbol-aligned propagation candidate is present. Focused tests and direct
+  saved-artifact replay now rank the passing `render_profile` propagation
+  ahead of the failing call-site rename and unrelated propagation. Product
+  routing remains shadow-only.
 
 ## Workstream E: Repo State, Actions, And Models
 

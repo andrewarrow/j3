@@ -1091,6 +1091,89 @@ def test_future_scorer_does_not_reward_deep_import_without_local_symbol() -> Non
     )
 
 
+def test_future_scorer_prefers_symbol_aligned_signature_propagation() -> None:
+    groups = build_transition_action_choice_groups(
+        [
+            _signature_propagation_candidate_row(
+                rank_index=1,
+                action="rename_symbol",
+                symbol="render_profile",
+                params={"from": "username", "scope": "call_site", "to": "name"},
+                passed=False,
+                failure_hint_score=147.0,
+                caller_symbols=[
+                    "profile_label",
+                    "display_profile",
+                    "profile_heading",
+                ],
+            ),
+            _signature_propagation_candidate_row(
+                rank_index=2,
+                action="propagate_signature",
+                symbol="render_profile",
+                params={"from": "name", "to": "username"},
+                passed=True,
+                failure_hint_score=110.0,
+                caller_symbols=[
+                    "profile_label",
+                    "display_profile",
+                    "profile_heading",
+                ],
+            ),
+            _signature_propagation_candidate_row(
+                rank_index=3,
+                action="propagate_signature",
+                symbol="user_badge_label",
+                params={"from": "name", "to": "username"},
+                passed=False,
+                failure_hint_score=40.0,
+                caller_symbols=["profile_badge"],
+            ),
+        ],
+        embedding_dim=8,
+    )
+
+    ranked = rank_transition_action_candidates(groups[0])
+    rename_score = score_transition_action_candidate(
+        groups[0]["candidates"][0],
+        group=groups[0],
+    )
+    propagation_score = score_transition_action_candidate(
+        groups[0]["candidates"][1],
+        group=groups[0],
+    )
+    unrelated_score = score_transition_action_candidate(
+        groups[0]["candidates"][2],
+        group=groups[0],
+    )
+
+    assert [candidate["rank_index"] for candidate in ranked] == [2, 1, 3]
+    assert (
+        propagation_score["features"][
+            "signature_propagation_type_error_to_matches_keyword"
+        ]
+        == 1.0
+    )
+    assert (
+        propagation_score["features"]["signature_propagation_file_and_symbol_match"]
+        == 1.0
+    )
+    assert (
+        rename_score["features"][
+            "rename_symbol_call_site_decoy_competes_with_signature_propagation"
+        ]
+        == 1.0
+    )
+    assert unrelated_score["features"]["signature_propagation_file_match"] == 1.0
+    assert unrelated_score["features"]["signature_propagation_symbol_match"] == 0.0
+    assert (
+        unrelated_score["features"]["signature_propagation_file_and_symbol_match"]
+        == 0.0
+    )
+    assert propagation_score["score"] > rename_score["score"]
+    assert propagation_score["score"] > unrelated_score["score"]
+
+
 def test_baseline_orders_are_stable_and_distinct() -> None:
     group = build_transition_action_choice_groups(
         _fixture_candidate_rows(),
@@ -2104,6 +2187,108 @@ def _missing_import_candidate_row(
                     },
                 ],
                 "type_error_names": [],
+            }
+        ],
+        "equivalent_candidate_ranks": [],
+        "overlapping_candidate_ranks": [],
+        "equivalent_passing_candidate_ranks": [],
+        "overlapping_passing_candidate_ranks": [],
+    }
+
+
+def _signature_propagation_candidate_row(
+    *,
+    rank_index: int,
+    action: str,
+    symbol: str,
+    params: dict[str, object],
+    passed: bool,
+    failure_hint_score: float,
+    caller_symbols: list[str],
+) -> dict[str, object]:
+    return {
+        "task": "profile_signature_propagation",
+        "task_family": "signature_propagation",
+        "source_type": "handcrafted",
+        "split": "validation",
+        "language": "python",
+        "phase": "ranked",
+        "repair_plan_id": "plan-profile-signature-propagation",
+        "file_path": "shop/profiles.py",
+        "action": action,
+        "symbol": symbol,
+        "start_line": 6,
+        "end_line": 6,
+        "node_kind": "FunctionDef" if action == "propagate_signature" else "Call",
+        "params": params,
+        "reason": f"try {action} for username TypeError",
+        "model_score": 0.0,
+        "failure_hint_score": failure_hint_score,
+        "ranker_score": None,
+        "target_context": {
+            "callee_count": 0,
+            "caller_count": len(caller_symbols),
+            "qualified_symbol": f"shop.profiles.{symbol}",
+            "role": "helper",
+            "upstream_callers": [
+                {"distance": 1 if index < 2 else 2, "symbol": caller}
+                for index, caller in enumerate(caller_symbols)
+            ],
+        },
+        "before_source": (
+            "def render_profile(name):\n"
+            "    return f'Profile: {name}'\n\n"
+            "def user_badge_label(name):\n"
+            "    return f'Badge: {name}'\n"
+        ),
+        "patched_source": (
+            "def render_profile(username):\n"
+            "    return f'Profile: {username}'\n\n"
+            "def user_badge_label(name):\n"
+            "    return f'Badge: {name}'\n"
+        ),
+        "passed": passed,
+        "preferred": passed,
+        "rank_index": rank_index,
+        "first_passing_index": 2,
+        "is_first_pass": passed and rank_index == 2,
+        "passing_candidates": 1,
+        "failure_hints": [
+            {
+                "asserted_mapping_keys": [],
+                "assertion_diff_lines": [],
+                "assertions": [],
+                "exception_type": "TypeError",
+                "expected_strings": [],
+                "function_names": [
+                    "display_profile",
+                    "profile_heading",
+                    "render_profile",
+                ],
+                "missing_attributes": [],
+                "missing_keys": [],
+                "missing_modules": [],
+                "missing_names": [],
+                "nodeid": (
+                    "tests/test_shop.py::"
+                    "test_profile_label_accepts_username_keyword"
+                ),
+                "source_files": ["shop/api.py", "shop/profiles.py"],
+                "summary": "TypeError: unexpected keyword username",
+                "traceback_locations": [
+                    {
+                        "exception_type": None,
+                        "file_path": "tests/test_shop.py",
+                        "line": 48,
+                    },
+                    {"exception_type": None, "file_path": "shop/api.py", "line": 39},
+                    {
+                        "exception_type": "TypeError",
+                        "file_path": "shop/profiles.py",
+                        "line": 6,
+                    },
+                ],
+                "type_error_names": ["username"],
             }
         ],
         "equivalent_candidate_ranks": [],

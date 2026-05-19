@@ -80,6 +80,10 @@ def score_transition_action_candidate(
         + 1.45 * features["missing_import_nested_module_matches_local_symbol"]
         - 0.45 * features["missing_import_top_level_decoy_competes_with_nested_module"]
         - 0.35 * features["missing_import_literal_decoy_competes_with_nested_import"]
+        + 1.35 * features["signature_propagation_file_and_symbol_match"]
+        - 0.55 * features[
+            "rename_symbol_call_site_decoy_competes_with_signature_propagation"
+        ]
         + 1.20 * features["failure_hint_file_match"]
         - 0.75 * features["failure_hint_file_mismatch"]
         + 1.00 * features["failure_hint_symbol_match"]
@@ -1074,6 +1078,15 @@ _MISSING_IMPORT_FEATURE_NAMES = (
     "missing_import_literal_decoy_competes_with_nested_import",
 )
 
+_SIGNATURE_PROPAGATION_FEATURE_NAMES = (
+    "signature_propagation_evidence_available",
+    "signature_propagation_type_error_to_matches_keyword",
+    "signature_propagation_file_match",
+    "signature_propagation_symbol_match",
+    "signature_propagation_file_and_symbol_match",
+    "rename_symbol_call_site_decoy_competes_with_signature_propagation",
+)
+
 _BOUNDARY_OPERATOR_ACTION_KINDS = {"change_operator", "modify_condition"}
 _LITERAL_ACTION_KINDS = {"change_literal", "change_return_value"}
 _MODULE_CONSTANT_ACTION_KIND = "change_module_constant"
@@ -1591,6 +1604,143 @@ def _missing_import_features(
     return features
 
 
+def _signature_propagation_features(
+    candidate: Mapping[str, object],
+    *,
+    action_kind: str,
+    params: Mapping[str, object],
+    failure_hints: Sequence[object],
+    group: Mapping[str, object] | None,
+) -> dict[str, float]:
+    features = {name: 0.0 for name in _SIGNATURE_PROPAGATION_FEATURE_NAMES}
+    if action_kind not in {"propagate_signature", "rename_symbol"}:
+        return features
+
+    type_error_names = _type_error_name_hints(failure_hints)
+    if not type_error_names:
+        return features
+
+    features["signature_propagation_evidence_available"] = 1.0
+    if action_kind == "propagate_signature":
+        if params.get("to") in type_error_names:
+            features["signature_propagation_type_error_to_matches_keyword"] = 1.0
+        if _candidate_matches_hint_source_file(candidate, failure_hints):
+            features["signature_propagation_file_match"] = 1.0
+        if _candidate_matches_hint_function(candidate, failure_hints):
+            features["signature_propagation_symbol_match"] = 1.0
+        if (
+            features["signature_propagation_type_error_to_matches_keyword"] > 0.0
+            and features["signature_propagation_file_match"] > 0.0
+            and features["signature_propagation_symbol_match"] > 0.0
+        ):
+            features["signature_propagation_file_and_symbol_match"] = 1.0
+
+    elif _rename_symbol_is_call_site_type_error_decoy(
+        candidate,
+        params=params,
+        type_error_names=type_error_names,
+        group=group,
+    ):
+        features[
+            "rename_symbol_call_site_decoy_competes_with_signature_propagation"
+        ] = 1.0
+
+    return features
+
+
+def _type_error_name_hints(failure_hints: Sequence[object]) -> set[str]:
+    names: set[str] = set()
+    for raw_hint in failure_hints:
+        hint = _mapping(raw_hint)
+        if hint.get("exception_type") != "TypeError":
+            continue
+        names.update(
+            str(name)
+            for name in _list(hint.get("type_error_names"))
+            if isinstance(name, str) and name
+        )
+    return names
+
+
+def _candidate_matches_hint_source_file(
+    candidate: Mapping[str, object],
+    failure_hints: Sequence[object],
+) -> bool:
+    action = _mapping(candidate.get("action"))
+    file_path = action.get("file_path")
+    if not isinstance(file_path, str) or not file_path:
+        return False
+    for raw_hint in failure_hints:
+        hint = _mapping(raw_hint)
+        if file_path in {
+            str(path)
+            for path in _list(hint.get("source_files"))
+            if isinstance(path, str) and path
+        }:
+            return True
+        for raw_location in _list(hint.get("traceback_locations")):
+            location = _mapping(raw_location)
+            if location.get("file_path") == file_path:
+                return True
+    return False
+
+
+def _candidate_matches_hint_function(
+    candidate: Mapping[str, object],
+    failure_hints: Sequence[object],
+) -> bool:
+    action = _mapping(candidate.get("action"))
+    symbol = action.get("symbol")
+    if not isinstance(symbol, str) or not symbol:
+        return False
+    for raw_hint in failure_hints:
+        hint = _mapping(raw_hint)
+        if symbol in {
+            str(name)
+            for name in _list(hint.get("function_names"))
+            if isinstance(name, str) and name
+        }:
+            return True
+    return False
+
+
+def _rename_symbol_is_call_site_type_error_decoy(
+    candidate: Mapping[str, object],
+    *,
+    params: Mapping[str, object],
+    type_error_names: set[str],
+    group: Mapping[str, object] | None,
+) -> bool:
+    if group is None:
+        return False
+    if params.get("scope") != "call_site" or params.get("from") not in type_error_names:
+        return False
+    signature = _file_symbol_signature(candidate)
+    if signature is None:
+        return False
+    for raw_other in _list(group.get("candidates")):
+        other = _mapping(raw_other)
+        if _file_symbol_signature(other) != signature:
+            continue
+        other_action = _mapping(other.get("action"))
+        if other_action.get("kind") != "propagate_signature":
+            continue
+        other_params = _mapping(other_action.get("params"))
+        other_validation = _mapping(other.get("validation"))
+        other_hints = _list(other_validation.get("failure_hints"))
+        if not other_hints:
+            other_hints = _list(
+                _mapping(candidate.get("validation")).get("failure_hints")
+            )
+        if (
+            other_params.get("to") in type_error_names
+            and _candidate_matches_hint_source_file(other, other_hints)
+            and _candidate_matches_hint_function(other, other_hints)
+        ):
+            return True
+    return False
+
+
 def _guard_condition_checks_empty_value(params: Mapping[str, object]) -> bool:
     if "return" not in params:
         return False
@@ -2081,6 +2231,13 @@ def _candidate_score_features(
         failure_hints=failure_hints,
         group=group,
     )
+    signature_propagation_features = _signature_propagation_features(
+        candidate,
+        action_kind=action_kind,
+        params=params,
+        failure_hints=failure_hints,
+        group=group,
+    )
     ranker_score = _score_value(scores.get("ranker_score"))
     model_score = _score_value(scores.get("model_score"))
     failure_hint_score = _score_value(scores.get("failure_hint_score"))
@@ -2122,6 +2279,7 @@ def _candidate_score_features(
         **tail_index_features,
         **guard_features,
         **missing_import_features,
+        **signature_propagation_features,
     }
 
 
@@ -2179,6 +2337,8 @@ def _candidate_v2_features(
     for name in _GUARD_INSERTION_FEATURE_NAMES:
         features[name] = float(base[name])
     for name in _MISSING_IMPORT_FEATURE_NAMES:
+        features[name] = float(base[name])
+    for name in _SIGNATURE_PROPAGATION_FEATURE_NAMES:
         features[name] = float(base[name])
     _add_feature(features, f"action:{action_kind}", 1.0)
 

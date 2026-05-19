@@ -6966,3 +6966,33 @@ meaningful work. Do not replace this file with a daily reset.
   `name`, and an unrelated failing propagation on `user_badge_label`.
 - Blockers: none for `MODEL-014`; keep `visible_balance_attribute_decoys`
   separate.
+
+### 2026-05-19 - MODEL-014 - Signature-propagation shadow-advice evidence
+
+- Owner: worker MODEL-014.
+- Files changed: `j3/transition_action_scoring.py`,
+  `tests/test_transition_action_scoring.py`, `plans/active.md`,
+  `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `python -m py_compile j3/transition_action_scoring.py
+  tests/test_transition_action_scoring.py` -> passed; `pytest
+  tests/test_transition_action_scoring.py -q` -> 32 passed; direct replay over
+  `/tmp/j3-trans-014-expanded-standard-after-model013/suite/greenshot_5_subset/candidate-outcomes.jsonl`
+  for `profile_signature_propagation` -> rank 1 passing
+  `propagate_signature` on `shop/profiles.py::render_profile` scored
+  `2.890000000000`, rank 2 failing call-site `rename_symbol` scored
+  `1.380000000000`, rank 3 failing `propagate_signature` on
+  `shop/profiles.py::user_badge_label` scored `0.840000000000`.
+- Result: added narrow TypeError signature-propagation V1/advice evidence.
+  The passing propagation is promoted only when the new parameter matches the
+  TypeError keyword and the failure context names the same file and function
+  symbol; the unrelated same-file `user_badge_label` propagation is not
+  promoted. Call-site `rename_symbol` decoys are demoted only when a
+  symbol-aligned propagation candidate is present. Product routing remains
+  shadow-only.
+- Commit: implementation/evidence commit.
+- Push: implementation/evidence commit pushed successfully to `origin/main`.
+- Next: coordinator should review `MODEL-014`, then either run a focused
+  post-scorer residual replay or dispatch the separate
+  `visible_balance_attribute_decoys` shadow-advice scorer task.
+- Blockers: none for signature propagation; keep attribute-repair decoys
+  separate.

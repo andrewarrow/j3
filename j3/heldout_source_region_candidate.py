@@ -31,6 +31,7 @@ HELDOUT_SOURCE_REGION_CANDIDATE_SCHEMA_VERSION = (
 )
 PYTEST_INSERTION_SCHEMA_VERSION = "repo-convention-pytest-insertion-v1"
 TEXT_INSERTION_SCHEMA_VERSION = "bounded-text-insertion-v1"
+TEXT_FILE_CREATION_SCHEMA_VERSION = "bounded-text-file-creation-v1"
 DEFAULT_REQUESTS_BASE_REF = "b684dcb9bbf3aa557d1238e72062c4a29737dd1c"
 DEFAULT_REQUESTS_STREAM_WRAPPER_BASE_REF = (
     "0b401c76b6e80a4eecf3c690085b2553f6e261ca"
@@ -73,6 +74,12 @@ DEFAULT_FLASK_AUTOESCAPE_BASE_REF = (
 )
 DEFAULT_FLASK_AUTOESCAPE_HEAD_REF = (
     "9368fb3f3c52d74534d14c1bef03c79c103356cd"
+)
+DEFAULT_PYTEST_ARRAY_INTERFACE_BASE_REF = (
+    "7df5d80ff3a98714a1d3cdbe82941229e511f4b3"
+)
+DEFAULT_PYTEST_ARRAY_INTERFACE_HEAD_REF = (
+    "8bae589cfba6aa7f17e621e5d89b05004303b0b8"
 )
 DEFAULT_PYTEST_SCANNER_BASE_REF = "7df5d80ff3a98714a1d3cdbe82941229e511f4b3"
 DEFAULT_VALIDATION_COMMAND = (
@@ -122,6 +129,17 @@ DEFAULT_FLASK_AUTOESCAPE_VALIDATION_COMMAND = (
     "assert app.select_jinja_autoescape('template.SVG'); "
     "assert not app.select_jinja_autoescape('readme.TXT')\""
 )
+DEFAULT_PYTEST_ARRAY_INTERFACE_VALIDATION_COMMAND = (
+    "PYTHONPATH=src python -c "
+    "\"import numpy as np; "
+    "from _pytest.python_api import _as_numpy_array; "
+    "base = np.array([1.0, 2.0]); "
+    "obj = type('ArrayInterfaceOnly', (), "
+    "{'__array_interface__': base.__array_interface__})(); "
+    "arr = _as_numpy_array(obj); "
+    "assert arr is not None; "
+    "assert arr.tolist() == [1.0, 2.0]\""
+)
 DEFAULT_PYTEST_SCANNER_VALIDATION_COMMAND = (
     "PYTHONPATH=src python -c "
     "\"from _pytest.mark.expression import Expression; "
@@ -146,8 +164,11 @@ CLICK_DOCS_CONF_PATH = "docs/conf.py"
 CLICK_CHANGES_PATH = "CHANGES.rst"
 FLASK_APP_PATH = "src/flask/sansio/app.py"
 FLASK_CHANGES_PATH = "CHANGES.rst"
+PYTEST_AUTHORS_PATH = "AUTHORS"
+PYTEST_CHANGELOG_ARRAY_INTERFACE_PATH = "changelog/14456.bugfix.rst"
 PYTEST_EXPRESSION_PATH = "src/_pytest/mark/expression.py"
 PYTEST_MARK_EXPRESSION_TEST_PATH = "testing/test_mark_expression.py"
+PYTEST_PYTHON_API_PATH = "src/_pytest/python_api.py"
 
 
 class HeldoutSourceRegionCandidateError(ValueError):
@@ -255,6 +276,41 @@ class TextInsertionAction:
 
 
 @dataclass(frozen=True, slots=True)
+class TextFileCreationAction:
+    """Reusable bounded creation for small text files such as changelog entries."""
+
+    target_file: str
+    content: str
+    kind: str = "create_text_file"
+    schema_version: str = TEXT_FILE_CREATION_SCHEMA_VERSION
+    max_added_lines: int = 20
+    rationale: str | None = None
+
+    def __post_init__(self) -> None:
+        _validate_relative_path(self.target_file)
+        if self.max_added_lines < 1:
+            raise ValueError("max_added_lines must be >= 1")
+        if not self.content:
+            raise ValueError("content is required")
+
+    def to_record(self) -> dict[str, object]:
+        return {
+            "schema_version": self.schema_version,
+            "kind": self.kind,
+            "target": {
+                "file_path": self.target_file,
+                "position": "new_file",
+            },
+            "constraints": {
+                "max_added_lines": self.max_added_lines,
+                "must_not_overwrite_existing_file": True,
+            },
+            "content": self.content,
+            "rationale": self.rationale,
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class HeldoutSourceRegionSpec:
     """Parameterized source/test candidate replay spec."""
 
@@ -273,6 +329,7 @@ class HeldoutSourceRegionSpec:
     test_action: PytestInsertionAction | None = None
     extra_source_actions: tuple[SourceRegionAction, ...] = field(default_factory=tuple)
     text_actions: tuple[TextInsertionAction, ...] = field(default_factory=tuple)
+    text_file_actions: tuple[TextFileCreationAction, ...] = field(default_factory=tuple)
     action_family_reuse_evidence: tuple[dict[str, object], ...] = field(
         default_factory=tuple
     )
@@ -297,6 +354,8 @@ class HeldoutSourceRegionSpec:
         if self.test_action is not None:
             _validate_relative_path(self.test_action.target_file)
         for action in self.text_actions:
+            _validate_relative_path(action.target_file)
+        for action in self.text_file_actions:
             _validate_relative_path(action.target_file)
 
 
@@ -359,6 +418,37 @@ class TextInsertionResult:
             "status": self.status,
             "target_file": self.target_file,
             "insertion_line": self.insertion_line,
+            "wrote_file": self.wrote_file,
+            "candidate_after": {
+                "added_line_count": self.added_line_count,
+                "diff_summary": dict(self.diff_summary),
+                "diff": self.diff,
+                "sha256_before": self.sha256_before,
+                "sha256_after": self.sha256_after,
+            },
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class TextFileCreationResult:
+    """Candidate-after metadata for a bounded text-file creation action."""
+
+    status: str
+    target_file: str
+    added_line_count: int
+    diff: str
+    diff_summary: dict[str, object]
+    sha256_before: str
+    sha256_after: str
+    patched_source: str = field(repr=False)
+    wrote_file: bool = False
+
+    def to_record(self) -> dict[str, object]:
+        return {
+            "schema_version": "bounded-text-file-creation-candidate-after-v1",
+            "status": self.status,
+            "target_file": self.target_file,
+            "insertion_line": 1,
             "wrote_file": self.wrote_file,
             "candidate_after": {
                 "added_line_count": self.added_line_count,
@@ -1129,6 +1219,98 @@ def build_flask_autoescape_spec(
     )
 
 
+def build_pytest_array_interface_spec(
+    repo_path: Path,
+    *,
+    base_ref: str = DEFAULT_PYTEST_ARRAY_INTERFACE_BASE_REF,
+    accepted_head_ref: str = DEFAULT_PYTEST_ARRAY_INTERFACE_HEAD_REF,
+    validation_command: str = DEFAULT_PYTEST_ARRAY_INTERFACE_VALIDATION_COMMAND,
+) -> HeldoutSourceRegionSpec:
+    """Build the held-out pytest array-interface receiver candidate."""
+
+    source_text = _repo_file(repo_path, PYTEST_PYTHON_API_PATH).read_text(
+        encoding="utf-8"
+    )
+    source_action = _pytest_array_interface_source_action(source_text)
+    text_actions = (
+        TextInsertionAction(
+            target_file=PYTEST_AUTHORS_PATH,
+            anchor_text="Alexei Kozlenok\n",
+            insertion_source="algojogacor\n",
+            insert_once_contains="algojogacor",
+            max_added_lines=1,
+            rationale=(
+                "add the contributor name in AUTHORS alphabetic order using "
+                "the existing bounded text insertion action"
+            ),
+        ),
+    )
+    text_file_actions = (
+        TextFileCreationAction(
+            target_file=PYTEST_CHANGELOG_ARRAY_INTERFACE_PATH,
+            content=_pytest_array_interface_changelog_source(),
+            max_added_lines=1,
+            rationale=(
+                "create the accepted pytest changelog entry as a bounded text "
+                "file without a PR-specific action kind"
+            ),
+        ),
+    )
+    return HeldoutSourceRegionSpec(
+        candidate_id="mat-034-pytest-array-interface-receiver",
+        repo_id="pytest-dev/pytest",
+        repo_url="https://github.com/pytest-dev/pytest",
+        repo_split="held_out",
+        base_ref=base_ref,
+        accepted_head_ref=accepted_head_ref,
+        reference_pr_url="https://github.com/pytest-dev/pytest/pull/14472",
+        prompt=(
+            "Fix pytest.approx numpy-like object detection so the "
+            "__array_interface__ hasattr check uses the candidate object "
+            "instead of the string literal 'obj'."
+        ),
+        source_file=PYTEST_PYTHON_API_PATH,
+        validation_command=validation_command,
+        allowed_write_paths=(
+            PYTEST_AUTHORS_PATH,
+            PYTEST_CHANGELOG_ARRAY_INTERFACE_PATH,
+            PYTEST_PYTHON_API_PATH,
+        ),
+        source_action=source_action,
+        text_actions=text_actions,
+        text_file_actions=text_file_actions,
+        source_test_scope_paths=(PYTEST_PYTHON_API_PATH,),
+        action_family_reuse_evidence=(
+            {
+                "action_kind": SourceRegionActionKind.REPLACE_FUNCTION_REGION.value,
+                "reused_from": ["MAT-008", "MAT-009", "MAT-032", "MAT-033"],
+                "evidence": (
+                    "same bounded source-region schema; target file, helper "
+                    "function, one-line predicate, and replacement expression "
+                    "are parameters"
+                ),
+            },
+            {
+                "action_kind": "insert_text_around_anchor",
+                "reused_from": ["MAT-017", "MAT-024", "MAT-025", "MAT-033"],
+                "evidence": (
+                    "same bounded text insertion shape; target file, anchor, "
+                    "position, and inserted contributor text are parameters"
+                ),
+            },
+            {
+                "action_kind": "create_text_file",
+                "reused_from": ["MAT-009-accepted-gap", "MAT-029-accepted-gap"],
+                "evidence": (
+                    "same bounded text-file creation shape needed by accepted "
+                    "changelog entries; target path and file content are "
+                    "parameters"
+                ),
+            },
+        ),
+    )
+
+
 def materialize_heldout_source_region_candidate(
     repo_path: Path,
     spec: HeldoutSourceRegionSpec,
@@ -1147,6 +1329,7 @@ def materialize_heldout_source_region_candidate(
         *[action.to_record() for action in spec.extra_source_actions],
         *([] if spec.test_action is None else [spec.test_action.to_record()]),
         *[action.to_record() for action in spec.text_actions],
+        *[action.to_record() for action in spec.text_file_actions],
     ]
 
     head = _git_stdout(repo, ("rev-parse", "HEAD"))
@@ -1163,6 +1346,7 @@ def materialize_heldout_source_region_candidate(
     source_results: list[SourceRegionMaterializationResult] = []
     test_result: PytestInsertionResult | None = None
     text_results: list[TextInsertionResult] = []
+    text_file_results: list[TextFileCreationResult] = []
 
     for source_action in (spec.source_action, *spec.extra_source_actions):
         if blockers:
@@ -1199,6 +1383,20 @@ def materialize_heldout_source_region_candidate(
             try:
                 text_results.append(
                     materialize_text_insertion(repo, text_action, write=write)
+                )
+            except HeldoutSourceRegionCandidateError as error:
+                blockers.append(error.blocker)
+                break
+
+    if not blockers:
+        for text_file_action in spec.text_file_actions:
+            try:
+                text_file_results.append(
+                    materialize_text_file_creation(
+                        repo,
+                        text_file_action,
+                        write=write,
+                    )
                 )
             except HeldoutSourceRegionCandidateError as error:
                 blockers.append(error.blocker)
@@ -1260,7 +1458,10 @@ def materialize_heldout_source_region_candidate(
     else:
         test_record = test_result.to_record()
 
-    text_records = [result.to_record() for result in text_results]
+    text_records = [
+        *[result.to_record() for result in text_results],
+        *[result.to_record() for result in text_file_results],
+    ]
     candidate_after = {
         "source_file": source_record,
         "source_files": [result.to_record() for result in source_results],
@@ -1289,6 +1490,7 @@ def materialize_heldout_source_region_candidate(
             ],
             *([] if spec.test_file is None else [spec.test_file]),
             *[action.target_file for action in spec.text_actions],
+            *[action.target_file for action in spec.text_file_actions],
         ],
         "actual_changed_files": changed_files,
         "writes_outside_allowlist": writes_outside_allowlist,
@@ -1500,6 +1702,95 @@ def materialize_text_insertion(
         sha256_before=_sha256_text(before),
         sha256_after=_sha256_text(patched),
         patched_source=patched,
+        wrote_file=write,
+    )
+
+
+def materialize_text_file_creation(
+    repo_path: Path,
+    action: TextFileCreationAction,
+    *,
+    write: bool = False,
+) -> TextFileCreationResult:
+    """Create a bounded text file and record metadata."""
+
+    repo = repo_path.expanduser().resolve()
+    target_path = repo / action.target_file
+    parent = target_path.parent
+    if not parent.exists():
+        raise HeldoutSourceRegionCandidateError(
+            f"parent directory does not exist: {parent.relative_to(repo)}",
+            blocker={
+                "field": "text_file_creation",
+                "reason": "bounded_text_file_creation_blocked",
+                "message": (
+                    f"parent directory does not exist for {action.target_file}"
+                ),
+            },
+        )
+
+    if target_path.exists():
+        before = target_path.read_text(encoding="utf-8")
+        if before != action.content:
+            raise HeldoutSourceRegionCandidateError(
+                f"target file already exists with different content: {action.target_file}",
+                blocker={
+                    "field": "text_file_creation",
+                    "reason": "bounded_text_file_creation_blocked",
+                    "message": (
+                        "target file already exists with different content: "
+                        f"{action.target_file}"
+                    ),
+                },
+            )
+        return TextFileCreationResult(
+            status="already_applied",
+            target_file=action.target_file,
+            added_line_count=0,
+            diff="",
+            diff_summary={"hunk_count": 0, "changed_line_count": 0},
+            sha256_before=_sha256_text(before),
+            sha256_after=_sha256_text(before),
+            patched_source=before,
+            wrote_file=False,
+        )
+
+    added_line_count = sum(1 for line in action.content.splitlines() if line.strip())
+    if added_line_count > action.max_added_lines:
+        raise HeldoutSourceRegionCandidateError(
+            "text file creation added-line budget exceeded",
+            blocker={
+                "field": "text_file_creation",
+                "reason": "bounded_text_file_creation_blocked",
+                "message": "text file creation added-line budget exceeded",
+            },
+        )
+
+    if write:
+        target_path.write_text(action.content, encoding="utf-8")
+        if not _git_intent_to_add(repo, action.target_file):
+            raise HeldoutSourceRegionCandidateError(
+                f"could not mark new file for diff metadata: {action.target_file}",
+                blocker={
+                    "field": "text_file_creation",
+                    "reason": "bounded_text_file_creation_blocked",
+                    "message": (
+                        "could not mark new file for git diff metadata: "
+                        f"{action.target_file}"
+                    ),
+                },
+            )
+
+    diff = _unified_diff("", action.content, action.target_file)
+    return TextFileCreationResult(
+        status="materialized" if write else "candidate_after",
+        target_file=action.target_file,
+        added_line_count=added_line_count,
+        diff=diff,
+        diff_summary=_diff_summary(diff),
+        sha256_before="",
+        sha256_after=_sha256_text(action.content),
+        patched_source=action.content,
         wrote_file=write,
     )
 
@@ -2551,6 +2842,47 @@ def _flask_autoescape_versionchanged_source() -> str:
     )
 
 
+def _pytest_array_interface_source_action(source: str) -> SourceRegionAction:
+    original = '        elif hasattr(obj, "__array__") or hasattr("obj", "__array_interface__"):'
+    already_applied = (
+        '        elif hasattr(obj, "__array__") or hasattr(obj, "__array_interface__"):'
+    )
+    if original not in source and already_applied not in source:
+        raise SourceRegionMaterializationError(
+            "_as_numpy_array array-interface predicate not found",
+            residual="target_selection",
+        )
+    target_line = already_applied if already_applied in source else original
+    line = _line_number(source, target_line)
+    return SourceRegionAction(
+        kind=SourceRegionActionKind.REPLACE_FUNCTION_REGION,
+        target=SourceRegionTarget(
+            file_path=PYTEST_PYTHON_API_PATH,
+            function_name="_as_numpy_array",
+            region_name="array_interface_receiver_check",
+            start_line=line,
+            end_line=line,
+        ),
+        replacement_source=_pytest_array_interface_source_replacement(),
+        constraints=SourceRegionConstraints(max_changed_source_lines=2),
+        rationale=(
+            "check the candidate object for __array_interface__ instead of "
+            "checking the literal string 'obj'"
+        ),
+    )
+
+
+def _pytest_array_interface_source_replacement() -> str:
+    return '        elif hasattr(obj, "__array__") or hasattr(obj, "__array_interface__"):'
+
+
+def _pytest_array_interface_changelog_source() -> str:
+    return (
+        "Fixed :func:`pytest.approx` not recognizing types with "
+        "``__array_interface__`` as numpy-like arrays.\n"
+    )
+
+
 def _line_number(source: str, needle: str) -> int:
     for index, line in enumerate(source.splitlines(), start=1):
         if line == needle:
@@ -2666,6 +2998,18 @@ def _git_stdout(repo: Path, args: Sequence[str]) -> str:
     if completed.returncode != 0:
         return ""
     return completed.stdout.strip()
+
+
+def _git_intent_to_add(repo: Path, path: str) -> bool:
+    completed = subprocess.run(
+        ["git", "add", "--intent-to-add", "--", path],
+        cwd=repo,
+        check=False,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    return completed.returncode == 0
 
 
 def _git_diff(repo: Path, paths: Sequence[str]) -> str:
@@ -2923,6 +3267,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             "click-3420",
             "click-3423",
             "flask-6013",
+            "pytest-14472",
         ),
         default="requests-7427",
     )
@@ -2952,6 +3297,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         spec = build_click_deprecated_help_spec(args.repo_path)
     elif args.candidate == "flask-6013":
         spec = build_flask_autoescape_spec(args.repo_path)
+    elif args.candidate == "pytest-14472":
+        spec = build_pytest_array_interface_spec(args.repo_path)
     else:
         spec = build_requests_no_proxy_domain_boundary_spec(args.repo_path)
     candidate = materialize_heldout_source_region_candidate(

@@ -12,6 +12,7 @@ from j3.heldout_source_region_candidate import (
     build_click_write_usage_spec,
     build_flask_autoescape_spec,
     _mark_expression_scanner_source_replacement,
+    build_pytest_array_interface_spec,
     build_pytest_mark_expression_scanner_spec,
     build_requests_no_proxy_domain_boundary_spec,
     build_requests_redirect_history_spec,
@@ -850,6 +851,184 @@ def test_materializes_flask_autoescape_candidate_with_reusable_actions(
         in text_files[0]["candidate_after"]["diff"]
     )
     assert "versionchanged:: 3.2" in text_files[1]["candidate_after"]["diff"]
+
+
+def test_pytest_array_interface_spec_uses_reusable_action_kinds(
+    tmp_path: Path,
+) -> None:
+    repo = _write_pytest_array_interface_fixture_repo(tmp_path / "pytest")
+
+    spec = build_pytest_array_interface_spec(repo)
+
+    assert spec.source_action.kind == SourceRegionActionKind.REPLACE_FUNCTION_REGION
+    assert spec.test_action is None
+    assert [action.kind for action in spec.text_actions] == [
+        "insert_text_around_anchor"
+    ]
+    assert [action.kind for action in spec.text_file_actions] == [
+        "create_text_file"
+    ]
+    action_kind_text = " ".join(
+        [spec.source_action.kind.value]
+        + [action.kind for action in spec.text_actions]
+        + [action.kind for action in spec.text_file_actions]
+    )
+    assert "pytest_14472" not in action_kind_text
+    assert spec.base_ref == "7df5d80ff3a98714a1d3cdbe82941229e511f4b3"
+    assert spec.accepted_head_ref == "8bae589cfba6aa7f17e621e5d89b05004303b0b8"
+    assert spec.validation_command.startswith("PYTHONPATH=src ")
+    assert spec.allowed_write_paths == (
+        "AUTHORS",
+        "changelog/14456.bugfix.rst",
+        "src/_pytest/python_api.py",
+    )
+    assert spec.source_test_scope_paths == ("src/_pytest/python_api.py",)
+
+
+def test_materializes_pytest_array_interface_candidate_with_reusable_actions(
+    tmp_path: Path,
+) -> None:
+    accepted_repo = _write_pytest_array_interface_fixture_repo(tmp_path / "accepted")
+    accepted_candidate = materialize_heldout_source_region_candidate(
+        accepted_repo,
+        build_pytest_array_interface_spec(
+            accepted_repo,
+            base_ref=_repo_head(accepted_repo),
+        ),
+        write=True,
+        validate=False,
+    )
+    accepted_diff = tmp_path / "accepted.diff"
+    accepted_diff.write_text(
+        str(accepted_candidate.candidate_after["candidate_diff"]),
+        encoding="utf-8",
+    )
+
+    repo = _write_pytest_array_interface_fixture_repo(tmp_path / "candidate")
+    candidate = materialize_heldout_source_region_candidate(
+        repo,
+        build_pytest_array_interface_spec(repo, base_ref=_repo_head(repo)),
+        write=True,
+        validate=False,
+        accepted_diff_path=accepted_diff,
+    )
+    record = candidate.to_record()
+
+    assert record["status"] == "materialized"
+    assert record["accepted_head_ref"] == "8bae589cfba6aa7f17e621e5d89b05004303b0b8"
+    assert record["residual_labels"] == ["candidate_validation_deferred"]
+    assert record["target_test_file"] is None
+    assert record["mutation_scope"]["mode"] == "heldout_source_region_source_only"
+    assert record["mutation_scope"]["actual_changed_files"] == [
+        "AUTHORS",
+        "changelog/14456.bugfix.rst",
+        "src/_pytest/python_api.py",
+    ]
+    assert record["mutation_scope"]["planned_write_files"] == [
+        "src/_pytest/python_api.py",
+        "AUTHORS",
+        "changelog/14456.bugfix.rst",
+    ]
+    assert record["mutation_scope"]["writes_outside_allowlist"] == []
+    assert record["accepted_diff_comparison"]["accepted_changed_files"] == [
+        "AUTHORS",
+        "changelog/14456.bugfix.rst",
+        "src/_pytest/python_api.py",
+    ]
+    assert record["accepted_diff_comparison"]["normalized_diff_equal"] is True
+    assert (
+        record["accepted_diff_comparison"]["scope_comparisons"]["source_test"][
+            "normalized_diff_equal"
+        ]
+        is True
+    )
+    assert (
+        record["accepted_diff_comparison"]["scope_comparisons"]["source_docs_test"][
+            "normalized_diff_equal"
+        ]
+        is True
+    )
+    action_kinds = [action["kind"] for action in record["action_records"]]
+    assert action_kinds == [
+        "replace_function_region",
+        "insert_text_around_anchor",
+        "create_text_file",
+    ]
+    source_after = record["candidate_after"]["source_file"]["candidate_after"]
+    assert source_after["ast_parse_ok"] is True
+    assert source_after["signature_preserved"] is True
+    assert 'hasattr(obj, "__array_interface__")' in source_after["diff"]
+    assert 'hasattr("obj", "__array_interface__")' in source_after["diff"]
+    text_files = record["candidate_after"]["text_files"]
+    assert [item["target_file"] for item in text_files] == [
+        "AUTHORS",
+        "changelog/14456.bugfix.rst",
+    ]
+    assert "+algojogacor" in text_files[0]["candidate_after"]["diff"]
+    assert (
+        "not recognizing types with ``__array_interface__``"
+        in text_files[1]["candidate_after"]["diff"]
+    )
+
+
+def _write_pytest_array_interface_fixture_repo(repo: Path) -> Path:
+    (repo / "src" / "_pytest").mkdir(parents=True)
+    (repo / "changelog").mkdir(parents=True)
+    (repo / "src" / "_pytest" / "python_api.py").write_text(
+        dedent(
+            '''
+            from __future__ import annotations
+
+
+            def _as_numpy_array(obj: object):
+                try:
+                    import numpy as np
+
+                    if np is None:
+                        return None
+                    elif isinstance(obj, np.ndarray):
+                        return obj
+                    elif hasattr(obj, "__array__") or hasattr("obj", "__array_interface__"):
+                        return np.asarray(obj)
+                except ImportError:
+                    pass
+                return None
+            '''
+        ).lstrip(),
+        encoding="utf-8",
+    )
+    (repo / "AUTHORS").write_text(
+        dedent(
+            '''
+            Alex Lambson
+            Alexander Johnson
+            Alexander King
+            Alexei Kozlenok
+            Alice Purcell
+            Allan Feldman
+            Aly Sivji
+            '''
+        ).lstrip(),
+        encoding="utf-8",
+    )
+    subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+    subprocess.run(["git", "add", "."], cwd=repo, check=True)
+    subprocess.run(
+        [
+            "git",
+            "-c",
+            "user.name=j3-test",
+            "-c",
+            "user.email=j3-test@example.invalid",
+            "commit",
+            "-q",
+            "-m",
+            "base",
+        ],
+        cwd=repo,
+        check=True,
+    )
+    return repo
 
 
 def _write_flask_autoescape_fixture_repo(repo: Path) -> Path:

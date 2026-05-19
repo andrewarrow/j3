@@ -202,46 +202,28 @@ This is the live coordinator board. Keep it current and compact.
   Remaining non-materialized MAT-007 counts are now
   `current_structured_action = 2`, `general_typed_builder = 0`,
   `repo_convention_builder = 0`, `constrained_local_generator = 0`, and
-  `not_currently_expressible = 2`.
+  `not_currently_expressible = 2`. `MAT-034` now materializes and
+  live-validates `pytest-dev/pytest#14472` with exact full accepted-diff parity
+  across `AUTHORS`, `changelog/14456.bugfix.rst`, and
+  `src/_pytest/python_api.py`, using reusable `replace_function_region`,
+  `insert_text_around_anchor`, and `create_text_file` records for the
+  array-interface receiver fix and accepted text updates. Remaining
+  non-materialized MAT-007 counts are now `current_structured_action = 1`,
+  `general_typed_builder = 0`, `repo_convention_builder = 0`,
+  `constrained_local_generator = 0`, and `not_currently_expressible = 2`.
 
 ## Active Tasks
 
-### `MAT-034`: Held-out pytest array-interface current action candidate
-
-- Status: active
-- Owner: worker MAT-034.
-- Started: 2026-05-19.
-- Write scope: focused current structured-action/source-region materializer
-  extensions and tests as needed, optional `docs/MAT_034_*`, generated
-  artifacts under `/tmp`, and plan updates. Likely code scope is
-  `j3/heldout_source_region_candidate.py` and
-  `tests/test_heldout_source_region_candidate.py`; avoid repo-convention
-  materializer code unless a concrete blocker requires it.
-- Acceptance: attempt `pytest-dev/pytest#14472` using reusable current
-  structured action records for the targeted expression receiver replacement
-  in `_as_numpy_array` and any accepted AUTHORS/changelog text updates, not a
-  PR-named action kind. Determine and record pinned base/head refs, accepted
-  changed files, validation command, mutation scope, candidate-after
-  diff/hash metadata, accepted-diff comparison, and live validation result.
-  The accepted diff appears to touch `AUTHORS`,
-  `changelog/14456.bugfix.rst`, and `src/_pytest/python_api.py`; separate full
-  accepted-diff parity from source-only or source/docs scoped parity if the
-  worker intentionally covers a narrower scope. If target selection,
-  expression replacement, text insertion or new changelog file creation,
-  parity, or validation blocks, record the exact blocker without broadening
-  scope silently.
-- Expected tests: focused source-region/current-action materializer tests if
-  code changes are made, JSON/report checks if artifacts are written,
-  `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and live
-  focused pytest validation when materialized.
+No active worker task is currently recorded. The next coordinator action is to
+review `MAT-034` and dispatch the final remaining `current_structured_action`
+row, `flask-5898`, if the review is clean.
 
 ## Ready Queue
 
-No queued worker task remains while `MAT-034` is active. The remaining
-`current_structured_action` row after `pytest-14472` is `flask-5898`; the
-shadow-advice-only
-residual examples remain a separate workstream and should not be mixed into
-MAT-007 held-out materialization counts.
+The remaining `current_structured_action` row after `pytest-14472` is
+`flask-5898`; the shadow-advice-only residual examples remain a separate
+workstream and should not be mixed into MAT-007 held-out materialization
+counts.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
@@ -265,6 +247,23 @@ Review before assigning more work if:
 - the next useful task is unclear
 
 ## Recently Completed
+
+### `MAT-034`: Held-out pytest array-interface current action candidate
+
+- Status: completed by worker MAT-034 on 2026-05-19.
+- Result: materialized and live-validated `pytest-dev/pytest#14472` from base
+  `7df5d80ff3a98714a1d3cdbe82941229e511f4b3` to accepted head
+  `8bae589cfba6aa7f17e621e5d89b05004303b0b8`. Candidate changed `AUTHORS`,
+  `changelog/14456.bugfix.rst`, and `src/_pytest/python_api.py`, matched the
+  full accepted diff exactly, and passed the focused `_as_numpy_array`
+  `__array_interface__` validation command.
+- Commit: pending.
+- Push: pending.
+- Artifacts:
+  `docs/MAT_034_PYTEST_14472_ARRAY_INTERFACE_CANDIDATE_2026-05-19.md`,
+  `/tmp/j3-mat-034-pytest-14472-live/final/candidate.json`,
+  `/tmp/j3-mat-034-pytest-14472-live/final/report.md`, and
+  `/tmp/j3-mat-034-pytest-14472-live/final/candidate.diff`.
 
 ### `MAT-033`: Held-out Flask autoescape current action candidate
 

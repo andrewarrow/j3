@@ -6448,3 +6448,47 @@ meaningful work. Do not replace this file with a daily reset.
   with reusable expression replacement and accepted text/new-file action
   records.
 - Blockers: none.
+
+### 2026-05-19 - MAT-034 - Pytest #14472 array-interface current action materialization
+
+- Owner: worker MAT-034.
+- Files changed: `j3/heldout_source_region_candidate.py`,
+  `tests/test_heldout_source_region_candidate.py`,
+  `docs/MAT_034_PYTEST_14472_ARRAY_INTERFACE_CANDIDATE_2026-05-19.md`,
+  `plans/active.md`, `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `python -m py_compile j3/heldout_source_region_candidate.py
+  tests/test_heldout_source_region_candidate.py` -> passed; `pytest
+  tests/test_heldout_source_region_candidate.py -q` -> 21 passed; live fresh
+  checkout run `PYTHONPATH=/Users/aa/os/j3 python -m
+  j3.heldout_source_region_candidate --candidate pytest-14472 --repo-path
+  /tmp/j3-mat-034-pytest-14472-live/repo --accepted-diff
+  /tmp/j3-mat-034-pytest-14472-live/accepted.diff --out
+  /tmp/j3-mat-034-pytest-14472-live/final/candidate.json --report
+  /tmp/j3-mat-034-pytest-14472-live/final/report.md --diff-out
+  /tmp/j3-mat-034-pytest-14472-live/final/candidate.diff --validate
+  --validation-timeout-seconds 180` -> validated; validation command
+  `PYTHONPATH=src python -c "import numpy as np; from _pytest.python_api
+  import _as_numpy_array; base = np.array([1.0, 2.0]); obj =
+  type('ArrayInterfaceOnly', (), {'__array_interface__':
+  base.__array_interface__})(); arr = _as_numpy_array(obj); assert arr is not
+  None; assert arr.tolist() == [1.0, 2.0]"` -> passed; `python -m json.tool
+  /tmp/j3-mat-034-pytest-14472-live/final/candidate.json` -> passed.
+- Result: materialized `pytest-dev/pytest#14472` from base
+  `7df5d80ff3a98714a1d3cdbe82941229e511f4b3` to accepted head
+  `8bae589cfba6aa7f17e621e5d89b05004303b0b8`. GitHub PR API confirmed the
+  base/head refs, and `git ls-remote` confirmed the PR head. The candidate
+  changed `AUTHORS`, `changelog/14456.bugfix.rst`, and
+  `src/_pytest/python_api.py`, recorded candidate-after diff/hash metadata plus
+  mutation scope, and used reusable `replace_function_region`,
+  `insert_text_around_anchor`, and `create_text_file` action records. Full
+  accepted-diff parity, source-only scoped parity, source/docs scoped parity,
+  and changed-file parity are true. Remaining non-materialized MAT-007 counts
+  are now `current_structured_action = 1`, `general_typed_builder = 0`,
+  `repo_convention_builder = 0`, `constrained_local_generator = 0`, and
+  `not_currently_expressible = 2`.
+- Commit: pending.
+- Push: pending.
+- Next: coordinator should review `MAT-034`, then dispatch the final remaining
+  `current_structured_action` row, `flask-5898`, if the pytest replay remains
+  clean.
+- Blockers: none.

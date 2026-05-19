@@ -3782,7 +3782,7 @@ Long-term target:
 
 ### MAT-034: Held-out pytest array-interface current action candidate
 
-- Status: active
+- Status: done
 - Why: after `MAT-033`, `pytest-14472` is the smallest remaining
   `current_structured_action` row. The source edit is a direct expression
   receiver replacement from the literal `"obj"` to the variable `obj`, with
@@ -3810,6 +3810,18 @@ Long-term target:
   changes are made, JSON/report checks if artifacts are written,
   `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and live
   focused pytest validation when materialized.
+- Completion note: materialized and live-validated `pytest-dev/pytest#14472`
+  with exact full accepted-diff parity across `AUTHORS`,
+  `changelog/14456.bugfix.rst`, and `src/_pytest/python_api.py`, using
+  reusable `replace_function_region`, `insert_text_around_anchor`, and
+  `create_text_file` records. Remaining non-materialized MAT-007 counts are
+  `current_structured_action = 1`, `general_typed_builder = 0`,
+  `repo_convention_builder = 0`, `constrained_local_generator = 0`, and
+  `not_currently_expressible = 2`. Artifacts:
+  `docs/MAT_034_PYTEST_14472_ARRAY_INTERFACE_CANDIDATE_2026-05-19.md`,
+  `/tmp/j3-mat-034-pytest-14472-live/final/candidate.json`,
+  `/tmp/j3-mat-034-pytest-14472-live/final/report.md`, and
+  `/tmp/j3-mat-034-pytest-14472-live/final/candidate.diff`.
 
 ## Next Recommended Queue
 

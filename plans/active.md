@@ -79,10 +79,12 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-- `TRANS-009` -> worker pending: rerun targeted `greenshot_6_subset`
-  transition evidence after `MODEL-008`. Scope is evidence only: generated
-  outputs under `/tmp`, optional concise evidence doc, and plan updates unless
-  a local runner bug blocks the run. Do not broaden the standard matrix.
+- `TRANS-009` -> worker Mencius
+  (`019e3e5f-5c6c-7572-973a-020665167f39`): rerun targeted
+  `greenshot_6_subset` transition evidence after `MODEL-008`. Scope is
+  evidence only: generated outputs under `/tmp`, optional concise evidence
+  doc, and plan updates unless a local runner bug blocks the run. Do not
+  broaden the standard matrix.
 
 ## Ready Queue
 

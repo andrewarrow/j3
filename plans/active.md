@@ -270,8 +270,9 @@ Review before assigning more work if:
   candidate-outcome artifact now top-ranks the passing `insert_guard` in
   `average` over the unrelated `change_operator` decoy in `apply_discount`.
   Product routing remains shadow-only.
-- Commit: pending; final hash will be recorded after commit.
-- Push: pending.
+- Commit: `7b5b8bc` implementation/evidence; push-result metadata recorded
+  in follow-up planning update.
+- Push: implementation/evidence commit pushed successfully to `origin/main`.
 - Tests: `pytest tests/test_transition_action_scoring.py -q` -> 29 passed;
   direct `/tmp/j3-trans-012-expanded-standard/suite/greenshot_bugs/candidate-outcomes.jsonl`
   replay for `missing_guard` -> passing `insert_guard` ranked first;

@@ -333,6 +333,153 @@ def test_future_scorer_exposes_distinct_mapping_target_roles_for_same_mapping() 
     )
 
 
+def test_future_scorer_prefers_boundary_operator_with_hint_alignment() -> None:
+    groups = build_transition_action_choice_groups(
+        [
+            _boundary_literal_candidate_row(
+                rank_index=1,
+                action="change_literal",
+                params={"from": 10000, "to": 9999},
+                passed=False,
+                task="express_shipping_boundary_preferred_helper",
+                task_family="operator_boundary",
+                file_path="shop/shipping.py",
+                symbol="is_express_eligible",
+                node_kind="Constant",
+                model_score=0.6,
+                ranker_score=0.6,
+                failure_hint_score=0.6,
+            ),
+            _boundary_literal_candidate_row(
+                rank_index=2,
+                action="change_operator",
+                params={"from": ">", "to": ">="},
+                passed=True,
+                task="express_shipping_boundary_preferred_helper",
+                task_family="operator_boundary",
+                file_path="shop/shipping.py",
+                symbol="is_express_eligible",
+                node_kind="Compare",
+            ),
+        ],
+        embedding_dim=8,
+    )
+
+    ranked = rank_transition_action_candidates(groups[0])
+    operator_score = score_transition_action_candidate(
+        groups[0]["candidates"][1],
+        group=groups[0],
+    )
+
+    assert [candidate["rank_index"] for candidate in ranked] == [2, 1]
+    assert operator_score["features"]["failure_hint_file_match"] == 1.0
+    assert operator_score["features"]["failure_hint_symbol_match"] == 1.0
+    assert operator_score["features"]["action_family_boundary_operator_match"] == 1.0
+    assert operator_score["features"]["same_file_symbol_competitor_count"] == 1.0
+
+
+def test_future_scorer_prefers_module_constant_over_literal_neighbor() -> None:
+    groups = build_transition_action_choice_groups(
+        [
+            _boundary_literal_candidate_row(
+                rank_index=1,
+                action="change_literal",
+                params={"from": 4999, "to": 5000},
+                passed=False,
+                task="free_shipping_threshold_module_constant",
+                task_family="module_constant",
+                file_path="shop/shipping.py",
+                symbol="shipping_total",
+                node_kind="Constant",
+                model_score=0.7,
+                ranker_score=0.7,
+                failure_hint_score=0.7,
+            ),
+            _boundary_literal_candidate_row(
+                rank_index=2,
+                action="change_module_constant",
+                params={
+                    "name": "FREE_SHIPPING_MINIMUM_CENTS",
+                    "from": 4999,
+                    "to": 5000,
+                },
+                passed=True,
+                task="free_shipping_threshold_module_constant",
+                task_family="module_constant",
+                file_path="shop/shipping.py",
+                symbol="FREE_SHIPPING_MINIMUM_CENTS",
+                node_kind="Constant",
+            ),
+        ],
+        embedding_dim=8,
+    )
+
+    ranked = rank_transition_action_candidates(groups[0])
+    constant_score = score_transition_action_candidate(
+        groups[0]["candidates"][1],
+        group=groups[0],
+    )
+
+    assert [candidate["rank_index"] for candidate in ranked] == [2, 1]
+    assert constant_score["features"]["action_family_module_constant_match"] == 1.0
+    assert constant_score["features"]["module_constant_name_matches_symbol"] == 1.0
+    assert constant_score["features"]["module_constant_name_matches_name_hint"] == 1.0
+    assert constant_score["features"]["literal_or_constant_matches_assertion_delta"] == 1.0
+
+
+def test_future_scorer_prefers_literal_delta_in_hinted_file_and_symbol() -> None:
+    groups = build_transition_action_choice_groups(
+        [
+            _boundary_literal_candidate_row(
+                rank_index=1,
+                action="change_return_value",
+                params={"from": None, "to": "{name} {filename!r} is a directory."},
+                passed=False,
+                task="dynamic_field_error_message",
+                task_family="string_literal_error_message",
+                file_path="errors/fallback.py",
+                symbol="fallback_directory_message",
+                node_kind="Return",
+                model_score=0.7,
+                ranker_score=0.7,
+                failure_hint_score=0.7,
+            ),
+            _boundary_literal_candidate_row(
+                rank_index=2,
+                action="change_literal",
+                params={
+                    "from": "{name} '{filename}' is a directory.",
+                    "to": "{name} {filename!r} is a directory.",
+                },
+                passed=True,
+                task="dynamic_field_error_message",
+                task_family="string_literal_error_message",
+                file_path="errors/messages.py",
+                symbol="invalid_directory_message",
+                node_kind="Constant",
+            ),
+        ],
+        embedding_dim=8,
+    )
+
+    ranked = rank_transition_action_candidates(groups[0])
+    decoy_score = score_transition_action_candidate(
+        groups[0]["candidates"][0],
+        group=groups[0],
+    )
+    literal_score = score_transition_action_candidate(
+        groups[0]["candidates"][1],
+        group=groups[0],
+    )
+
+    assert [candidate["rank_index"] for candidate in ranked] == [2, 1]
+    assert decoy_score["features"]["failure_hint_file_mismatch"] == 1.0
+    assert decoy_score["features"]["failure_hint_symbol_mismatch"] == 1.0
+    assert literal_score["features"]["failure_hint_file_and_symbol_match"] == 1.0
+    assert literal_score["features"]["action_family_literal_match"] == 1.0
+    assert literal_score["features"]["literal_or_constant_matches_assertion_delta"] == 1.0
+
+
 def test_baseline_orders_are_stable_and_distinct() -> None:
     group = build_transition_action_choice_groups(
         _fixture_candidate_rows(),
@@ -871,6 +1018,93 @@ def _mapping_candidate_row(
         "failure_hints": hints,
         "equivalent_candidate_ranks": [],
         "overlapping_candidate_ranks": [],
+        "equivalent_passing_candidate_ranks": [],
+        "overlapping_passing_candidate_ranks": [],
+    }
+
+
+def _boundary_literal_candidate_row(
+    *,
+    rank_index: int,
+    action: str,
+    params: dict[str, object],
+    passed: bool,
+    task: str,
+    task_family: str,
+    file_path: str,
+    symbol: str,
+    node_kind: str,
+    model_score: float = 0.0,
+    ranker_score: float = 0.0,
+    failure_hint_score: float = 0.0,
+) -> dict[str, object]:
+    expected = (
+        "{name} {filename!r} is a directory."
+        if task == "dynamic_field_error_message"
+        else 5000
+    )
+    actual = (
+        "{name} '{filename}' is a directory."
+        if task == "dynamic_field_error_message"
+        else 4999
+    )
+    function_name = (
+        "invalid_directory_message"
+        if task == "dynamic_field_error_message"
+        else "shipping_total"
+        if task == "free_shipping_threshold_module_constant"
+        else symbol
+    )
+    source_file = (
+        "errors/messages.py"
+        if task == "dynamic_field_error_message"
+        else file_path
+    )
+    missing_names = (
+        ["FREE_SHIPPING_MINIMUM_CENTS"]
+        if task == "free_shipping_threshold_module_constant"
+        else []
+    )
+    return {
+        "task": task,
+        "task_family": task_family,
+        "source_type": "handcrafted",
+        "split": "validation",
+        "language": "python",
+        "phase": "ranked",
+        "repair_plan_id": f"plan-{task}",
+        "file_path": file_path,
+        "action": action,
+        "symbol": symbol,
+        "start_line": 3,
+        "end_line": 3,
+        "node_kind": node_kind,
+        "params": params,
+        "reason": f"try {action}",
+        "model_score": model_score,
+        "failure_hint_score": failure_hint_score,
+        "ranker_score": ranker_score,
+        "target_context": {"function_name": symbol, "line_span": [3, 3]},
+        "before_source": "def target():\n    return False\n",
+        "patched_source": "def target():\n    return True\n",
+        "passed": passed,
+        "preferred": passed,
+        "rank_index": rank_index,
+        "first_passing_index": 2,
+        "is_first_pass": passed and rank_index == 2,
+        "passing_candidates": 1,
+        "failure_hints": [
+            {
+                "source_files": [source_file],
+                "function_names": [function_name],
+                "missing_names": missing_names,
+                "assertions": [
+                    {"actual": actual, "operator": "==", "expected": expected},
+                ],
+            }
+        ],
+        "equivalent_candidate_ranks": [1, 2],
+        "overlapping_candidate_ranks": [1, 2],
         "equivalent_passing_candidate_ranks": [],
         "overlapping_passing_candidate_ranks": [],
     }

@@ -462,7 +462,7 @@ Long-term target:
 
 ### MODEL-005: Improve boundary and literal action ranking
 
-- Status: active
+- Status: done
 - Why: transition residuals still include boundary/literal and module-constant
   candidates where equivalent-looking edits outrank the passing action family.
 - Write scope: transition scorer fixtures/features/tests for boundary/literal
@@ -470,6 +470,13 @@ Long-term target:
 - Acceptance: focused residual fixtures improve ranking for boundary/literal
   examples without adding new repair action kinds.
 - Tests: focused transition action scoring/ranking tests.
+- Completion note: added shadow scorer features for failure-hint file/symbol
+  and target-name alignment, task-family action alignment for boundary,
+  module-constant, and literal/message candidates, assertion-delta matches,
+  module-constant name alignment, and same-file/symbol competition. Focused
+  fixtures now prefer the passing `change_operator`, `change_module_constant`,
+  and `change_literal` candidates over equivalent-looking decoys while keeping
+  add-keyword and mapping-target scorer behavior intact.
 
 ### MODEL-006: Add candidate-after or AST-delta observation
 

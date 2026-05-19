@@ -57,19 +57,14 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-- `MODEL-005`: improve boundary and literal action ranking.
-  - Owner: worker Socrates (`019e3e16-acdb-7df3-a07e-1f740aa4537e`).
-  - Scope: transition scorer fixtures/features/tests for boundary/literal
-    action-family and file/symbol alignment.
-  - Acceptance: focused residual fixtures improve ranking for
-    boundary/literal examples without adding new repair action kinds.
-  - Expected tests: focused transition action scoring/ranking tests,
-    `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+No active worker tasks are recorded after `MODEL-005` returns. The coordinator
+should review completed scorer and data-policy work, then dispatch the next
+bounded ready task.
 
 ## Ready Queue
 
-`MODEL-005` is running. Keep additional scorer work queued until `MODEL-005`
-returns.
+`MODEL-005` has returned. Keep additional scorer work queued until the
+coordinator reviews the boundary/literal scorer result.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
@@ -93,6 +88,16 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `MODEL-005`: added boundary/literal and module-constant evidence to the
+  shadow transition scorer. V1/V2/V3 feature surfaces now expose failure-hint
+  file, symbol, and target-name alignment; task-family alignment for
+  boundary-operator, module-constant, and literal/message actions; literal or
+  module-constant assertion-delta matches; module-constant name alignment; and
+  same-file/symbol competitor counts. Focused fixtures now rank the passing
+  boundary operator, module constant, and literal/message candidates above
+  equivalent-looking decoys. Existing `MODEL-003` add-keyword and `MODEL-004`
+  mapping-target behavior remains intact, and production ranking gates remain
+  unchanged and shadow-only.
 - `SCALE-002`: added `docs/TRAINING_DATA_POLICY.md` and linked it from
   `docs/TRAINING.md`. The policy builds on `SCALE-001` and defines artifact
   classes for scratch corpora, checked-in examples, release archives,

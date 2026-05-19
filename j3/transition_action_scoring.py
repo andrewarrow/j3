@@ -68,6 +68,19 @@ def score_transition_action_candidate(
         + 0.85 * features["mapping_subscript_from_matches_missing_key"]
         + 0.65 * features["mapping_subscript_to_matches_returned_mapping_key"]
         + 0.75 * features["mapping_dict_key_to_matches_missing_key"]
+        + 1.20 * features["failure_hint_file_match"]
+        - 0.75 * features["failure_hint_file_mismatch"]
+        + 1.00 * features["failure_hint_symbol_match"]
+        - 0.65 * features["failure_hint_symbol_mismatch"]
+        + 0.85 * features["failure_hint_target_name_match"]
+        + 0.80 * features["failure_hint_file_and_symbol_match"]
+        + 2.60 * features["action_family_boundary_operator_match"]
+        + 2.75 * features["action_family_module_constant_match"]
+        + 1.75 * features["action_family_literal_match"]
+        + 1.15 * features["literal_or_constant_matches_assertion_delta"]
+        + 0.50 * features["module_constant_name_matches_symbol"]
+        + 0.75 * features["module_constant_name_matches_name_hint"]
+        + 0.16 * min(features["same_file_symbol_competitor_count"], 3.0)
         + _action_prior(str(features["action_kind"]))
         + _param_prior(str(features["action_kind"]), features["param_signature"])
     )
@@ -998,6 +1011,27 @@ _MAPPING_TARGET_FEATURE_NAMES = (
     "mapping_dict_key_to_matches_missing_key",
 )
 
+_BOUNDARY_LITERAL_FEATURE_NAMES = (
+    "boundary_literal_evidence_available",
+    "failure_hint_file_match",
+    "failure_hint_file_mismatch",
+    "failure_hint_symbol_match",
+    "failure_hint_symbol_mismatch",
+    "failure_hint_target_name_match",
+    "failure_hint_file_and_symbol_match",
+    "action_family_boundary_operator_match",
+    "action_family_module_constant_match",
+    "action_family_literal_match",
+    "literal_or_constant_matches_assertion_delta",
+    "module_constant_name_matches_symbol",
+    "module_constant_name_matches_name_hint",
+    "same_file_symbol_competitor_count",
+)
+
+_BOUNDARY_OPERATOR_ACTION_KINDS = {"change_operator", "modify_condition"}
+_LITERAL_ACTION_KINDS = {"change_literal", "change_return_value"}
+_MODULE_CONSTANT_ACTION_KIND = "change_module_constant"
+
 
 def _mapping_target_features(
     candidate: Mapping[str, object],
@@ -1171,6 +1205,139 @@ def _mapping_target_signature(candidate: Mapping[str, object]) -> tuple[object, 
     )
 
 
+def _boundary_literal_features(
+    candidate: Mapping[str, object],
+    *,
+    action_kind: str,
+    params: Mapping[str, object],
+    failure_hints: Sequence[object],
+    group: Mapping[str, object] | None,
+) -> dict[str, float]:
+    features = {name: 0.0 for name in _BOUNDARY_LITERAL_FEATURE_NAMES}
+    supported_action_kinds = (
+        _BOUNDARY_OPERATOR_ACTION_KINDS
+        | _LITERAL_ACTION_KINDS
+        | {_MODULE_CONSTANT_ACTION_KIND}
+    )
+    if action_kind not in supported_action_kinds:
+        return features
+
+    features["boundary_literal_evidence_available"] = 1.0
+    action = _mapping(candidate.get("action"))
+    file_path = action.get("file_path")
+    symbol = action.get("symbol")
+    hinted_files, function_names, target_names = _boundary_literal_hint_sets(
+        failure_hints
+    )
+
+    file_matches = bool(isinstance(file_path, str) and file_path in hinted_files)
+    symbol_matches = bool(isinstance(symbol, str) and symbol in function_names)
+    target_name_matches = bool(isinstance(symbol, str) and symbol in target_names)
+    if file_matches:
+        features["failure_hint_file_match"] = 1.0
+    elif hinted_files:
+        features["failure_hint_file_mismatch"] = 1.0
+    if symbol_matches:
+        features["failure_hint_symbol_match"] = 1.0
+    elif function_names and action_kind != _MODULE_CONSTANT_ACTION_KIND:
+        features["failure_hint_symbol_mismatch"] = 1.0
+    if target_name_matches:
+        features["failure_hint_target_name_match"] = 1.0
+    if file_matches and (symbol_matches or target_name_matches):
+        features["failure_hint_file_and_symbol_match"] = 1.0
+
+    family = _group_task_family_text(group)
+    if action_kind in _BOUNDARY_OPERATOR_ACTION_KINDS and "boundary" in family:
+        features["action_family_boundary_operator_match"] = 1.0
+    if (
+        action_kind == _MODULE_CONSTANT_ACTION_KIND
+        and ("module_constant" in family or "module-constant" in family)
+    ):
+        features["action_family_module_constant_match"] = 1.0
+    if action_kind in _LITERAL_ACTION_KINDS and (
+        "literal" in family or "error_message" in family or "message" in family
+    ):
+        features["action_family_literal_match"] = 1.0
+
+    if action_kind in (_LITERAL_ACTION_KINDS | {_MODULE_CONSTANT_ACTION_KIND}):
+        assertions = [
+            _mapping(assertion)
+            for hint in failure_hints
+            for assertion in _list(_mapping(hint).get("assertions"))
+        ]
+        if _mapping_value_matches_assertion_delta(params, assertions):
+            features["literal_or_constant_matches_assertion_delta"] = 1.0
+
+    constant_name = params.get("name")
+    if action_kind == _MODULE_CONSTANT_ACTION_KIND and isinstance(constant_name, str):
+        if constant_name and constant_name == symbol:
+            features["module_constant_name_matches_symbol"] = 1.0
+        if constant_name in target_names:
+            features["module_constant_name_matches_name_hint"] = 1.0
+
+    features["same_file_symbol_competitor_count"] = float(
+        max(_same_file_symbol_competition(candidate, group=group) - 1, 0)
+    )
+    return features
+
+
+def _boundary_literal_hint_sets(
+    failure_hints: Sequence[object],
+) -> tuple[set[str], set[str], set[str]]:
+    source_files: set[str] = set()
+    function_names: set[str] = set()
+    target_names: set[str] = set()
+    for hint in failure_hints:
+        record = _mapping(hint)
+        source_files.update(
+            str(name) for name in _list(record.get("source_files")) if name
+        )
+        function_names.update(
+            str(name) for name in _list(record.get("function_names")) if name
+        )
+        for field in ("function_names", "missing_names", "type_error_names"):
+            target_names.update(
+                str(name) for name in _list(record.get(field)) if name
+            )
+    return source_files, function_names, target_names
+
+
+def _group_task_family_text(group: Mapping[str, object] | None) -> str:
+    if group is None:
+        return ""
+    grouping = _mapping(group.get("grouping"))
+    parts = [
+        grouping.get("task_family"),
+        grouping.get("task"),
+        grouping.get("source_type"),
+    ]
+    return " ".join(str(part).lower() for part in parts if part)
+
+
+def _same_file_symbol_competition(
+    candidate: Mapping[str, object],
+    *,
+    group: Mapping[str, object] | None,
+) -> int:
+    signature = _file_symbol_signature(candidate)
+    if group is None or signature is None:
+        return 0
+    return sum(
+        1
+        for other in _list(group.get("candidates"))
+        if _file_symbol_signature(_mapping(other)) == signature
+    )
+
+
+def _file_symbol_signature(candidate: Mapping[str, object]) -> tuple[object, ...] | None:
+    action = _mapping(candidate.get("action"))
+    file_path = action.get("file_path")
+    symbol = action.get("symbol")
+    if not file_path or not symbol:
+        return None
+    return (file_path, symbol)
+
+
 def _candidate_score_features(
     candidate: Mapping[str, object],
     *,
@@ -1193,6 +1360,13 @@ def _candidate_score_features(
         action_kind=action_kind,
         params=params,
         target_context=target_context,
+        failure_hints=failure_hints,
+        group=group,
+    )
+    boundary_literal_features = _boundary_literal_features(
+        candidate,
+        action_kind=action_kind,
+        params=params,
         failure_hints=failure_hints,
         group=group,
     )
@@ -1233,6 +1407,7 @@ def _candidate_score_features(
             sum(len(_list(_mapping(hint).get("assertions"))) for hint in failure_hints)
         ),
         **mapping_features,
+        **boundary_literal_features,
     }
 
 
@@ -1282,6 +1457,8 @@ def _candidate_v2_features(
         "rank_index_second": 1.0 if rank_index == 2.0 else 0.0,
     }
     for name in _MAPPING_TARGET_FEATURE_NAMES:
+        features[name] = float(base[name])
+    for name in _BOUNDARY_LITERAL_FEATURE_NAMES:
         features[name] = float(base[name])
     _add_feature(features, f"action:{action_kind}", 1.0)
 

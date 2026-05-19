@@ -4484,3 +4484,33 @@ meaningful work. Do not replace this file with a daily reset.
 - Next: use the policy as the contract for the next durable training manifest
   task.
 - Blockers: none.
+
+### 2026-05-19 - MODEL-005 - Boundary and literal action ranking
+
+- Owner: worker Socrates (`019e3e16-acdb-7df3-a07e-1f740aa4537e`).
+- Files changed: `j3/transition_action_scoring.py`,
+  `tests/test_transition_action_scoring.py`,
+  `tests/test_transition_scorer_advice.py`, `plans/active.md`,
+  `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `python -m py_compile j3/transition_action_scoring.py
+  j3/transition_scorer_advice.py tests/test_transition_action_scoring.py
+  tests/test_transition_scorer_advice.py tests/test_transition_shadow_scorer.py`
+  -> passed; `pytest tests/test_transition_action_scoring.py
+  tests/test_transition_scorer_advice.py tests/test_transition_shadow_scorer.py
+  -q` -> 31 passed; `pytest tests/test_plan_consistency.py -q` -> 6
+  passed; `git diff --check` -> passed.
+- Result: added boundary/literal and module-constant evidence to the shadow
+  transition scorer. V1/V2/V3 features now expose failure-hint file, symbol,
+  and target-name alignment; task-family action alignment for boundary
+  operators, module constants, and literal/message edits; literal or
+  module-constant assertion-delta matches; module-constant name alignment; and
+  same-file/symbol competitor counts. Focused fixtures rank passing
+  `change_operator`, `change_module_constant`, and `change_literal` candidates
+  above equivalent-looking decoys. Existing add-keyword and mapping-target
+  scorer tests remain intact. Production ranking gates remain unchanged and
+  shadow-only.
+- Commit: pending.
+- Push: pending.
+- Next: coordinator should review `MODEL-005`, then decide whether to rerun
+  targeted residual evidence or move to the next bounded scorer/data task.
+- Blockers: none.

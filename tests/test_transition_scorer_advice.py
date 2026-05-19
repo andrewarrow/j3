@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 
 from j3.actions import PatchAction, PatchActionKind, PatchTarget
-from j3.failure_hints import AssertionComparison, PytestFailureHint
+from j3.failure_hints import AssertionComparison, PytestFailureHint, TracebackLocation
 from j3.synth import SourceEdit
 from j3.transition_scorer_advice import (
     build_transition_scorer_advice,
@@ -208,6 +208,59 @@ def test_ranked_candidates_use_same_mapping_key_value_target_evidence() -> None:
     assert ranked == (value_candidate, key_decoy)
 
 
+def test_ranked_candidates_use_module_constant_file_and_name_alignment() -> None:
+    literal_neighbor = _patch_candidate(
+        kind=PatchActionKind.CHANGE_LITERAL,
+        params={"from": 4999, "to": 5000},
+        patched_source="def shipping_total():\n    return 5000\n",
+        model_score=0.7,
+        ranker_score=0.7,
+        failure_hint_score=0.7,
+        file_path="shop/cart.py",
+        symbol="shipping_total",
+    )
+    module_constant = _patch_candidate(
+        kind=PatchActionKind.CHANGE_MODULE_CONSTANT,
+        params={
+            "name": "FREE_SHIPPING_MINIMUM_CENTS",
+            "from": 4999,
+            "to": 5000,
+        },
+        patched_source=(
+            "FREE_SHIPPING_MINIMUM_CENTS = 5000\n\n"
+            "def shipping_total():\n"
+            "    return FREE_SHIPPING_MINIMUM_CENTS\n"
+        ),
+        model_score=0.0,
+        ranker_score=0.0,
+        failure_hint_score=0.0,
+        file_path="shop/shipping.py",
+        symbol="FREE_SHIPPING_MINIMUM_CENTS",
+        node_kind="Constant",
+    )
+    hints = (
+        PytestFailureHint(
+            traceback_locations=[TracebackLocation(file_path="shop/shipping.py", line=2)],
+            function_names={"shipping_total"},
+            missing_names={"FREE_SHIPPING_MINIMUM_CENTS"},
+            assertions=[
+                AssertionComparison(actual=4999, operator="==", expected=5000)
+            ],
+        ),
+    )
+
+    ranked = transition_scorer_ranked_candidates(
+        [literal_neighbor, module_constant],
+        candidate_hints=[hints, hints],
+        context={
+            "task": "free_shipping_threshold_module_constant",
+            "task_family": "module_constant",
+        },
+    )
+
+    assert ranked == (module_constant, literal_neighbor)
+
+
 def test_advice_records_keyword_hint_fields_and_remains_shadow_only(tmp_path) -> None:
     add_keyword = _patch_candidate(
         kind=PatchActionKind.ADD_KEYWORD_ARG,
@@ -283,18 +336,21 @@ def _patch_candidate(
     ranker_score: float,
     failure_hint_score: float,
     target_context: dict[str, object] | None = None,
+    file_path: str = "client.py",
+    symbol: str = "load",
+    node_kind: str = "Call",
 ) -> CandidatePatch:
     original_source = "def load():\n    return fetch()\n"
     return CandidatePatch(
-        file_path="client.py",
+        file_path=file_path,
         action=PatchAction(
             kind=kind,
             target=PatchTarget(
-                file_path="client.py",
+                file_path=file_path,
                 start_line=2,
                 end_line=2,
-                symbol="load",
-                node_kind="Call",
+                symbol=symbol,
+                node_kind=node_kind,
             ),
             params=params,
         ),
@@ -314,6 +370,6 @@ def _patch_candidate(
         target_context=(
             dict(target_context)
             if target_context is not None
-            else {"function_name": "load", "line_span": [2, 2]}
+            else {"function_name": symbol, "line_span": [2, 2]}
         ),
     )

@@ -3086,6 +3086,30 @@ Long-term target:
   stayed in the pure typed-builder layer using reusable
   `function_signature_update` without `statement_block_replace`.
 
+### MAT-016: Flask #5903 filesystem idiom materialization probe
+
+- Status: active
+- Why: after `MAT-015`, the MAT-013 held-out typed/general-AST gap still has
+  two unresolved rows. `pallets/flask#5903` tests whether a common
+  try/except/pass filesystem idiom can be represented as a reusable
+  materializer action instead of a broad statement-block replacement or
+  free-form source generation.
+- Write scope: `j3/heldout_typed_builder_candidate.py`,
+  `tests/test_heldout_typed_builder_candidate.py`, optional `docs/MAT_016_*`,
+  generated artifacts under `/tmp`, and plan updates. Avoid transition
+  scoring, issue/PR ranking, validation-policy, local-knowledge, and matrix
+  manifest files.
+- Acceptance: attempt `pallets/flask#5903` using reusable action records.
+  Determine and record base/head refs, accepted changed files, mutation scope,
+  candidate-after diff/AST metadata, accepted-diff comparison, validation
+  result or exact blocker, and whether the edit stays in a reusable idiom
+  builder layer. Prefer a narrow general action for rewriting an
+  `os.makedirs` try/except/pass idiom to `exist_ok=True`; use
+  `statement_block_replace` only if a precise blocker shows why the idiom
+  action is insufficient.
+- Tests: focused materializer tests, plan consistency, `git diff --check`, and
+  live validation or a recorded validation blocker.
+
 ## Next Recommended Queue
 
 Start with these unless fresh evidence changes the order:

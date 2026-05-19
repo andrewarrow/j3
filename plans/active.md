@@ -116,11 +116,18 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-No active worker task is currently assigned.
+- `MAT-016`: assigned to attempt the remaining held-out
+  `pallets/flask#5903` try/except/pass filesystem idiom rewrite with reusable
+  materializer action records. Keep the slice in
+  `j3/heldout_typed_builder_candidate.py`,
+  `tests/test_heldout_typed_builder_candidate.py`, optional focused docs,
+  generated `/tmp` artifacts, and plan updates. Do not edit transition
+  scoring, issue/PR ranking, validation policy, local knowledge, or matrix
+  manifests.
 
 ## Ready Queue
 
-No ready worker task is currently queued after `MAT-015` completion.
+No ready worker task is currently queued while `MAT-016` is active.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 

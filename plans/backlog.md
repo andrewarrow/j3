@@ -348,13 +348,12 @@ Long-term target:
 
 ### TRANS-003: Expand standard matrix manifest cautiously
 
-- Status: blocked
-- Blocker: `TRANS-010` refreshed the full current standard matrix and found 4
-  matrix residuals, 11 residual-report examples, and guarded decision
-  `remain_shadow_only`. The targeted `greenshot_6_subset` remains clean and
-  `ready_for_guarded_opt_in`, but `greenshot_3` and `greenshot_5_subset` still
-  block the full standard gate. Standard matrix expansion should wait for
-  residual work on those suites.
+- Status: ready
+- Blocker: none for manifest expansion after `TRANS-011`. The full current
+  standard matrix now has 0 matrix residuals after `MODEL-009`; guarded
+  product routing remains shadow-only because the full guarded decision is
+  still `remain_shadow_only` and not all suite gates are
+  `ready_for_guarded_opt_in`.
 - Why: product gates need broader held-out suites without making local runs
   impractical.
 - Write scope: `examples/transition_shadow_matrix.json`, tests, docs.
@@ -588,7 +587,7 @@ Long-term target:
 
 ### TRANS-011: Rerun standard matrix after MODEL-009
 
-- Status: active
+- Status: done
 - Why: `MODEL-009` fixes the four saved `TRANS-010`
   `v3_top_candidate_failed` shapes in focused tests and suite-level artifact
   replays, but the committed full standard matrix evidence still predates the
@@ -603,6 +602,17 @@ Long-term target:
 - Tests: `run-transition-shadow-matrix`, checksum verification,
   `report-transition-residuals --matrix`, `decide-transition-guarded-trial`,
   `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+- Completion note: reran the full current standard matrix under
+  `/tmp/j3-trans-011-standard-after-model009`. Totals were 5 suites, 56 tasks,
+  56 ranked solved tasks, 12,413 candidates, 19 held-out groups, 0 matrix
+  residuals, 4 baseline residuals, and zero hosted usage. The residual report
+  had 7 examples, all `shadow_scorer_top_candidate_failed`; the 4
+  `TRANS-010` `v3_top_candidate_failed` cases are resolved. `greenshot_3`
+  improved to `ready_for_shadow_mode`, `greenshot_5_subset` improved to
+  `ready_for_guarded_opt_in`, and `greenshot_6_subset` remains
+  `ready_for_guarded_opt_in`. Guarded decision remained `remain_shadow_only`
+  because not all suite gates are `ready_for_guarded_opt_in`; `TRANS-003` can
+  resume standard matrix manifest expansion under shadow-only product routing.
 
 ## Workstream E: Repo State, Actions, And Models
 

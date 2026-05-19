@@ -5171,3 +5171,49 @@ meaningful work. Do not replace this file with a daily reset.
 - Next: worker Helmholtz (`019e3e7c-69fe-7960-902d-0589bd429b8d`) is running
   `TRANS-011`.
 - Blockers: none.
+
+### 2026-05-19 - TRANS-011 - Standard matrix after MODEL-009 evidence
+
+- Owner: worker Helmholtz (`019e3e7c-69fe-7960-902d-0589bd429b8d`).
+- Files changed:
+  `docs/TRANS_011_STANDARD_AFTER_MODEL009_EVIDENCE_2026-05-19.md`,
+  `plans/active.md`, `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `python cli.py run-transition-shadow-matrix --matrix
+  examples/transition_shadow_matrix.json --out
+  /tmp/j3-trans-011-standard-after-model009 --force --json` -> passed;
+  `python -m json.tool
+  /tmp/j3-trans-011-standard-after-model009/matrix-summary.json >/dev/null`
+  -> passed; `shasum -a 256 -c
+  /tmp/j3-trans-011-standard-after-model009/evidence/checksums.sha256` ->
+  passed; `python cli.py report-transition-residuals --matrix
+  /tmp/j3-trans-011-standard-after-model009 --out
+  /tmp/j3-trans-011-standard-after-model009-residual-report.json --json` ->
+  passed; `python -m json.tool
+  /tmp/j3-trans-011-standard-after-model009-residual-report.json >/dev/null`
+  -> passed; `python cli.py decide-transition-guarded-trial --matrix
+  /tmp/j3-trans-011-standard-after-model009 --out
+  /tmp/j3-trans-011-standard-after-model009-guarded-decision.json --json` ->
+  passed; `python -m json.tool
+  /tmp/j3-trans-011-standard-after-model009-guarded-decision.json
+  >/dev/null` -> passed; `pytest tests/test_plan_consistency.py -q` ->
+  6 passed; `git diff --check` -> passed.
+- Result: refreshed the full current standard transition matrix after
+  `MODEL-009`. The run covered 5 suites, 56 tasks, 56 ranked solved tasks,
+  12,413 candidates, 19 held-out groups, 0 matrix residuals, 4 baseline
+  residuals, and zero hosted usage. Compared with `TRANS-010`, matrix
+  residuals dropped from 4 to 0 and residual-report examples dropped from 11
+  to 7. The residual report still has 7 `scorer_ranking_gap` examples, all
+  `shadow_scorer_top_candidate_failed`, and no `v3_top_candidate_failed`
+  examples. `greenshot_3` improved to `ready_for_shadow_mode`;
+  `greenshot_5_subset` improved to `ready_for_guarded_opt_in`;
+  `greenshot_6_subset` remains `ready_for_guarded_opt_in`. Guarded decision
+  remains `remain_shadow_only` because not all suite gates are
+  `ready_for_guarded_opt_in`.
+- Commit: pending final worker commit.
+- Push: pending final worker push.
+- Next: `TRANS-003` can resume coordinator-reviewed standard matrix manifest
+  expansion using the zero-matrix-residual `TRANS-011` evidence; keep
+  transition ranking product routing shadow-only.
+- Blockers: full standard transition ranking remains shadow-only because
+  `greenshot_bugs`, `greenshot_3`, and `greenshot_4` are only
+  `ready_for_shadow_mode`, not `ready_for_guarded_opt_in`.

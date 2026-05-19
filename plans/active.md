@@ -46,17 +46,20 @@ This is the live coordinator board. Keep it current and compact.
   full standard matrix before any manifest expansion: 5 suites, 56 tasks, 56
   ranked solved tasks, 12,413 candidates, 19 held-out groups, 4 matrix
   residuals, 4 baseline residuals, 11 residual-report examples, all
-  `scorer_ranking_gap`, and zero hosted usage. `greenshot_6_subset` remains
-  clean with suite gate `ready_for_guarded_opt_in`, but `greenshot_3` and
-  `greenshot_5_subset` still have
-  `not_ready_underperforms_existing_rank_order` gates. The full standard
-  guarded decision remains `remain_shadow_only`; `TRANS-003` should return to
-  residual work before any standard matrix manifest expansion. `MODEL-009`
-  now adds V3 local structural evidence for the four `TRANS-010`
-  `v3_top_candidate_failed` residuals. Focused artifact replays against the
-  saved `TRANS-010` GreenShot-3 and GreenShot-5 suite inputs reduce the V3
-  validation residual count to zero for those held-out groups, but the full
-  standard matrix gate remains unchanged until `TRANS-011` reruns evidence.
+  `scorer_ranking_gap`, and zero hosted usage. `MODEL-009` added V3 local
+  structural evidence for the four `TRANS-010` `v3_top_candidate_failed`
+  residuals. `TRANS-011` reran the full standard matrix after `MODEL-009`: 5
+  suites, 56 tasks, 56 ranked solved tasks, 12,413 candidates, 19 held-out
+  groups, 0 matrix residuals, 4 baseline residuals, 7 residual-report
+  examples, and zero hosted usage. `greenshot_3` improved to
+  `ready_for_shadow_mode`; `greenshot_5_subset` improved to
+  `ready_for_guarded_opt_in`; `greenshot_6_subset` remains
+  `ready_for_guarded_opt_in`. The full standard guarded decision remains
+  `remain_shadow_only` because not all suite gates are
+  `ready_for_guarded_opt_in`, but the V3 matrix residual blocker is gone and
+  `TRANS-003` can resume coordinator-reviewed standard matrix manifest
+  expansion. Shadow-advice-only residual-report examples remain separate from
+  matrix residuals and suite gates.
   Tests-only wedge guarded opt-in also remains
   blocked after `REAL-003` scored `pass@3 = 0/4`; `GS7-008` now materializes
   and live-validates the `iniconfig` calibration candidate. `REAL-005` extends
@@ -102,30 +105,23 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-- `TRANS-011` -> worker Helmholtz
-  (`019e3e7c-69fe-7960-902d-0589bd429b8d`): rerun the full current standard
-  transition shadow matrix after `MODEL-009`, regenerate residual and
-  guarded-decision evidence, and compare against `TRANS-010` before any
-  `TRANS-003` manifest expansion. Scope is evidence only: generated outputs
-  under `/tmp`, optional concise evidence doc, and plan updates. Do not edit
-  `examples/transition_shadow_matrix.json` in this slice.
+No active worker task is recorded after `TRANS-011` completion.
 
 ## Ready Queue
 
-No additional ready task is currently staged on this board. Wait for
-`TRANS-011` before deciding whether `TRANS-003` can resume manifest expansion
-or must return to residual work.
+- `TRANS-003`: resume coordinator-reviewed standard matrix manifest expansion
+  from zero-matrix-residual `TRANS-011` evidence. Keep product routing
+  shadow-only; the full guarded decision remains `remain_shadow_only` because
+  not all suite gates are `ready_for_guarded_opt_in`.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
 ## Paused Or Blocked
 
-- `TRANS-003`: blocked pending `TRANS-011`; the last committed full standard
-  evidence is still `TRANS-010`, with 4 matrix residuals, 11 residual-report
-  examples, and guarded decision `remain_shadow_only`.
-- Shadow-advice-only residuals from `greenshot_bugs`, `greenshot_4`, and two
-  `greenshot_5_subset` tasks remain visible for follow-up after the V3 matrix
-  residuals are addressed.
+- Shadow-advice-only residual-report examples from `greenshot_bugs`,
+  `greenshot_4`, and two `greenshot_5_subset` tasks remain visible for a
+  separate scorer/advice follow-up, but they are not matrix residuals in
+  `TRANS-011`.
 - `MODEL-002`: superseded by bounded scorer subtasks in the backlog, beginning
   with `MODEL-003` through `MODEL-009`.
 
@@ -141,6 +137,18 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `TRANS-011`: reran the full current standard transition matrix after
+  `MODEL-009`. The run covered 5 suites, 56 tasks, 56 ranked solved tasks,
+  12,413 candidates, and 19 held-out groups, with 0 matrix residuals, 4
+  baseline residuals, 7 residual-report examples, and zero hosted usage.
+  `greenshot_3` improved to `ready_for_shadow_mode`, `greenshot_5_subset`
+  improved to `ready_for_guarded_opt_in`, and `greenshot_6_subset` remains
+  `ready_for_guarded_opt_in`. The residual report has 7
+  `shadow_scorer_top_candidate_failed` examples and no
+  `v3_top_candidate_failed` examples. Guarded decision remains
+  `remain_shadow_only` because not all suite gates are
+  `ready_for_guarded_opt_in`; `TRANS-003` can resume standard matrix
+  manifest expansion under shadow-only product routing.
 - `MODEL-009`: added V3 local structural evidence and a V3-only local evidence
   prior for the four `TRANS-010` top-candidate failures. The scorer now
   recognizes exception-wrapper candidates that match public failure exception

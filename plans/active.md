@@ -288,8 +288,8 @@ Review before assigning more work if:
   replacement attribute. Same-location `available_cents` and `pending_cents`
   decoys are demoted only when a visible-balance match exists in the group.
   Product routing remains shadow-only.
-- Commit: pending.
-- Push: pending.
+- Commit: `2b84b98` implementation/evidence.
+- Push: implementation/evidence commit pushed successfully to `origin/main`.
 - Tests: `python -m py_compile j3/transition_action_scoring.py
   tests/test_transition_action_scoring.py` -> passed; `pytest
   tests/test_transition_action_scoring.py -q` -> 33 passed; direct replay over

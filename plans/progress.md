@@ -7113,8 +7113,8 @@ meaningful work. Do not replace this file with a daily reset.
   up; same-location `available_cents` and `pending_cents` decoys are demoted
   only when that matching candidate exists. Product routing remains
   shadow-only.
-- Commit: pending.
-- Push: pending.
+- Commit: `2b84b98` implementation/evidence.
+- Push: implementation/evidence commit pushed successfully to `origin/main`.
 - Next: run `TRANS-016`, an expanded-standard matrix/residual replay after
   `MODEL-015`, to confirm whether `visible_balance_attribute_decoys` leaves
   the residual report and to refresh the guarded decision.

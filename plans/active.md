@@ -147,18 +147,40 @@ This is the live coordinator board. Keep it current and compact.
   `MAT-022` now materializes and live-validates the compact remaining Requests
   row, `psf/requests#7328`, with exact accepted-diff parity under
   checkout-local `PYTHONPATH=src` validation. Remaining non-materialized
-  MAT-007 counts are now `current_structured_action = 3`,
+  MAT-007 counts are now `current_structured_action = 4`,
   `general_typed_builder = 0`, `repo_convention_builder = 4`,
   `constrained_local_generator = 3`, and `not_currently_expressible = 2`.
+  `MAT-023` is now assigned to the next formatter-family constrained row,
+  `pallets/click#3434`.
 
 ## Active Tasks
 
-No active worker task is recorded. The coordinator should dispatch the next
-bounded ready task if the loop continues.
+### `MAT-023`: Held-out Click usage formatter source/test candidate
+
+- Status: active
+- Owner: worker.
+- Scope: attempt `pallets/click#3434` with reusable bounded source-region and
+  pytest insertion/refinement action records. Allowed writes are focused
+  extensions to `j3/heldout_source_region_candidate.py`,
+  `tests/test_heldout_source_region_candidate.py`, focused `docs/MAT_023_*`,
+  generated artifacts under `/tmp`, and plan updates. Avoid transition
+  scoring, issue/PR ranking, local-knowledge records, matrix manifests, and
+  unrelated materializer families.
+- Acceptance: determine pinned base/head refs, accepted changed files,
+  validation command, mutation scope, candidate-after diff/AST/hash metadata,
+  accepted-diff comparison, and live validation result for `click-3434`. Use
+  reusable action kinds rather than a PR-named action. If the accepted PR has
+  non-source/test companion files, separate full-diff parity from source/test
+  scoped parity explicitly. If target selection, source-region materialization,
+  pytest insertion/refinement, parity, or validation blocks, record the exact
+  blocker.
+- Tests: focused source-region candidate tests, JSON/report checks if added,
+  `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and live
+  focused validation when materialized.
 
 ## Ready Queue
 
-`click-3434` is the next formatter-family constrained source/test row.
+No separate ready worker task is queued while `MAT-023` is active.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 

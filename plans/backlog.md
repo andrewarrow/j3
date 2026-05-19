@@ -3340,11 +3340,38 @@ Long-term target:
   `/tmp/j3-mat-022-requests-7328/final/candidate.diff`, and
   `/tmp/j3-mat-022-requests-7328/final/accepted.diff`.
 
+### MAT-023: Held-out Click usage formatter source/test candidate
+
+- Status: active
+- Why: `MAT-022` closes the compact remaining Requests constrained row, leaving
+  the Click formatter-family rows as the next useful pressure test for the
+  source-region/action surface. `pallets/click#3434` is the smallest of those
+  rows and exercises `HelpFormatter.write_usage` output semantics plus
+  parameterized regression tests.
+- Write scope: held-out source-region candidate materializer extensions and
+  focused tests as needed, optional `docs/MAT_023_*`, generated artifacts
+  under `/tmp`, and plan updates. Avoid transition scoring, issue/PR ranking,
+  validation-policy changes, local-knowledge records, matrix manifests, and
+  unrelated materializer families.
+- Acceptance: attempt `pallets/click#3434` using reusable bounded
+  source-region and pytest insertion/refinement action records, not a
+  PR-named action kind. Determine and record pinned base/head refs, accepted
+  changed files, validation command, mutation scope, candidate-after
+  diff/AST/hash metadata, accepted-diff comparison, and live validation result.
+  If the accepted PR has non-source/test companion files, explicitly separate
+  full accepted-diff parity from source/test scoped parity. If target
+  selection, source-region materialization, pytest insertion/refinement,
+  parity, or validation blocks, record the exact blocker.
+- Tests: focused source-region candidate tests, JSON/report checks if added,
+  `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and live
+  focused validation when materialized.
+
 ## Next Recommended Queue
 
 Start with these unless fresh evidence changes the order:
 
-1. Continue constrained source/test materialization with `click-3434`, the next
-   formatter-family row after the validated `requests-7328` candidate.
+1. Continue constrained source/test materialization with `MAT-023`
+   `click-3434`, the next formatter-family row after the validated
+   `requests-7328` candidate.
 2. Separately decide whether to pursue the `TRANS-012` shadow-advice-only
    residual examples; product transition routing remains shadow-only.

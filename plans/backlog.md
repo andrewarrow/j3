@@ -3780,11 +3780,43 @@ Long-term target:
   `/tmp/j3-mat-033-flask-6013-live/final/candidate.diff`. Commit
   `c971fa4` was pushed successfully to `origin/main`.
 
+### MAT-034: Held-out pytest array-interface current action candidate
+
+- Status: active
+- Why: after `MAT-033`, `pytest-14472` is the smallest remaining
+  `current_structured_action` row. The source edit is a direct expression
+  receiver replacement from the literal `"obj"` to the variable `obj`, with
+  accepted AUTHORS and changelog text updates.
+- Write scope: focused current structured-action/source-region materializer
+  extensions and tests as needed, optional `docs/MAT_034_*`, generated
+  artifacts under `/tmp`, and plan updates. Likely code scope is
+  `j3/heldout_source_region_candidate.py` and
+  `tests/test_heldout_source_region_candidate.py`; avoid repo-convention
+  materializer code unless a concrete blocker requires it.
+- Acceptance: attempt `pytest-dev/pytest#14472` using reusable current
+  structured action records for the targeted expression receiver replacement
+  in `_as_numpy_array` and any accepted AUTHORS/changelog text updates, not a
+  PR-named action kind. Determine and record pinned base/head refs, accepted
+  changed files, validation command, mutation scope, candidate-after
+  diff/hash metadata, accepted-diff comparison, and live validation result.
+  The accepted diff appears to touch `AUTHORS`,
+  `changelog/14456.bugfix.rst`, and `src/_pytest/python_api.py`; separate full
+  accepted-diff parity from source-only or source/docs scoped parity if the
+  worker intentionally covers a narrower scope. If target selection,
+  expression replacement, text insertion or new changelog file creation,
+  parity, or validation blocks, record the exact blocker without broadening
+  scope silently.
+- Tests: focused source-region/current-action materializer tests if code
+  changes are made, JSON/report checks if artifacts are written,
+  `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and live
+  focused pytest validation when materialized.
+
 ## Next Recommended Queue
 
 Start with these unless fresh evidence changes the order:
 
-1. Review `MAT-033`, then continue the remaining `current_structured_action`
-   rows with `flask-5898` or `pytest-14472`.
+1. Review `MAT-034`, then dispatch the final remaining
+   `current_structured_action` row, `flask-5898`, if the pytest replay is
+   materialized cleanly.
 2. Separately decide whether to pursue the `TRANS-012` shadow-advice-only
    residual examples; product transition routing remains shadow-only.

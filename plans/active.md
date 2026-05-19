@@ -206,13 +206,40 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-No active worker task is recorded. The coordinator should review `MAT-033`
-before dispatching the next remaining `current_structured_action` row.
+### `MAT-034`: Held-out pytest array-interface current action candidate
+
+- Status: active
+- Owner: worker MAT-034.
+- Started: 2026-05-19.
+- Write scope: focused current structured-action/source-region materializer
+  extensions and tests as needed, optional `docs/MAT_034_*`, generated
+  artifacts under `/tmp`, and plan updates. Likely code scope is
+  `j3/heldout_source_region_candidate.py` and
+  `tests/test_heldout_source_region_candidate.py`; avoid repo-convention
+  materializer code unless a concrete blocker requires it.
+- Acceptance: attempt `pytest-dev/pytest#14472` using reusable current
+  structured action records for the targeted expression receiver replacement
+  in `_as_numpy_array` and any accepted AUTHORS/changelog text updates, not a
+  PR-named action kind. Determine and record pinned base/head refs, accepted
+  changed files, validation command, mutation scope, candidate-after
+  diff/hash metadata, accepted-diff comparison, and live validation result.
+  The accepted diff appears to touch `AUTHORS`,
+  `changelog/14456.bugfix.rst`, and `src/_pytest/python_api.py`; separate full
+  accepted-diff parity from source-only or source/docs scoped parity if the
+  worker intentionally covers a narrower scope. If target selection,
+  expression replacement, text insertion or new changelog file creation,
+  parity, or validation blocks, record the exact blocker without broadening
+  scope silently.
+- Expected tests: focused source-region/current-action materializer tests if
+  code changes are made, JSON/report checks if artifacts are written,
+  `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and live
+  focused pytest validation when materialized.
 
 ## Ready Queue
 
-The remaining `current_structured_action` rows after `flask-6013` are
-`flask-5898` and `pytest-14472`; the shadow-advice-only
+No queued worker task remains while `MAT-034` is active. The remaining
+`current_structured_action` row after `pytest-14472` is `flask-5898`; the
+shadow-advice-only
 residual examples remain a separate workstream and should not be mixed into
 MAT-007 held-out materialization counts.
 

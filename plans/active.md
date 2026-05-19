@@ -230,15 +230,31 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-No active worker task is currently recorded. The coordinator should choose the
-next bounded task after reviewing `MAT-036`.
+### `MODEL-010`: Triage TRANS-012 shadow-advice residuals
+
+- Status: active
+- Owner: worker MODEL-010.
+- Started: 2026-05-19.
+- Write scope: focused residual evidence docs, generated artifacts under
+  `/tmp`, and plan updates. Avoid scorer implementation, ranker changes,
+  candidate generation, product routing, matrix manifests, local-knowledge
+  records, materializer code, and `plans/strategy.md`.
+- Acceptance: parse the `TRANS-012` residual report and suite scorer/advice
+  artifacts; record all eight `shadow_scorer_top_candidate_failed` examples
+  with suite, task, family, production top, shadow-scorer top, V3 comparison,
+  passing candidate ranks, missing-feature labels, and whether the example is
+  new relative to `TRANS-011`. Group them into coherent implementation
+  clusters and recommend exactly one bounded next scorer/advice task with
+  write scope and focused tests. If artifacts are missing or contradictory,
+  record the exact blocker instead of inventing a scorer task.
+- Expected tests: parse any JSON/JSONL artifact written, `pytest
+  tests/test_plan_consistency.py -q`, and `git diff --check`.
 
 ## Ready Queue
 
-No queued worker task remains after `MAT-036`. Review whether to move to the
-separate `TRANS-012` shadow-advice-only residual workstream or record the
-concrete migration-planner blocker for the two parked
-`not_currently_expressible` MAT-007 rows.
+No queued worker task remains while `MODEL-010` is active. After it completes,
+dispatch the recommended bounded scorer/advice slice if the evidence is
+consistent; product routing remains shadow-only.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 

@@ -599,6 +599,29 @@ Long-term target:
   repair candidate generation, manifest contents, and V3 product-gate policy
   remain unchanged.
 
+### MODEL-010: Triage TRANS-012 shadow-advice residuals
+
+- Status: active
+- Why: after the MAT-007 materializable panel closed, the next ready
+  non-materializer workstream is the separate `TRANS-012`
+  shadow-advice-only residual set. These examples are not matrix residuals or
+  product-gate failures, so the next step should group the evidence and choose
+  a bounded scorer/advice slice rather than changing product routing.
+- Write scope: focused residual evidence docs, generated artifacts under
+  `/tmp`, and plan updates. Avoid scorer implementation, ranker changes,
+  candidate generation, product routing, matrix manifests, local-knowledge
+  records, materializer code, and `plans/strategy.md`.
+- Acceptance: parse the `TRANS-012` residual report and suite scorer/advice
+  artifacts; record all eight `shadow_scorer_top_candidate_failed` examples
+  with suite, task, family, production top, shadow-scorer top, V3 comparison,
+  passing candidate ranks, missing-feature labels, and whether the example is
+  new relative to `TRANS-011`. Group them into coherent implementation
+  clusters and recommend exactly one bounded next scorer/advice task with
+  write scope and focused tests. If artifacts are missing or contradictory,
+  record the exact blocker instead of inventing a scorer task.
+- Tests: parse any JSON/JSONL artifact written,
+  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+
 ### TRANS-011: Rerun standard matrix after MODEL-009
 
 - Status: done
@@ -3911,9 +3934,7 @@ Long-term target:
 
 Start with these unless fresh evidence changes the order:
 
-1. Review `MAT-036`, then decide whether to pursue the `TRANS-012`
-   shadow-advice-only residual examples or explicitly park the two
-   `not_currently_expressible` MAT-007 rows behind a multi-step migration
-   planner.
+1. Review `MODEL-010`, then dispatch the recommended bounded scorer/advice
+   slice if the residual grouping is consistent.
 2. Product transition routing remains shadow-only unless a separate guarded
    opt-in task explicitly changes that policy with fresh evidence.

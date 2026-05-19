@@ -6610,3 +6610,21 @@ meaningful work. Do not replace this file with a daily reset.
 - Blockers: none for current-action closure; `flask-5812` and `flask-5727`
   remain parked until multi-step architecture or tooling/lockfile migration
   planner capability exists.
+
+### 2026-05-19 - Coordinator Review And Dispatch - MODEL-010
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, and
+  `plans/progress.md`.
+- Tests: parsed repo and `/tmp` MAT-036 JSONL artifacts -> 9 rows each;
+  `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check`
+  -> passed.
+- Result: reviewed `MAT-036`; the materializable MAT-007 held-out panel is
+  closed, with only `flask-5812` and `flask-5727` parked behind migration
+  planner capability. The next ready non-materializer workstream is the
+  separate `TRANS-012` shadow-advice-only residual set, which is advisory-only
+  and should not change product routing.
+- Next: dispatch a worker for `MODEL-010` to extract and group the eight
+  `TRANS-012` `shadow_scorer_top_candidate_failed` examples and recommend one
+  bounded scorer/advice implementation slice.
+- Blockers: none.

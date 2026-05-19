@@ -265,8 +265,9 @@ Review before assigning more work if:
   `CHANGES.rst`, `docs/api.rst`, `src/flask/helpers.py`, and
   `src/flask/sansio/app.py`, matched the full accepted diff exactly, and
   passed the focused redirect default validation command.
-- Commit: pending.
-- Push: pending.
+- Commit: `a43a8db` implementation/evidence.
+- Push: implementation/evidence commit pushed successfully to `origin/main`;
+  push-result metadata recorded in follow-up commit.
 - Artifacts:
   `docs/MAT_035_FLASK_5898_REDIRECT_DEFAULT_CANDIDATE_2026-05-19.md`,
   `/tmp/j3-mat-035-flask-5898-live/final/candidate.json`,

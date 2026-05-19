@@ -5238,3 +5238,30 @@ meaningful work. Do not replace this file with a daily reset.
 - Next: dispatch a worker to update the manifest, focused manifest tests, docs,
   and plan notes; then run the expanded matrix as a separate evidence step.
 - Blockers: none.
+
+### 2026-05-19 - TRANS-003 - GreenShot-5 manifest expansion
+
+- Owner: worker Codex.
+- Files changed: `examples/transition_shadow_matrix.json`,
+  `tests/test_transition_shadow_matrix.py`,
+  `docs/TRANS_003_GREENSHOT5_MANIFEST_EXPANSION_2026-05-19.md`,
+  `plans/active.md`, `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `pytest tests/test_transition_shadow_matrix.py -q` -> 7 passed;
+  `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check`
+  -> passed.
+- Result: expanded only the standard matrix manifest's `greenshot_5_subset`
+  from 8 to 12 selected tasks by adding
+  `profile_badge_public_api_signature_propagation`,
+  `return_window_policy_default`,
+  `receipt_label_nested_module_import_decoy`, and
+  `loyalty_points_wrapper_exception_handler` in
+  `examples/greenshot_5/tasks.json` order. The suite remains a subset of the
+  20-task GreenShot-5 manifest. Standard suites and runner parameters are
+  unchanged. Scorer, ranker, candidate generation, guarded-trial policy, and
+  product routing were not touched; transition ranking remains shadow-only.
+- Commit: pending.
+- Push: pending.
+- Next: `TRANS-012` should run the full expanded standard transition shadow
+  matrix as a separate follow-up evidence step against the zero-matrix-residual
+  `TRANS-011` baseline.
+- Blockers: none.

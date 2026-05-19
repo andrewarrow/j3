@@ -58,8 +58,11 @@ This is the live coordinator board. Keep it current and compact.
   `remain_shadow_only` because not all suite gates are
   `ready_for_guarded_opt_in`, but the V3 matrix residual blocker is gone and
   `TRANS-003` can resume coordinator-reviewed standard matrix manifest
-  expansion. Shadow-advice-only residual-report examples remain separate from
-  matrix residuals and suite gates.
+  expansion. `TRANS-003` then expanded only `greenshot_5_subset` from 8 to
+  12 tasks in manifest/test/docs, preserving suites and runner parameters;
+  the expanded matrix run remains a separate follow-up evidence step.
+  Shadow-advice-only residual-report examples remain separate from matrix
+  residuals and suite gates.
   Tests-only wedge guarded opt-in also remains
   blocked after `REAL-003` scored `pass@3 = 0/4`; `GS7-008` now materializes
   and live-validates the `iniconfig` calibration candidate. `REAL-005` extends
@@ -105,18 +108,12 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-- `TRANS-003`: assigned for cautious manifest expansion. Add a small
-  GreenShot-5 slice to `greenshot_5_subset`:
-  `profile_badge_public_api_signature_propagation`,
-  `return_window_policy_default`,
-  `receipt_label_nested_module_import_decoy`, and
-  `loyalty_points_wrapper_exception_handler`. Keep transition ranking product
-  routing shadow-only; do not change scorer, candidate generation, or guarded
-  trial policy.
+No active worker task is currently assigned.
 
 ## Ready Queue
 
-No ready worker task is currently queued while `TRANS-003` is active.
+- `TRANS-012`: rerun the expanded standard transition shadow matrix as the
+  follow-up evidence step for the `TRANS-003` manifest expansion.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
@@ -141,6 +138,15 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `TRANS-003`: expanded the standard matrix manifest's `greenshot_5_subset`
+  from 8 to 12 selected GreenShot-5 tasks by adding
+  `profile_badge_public_api_signature_propagation`,
+  `return_window_policy_default`,
+  `receipt_label_nested_module_import_decoy`, and
+  `loyalty_points_wrapper_exception_handler` in the source order from
+  `examples/greenshot_5/tasks.json`. Suites and runner parameters are
+  unchanged, product routing remains shadow-only, and the expanded matrix run
+  is explicitly deferred to `TRANS-012`.
 - `TRANS-011`: reran the full current standard transition matrix after
   `MODEL-009`. The run covered 5 suites, 56 tasks, 56 ranked solved tasks,
   12,413 candidates, and 19 held-out groups, with 0 matrix residuals, 4

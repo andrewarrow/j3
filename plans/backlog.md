@@ -348,7 +348,7 @@ Long-term target:
 
 ### TRANS-003: Expand standard matrix manifest cautiously
 
-- Status: active
+- Status: done
 - Blocker: none for manifest expansion after `TRANS-011`. The full current
   standard matrix now has 0 matrix residuals after `MODEL-009`; guarded
   product routing remains shadow-only because the full guarded decision is
@@ -366,6 +366,13 @@ Long-term target:
   `loyalty_points_wrapper_exception_handler`; product routing remains
   shadow-only.
 - Tests: `pytest tests/test_transition_shadow_matrix.py -q`.
+- Completion note: expanded only the existing `greenshot_5_subset`
+  `task_names` from 8 to 12 tasks, preserving the order from
+  `examples/greenshot_5/tasks.json` and keeping the selection below the full
+  20-task manifest. Suites, runner parameters, scorer/ranker behavior,
+  candidate generation, product routing, and guarded-trial policy are
+  unchanged. Focused manifest tests now lock the exact 12-task selection and
+  count. The expanded matrix run is deferred to `TRANS-012`.
 
 ### TRANS-004: Rerun targeted matrix evidence after subscript-key fix
 
@@ -620,6 +627,26 @@ Long-term target:
   `ready_for_guarded_opt_in`. Guarded decision remained `remain_shadow_only`
   because not all suite gates are `ready_for_guarded_opt_in`; `TRANS-003` can
   resume standard matrix manifest expansion under shadow-only product routing.
+
+### TRANS-012: Rerun expanded standard matrix evidence
+
+- Status: ready
+- Why: `TRANS-003` expanded the standard manifest's `greenshot_5_subset` from
+  8 to 12 tasks, but that was intentionally manifest-only. The matrix,
+  residual, and guarded-decision evidence must be refreshed in a separate
+  evidence step before drawing any product-gate conclusions.
+- Write scope: generated outputs under `/tmp`, a concise evidence doc if
+  useful, and plan updates only unless a local runner bug blocks evidence. Do
+  not edit scorer, ranker, candidate-generation, product-routing, guarded-trial
+  policy, or the matrix manifest in this slice.
+- Acceptance: rerun the full expanded `examples/transition_shadow_matrix.json`,
+  regenerate residual and guarded-decision evidence, compare against the
+  zero-matrix-residual `TRANS-011` baseline, and record whether the expanded
+  standard matrix keeps product routing shadow-only or exposes new residual
+  work.
+- Tests: `run-transition-shadow-matrix`, checksum verification,
+  `report-transition-residuals --matrix`, `decide-transition-guarded-trial`,
+  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
 
 ## Workstream E: Repo State, Actions, And Models
 

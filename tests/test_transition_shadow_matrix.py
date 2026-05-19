@@ -33,6 +33,20 @@ REQUIRED_PARAMETERS = {
     "validation_fraction",
 }
 VALID_SPLIT_KEYS = {"task_family", "source_file", "repo", "order"}
+EXPECTED_GREENSHOT_5_SUBSET_TASK_NAMES = [
+    "quote_total_helper_discount",
+    "store_credit_swapped_args_across_modules",
+    "uploaded_extension_module_import",
+    "visible_balance_attribute_decoys",
+    "profile_signature_propagation",
+    "profile_badge_public_api_signature_propagation",
+    "order_customer_name_dict_key_helper",
+    "return_window_policy_default",
+    "express_shipping_boundary_preferred_helper",
+    "free_shipping_threshold_module_constant",
+    "receipt_label_nested_module_import_decoy",
+    "loyalty_points_wrapper_exception_handler",
+]
 
 
 def test_transition_shadow_matrix_manifest_shape() -> None:
@@ -76,6 +90,24 @@ def test_transition_shadow_matrix_suites_reference_existing_tasks() -> None:
             assert len(selected_task_names) == len(set(selected_task_names))
             assert set(selected_task_names) <= task_names
             assert len(selected_task_names) < len(task_rows)
+
+
+def test_transition_shadow_matrix_greenshot_5_subset_is_cautious_expansion() -> None:
+    matrix = _load_matrix()
+    suite = next(
+        suite for suite in matrix["suites"] if suite["id"] == "greenshot_5_subset"
+    )
+    task_rows = json.loads(
+        (Path(suite["tasks"]) / "tasks.json").read_text(encoding="utf-8")
+    )
+    task_order = {row["name"]: index for index, row in enumerate(task_rows)}
+
+    assert suite["task_names"] == EXPECTED_GREENSHOT_5_SUBSET_TASK_NAMES
+    assert len(suite["task_names"]) == 12
+    assert len(suite["task_names"]) < len(task_rows)
+    assert [task_order[name] for name in suite["task_names"]] == sorted(
+        task_order[name] for name in suite["task_names"]
+    )
 
 
 def test_transition_shadow_matrix_per_suite_parameters_are_runner_ready() -> None:
@@ -163,7 +195,7 @@ def test_run_transition_shadow_matrix_writes_filtered_subset_manifest(
         out_dir.mkdir(parents=True, exist_ok=True)
         (out_dir / "evidence").mkdir()
         (out_dir / "evidence" / "manifest.json").write_text('{"schema_version":"fake"}\n')
-        return _fake_suite_manifest(out_dir, task_count=8, solved=8)
+        return _fake_suite_manifest(out_dir, task_count=12, solved=12)
 
     monkeypatch.setattr(
         transition_shadow_matrix,
@@ -185,6 +217,7 @@ def test_run_transition_shadow_matrix_writes_filtered_subset_manifest(
         suite for suite in _load_matrix()["suites"] if suite["id"] == "greenshot_5_subset"
     )
     assert [row["name"] for row in rows] == suite["task_names"]
+    assert len(rows) == 12
     assert {Path(row["repo"]).is_absolute() for row in rows} == {True}
     assert calls[0]["max_candidates"] == 10
     assert calls[0]["timeout_seconds"] == 45

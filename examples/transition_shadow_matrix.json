@@ -57,9 +57,13 @@
         "uploaded_extension_module_import",
         "visible_balance_attribute_decoys",
         "profile_signature_propagation",
+        "profile_badge_public_api_signature_propagation",
         "order_customer_name_dict_key_helper",
+        "return_window_policy_default",
         "express_shipping_boundary_preferred_helper",
-        "free_shipping_threshold_module_constant"
+        "free_shipping_threshold_module_constant",
+        "receipt_label_nested_module_import_decoy",
+        "loyalty_points_wrapper_exception_handler"
       ],
       "parameters": {
         "max_candidates": 10,

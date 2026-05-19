@@ -127,11 +127,8 @@ This is the live coordinator board. Keep it current and compact.
   `MAT-019` then reconciled the constrained source/test panel: MAT-008
   (`requests-7427`) and MAT-009 (`pytest-14475`) already cover two of the
   original seven constrained held-out rows, while DATA-029 and DATA-035 remain
-  validated reference rows outside the held-out count. Remaining
-  non-materialized MAT-007 counts are now
-  `current_structured_action = 4`, `general_typed_builder = 0`,
-  `repo_convention_builder = 4`, `constrained_local_generator = 5`, and
-  `not_currently_expressible = 2`. `MAT-020` now materializes
+  validated reference rows outside the held-out count. The post-MAT-019
+  remaining MAT-007 constrained held-out count was 5. `MAT-020` materialized
   `psf/requests#7433` with exact source/test accepted-diff parity using
   reusable `replace_function_region` and
   `insert_pytest_function_after_anchor` records; live validation reached the
@@ -143,18 +140,42 @@ This is the live coordinator board. Keep it current and compact.
   pass when the checkout source is imported via `PYTHONPATH=src` or the
   DATA-008 editable-venv recipe. Count `requests-7433` as live-validated by
   the MAT-021 corrected-harness evidence; the original MAT-020 artifact remains
-  an accurate record of the first invalid import-path timeout.
+  an accurate record of the first invalid import-path timeout. Remaining
+  non-materialized MAT-007 counts are now `current_structured_action = 4`,
+  `general_typed_builder = 0`, `repo_convention_builder = 4`,
+  `constrained_local_generator = 4`, and `not_currently_expressible = 2`.
+  `MAT-022` is now assigned to the compact remaining Requests row,
+  `psf/requests#7328`.
 
 ## Active Tasks
 
-No active worker task is recorded after `MAT-021`; the coordinator should
-dispatch the next bounded row from the ready queue.
+### `MAT-022`: Held-out requests redirect-history source/test candidate
+
+- Status: active
+- Owner: worker.
+- Scope: materialize `psf/requests#7328` with reusable source-region and pytest
+  insertion action records. Allowed writes are focused extensions to
+  `j3/heldout_source_region_candidate.py`,
+  `tests/test_heldout_source_region_candidate.py`, focused `docs/MAT_022_*`,
+  generated artifacts under `/tmp`, and plan updates. Avoid transition
+  scoring, issue/PR ranking, local-knowledge records, matrix manifests, and
+  unrelated materializer families.
+- Acceptance: determine pinned base/head refs, accepted changed files,
+  validation command, mutation scope, candidate-after diff/AST/hash metadata,
+  accepted-diff comparison, and live validation result for `requests-7328`.
+  Use reusable action kinds rather than a PR-named action. For Requests live
+  validation, use checkout-local source (`PYTHONPATH=src`) or the DATA-008
+  editable-venv recipe so MAT-021's import-path leak is not repeated. If target
+  selection, source-region materialization, pytest insertion, parity, or
+  validation blocks, record the exact blocker.
+- Tests: focused source-region candidate tests, JSON/report checks if added,
+  `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and live
+  focused validation when materialized.
 
 ## Ready Queue
 
-The constrained-source queue can move to `requests-7328` as the compact next
-row, or `click-3434` as the next formatter-family row, now that `requests-7433`
-is counted as live-validated by MAT-021's corrected local-source diagnostics.
+No separate ready worker task is queued while `MAT-022` is active. After
+`requests-7328`, `click-3434` is the next formatter-family constrained row.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 

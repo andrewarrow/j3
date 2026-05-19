@@ -3299,11 +3299,36 @@ Long-term target:
   `docs/MAT_021_REQUESTS_7433_VALIDATION_TIMEOUT_DRILLDOWN_2026-05-19.md` and
   `/tmp/j3-mat-021-requests-7433-drilldown/diagnostics.json`.
 
+### MAT-022: Held-out requests redirect-history source/test candidate
+
+- Status: active
+- Why: `MAT-021` reclassified `requests-7433` as live-validated by corrected
+  checkout-local validation evidence. The next compact uncovered
+  constrained-source/test row from MAT-019 is `psf/requests#7328`, which keeps
+  the surface to a small Requests source/test pair while testing redirect
+  history aliasing/order semantics rather than stream-wrapper detection.
+- Write scope: held-out source-region candidate materializer extensions and
+  focused tests as needed, optional `docs/MAT_022_*`, generated artifacts
+  under `/tmp`, and plan updates. Avoid transition scoring, issue/PR ranking,
+  validation-policy changes, local-knowledge records, matrix manifests, and
+  unrelated materializer families.
+- Acceptance: attempt `psf/requests#7328` using reusable source-region and
+  pytest insertion action records, not a PR-named action kind. Determine and
+  record pinned base/head refs, accepted changed files, validation command,
+  mutation scope, candidate-after diff/AST/hash metadata, accepted-diff
+  comparison, and live validation result. Requests validation must import the
+  checkout source with `PYTHONPATH=src` or use the DATA-008 editable-venv
+  recipe. If target selection, source-region materialization, pytest insertion,
+  parity, or validation blocks, record the exact blocker.
+- Tests: focused source-region candidate tests, JSON/report checks if added,
+  `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and live
+  focused validation when materialized.
+
 ## Next Recommended Queue
 
 Start with these unless fresh evidence changes the order:
 
-1. Continue constrained source/test materialization with `requests-7328` as the
-   compact next row or `click-3434` as the next formatter-family row.
+1. Continue constrained source/test materialization with `MAT-022`
+   `requests-7328`; after that, `click-3434` is the next formatter-family row.
 2. Separately decide whether to pursue the `TRANS-012` shadow-advice-only
    residual examples; product transition routing remains shadow-only.

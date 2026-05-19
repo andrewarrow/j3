@@ -420,6 +420,24 @@ Long-term target:
   preserving `candidate_after_embedding_unavailable` and the existing
   shadow-only ranking decision.
 
+### TRANS-007: Rerun targeted post-fix greenshot_6_subset evidence
+
+- Status: active
+- Why: `TRANS-006` removed stale `candidate_after_unavailable` labels and
+  `ACT-003` plus coordinator cleanup should remove the remaining
+  `dynamic_field_error_message` generation gap and restore pass-at-1 for
+  `core_metadata_version_dict_value`. The affected subset should be rerun
+  before spending on another full standard matrix.
+- Write scope: generated outputs under `/tmp`, a concise evidence doc if
+  useful, and plan updates only unless a local runner bug blocks evidence.
+- Acceptance: rerun `greenshot_6_subset`, aggregate residuals, make the
+  guarded-trial decision explicit if useful, and record whether the generation
+  gap and missing candidate-after evidence labels are gone.
+- Tests: `run-transition-shadow-matrix --only greenshot_6_subset`, checksum
+  verification, `report-transition-residuals --matrix`,
+  `decide-transition-guarded-trial` if applicable,
+  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+
 ## Workstream E: Repo State, Actions, And Models
 
 ### REPO-001: Summarize repo-state encoder coverage
@@ -475,6 +493,24 @@ Long-term target:
   `pkgmeta/metadata.py` `change_literal` candidate for
   `dynamic_field_error_message` is generated, tested first, and passes within
   the standard `max_candidates=8` cap.
+
+### ACT-004: Restore metadata-version dictionary value pass-at-1
+
+- Status: done
+- Why: after `ACT-003`, the broad patching suite exposed that
+  `core_metadata_version_dict_value` still selected the correct passing
+  `change_dict_value` patch but tested two subscript-key decoys first.
+- Write scope: repair candidate ranking and focused tests only.
+- Acceptance: exact string assertion value replacements on
+  `change_dict_value` outrank nearby subscript-key decoys without weakening
+  the existing GreenShot-6 pass-at-1 test.
+- Tests: focused GreenShot-6 patching tests, candidate ranking tests, plan
+  consistency, and `git diff --check`.
+- Completion note: coordinator added a narrow ranking bonus for exact string
+  assertion replacements on dictionary values. The existing
+  `test_patch_solves_greenshot_6_dictionary_literal_value` pass-at-1
+  expectation is restored while dynamic-field and no-store focused tests stay
+  green.
 
 ### MODEL-001: Re-evaluate learned prompt intent baseline
 

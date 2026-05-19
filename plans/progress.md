@@ -4713,8 +4713,26 @@ meaningful work. Do not replace this file with a daily reset.
   but tested two subscript-key decoys first. Added a narrow bonus for exact
   string assertion value replacements on `change_dict_value`, restoring the
   existing pass-at-1 expectation without weakening the test.
+- Commit: 1acb13f.
+- Push: succeeded.
+- Next: dispatch post-`TRANS-006` / `ACT-003` evidence.
+- Blockers: none.
+
+### 2026-05-19 - Coordinator Dispatch - TRANS-007
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, and
+  `plans/progress.md`.
+- Tests: `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check -- plans/active.md plans/backlog.md plans/progress.md` ->
+  passed.
+- Result: reviewed the completed residual batch and coordinator rank cleanup.
+  The next bounded step is targeted evidence, not another scorer edit: rerun
+  `greenshot_6_subset` after `TRANS-006`, `ACT-003`, and `ACT-004` to check
+  whether `candidate_after_unavailable` labels and the
+  `dynamic_field_error_message` generation gap are gone before paying for a
+  full standard matrix rerun.
 - Commit: pending.
 - Push: pending.
-- Next: commit the integration cleanup, then dispatch post-`TRANS-006` /
-  `ACT-003` evidence.
+- Next: dispatch a worker for `TRANS-007` after plan consistency checks pass.
 - Blockers: none.

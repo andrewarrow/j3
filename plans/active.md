@@ -64,14 +64,24 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-No active worker tasks are recorded. Coordinator should review the completed
-`TRANS-006` / `ACT-003` batch before dispatching the next residual task.
+- `TRANS-007`: rerun targeted post-fix `greenshot_6_subset` evidence.
+  - Owner: coordinator dispatch in progress; worker pending.
+  - Scope: generated subset matrix artifacts under `/tmp`, one concise
+    evidence doc if useful, and plan updates only unless a runner bug blocks
+    evidence.
+  - Acceptance: rerun `greenshot_6_subset` after `TRANS-006`, `ACT-003`, and
+    the coordinator dictionary-value rank cleanup; record residual/gate counts,
+    missing feature labels, and whether the `dynamic_field_error_message`
+    generation gap is gone.
+  - Expected tests: targeted matrix command with `--only greenshot_6_subset`,
+    residual report, guarded-trial decision if applicable, checksum
+    verification, `pytest tests/test_plan_consistency.py -q`, and
+    `git diff --check`.
 
 ## Ready Queue
 
-The `TRANS-006` / `ACT-003` residual batch has returned. Coordinator should
-review both results before broader matrix-manifest expansion or new transition
-residual work.
+`TRANS-007` is being dispatched as targeted evidence. Do not broaden the
+standard matrix manifest until this subset result is reviewed.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 

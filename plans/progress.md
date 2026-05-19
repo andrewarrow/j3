@@ -4695,3 +4695,26 @@ meaningful work. Do not replace this file with a daily reset.
   residual batch before choosing the next transition residual task.
 - Blockers: none for `ACT-003`; unrelated existing full patching-suite
   assertion noted above.
+
+### 2026-05-19 - Coordinator Integration - Dictionary value rank cleanup
+
+- Owner: coordinator.
+- Files changed: `repair/patching/ranking.py` and `plans/progress.md`.
+- Tests: `python -m py_compile repair/patching/ranking.py tests/test_patching.py`
+  -> passed; `pytest
+  tests/test_patching.py::test_patch_solves_greenshot_6_dictionary_literal_value
+  tests/test_patching.py::test_patch_solves_dynamic_field_error_message_with_matrix_cap
+  tests/test_patching.py::test_patch_solves_http_no_store_subscript_key_with_matrix_cap
+  -q` -> 3 passed; `pytest tests/test_candidate_ranking.py -q` -> 37
+  passed; `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check` -> passed.
+- Result: reviewed the broad patching-suite residual noted by `ACT-003`. The
+  GreenShot-6 dictionary-value task still selected the correct passing patch
+  but tested two subscript-key decoys first. Added a narrow bonus for exact
+  string assertion value replacements on `change_dict_value`, restoring the
+  existing pass-at-1 expectation without weakening the test.
+- Commit: pending.
+- Push: pending.
+- Next: commit the integration cleanup, then dispatch post-`TRANS-006` /
+  `ACT-003` evidence.
+- Blockers: none.

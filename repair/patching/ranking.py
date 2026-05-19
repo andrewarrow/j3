@@ -289,6 +289,12 @@ def _literal_hint_score(candidate: CandidatePatch, hint: PytestFailureHint) -> f
                 score += 10.0
             if assertion.expected == replacement:
                 score += 35.0
+            if (
+                candidate.action.kind == PatchActionKind.CHANGE_DICT_VALUE
+                and assertion.actual == original
+                and assertion.expected == replacement
+            ):
+                score += 20.0
         score += _expected_string_literal_score(
             original,
             replacement,

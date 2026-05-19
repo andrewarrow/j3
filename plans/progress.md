@@ -4336,8 +4336,9 @@ meaningful work. Do not replace this file with a daily reset.
   from `PytestFailureHint`, so real patch ranking can avoid false add-keyword
   priority while still preserving keyword additions for matching missing
   keyword hints. Production ranking gates remain unchanged and shadow-only.
-- Commit: pending.
-- Push: pending.
+- Commit: 9088ecc docs/plans; completion metadata recorded in a follow-up
+  plan-only commit.
+- Push: succeeded.
 - Next: rerun transition matrix or targeted residual evidence for add-keyword
   clusters, then continue with `MODEL-004` mapping key/value target scoring if
   the add-keyword residuals stay reduced.

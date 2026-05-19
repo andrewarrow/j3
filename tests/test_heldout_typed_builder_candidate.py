@@ -5,6 +5,7 @@ from pathlib import Path
 from textwrap import dedent
 
 from j3.heldout_typed_builder_candidate import (
+    build_click_sentinel_parser_spec,
     build_click_utils_annotation_spec,
     build_requests_headers_mapping_spec,
     materialize_heldout_typed_builder_candidate,
@@ -230,10 +231,188 @@ def test_requests_headers_mapping_validation_command_can_pass(
     assert record["residual_labels"] == ["candidate_validation_passed"]
 
 
+def test_click_sentinel_parser_spec_uses_general_action_families(
+    tmp_path: Path,
+) -> None:
+    repo = _write_click_3396_fixture_repo(tmp_path / "click")
+
+    spec = build_click_sentinel_parser_spec(repo)
+
+    assert spec.allowed_write_paths == (
+        "src/click/_utils.py",
+        "src/click/core.py",
+        "src/click/parser.py",
+    )
+    assert [action.kind for action in spec.typed_actions] == [
+        "assignment_annotation_update",
+        "assignment_annotation_update",
+        "assignment_annotation_update",
+        "assignment_annotation_update",
+        "boolean_condition_insert",
+        "function_signature_update",
+        "function_signature_update",
+        "statement_block_replace",
+        "statement_block_replace",
+        "assignment_annotation_update",
+        "function_signature_update",
+        "statement_block_replace",
+        "function_signature_update",
+        "assignment_annotation_update",
+    ]
+    for action in spec.typed_actions:
+        assert "click" not in action.kind
+        assert "3396" not in action.kind
+
+
+def test_materializes_click_sentinel_parser_typing_across_three_files(
+    tmp_path: Path,
+) -> None:
+    accepted_repo = _write_click_3396_fixture_repo(tmp_path / "accepted")
+    (accepted_repo / "src" / "click" / "_utils.py").write_text(
+        _click_3396_utils_after(),
+        encoding="utf-8",
+    )
+    (accepted_repo / "src" / "click" / "core.py").write_text(
+        _click_3396_core_after(),
+        encoding="utf-8",
+    )
+    (accepted_repo / "src" / "click" / "parser.py").write_text(
+        _click_3396_parser_after(),
+        encoding="utf-8",
+    )
+    accepted_diff = tmp_path / "accepted.diff"
+    accepted_diff.write_text(
+        _git_stdout(
+            accepted_repo,
+            "diff",
+            "--",
+            "src/click/_utils.py",
+            "src/click/core.py",
+            "src/click/parser.py",
+        ),
+        encoding="utf-8",
+    )
+
+    repo = _write_click_3396_fixture_repo(tmp_path / "candidate")
+    candidate = materialize_heldout_typed_builder_candidate(
+        repo,
+        build_click_sentinel_parser_spec(repo, base_ref=_repo_head(repo)),
+        write=True,
+        validate=False,
+        accepted_diff_path=accepted_diff,
+    )
+    record = candidate.to_record()
+
+    assert record["status"] == "materialized"
+    assert record["residual_labels"] == ["candidate_validation_deferred"]
+    assert record["mutation_scope"]["mode"] == "heldout_typed_builder_multi_file"
+    assert record["mutation_scope"]["actual_changed_files"] == [
+        "src/click/_utils.py",
+        "src/click/core.py",
+        "src/click/parser.py",
+    ]
+    assert record["mutation_scope"]["planned_write_files"] == [
+        "src/click/_utils.py",
+        "src/click/core.py",
+        "src/click/parser.py",
+    ]
+    assert record["mutation_scope"]["writes_outside_allowlist"] == []
+    assert record["accepted_diff_comparison"]["normalized_diff_equal"] is True
+
+    files = record["candidate_after"]["files"]
+    assert set(files) == {
+        "src/click/_utils.py",
+        "src/click/core.py",
+        "src/click/parser.py",
+    }
+    assert files["src/click/_utils.py"]["candidate_after"]["ast_parse_ok"] is True
+    assert files["src/click/core.py"]["candidate_after"]["ast_parse_ok"] is True
+    assert files["src/click/parser.py"]["candidate_after"]["ast_parse_ok"] is True
+    candidate_diff = record["candidate_after"]["candidate_diff"]
+    assert "+UNSET: t.Literal[Sentinel.UNSET] = Sentinel.UNSET\n" in candidate_diff
+    assert "+            and isinstance(value, cabc.Iterable)\n" in candidate_diff
+    assert "+            x: list[str | T_UNSET] = [_fetch(args) for _ in range(nargs)]\n" in candidate_diff
+    assert "+        value: str | cabc.Sequence[str] | T_UNSET | T_FLAG_NEEDS_VALUE\n" in candidate_diff
+
+
+def test_click_sentinel_parser_validation_command_can_pass(
+    tmp_path: Path,
+) -> None:
+    accepted_repo = _write_click_3396_fixture_repo(tmp_path / "accepted")
+    (accepted_repo / "src" / "click" / "_utils.py").write_text(
+        _click_3396_utils_after(),
+        encoding="utf-8",
+    )
+    (accepted_repo / "src" / "click" / "core.py").write_text(
+        _click_3396_core_after(),
+        encoding="utf-8",
+    )
+    (accepted_repo / "src" / "click" / "parser.py").write_text(
+        _click_3396_parser_after(),
+        encoding="utf-8",
+    )
+    accepted_diff = tmp_path / "accepted.diff"
+    accepted_diff.write_text(
+        _git_stdout(
+            accepted_repo,
+            "diff",
+            "--",
+            "src/click/_utils.py",
+            "src/click/core.py",
+            "src/click/parser.py",
+        ),
+        encoding="utf-8",
+    )
+
+    repo = _write_click_3396_fixture_repo(tmp_path / "candidate")
+    candidate = materialize_heldout_typed_builder_candidate(
+        repo,
+        build_click_sentinel_parser_spec(repo, base_ref=_repo_head(repo)),
+        write=True,
+        validate=True,
+        accepted_diff_path=accepted_diff,
+    )
+    record = candidate.to_record()
+
+    assert record["status"] == "validated"
+    assert record["validation"]["status"] == "passed"
+    assert record["residual_labels"] == ["candidate_validation_passed"]
+
+
 def _write_click_fixture_repo(repo: Path) -> Path:
     (repo / "src" / "click").mkdir(parents=True)
     (repo / "src" / "click" / "utils.py").write_text(
         _click_utils_before(),
+        encoding="utf-8",
+    )
+    subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+    subprocess.run(["git", "add", "."], cwd=repo, check=True)
+    subprocess.run(
+        ["git", "commit", "-q", "-m", "fixture"],
+        cwd=repo,
+        check=True,
+        env={
+            "GIT_AUTHOR_NAME": "Tester",
+            "GIT_AUTHOR_EMAIL": "tester@example.com",
+            "GIT_COMMITTER_NAME": "Tester",
+            "GIT_COMMITTER_EMAIL": "tester@example.com",
+        },
+    )
+    return repo
+
+
+def _write_click_3396_fixture_repo(repo: Path) -> Path:
+    (repo / "src" / "click").mkdir(parents=True)
+    (repo / "src" / "click" / "_utils.py").write_text(
+        _click_3396_utils_before(),
+        encoding="utf-8",
+    )
+    (repo / "src" / "click" / "core.py").write_text(
+        _click_3396_core_before(),
+        encoding="utf-8",
+    )
+    (repo / "src" / "click" / "parser.py").write_text(
+        _click_3396_parser_before(),
         encoding="utf-8",
     )
     subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
@@ -560,6 +739,435 @@ def _click_utils_after() -> str:
 
             def flush(self) -> None:
                 self.wrapped.flush()
+        '''
+    ).lstrip()
+
+
+def _click_3396_utils_before() -> str:
+    return dedent(
+        '''
+        from __future__ import annotations
+
+        import enum
+        import typing as t
+
+
+        class Sentinel(enum.Enum):
+            UNSET = object()
+            FLAG_NEEDS_VALUE = object()
+
+            def __repr__(self) -> str:
+                return f"{self.__class__.__name__}.{self.name}"
+
+
+        UNSET = Sentinel.UNSET
+        """Sentinel used to indicate that a value is not set."""
+
+        FLAG_NEEDS_VALUE = Sentinel.FLAG_NEEDS_VALUE
+        """Sentinel used to indicate an option was passed as a flag without a
+        value but is not a flag option.
+
+        ``Option.consume_value`` uses this to prompt or use the ``flag_value``.
+        """
+
+        T_UNSET = t.Literal[UNSET]  # type: ignore[valid-type]
+        """Type hint for the :data:`UNSET` sentinel value."""
+
+        T_FLAG_NEEDS_VALUE = t.Literal[FLAG_NEEDS_VALUE]  # type: ignore[valid-type]
+        """Type hint for the :data:`FLAG_NEEDS_VALUE` sentinel value."""
+        '''
+    ).lstrip()
+
+
+def _click_3396_utils_after() -> str:
+    return dedent(
+        '''
+        from __future__ import annotations
+
+        import enum
+        import typing as t
+
+
+        class Sentinel(enum.Enum):
+            UNSET = object()
+            FLAG_NEEDS_VALUE = object()
+
+            def __repr__(self) -> str:
+                return f"{self.__class__.__name__}.{self.name}"
+
+
+        UNSET: t.Literal[Sentinel.UNSET] = Sentinel.UNSET
+        """Sentinel used to indicate that a value is not set."""
+
+        FLAG_NEEDS_VALUE: t.Literal[Sentinel.FLAG_NEEDS_VALUE] = Sentinel.FLAG_NEEDS_VALUE
+        """Sentinel used to indicate an option was passed as a flag without a
+        value but is not a flag option.
+
+        ``Option.consume_value`` uses this to prompt or use the ``flag_value``.
+        """
+
+        T_UNSET: t.TypeAlias = t.Literal[Sentinel.UNSET]
+        """Type hint for the :data:`UNSET` sentinel value."""
+
+        T_FLAG_NEEDS_VALUE: t.TypeAlias = t.Literal[Sentinel.FLAG_NEEDS_VALUE]
+        """Type hint for the :data:`FLAG_NEEDS_VALUE` sentinel value."""
+        '''
+    ).lstrip()
+
+
+def _click_3396_core_before() -> str:
+    return dedent(
+        '''
+        from __future__ import annotations
+
+        import collections.abc as cabc
+        from enum import IntEnum
+        from typing import Any
+
+        FLAG_NEEDS_VALUE = object()
+        UNSET = object()
+
+
+        class ParameterSource(IntEnum):
+            COMMANDLINE = 1
+            DEFAULT_MAP = 2
+
+
+        class Option:
+            multiple = True
+            is_flag = False
+            is_bool_flag = False
+            flag_value: Any = None
+
+            def consume_value(self, value: object, source: ParameterSource) -> object:
+                if value is UNSET:
+                    return value
+
+                # Re-interpret a multiple option which has been sent as-is by the parser.
+                # Here we replace each occurrence of value-less flags (marked by the
+                # FLAG_NEEDS_VALUE sentinel) with the flag_value.
+                elif (
+                    self.multiple
+                    and value is not UNSET
+                    and source < ParameterSource.DEFAULT_MAP
+                    and any(v is FLAG_NEEDS_VALUE for v in value)
+                ):
+                    value = [self.flag_value if v is FLAG_NEEDS_VALUE else v for v in value]
+                    source = ParameterSource.COMMANDLINE
+
+                return value
+        '''
+    ).lstrip()
+
+
+def _click_3396_core_after() -> str:
+    return dedent(
+        '''
+        from __future__ import annotations
+
+        import collections.abc as cabc
+        from enum import IntEnum
+        from typing import Any
+
+        FLAG_NEEDS_VALUE = object()
+        UNSET = object()
+
+
+        class ParameterSource(IntEnum):
+            COMMANDLINE = 1
+            DEFAULT_MAP = 2
+
+
+        class Option:
+            multiple = True
+            is_flag = False
+            is_bool_flag = False
+            flag_value: Any = None
+
+            def consume_value(self, value: object, source: ParameterSource) -> object:
+                if value is UNSET:
+                    return value
+
+                # Re-interpret a multiple option which has been sent as-is by the parser.
+                # Here we replace each occurrence of value-less flags (marked by the
+                # FLAG_NEEDS_VALUE sentinel) with the flag_value.
+                elif (
+                    self.multiple
+                    and value is not UNSET
+                    and isinstance(value, cabc.Iterable)
+                    and source < ParameterSource.DEFAULT_MAP
+                    and any(v is FLAG_NEEDS_VALUE for v in value)
+                ):
+                    value = [self.flag_value if v is FLAG_NEEDS_VALUE else v for v in value]
+                    source = ParameterSource.COMMANDLINE
+
+                return value
+        '''
+    ).lstrip()
+
+
+def _click_3396_parser_before() -> str:
+    return dedent(
+        '''
+        from __future__ import annotations
+
+        import collections.abc as cabc
+        import typing as t
+        from collections import deque
+
+        FLAG_NEEDS_VALUE = object()
+        T_FLAG_NEEDS_VALUE = object
+        T_UNSET = object
+        UNSET = object()
+        V = t.TypeVar("V")
+
+
+        class BadArgumentUsage(Exception):
+            pass
+
+
+        def _(value: str) -> str:
+            return value
+
+
+        class _ParsingState:
+            rargs: list[str]
+
+
+        class CoreArgument:
+            pass
+
+
+        class CoreOption:
+            _flag_needs_value = False
+
+
+        class _Option:
+            nargs = 1
+            obj = CoreOption()
+
+
+        def _unpack_args(
+            args: cabc.Sequence[str], nargs_spec: cabc.Sequence[int]
+        ) -> tuple[cabc.Sequence[str | cabc.Sequence[str | None] | None], list[str]]:
+            args = deque(args)
+            nargs_spec = deque(nargs_spec)
+            rv: list[str | tuple[str | T_UNSET, ...] | T_UNSET] = []
+            spos: int | None = None
+
+            def _fetch(c: deque[V]) -> V | T_UNSET:
+                try:
+                    if spos is None:
+                        return c.popleft()
+                    else:
+                        return c.pop()
+                except IndexError:
+                    return UNSET
+
+            while nargs_spec:
+                nargs = _fetch(nargs_spec)
+
+                if nargs is None:
+                    continue
+
+                if nargs == 1:
+                    rv.append(_fetch(args))  # type: ignore[arg-type]
+                elif nargs > 1:
+                    x = [_fetch(args) for _ in range(nargs)]
+
+                    if spos is not None:
+                        x.reverse()
+
+                    rv.append(tuple(x))
+                elif nargs < 0:
+                    if spos is not None:
+                        raise TypeError("Cannot have two nargs < 0")
+
+                    spos = len(rv)
+                    rv.append(UNSET)
+
+            if spos is not None:
+                rv[spos] = tuple(args)
+                args = []
+                rv[spos + 1 :] = reversed(rv[spos + 1 :])
+
+            return tuple(rv), list(args)
+
+
+        class _Argument:
+            def __init__(self, obj: CoreArgument, dest: str | None, nargs: int = 1):
+                self.dest = dest
+                self.nargs = nargs
+                self.obj = obj
+
+            def process(
+                self,
+                value: str | cabc.Sequence[str | None] | None | T_UNSET,
+                state: _ParsingState,
+            ) -> None:
+                if self.nargs > 1:
+                    assert isinstance(value, cabc.Sequence)
+                    holes = sum(1 for x in value if x is UNSET)
+                    if holes == len(value):
+                        value = UNSET
+                    elif holes != 0:
+                        raise BadArgumentUsage(
+                            _("Argument {name!r} takes {nargs} values.").format(
+                                name=self.dest, nargs=self.nargs
+                            )
+                        )
+
+
+        class _OptionParser:
+            def _get_value_from_state(
+                self, option_name: str, option: _Option, state: _ParsingState
+            ) -> str | cabc.Sequence[str] | T_FLAG_NEEDS_VALUE:
+                nargs = option.nargs
+
+                value: str | cabc.Sequence[str] | T_FLAG_NEEDS_VALUE
+
+                if len(state.rargs) < nargs:
+                    if option.obj._flag_needs_value:
+                        value = FLAG_NEEDS_VALUE
+                    else:
+                        value = []
+                else:
+                    value = tuple(state.rargs[:nargs])
+
+                return value
+        '''
+    ).lstrip()
+
+
+def _click_3396_parser_after() -> str:
+    return dedent(
+        '''
+        from __future__ import annotations
+
+        import collections.abc as cabc
+        import typing as t
+        from collections import deque
+
+        FLAG_NEEDS_VALUE = object()
+        T_FLAG_NEEDS_VALUE = object
+        T_UNSET = object
+        UNSET = object()
+        V = t.TypeVar("V")
+
+
+        class BadArgumentUsage(Exception):
+            pass
+
+
+        def _(value: str) -> str:
+            return value
+
+
+        class _ParsingState:
+            rargs: list[str]
+
+
+        class CoreArgument:
+            pass
+
+
+        class CoreOption:
+            _flag_needs_value = False
+
+
+        class _Option:
+            nargs = 1
+            obj = CoreOption()
+
+
+        def _unpack_args(
+            args: cabc.Sequence[str], nargs_spec: cabc.Sequence[int]
+        ) -> tuple[cabc.Sequence[str | cabc.Sequence[str | T_UNSET] | T_UNSET], list[str]]:
+            args = deque(args)
+            nargs_spec = deque(nargs_spec)
+            rv: list[str | tuple[str | T_UNSET, ...] | T_UNSET] = []
+            spos: int | None = None
+
+            def _fetch(c: deque[str]) -> str | T_UNSET:
+                try:
+                    if spos is None:
+                        return c.popleft()
+                    else:
+                        return c.pop()
+                except IndexError:
+                    return UNSET
+
+            while nargs_spec:
+                if spos is None:
+                    nargs = nargs_spec.popleft()
+                else:
+                    nargs = nargs_spec.pop()
+
+                if nargs == 1:
+                    rv.append(_fetch(args))
+                elif nargs > 1:
+                    x: list[str | T_UNSET] = [_fetch(args) for _ in range(nargs)]
+
+                    if spos is not None:
+                        x.reverse()
+
+                    rv.append(tuple(x))
+                elif nargs < 0:
+                    if spos is not None:
+                        raise TypeError("Cannot have two nargs < 0")
+
+                    spos = len(rv)
+                    rv.append(UNSET)
+
+            if spos is not None:
+                rv[spos] = tuple(args)
+                args = []
+                rv[spos + 1 :] = reversed(rv[spos + 1 :])
+
+            return tuple(rv), list(args)
+
+
+        class _Argument:
+            def __init__(self, obj: CoreArgument, dest: str | None, nargs: int = 1):
+                self.dest = dest
+                self.nargs = nargs
+                self.obj = obj
+
+            def process(
+                self,
+                value: str | cabc.Sequence[str | T_UNSET] | T_UNSET,
+                state: _ParsingState,
+            ) -> None:
+                if self.nargs > 1:
+                    assert isinstance(value, cabc.Sequence)
+                    holes = sum(x is UNSET for x in value)
+                    if holes == len(value):
+                        value = UNSET
+                    elif holes != 0:
+                        raise BadArgumentUsage(
+                            _("Argument {name!r} takes {nargs} values.").format(
+                                name=self.dest, nargs=self.nargs
+                            )
+                        )
+
+
+        class _OptionParser:
+            def _get_value_from_state(
+                self, option_name: str, option: _Option, state: _ParsingState
+            ) -> str | cabc.Sequence[str] | T_UNSET | T_FLAG_NEEDS_VALUE:
+                nargs = option.nargs
+
+                value: str | cabc.Sequence[str] | T_UNSET | T_FLAG_NEEDS_VALUE
+
+                if len(state.rargs) < nargs:
+                    if option.obj._flag_needs_value:
+                        value = FLAG_NEEDS_VALUE
+                    else:
+                        value = []
+                else:
+                    value = tuple(state.rargs[:nargs])
+
+                return value
         '''
     ).lstrip()
 

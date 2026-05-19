@@ -4064,3 +4064,33 @@ meaningful work. Do not replace this file with a daily reset.
 - Next: review whether held-out tests-only rows that now report
   `missing_knowledge` need additional local import-style records.
 - Blockers: none.
+
+### 2026-05-18 - MAT-012 - Third held-out typed-builder/general-AST materialization stress row
+
+- Owner: worker Sagan (`019e3d05-21fc-7c11-b53f-546a5c545603`) with
+  coordinator integration after worker pause.
+- Files changed: `j3/heldout_typed_builder_candidate.py`,
+  `tests/test_heldout_typed_builder_candidate.py`, `plans/active.md`,
+  `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `python -m py_compile j3/heldout_typed_builder_candidate.py
+  tests/test_heldout_typed_builder_candidate.py` -> passed; `pytest
+  tests/test_heldout_typed_builder_candidate.py -q` -> 9 passed;
+  `git diff --check -- j3/heldout_typed_builder_candidate.py
+  tests/test_heldout_typed_builder_candidate.py` -> passed.
+- Result: materialized and live-validated `pallets/click#3396` from base
+  `fed9049f7a07550d560a91b30c5b0b3e17d54981` to accepted head
+  `3df4d601a5f1d1db50cbf0b33e5b0816189bc5a8`. The candidate changed only
+  `src/click/_utils.py`, `src/click/core.py`, and `src/click/parser.py`,
+  matched the accepted PR diff after normalization, and passed
+  `python -m py_compile src/click/_utils.py src/click/core.py
+  src/click/parser.py` in `0.031s`. No fallback row was used. The action
+  vocabulary stayed general but expanded with reusable
+  `assignment_annotation_update`, `function_signature_update`,
+  `boolean_condition_insert`, and bounded `statement_block_replace`.
+- Commit: pending.
+- Push: pending.
+- Next: integrate the completed `VAL-003` policy result, then choose the next
+  bounded probes from the residuals.
+- Blockers: none for MAT-012; bounded `statement_block_replace` is a broader
+  general AST action family and should be tracked as higher-risk than the
+  previous pure typed-builder actions.

@@ -59,28 +59,10 @@ This is the live coordinator board. Keep it current and compact.
   reason if the separation itself depends on decoy labels rather than
   observable candidate/validation evidence.
 
-### `MAT-012`: Third held-out typed-builder/general-AST materialization stress row
-
-- Status: active
-- Owner: worker Sagan (`019e3d05-21fc-7c11-b53f-546a5c545603`).
-- Write scope: `j3/heldout_typed_builder_candidate.py`,
-  `tests/test_heldout_typed_builder_candidate.py`, optional
-  `docs/MAT_012_*`, and generated artifacts under `/tmp`. Avoid issue/PR
-  ranking, validation-strength probes, and planning files unless explicitly
-  assigned by the coordinator.
-- Acceptance: attempt `pallets/click#3396` first, using reusable typed or
-  general AST action records rather than a PR-named action kind. Record pinned
-  base ref, accepted changed files, mutation scope, candidate-after diff/AST
-  metadata, accepted-diff comparison, validation result or exact blocker, and
-  whether the action vocabulary stayed general. If `click#3396` is blocked by
-  unavailable repo setup or an unbounded synthesis need, record that blocker
-  and only then fall back to the next MAT-007 `general_typed_builder` row such
-  as `psf/requests#7437`.
-
 ## Ready Queue
 
-The active set is at the default parallelism limit. Reassess after `VAL-003` or
-`MAT-012` returns.
+`VAL-003` has a local completed worker result pending scoped integration.
+Reassess after that commit lands.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
@@ -104,6 +86,20 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `MAT-012`: materialized and live-validated held-out `pallets/click#3396`
+  from base `fed9049f7a07550d560a91b30c5b0b3e17d54981` to accepted head
+  `3df4d601a5f1d1db50cbf0b33e5b0816189bc5a8`. The candidate changed only
+  `src/click/_utils.py`, `src/click/core.py`, and `src/click/parser.py`,
+  matched the accepted PR diff after normalization, and passed
+  `python -m py_compile src/click/_utils.py src/click/core.py
+  src/click/parser.py` in `0.031s`. The action vocabulary stayed general but
+  expanded with reusable `assignment_annotation_update`,
+  `function_signature_update`, `boolean_condition_insert`, and bounded
+  `statement_block_replace` actions. Artifacts:
+  `/tmp/j3-mat-012-click-3396-analysis/candidate.json`,
+  `/tmp/j3-mat-012-click-3396-analysis/report.md`,
+  `/tmp/j3-mat-012-click-3396-analysis/candidate.diff`, and
+  `/tmp/j3-mat-012-click-3396-analysis/accepted.diff`.
 - `KNOW-003`: tests-only candidate rows now carry explicit knowledge
   attribution with retrieved record IDs, cited purposes, required purposes,
   missing purposes, and machine-readable `knowledge_not_used` or

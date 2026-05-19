@@ -9,6 +9,7 @@ import hashlib
 import json
 import re
 import subprocess
+import textwrap
 import time
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
@@ -30,6 +31,14 @@ DEFAULT_REQUESTS_7441_VALIDATION_COMMAND = (
 )
 REQUESTS_TYPES_PATH = "src/requests/_types.py"
 REQUESTS_MODELS_PATH = "src/requests/models.py"
+DEFAULT_CLICK_3396_BASE_REF = "fed9049f7a07550d560a91b30c5b0b3e17d54981"
+DEFAULT_CLICK_3396_HEAD_REF = "3df4d601a5f1d1db50cbf0b33e5b0816189bc5a8"
+DEFAULT_CLICK_3396_VALIDATION_COMMAND = (
+    "python -m py_compile src/click/_utils.py src/click/core.py src/click/parser.py"
+)
+CLICK_INTERNAL_UTILS_PATH = "src/click/_utils.py"
+CLICK_CORE_PATH = "src/click/core.py"
+CLICK_PARSER_PATH = "src/click/parser.py"
 
 
 class HeldoutTypedBuilderCandidateError(ValueError):
@@ -201,6 +210,193 @@ class ImportMemberRemoveAction:
 
 
 @dataclass(frozen=True, slots=True)
+class AssignmentAnnotationUpdateAction:
+    """Add or update an assignment annotation in a module, function, or method."""
+
+    target_file: str
+    assignment_name: str
+    annotation: str
+    value: str | None = None
+    function_name: str | None = None
+    class_name: str | None = None
+    kind: str = "assignment_annotation_update"
+    schema_version: str = TYPED_ACTION_SCHEMA_VERSION
+    rationale: str | None = None
+
+    def __post_init__(self) -> None:
+        _validate_relative_path(self.target_file)
+        if not self.assignment_name:
+            raise ValueError("assignment_name is required")
+        if not self.annotation:
+            raise ValueError("annotation is required")
+
+    def to_record(self) -> dict[str, object]:
+        return {
+            "schema_version": self.schema_version,
+            "kind": self.kind,
+            "target": {
+                "file_path": self.target_file,
+                "class_name": self.class_name,
+                "function_name": self.function_name,
+                "assignment_name": self.assignment_name,
+            },
+            "annotation": self.annotation,
+            "value": self.value,
+            "constraints": {
+                "must_parse_ast": True,
+                "single_assignment_target": True,
+                "single_line_assignment": True,
+            },
+            "rationale": self.rationale,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class FunctionSignatureUpdateAction:
+    """Update parameter and return annotations for one function target."""
+
+    target_file: str
+    function_name: str
+    parameter_annotations: tuple[tuple[str, str], ...] = ()
+    return_annotation: str | None = None
+    class_name: str | None = None
+    parent_function_name: str | None = None
+    kind: str = "function_signature_update"
+    schema_version: str = TYPED_ACTION_SCHEMA_VERSION
+    max_parameter_updates: int = 6
+    rationale: str | None = None
+
+    def __post_init__(self) -> None:
+        _validate_relative_path(self.target_file)
+        if not self.function_name:
+            raise ValueError("function_name is required")
+        if not self.parameter_annotations and not self.return_annotation:
+            raise ValueError("parameter or return annotation update is required")
+        if len(self.parameter_annotations) > self.max_parameter_updates:
+            raise ValueError("parameter annotation budget exceeded")
+
+    def to_record(self) -> dict[str, object]:
+        return {
+            "schema_version": self.schema_version,
+            "kind": self.kind,
+            "target": {
+                "file_path": self.target_file,
+                "class_name": self.class_name,
+                "parent_function_name": self.parent_function_name,
+                "function_name": self.function_name,
+            },
+            "parameter_annotations": [
+                {"parameter": name, "annotation": annotation}
+                for name, annotation in self.parameter_annotations
+            ],
+            "return_annotation": self.return_annotation,
+            "constraints": {
+                "max_parameter_updates": self.max_parameter_updates,
+                "must_parse_ast": True,
+                "single_signature_update": True,
+            },
+            "rationale": self.rationale,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class BooleanConditionInsertAction:
+    """Insert a boolean conjunct next to an existing anchored condition."""
+
+    target_file: str
+    function_name: str
+    anchor_condition: str
+    condition: str
+    class_name: str | None = None
+    position: str = "after"
+    kind: str = "boolean_condition_insert"
+    schema_version: str = TYPED_ACTION_SCHEMA_VERSION
+    rationale: str | None = None
+
+    def __post_init__(self) -> None:
+        _validate_relative_path(self.target_file)
+        if self.position not in {"before", "after"}:
+            raise ValueError("position must be before or after")
+        if not self.function_name:
+            raise ValueError("function_name is required")
+        if not self.anchor_condition:
+            raise ValueError("anchor_condition is required")
+        if not self.condition:
+            raise ValueError("condition is required")
+
+    def to_record(self) -> dict[str, object]:
+        return {
+            "schema_version": self.schema_version,
+            "kind": self.kind,
+            "target": {
+                "file_path": self.target_file,
+                "class_name": self.class_name,
+                "function_name": self.function_name,
+                "anchor_condition": self.anchor_condition,
+                "position": self.position,
+            },
+            "condition": self.condition,
+            "constraints": {
+                "must_parse_ast": True,
+                "condition_must_parse_as_expression": True,
+                "anchor_line_must_be_unique_in_function": True,
+            },
+            "rationale": self.rationale,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class StatementBlockReplaceAction:
+    """Replace a small exact statement block inside a function or method."""
+
+    target_file: str
+    function_name: str
+    old_block: str
+    new_block: str
+    class_name: str | None = None
+    parent_function_name: str | None = None
+    kind: str = "statement_block_replace"
+    schema_version: str = TYPED_ACTION_SCHEMA_VERSION
+    max_old_lines: int = 8
+    max_new_lines: int = 8
+    rationale: str | None = None
+
+    def __post_init__(self) -> None:
+        _validate_relative_path(self.target_file)
+        if not self.function_name:
+            raise ValueError("function_name is required")
+        if not self.old_block.strip():
+            raise ValueError("old_block is required")
+        if not self.new_block.strip():
+            raise ValueError("new_block is required")
+        if len(_normalized_block_lines(self.old_block)) > self.max_old_lines:
+            raise ValueError("old block line budget exceeded")
+        if len(_normalized_block_lines(self.new_block)) > self.max_new_lines:
+            raise ValueError("new block line budget exceeded")
+
+    def to_record(self) -> dict[str, object]:
+        return {
+            "schema_version": self.schema_version,
+            "kind": self.kind,
+            "target": {
+                "file_path": self.target_file,
+                "class_name": self.class_name,
+                "parent_function_name": self.parent_function_name,
+                "function_name": self.function_name,
+            },
+            "old_block": self.old_block,
+            "new_block": self.new_block,
+            "constraints": {
+                "max_old_lines": self.max_old_lines,
+                "max_new_lines": self.max_new_lines,
+                "must_parse_ast": True,
+                "old_block_must_match_exactly_once": True,
+            },
+            "rationale": self.rationale,
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class ReturnAnnotationUpdateAction:
     """Add or update one function return annotation."""
 
@@ -242,6 +438,10 @@ TypedAction = (
     | TypeAnnotationUpdateAction
     | TypeAliasUpdateAction
     | ImportMemberRemoveAction
+    | AssignmentAnnotationUpdateAction
+    | FunctionSignatureUpdateAction
+    | BooleanConditionInsertAction
+    | StatementBlockReplaceAction
     | ReturnAnnotationUpdateAction
 )
 
@@ -558,6 +758,237 @@ def build_requests_headers_mapping_spec(
     )
 
 
+def build_click_sentinel_parser_spec(
+    repo_path: Path,
+    *,
+    base_ref: str = DEFAULT_CLICK_3396_BASE_REF,
+    accepted_head_ref: str = DEFAULT_CLICK_3396_HEAD_REF,
+    validation_command: str = DEFAULT_CLICK_3396_VALIDATION_COMMAND,
+) -> HeldoutTypedBuilderSpec:
+    """Build the held-out click#3396 sentinel/parser typing candidate spec."""
+
+    _repo_file(repo_path, CLICK_INTERNAL_UTILS_PATH)
+    _repo_file(repo_path, CLICK_CORE_PATH)
+    _repo_file(repo_path, CLICK_PARSER_PATH)
+    return HeldoutTypedBuilderSpec(
+        candidate_id="mat-012-click-sentinel-parser-typing",
+        repo_id="pallets/click",
+        repo_url="https://github.com/pallets/click",
+        repo_split="held_out",
+        base_ref=base_ref,
+        accepted_head_ref=accepted_head_ref,
+        reference_pr_url="https://github.com/pallets/click/pull/3396",
+        prompt=(
+            "Fix sentinel typing and parser annotations without introducing "
+            "a click#3396-specific source patch."
+        ),
+        target_file=CLICK_PARSER_PATH,
+        validation_command=validation_command,
+        allowed_write_paths=(
+            CLICK_INTERNAL_UTILS_PATH,
+            CLICK_CORE_PATH,
+            CLICK_PARSER_PATH,
+        ),
+        typed_actions=(
+            AssignmentAnnotationUpdateAction(
+                target_file=CLICK_INTERNAL_UTILS_PATH,
+                assignment_name="UNSET",
+                annotation="t.Literal[Sentinel.UNSET]",
+                value="Sentinel.UNSET",
+                rationale="type the UNSET sentinel binding as its literal enum value",
+            ),
+            AssignmentAnnotationUpdateAction(
+                target_file=CLICK_INTERNAL_UTILS_PATH,
+                assignment_name="FLAG_NEEDS_VALUE",
+                annotation="t.Literal[Sentinel.FLAG_NEEDS_VALUE]",
+                value="Sentinel.FLAG_NEEDS_VALUE",
+                rationale=(
+                    "type the FLAG_NEEDS_VALUE sentinel binding as its literal "
+                    "enum value"
+                ),
+            ),
+            AssignmentAnnotationUpdateAction(
+                target_file=CLICK_INTERNAL_UTILS_PATH,
+                assignment_name="T_UNSET",
+                annotation="t.TypeAlias",
+                value="t.Literal[Sentinel.UNSET]",
+                rationale="convert the sentinel helper to an explicit TypeAlias",
+            ),
+            AssignmentAnnotationUpdateAction(
+                target_file=CLICK_INTERNAL_UTILS_PATH,
+                assignment_name="T_FLAG_NEEDS_VALUE",
+                annotation="t.TypeAlias",
+                value="t.Literal[Sentinel.FLAG_NEEDS_VALUE]",
+                rationale="convert the flag sentinel helper to an explicit TypeAlias",
+            ),
+            BooleanConditionInsertAction(
+                target_file=CLICK_CORE_PATH,
+                class_name="Option",
+                function_name="consume_value",
+                anchor_condition="value is not UNSET",
+                condition="isinstance(value, cabc.Iterable)",
+                rationale=(
+                    "guard iteration over parser values after UNSET is no "
+                    "longer typed as None"
+                ),
+            ),
+            FunctionSignatureUpdateAction(
+                target_file=CLICK_PARSER_PATH,
+                function_name="_unpack_args",
+                return_annotation=(
+                    "tuple[cabc.Sequence[str | cabc.Sequence[str | T_UNSET] | "
+                    "T_UNSET], list[str]]"
+                ),
+                rationale="propagate sentinel aliases into unpacked parser output",
+            ),
+            FunctionSignatureUpdateAction(
+                target_file=CLICK_PARSER_PATH,
+                parent_function_name="_unpack_args",
+                function_name="_fetch",
+                parameter_annotations=(("c", "deque[str]"),),
+                return_annotation="str | T_UNSET",
+                rationale="narrow the nested fetch helper to argument strings",
+            ),
+            StatementBlockReplaceAction(
+                target_file=CLICK_PARSER_PATH,
+                function_name="_unpack_args",
+                old_block="""
+                    nargs = _fetch(nargs_spec)
+
+                    if nargs is None:
+                        continue
+                """,
+                new_block="""
+                    if spos is None:
+                        nargs = nargs_spec.popleft()
+                    else:
+                        nargs = nargs_spec.pop()
+                """,
+                rationale=(
+                    "avoid routing integer nargs values through the sentinel "
+                    "fetch helper"
+                ),
+            ),
+            StatementBlockReplaceAction(
+                target_file=CLICK_PARSER_PATH,
+                function_name="_unpack_args",
+                old_block="rv.append(_fetch(args))  # type: ignore[arg-type]",
+                new_block="rv.append(_fetch(args))",
+                rationale="remove the obsolete arg-type ignore after helper narrowing",
+            ),
+            AssignmentAnnotationUpdateAction(
+                target_file=CLICK_PARSER_PATH,
+                function_name="_unpack_args",
+                assignment_name="x",
+                annotation="list[str | T_UNSET]",
+                rationale="record the sentinel-aware temporary list type",
+            ),
+            FunctionSignatureUpdateAction(
+                target_file=CLICK_PARSER_PATH,
+                class_name="_Argument",
+                function_name="process",
+                parameter_annotations=(
+                    (
+                        "value",
+                        "str | cabc.Sequence[str | T_UNSET] | T_UNSET",
+                    ),
+                ),
+                rationale="remove None from argument parser value typing",
+            ),
+            StatementBlockReplaceAction(
+                target_file=CLICK_PARSER_PATH,
+                class_name="_Argument",
+                function_name="process",
+                old_block="holes = sum(1 for x in value if x is UNSET)",
+                new_block="holes = sum(x is UNSET for x in value)",
+                rationale="count sentinel holes with a boolean generator",
+            ),
+            FunctionSignatureUpdateAction(
+                target_file=CLICK_PARSER_PATH,
+                class_name="_OptionParser",
+                function_name="_get_value_from_state",
+                return_annotation=(
+                    "str | cabc.Sequence[str] | T_UNSET | T_FLAG_NEEDS_VALUE"
+                ),
+                rationale="include UNSET in option parser value returns",
+            ),
+            AssignmentAnnotationUpdateAction(
+                target_file=CLICK_PARSER_PATH,
+                class_name="_OptionParser",
+                function_name="_get_value_from_state",
+                assignment_name="value",
+                annotation="str | cabc.Sequence[str] | T_UNSET | T_FLAG_NEEDS_VALUE",
+                rationale="include UNSET in the local option value type",
+            ),
+        ),
+        action_family_reuse_evidence=(
+            {
+                "action_kind": "assignment_annotation_update",
+                "reusable_parameters": [
+                    "target_file",
+                    "class_name",
+                    "function_name",
+                    "assignment_name",
+                    "annotation",
+                    "value",
+                ],
+                "evidence": (
+                    "extends typed-builder coverage from TypeAlias-only edits "
+                    "to module and local assignment annotations without a "
+                    "click-specific action"
+                ),
+            },
+            {
+                "action_kind": "function_signature_update",
+                "reusable_parameters": [
+                    "target_file",
+                    "class_name",
+                    "parent_function_name",
+                    "function_name",
+                    "parameter_annotations",
+                    "return_annotation",
+                ],
+                "evidence": (
+                    "updates top-level, nested, and method signatures by AST "
+                    "scope and annotation text"
+                ),
+            },
+            {
+                "action_kind": "boolean_condition_insert",
+                "reusable_parameters": [
+                    "target_file",
+                    "class_name",
+                    "function_name",
+                    "anchor_condition",
+                    "condition",
+                    "position",
+                ],
+                "evidence": (
+                    "adds a parsed conjunct inside an existing boolean chain "
+                    "using an anchor condition"
+                ),
+            },
+            {
+                "action_kind": "statement_block_replace",
+                "reusable_parameters": [
+                    "target_file",
+                    "class_name",
+                    "parent_function_name",
+                    "function_name",
+                    "old_block",
+                    "new_block",
+                ],
+                "evidence": (
+                    "bounded exact-block replacement is constrained by line "
+                    "budgets, a unique old-block match, and AST parse checks; "
+                    "this is a general AST action family but broader than the "
+                    "MAT-010/MAT-011 pure typing actions"
+                ),
+            },
+        ),
+    )
+
+
 def materialize_heldout_typed_builder_candidate(
     repo_path: Path,
     spec: HeldoutTypedBuilderSpec,
@@ -680,9 +1111,13 @@ def materialize_heldout_typed_builder_candidate(
         "file_hashes_after": hashes_after,
     }
     mutation_scope = {
-        "mode": "heldout_typed_builder_one_file",
+        "mode": (
+            "heldout_typed_builder_one_file"
+            if len(spec.allowed_write_paths) == 1
+            else "heldout_typed_builder_multi_file"
+        ),
         "allowed_write_paths": list(spec.allowed_write_paths),
-        "planned_write_files": [spec.target_file],
+        "planned_write_files": list(action_paths),
         "actual_changed_files": changed_files,
         "writes_outside_allowlist": writes_outside_allowlist,
         "only_accepted_files_changed": (
@@ -832,6 +1267,46 @@ def _apply_typed_action(source: str, action: TypedAction) -> str:
             module=action.module,
             names=action.names,
             type_checking_only=action.type_checking_only,
+        )
+    if isinstance(action, AssignmentAnnotationUpdateAction):
+        return _ensure_assignment_annotation(
+            source,
+            target_file=action.target_file,
+            assignment_name=action.assignment_name,
+            annotation=action.annotation,
+            value=action.value,
+            class_name=action.class_name,
+            function_name=action.function_name,
+        )
+    if isinstance(action, FunctionSignatureUpdateAction):
+        return _ensure_function_signature(
+            source,
+            target_file=action.target_file,
+            class_name=action.class_name,
+            parent_function_name=action.parent_function_name,
+            function_name=action.function_name,
+            parameter_annotations=action.parameter_annotations,
+            return_annotation=action.return_annotation,
+        )
+    if isinstance(action, BooleanConditionInsertAction):
+        return _insert_boolean_condition(
+            source,
+            target_file=action.target_file,
+            class_name=action.class_name,
+            function_name=action.function_name,
+            anchor_condition=action.anchor_condition,
+            condition=action.condition,
+            position=action.position,
+        )
+    if isinstance(action, StatementBlockReplaceAction):
+        return _replace_statement_block(
+            source,
+            target_file=action.target_file,
+            class_name=action.class_name,
+            parent_function_name=action.parent_function_name,
+            function_name=action.function_name,
+            old_block=action.old_block,
+            new_block=action.new_block,
         )
     if isinstance(action, ReturnAnnotationUpdateAction):
         return _ensure_return_annotation(
@@ -1027,6 +1502,272 @@ def _remove_import_members(
     return patched
 
 
+def _ensure_assignment_annotation(
+    source: str,
+    *,
+    target_file: str,
+    assignment_name: str,
+    annotation: str,
+    value: str | None,
+    class_name: str | None,
+    function_name: str | None,
+) -> str:
+    tree = _parse_python(source, filename=target_file, field="typed_builder")
+    assignment = _find_assignment(
+        tree,
+        assignment_name=assignment_name,
+        class_name=class_name,
+        function_name=function_name,
+    )
+    if assignment is None:
+        raise HeldoutTypedBuilderCandidateError(
+            f"assignment not found: {assignment_name}",
+            blocker={
+                "field": "typed_builder",
+                "reason": "typed_target_not_found",
+                "message": f"assignment not found: {assignment_name}",
+            },
+        )
+    if assignment.end_lineno != assignment.lineno:
+        raise HeldoutTypedBuilderCandidateError(
+            f"multi-line assignment update is not supported: {assignment_name}",
+            blocker={
+                "field": "typed_builder",
+                "reason": "assignment_annotation_update_blocked",
+                "message": (
+                    "multi-line assignment update is not supported: "
+                    f"{assignment_name}"
+                ),
+            },
+        )
+
+    existing_value = _assignment_value(assignment)
+    next_value = value if value is not None else existing_value
+    if next_value is None:
+        replacement = f"{assignment_name}: {annotation}"
+    else:
+        replacement = f"{assignment_name}: {annotation} = {next_value}"
+
+    lines = source.splitlines(keepends=True)
+    original = lines[assignment.lineno - 1]
+    current = original.strip()
+    if current == replacement:
+        return source
+    indent = original[: len(original) - len(original.lstrip())]
+    newline = "\n" if original.endswith("\n") else ""
+    lines[assignment.lineno - 1] = f"{indent}{replacement}{newline}"
+    patched = "".join(lines)
+    _parse_python(patched, filename=target_file, field="typed_builder")
+    return patched
+
+
+def _ensure_function_signature(
+    source: str,
+    *,
+    target_file: str,
+    class_name: str | None,
+    parent_function_name: str | None,
+    function_name: str,
+    parameter_annotations: Sequence[tuple[str, str]],
+    return_annotation: str | None,
+) -> str:
+    tree = _parse_python(source, filename=target_file, field="typed_builder")
+    function = _find_scoped_function(
+        tree,
+        class_name=class_name,
+        parent_function_name=parent_function_name,
+        function_name=function_name,
+    )
+    if function is None:
+        target = _function_target_label(class_name, parent_function_name, function_name)
+        raise HeldoutTypedBuilderCandidateError(
+            f"function not found: {target}",
+            blocker={
+                "field": "typed_builder",
+                "reason": "typed_target_not_found",
+                "message": f"function not found: {target}",
+            },
+        )
+
+    lines = source.splitlines(keepends=True)
+    signature_end_lineno = _function_signature_end_lineno(function)
+    start_index = function.lineno - 1
+    end_index = signature_end_lineno - 1
+
+    for parameter_name, parameter_annotation in parameter_annotations:
+        if _function_parameter_annotation(function, parameter_name) == parameter_annotation:
+            continue
+        updated = _replace_parameter_annotation_in_signature(
+            lines,
+            start_index=start_index,
+            end_index=end_index,
+            parameter_name=parameter_name,
+            annotation=parameter_annotation,
+        )
+        if not updated:
+            raise HeldoutTypedBuilderCandidateError(
+                f"could not update parameter annotation: {parameter_name}",
+                blocker={
+                    "field": "typed_builder",
+                    "reason": "function_signature_update_blocked",
+                    "message": (
+                        "could not update parameter annotation: "
+                        f"{function_name}.{parameter_name}"
+                    ),
+                },
+            )
+
+    if return_annotation is not None:
+        current_return = (
+            ast.unparse(function.returns) if function.returns is not None else None
+        )
+        if current_return != return_annotation:
+            updated = _replace_return_annotation_in_signature(
+                lines,
+                signature_end_index=end_index,
+                return_annotation=return_annotation,
+            )
+            if not updated:
+                raise HeldoutTypedBuilderCandidateError(
+                    f"could not update return annotation for {function_name}",
+                    blocker={
+                        "field": "typed_builder",
+                        "reason": "function_signature_update_blocked",
+                        "message": (
+                            "could not update return annotation for "
+                            f"{function_name}"
+                        ),
+                    },
+                )
+
+    patched = "".join(lines)
+    _parse_python(patched, filename=target_file, field="typed_builder")
+    return patched
+
+
+def _insert_boolean_condition(
+    source: str,
+    *,
+    target_file: str,
+    class_name: str | None,
+    function_name: str,
+    anchor_condition: str,
+    condition: str,
+    position: str,
+) -> str:
+    _parse_expression(anchor_condition, target_file=target_file)
+    _parse_expression(condition, target_file=target_file)
+    tree = _parse_python(source, filename=target_file, field="typed_builder")
+    function = _find_scoped_function(
+        tree,
+        class_name=class_name,
+        parent_function_name=None,
+        function_name=function_name,
+    )
+    if function is None or function.end_lineno is None:
+        target = _function_target_label(class_name, None, function_name)
+        raise HeldoutTypedBuilderCandidateError(
+            f"function not found: {target}",
+            blocker={
+                "field": "typed_builder",
+                "reason": "typed_target_not_found",
+                "message": f"function not found: {target}",
+            },
+        )
+
+    lines = source.splitlines(keepends=True)
+    anchor_line = f"and {anchor_condition}"
+    condition_line = f"and {condition}"
+    matches = []
+    for index in range(function.lineno - 1, function.end_lineno):
+        stripped = lines[index].strip()
+        if stripped == condition_line:
+            return source
+        if stripped == anchor_line:
+            matches.append(index)
+    if len(matches) != 1:
+        raise HeldoutTypedBuilderCandidateError(
+            f"boolean anchor match count was {len(matches)}: {anchor_condition}",
+            blocker={
+                "field": "typed_builder",
+                "reason": "boolean_condition_insert_blocked",
+                "message": (
+                    "boolean anchor must match exactly once in function: "
+                    f"{anchor_condition}"
+                ),
+            },
+        )
+
+    anchor_index = matches[0]
+    indent = lines[anchor_index][: len(lines[anchor_index]) - len(lines[anchor_index].lstrip())]
+    insert_index = anchor_index if position == "before" else anchor_index + 1
+    lines.insert(insert_index, f"{indent}{condition_line}\n")
+    patched = "".join(lines)
+    _parse_python(patched, filename=target_file, field="typed_builder")
+    return patched
+
+
+def _replace_statement_block(
+    source: str,
+    *,
+    target_file: str,
+    class_name: str | None,
+    parent_function_name: str | None,
+    function_name: str,
+    old_block: str,
+    new_block: str,
+) -> str:
+    _parse_statement_block(old_block, target_file=target_file)
+    _parse_statement_block(new_block, target_file=target_file)
+    tree = _parse_python(source, filename=target_file, field="typed_builder")
+    function = _find_scoped_function(
+        tree,
+        class_name=class_name,
+        parent_function_name=parent_function_name,
+        function_name=function_name,
+    )
+    if function is None or function.end_lineno is None:
+        target = _function_target_label(class_name, parent_function_name, function_name)
+        raise HeldoutTypedBuilderCandidateError(
+            f"function not found: {target}",
+            blocker={
+                "field": "typed_builder",
+                "reason": "typed_target_not_found",
+                "message": f"function not found: {target}",
+            },
+        )
+
+    old_lines = _normalized_block_lines(old_block)
+    new_lines = _normalized_block_lines(new_block)
+    lines = source.splitlines(keepends=True)
+    matches: list[tuple[int, str]] = []
+    for start in range(function.lineno - 1, function.end_lineno - len(old_lines) + 1):
+        first_line = lines[start]
+        base_indent = first_line[: len(first_line) - len(first_line.lstrip())]
+        if _block_matches_at(lines, start=start, base_indent=base_indent, block_lines=old_lines):
+            matches.append((start, base_indent))
+    if len(matches) != 1:
+        raise HeldoutTypedBuilderCandidateError(
+            f"statement block match count was {len(matches)}",
+            blocker={
+                "field": "typed_builder",
+                "reason": "statement_block_replace_blocked",
+                "message": "old statement block must match exactly once",
+            },
+        )
+
+    start, base_indent = matches[0]
+    replacement = [
+        "\n" if line == "" else f"{base_indent}{line}\n"
+        for line in new_lines
+    ]
+    patched = "".join(
+        lines[:start] + replacement + lines[start + len(old_lines) :]
+    )
+    _parse_python(patched, filename=target_file, field="typed_builder")
+    return patched
+
+
 def _remove_instance_assignment_annotations(
     source: str,
     *,
@@ -1192,6 +1933,156 @@ def _find_function_or_method(
     return None
 
 
+def _find_scoped_function(
+    tree: ast.Module,
+    *,
+    class_name: str | None,
+    parent_function_name: str | None,
+    function_name: str,
+) -> ast.FunctionDef | ast.AsyncFunctionDef | None:
+    parent = _find_function_or_method(tree, class_name, parent_function_name)
+    if parent_function_name is not None:
+        if parent is None:
+            return None
+        for node in parent.body:
+            if (
+                isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
+                and node.name == function_name
+            ):
+                return node
+        return None
+    return _find_function_or_method(tree, class_name, function_name)
+
+
+def _function_target_label(
+    class_name: str | None,
+    parent_function_name: str | None,
+    function_name: str,
+) -> str:
+    parts = [part for part in (class_name, parent_function_name, function_name) if part]
+    return ".".join(parts)
+
+
+def _function_signature_end_lineno(
+    function: ast.FunctionDef | ast.AsyncFunctionDef,
+) -> int:
+    if function.body:
+        return function.body[0].lineno - 1
+    return function.end_lineno or function.lineno
+
+
+def _function_parameter_annotation(
+    function: ast.FunctionDef | ast.AsyncFunctionDef,
+    parameter_name: str,
+) -> str | None:
+    args = (
+        list(function.args.posonlyargs)
+        + list(function.args.args)
+        + list(function.args.kwonlyargs)
+    )
+    if function.args.vararg is not None:
+        args.append(function.args.vararg)
+    if function.args.kwarg is not None:
+        args.append(function.args.kwarg)
+    for arg in args:
+        if arg.arg == parameter_name:
+            return ast.unparse(arg.annotation) if arg.annotation is not None else None
+    return None
+
+
+def _replace_parameter_annotation_in_signature(
+    lines: list[str],
+    *,
+    start_index: int,
+    end_index: int,
+    parameter_name: str,
+    annotation: str,
+) -> bool:
+    pattern = re.compile(
+        rf"(?P<prefix>\b{re.escape(parameter_name)}\s*:\s*)"
+        rf"(?P<annotation>[^,\)\n]+)"
+        rf"(?P<suffix>[,\)])"
+    )
+    for index in range(start_index, end_index + 1):
+        line = lines[index]
+
+        def replace(match: re.Match[str]) -> str:
+            return (
+                f"{match.group('prefix')}{annotation}{match.group('suffix')}"
+            )
+
+        replaced, count = pattern.subn(replace, line, count=1)
+        if count:
+            lines[index] = replaced
+            return True
+    return False
+
+
+def _replace_return_annotation_in_signature(
+    lines: list[str],
+    *,
+    signature_end_index: int,
+    return_annotation: str,
+) -> bool:
+    line = lines[signature_end_index]
+    if "->" in line:
+        replaced, count = re.subn(
+            r"\)\s*->\s*[^:]+:",
+            f") -> {return_annotation}:",
+            line,
+            count=1,
+        )
+    else:
+        replaced, count = re.subn(
+            r"\)\s*:",
+            f") -> {return_annotation}:",
+            line,
+            count=1,
+        )
+    if count:
+        lines[signature_end_index] = replaced
+        return True
+    return False
+
+
+def _find_assignment(
+    tree: ast.Module,
+    *,
+    assignment_name: str,
+    class_name: str | None,
+    function_name: str | None,
+) -> ast.Assign | ast.AnnAssign | None:
+    if function_name is not None:
+        function = _find_function_or_method(tree, class_name, function_name)
+        nodes: Sequence[ast.AST] = list(ast.walk(function)) if function is not None else ()
+    elif class_name is not None:
+        class_node = _find_class(tree, class_name)
+        nodes = class_node.body if class_node is not None else ()
+    else:
+        nodes = tree.body
+
+    for node in nodes:
+        if isinstance(node, ast.AnnAssign) and _assignment_target_name(node) == assignment_name:
+            return node
+        if isinstance(node, ast.Assign) and _assignment_target_name(node) == assignment_name:
+            return node
+    return None
+
+
+def _assignment_target_name(node: ast.Assign | ast.AnnAssign) -> str | None:
+    if isinstance(node, ast.AnnAssign):
+        return node.target.id if isinstance(node.target, ast.Name) else None
+    if len(node.targets) != 1:
+        return None
+    target = node.targets[0]
+    return target.id if isinstance(target, ast.Name) else None
+
+
+def _assignment_value(node: ast.Assign | ast.AnnAssign) -> str | None:
+    value = node.value
+    return ast.unparse(value) if value is not None else None
+
+
 def _class_scope_annotation_names(class_node: ast.ClassDef) -> set[str]:
     names: set[str] = set()
     for node in class_node.body:
@@ -1343,6 +2234,49 @@ def _parse_python(source: str, *, filename: str, field: str) -> ast.Module:
                 "message": str(error),
             },
         ) from error
+
+
+def _parse_expression(expression: str, *, target_file: str) -> ast.Expression:
+    try:
+        return ast.parse(expression, filename=target_file, mode="eval")
+    except SyntaxError as error:
+        raise HeldoutTypedBuilderCandidateError(
+            f"invalid Python expression in {target_file}: {error}",
+            blocker={
+                "field": "typed_builder",
+                "reason": "python_ast_parse_failed",
+                "message": str(error),
+            },
+        ) from error
+
+
+def _parse_statement_block(block: str, *, target_file: str) -> ast.Module:
+    lines = _normalized_block_lines(block)
+    body = "\n".join(f"        {line}" if line else "" for line in lines)
+    wrapped = f"def _j3_block_probe():\n    while True:\n{body}\n"
+    return _parse_python(wrapped, filename=target_file, field="typed_builder")
+
+
+def _normalized_block_lines(block: str) -> list[str]:
+    return textwrap.dedent(block).strip("\n").splitlines()
+
+
+def _block_matches_at(
+    lines: Sequence[str],
+    *,
+    start: int,
+    base_indent: str,
+    block_lines: Sequence[str],
+) -> bool:
+    for offset, expected in enumerate(block_lines):
+        actual = lines[start + offset].rstrip("\n")
+        if expected == "":
+            if actual.strip():
+                return False
+            continue
+        if actual != f"{base_indent}{expected}":
+            return False
+    return True
 
 
 def _file_hashes(repo: Path, paths: Sequence[str]) -> dict[str, str]:
@@ -1585,7 +2519,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     parser.add_argument(
         "--candidate",
-        choices=("click-3422", "requests-7441"),
+        choices=("click-3422", "requests-7441", "click-3396"),
         default="click-3422",
     )
     parser.add_argument("--repo-path", type=Path, required=True)
@@ -1598,7 +2532,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--no-write", action="store_true")
     args = parser.parse_args(argv)
 
-    if args.candidate == "requests-7441":
+    if args.candidate == "click-3396":
+        spec = build_click_sentinel_parser_spec(args.repo_path)
+    elif args.candidate == "requests-7441":
         spec = build_requests_headers_mapping_spec(args.repo_path)
     else:
         spec = build_click_utils_annotation_spec(args.repo_path)

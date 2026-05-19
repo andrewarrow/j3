@@ -824,7 +824,7 @@ Long-term target:
 
 ### MAT-012: Third held-out typed-builder/general-AST materialization stress row
 
-- Status: active
+- Status: done
 - Why: MAT-010 and MAT-011 are positive held-out typed-builder rows, but the
   materialization question is still falsifiable: do action families generalize,
   or do they keep expanding per PR? `pallets/click#3396` is a harder held-out
@@ -845,6 +845,18 @@ Long-term target:
   as `psf/requests#7437`.
 - Tests: focused typed-builder/general-AST materializer tests,
   `git diff --check`, and live validation or a recorded validation blocker.
+- Completion note: materialized and live-validated `pallets/click#3396` from
+  base `fed9049f7a07550d560a91b30c5b0b3e17d54981` to accepted head
+  `3df4d601a5f1d1db50cbf0b33e5b0816189bc5a8`. The candidate changed only
+  `src/click/_utils.py`, `src/click/core.py`, and `src/click/parser.py`,
+  matched the accepted PR diff after normalization, and passed
+  `python -m py_compile src/click/_utils.py src/click/core.py
+  src/click/parser.py` in `0.031s`. The action vocabulary stayed general but
+  expanded with reusable `assignment_annotation_update`,
+  `function_signature_update`, `boolean_condition_insert`, and bounded
+  `statement_block_replace`, which is broader than the prior pure typed-action
+  rows and should be tracked as a higher-risk general AST materialization
+  family.
 
 ### KNOW-001: Local knowledge inventory for the wedge
 

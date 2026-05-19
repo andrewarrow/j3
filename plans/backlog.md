@@ -395,6 +395,21 @@ Long-term target:
   16 `scorer_ranking_gap` and 1 `candidate_generation_gap`. Guarded-trial
   decision remained `remain_shadow_only`; `TRANS-003` remains blocked.
 
+### TRANS-006: Surface candidate-after metadata in transition evidence
+
+- Status: active
+- Why: every `TRANS-005` residual still reports missing candidate-after/source
+  evidence even though candidate outcome rows carry diff and AST-delta
+  metadata that should be visible to action-choice and residual reports.
+- Write scope: transition action-choice/residual evidence plumbing and focused
+  tests only.
+- Acceptance: candidate outcome rows with root diff or AST-delta metadata
+  produce available candidate-after evidence in action-choice groups; residual
+  missing-feature reports stop labeling those rows as
+  `candidate_after_unavailable`, while embedding availability remains honest.
+- Tests: focused transition action-choice/residual/scorer tests,
+  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+
 ## Workstream E: Repo State, Actions, And Models
 
 ### REPO-001: Summarize repo-state encoder coverage
@@ -429,6 +444,21 @@ Long-term target:
   regressing existing candidate ranking tests.
 - Tests: focused patching/candidate ranking tests plus the single GreenShot-6
   task smoke.
+
+### ACT-003: Reduce dynamic field exception-message search-budget gap
+
+- Status: active
+- Why: `TRANS-005` still has one matrix `candidate_generation_gap`:
+  `greenshot_6_subset/dynamic_field_error_message`. The preferred
+  `change_literal` candidate exists deeper in the generated candidate list, but
+  it does not enter the tested evidence set within the standard cap.
+- Write scope: repair candidate ranking/generation around exception-message
+  literal candidates and focused tests for the GreenShot-6 row.
+- Acceptance: the `dynamic_field_error_message` preferred literal candidate is
+  tested within the configured cap, or a precise blocker distinguishes missing
+  generation from search-budget/ranking.
+- Tests: focused patching/evaluation tests plus the single GreenShot-6 task
+  smoke, `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
 
 ### MODEL-001: Re-evaluate learned prompt intent baseline
 

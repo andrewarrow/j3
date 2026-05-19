@@ -61,14 +61,32 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-No active transition worker. The coordinator should review the `TRANS-005`
-post-scorer matrix evidence before assigning more transition scorer or
-matrix-manifest work.
+- `TRANS-006`: surface candidate-after evidence from transition outcome
+  metadata.
+  - Owner: coordinator dispatch in progress; worker pending.
+  - Scope: transition action-choice/residual evidence plumbing and focused
+    tests only.
+  - Acceptance: candidate outcome rows that already carry diff or AST-delta
+    metadata produce available candidate-after evidence in action-choice
+    groups, and residual missing-feature reports no longer label those rows as
+    lacking candidate-after evidence.
+  - Expected tests: focused transition action-choice/residual/scorer tests,
+    `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+- `ACT-003`: reduce the `dynamic_field_error_message` search-budget gap.
+  - Owner: coordinator dispatch in progress; worker pending.
+  - Scope: repair candidate ranking/generation around exception-message
+    literal candidates and focused tests for the GreenShot-6 row.
+  - Acceptance: the `dynamic_field_error_message` preferred literal candidate
+    enters the tested evidence set within the configured cap, or a precise
+    generation/ranking blocker is recorded.
+  - Expected tests: focused patching/evaluation tests plus the single
+    GreenShot-6 task smoke, `pytest tests/test_plan_consistency.py -q`, and
+    `git diff --check`.
 
 ## Ready Queue
 
-`TRANS-005` returned post-scorer matrix evidence; avoid additional transition
-scorer work until the coordinator reviews the remaining residual clusters.
+`TRANS-006` and `ACT-003` are being dispatched from the `TRANS-005` residual
+clusters. Avoid broader matrix-manifest expansion until both return.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 

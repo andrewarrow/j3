@@ -4598,3 +4598,24 @@ meaningful work. Do not replace this file with a daily reset.
   transition ranking remains shadow-only.
 - Blockers: `TRANS-003` remains blocked by nonzero residuals and non-guarded
   suite gates.
+
+### 2026-05-19 - Coordinator Review And Dispatch - TRANS-006 / ACT-003
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, and
+  `plans/progress.md`.
+- Tests: `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check -- plans/active.md plans/backlog.md plans/progress.md` ->
+  passed.
+- Result: reviewed `TRANS-005` residuals. All 17 examples still report missing
+  candidate-after/source evidence, and the only matrix generation gap is
+  `greenshot_6_subset/dynamic_field_error_message`, where the preferred
+  `change_literal` candidate exists deeper than the standard tested cap. The
+  next dispatch splits these into two bounded tasks: `TRANS-006` makes existing
+  diff/AST-delta metadata visible as candidate-after evidence, while `ACT-003`
+  addresses the exception-message search-budget gap.
+- Commit: pending.
+- Push: pending.
+- Next: dispatch workers for `TRANS-006` and `ACT-003` after plan consistency
+  checks pass.
+- Blockers: none.

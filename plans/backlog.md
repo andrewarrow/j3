@@ -3541,7 +3541,7 @@ Long-term target:
 
 ### MAT-028: Held-out Requests adapter convention candidate
 
-- Status: active
+- Status: done
 - Why: `MAT-027` proved the smallest conftest fixture convention row. The next
   same-repo convention row is `psf/requests#7315`, which is still compact but
   adds a small source deletion plus local adapter test expectation update.
@@ -3565,12 +3565,24 @@ Long-term target:
   JSON/report checks if artifacts are written,
   `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and live
   focused validation when materialized.
+- Completion note: materialized `psf/requests#7315` from base
+  `e8d2c015eecda8273612dd4562425e00cd164ba5` to accepted head
+  `fd628095d7b9ddbf3e987d8a4bf0e6062768916f` with reusable
+  `delete_exact_source_lines_after_anchor`, `rename_pytest_function`, and
+  `replace_pytest_assertion_expected_literal` action records. The candidate
+  changed only `src/requests/adapters.py` and `tests/test_adapters.py`,
+  matched the accepted diff exactly, recorded candidate-after diff/AST/hash
+  and convention metadata, and passed focused live validation while importing
+  checkout-local Requests via `PYTHONPATH=src`. Remaining non-materialized
+  MAT-007 counts are `current_structured_action = 4`,
+  `general_typed_builder = 0`, `repo_convention_builder = 2`,
+  `constrained_local_generator = 0`, and `not_currently_expressible = 2`.
 
 ## Next Recommended Queue
 
 Start with these unless fresh evidence changes the order:
 
-1. Complete active `MAT-028` for `psf/requests#7315`; remaining
-   repo-convention rows after that are `click-3405` and `pytest-14429`.
+1. Coordinator review should choose the next bounded repo-convention row from
+   `click-3405` and `pytest-14429`.
 2. Separately decide whether to pursue the `TRANS-012` shadow-advice-only
    residual examples; product transition routing remains shadow-only.

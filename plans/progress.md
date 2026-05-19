@@ -6090,3 +6090,43 @@ meaningful work. Do not replace this file with a daily reset.
 - Next: dispatch a worker for `MAT-028` to attempt `psf/requests#7315` with
   reusable repo-convention and bounded source/test update action records.
 - Blockers: none.
+
+### 2026-05-19 - MAT-028 - Requests #7315 adapter convention materialization
+
+- Owner: worker MAT-028.
+- Files changed: `j3/heldout_repo_convention_candidate.py`,
+  `tests/test_heldout_repo_convention_candidate.py`,
+  `docs/MAT_028_REQUESTS_7315_ADAPTER_CONVENTION_CANDIDATE_2026-05-19.md`,
+  `plans/active.md`, `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `python -m py_compile j3/heldout_repo_convention_candidate.py
+  tests/test_heldout_repo_convention_candidate.py` -> passed; `pytest
+  tests/test_heldout_repo_convention_candidate.py -q` -> 6 passed; live fresh
+  checkout run `PYTHONPATH=/Users/aa/os/j3 python -m
+  j3.heldout_repo_convention_candidate --candidate requests-7315 --repo-path
+  /tmp/j3-mat-028-requests-7315/repo --accepted-diff
+  /tmp/j3-mat-028-requests-7315/accepted.diff --out
+  /tmp/j3-mat-028-requests-7315/final/candidate.json --report
+  /tmp/j3-mat-028-requests-7315/final/report.md --diff-out
+  /tmp/j3-mat-028-requests-7315/final/candidate.diff --validate
+  --validation-timeout-seconds 90` -> validated; validation command
+  `PYTHONPATH=src python -m pytest
+  tests/test_adapters.py::test_request_url_handles_leading_path_separators -q`
+  -> `1 passed in 0.01s`; `python -m json.tool
+  /tmp/j3-mat-028-requests-7315/final/candidate.json` -> passed.
+- Result: materialized `psf/requests#7315` from base
+  `e8d2c015eecda8273612dd4562425e00cd164ba5` to accepted head
+  `fd628095d7b9ddbf3e987d8a4bf0e6062768916f`. The candidate changed
+  `src/requests/adapters.py` and `tests/test_adapters.py`, recorded
+  candidate-after diff/AST/hash/convention metadata plus mutation scope, and
+  used reusable `delete_exact_source_lines_after_anchor`,
+  `rename_pytest_function`, and `replace_pytest_assertion_expected_literal`
+  action records. Full accepted-diff parity and repo-convention scoped parity
+  are true. Remaining non-materialized MAT-007 counts are now
+  `current_structured_action = 4`, `general_typed_builder = 0`,
+  `repo_convention_builder = 2`, `constrained_local_generator = 0`, and
+  `not_currently_expressible = 2`.
+- Commit: pending.
+- Push: pending.
+- Next: coordinator should review `MAT-028` and choose the next bounded
+  repo-convention row from `click-3405` or `pytest-14429`.
+- Blockers: none.

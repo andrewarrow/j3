@@ -176,41 +176,23 @@ This is the live coordinator board. Keep it current and compact.
   records. Remaining non-materialized MAT-007 counts are now
   `current_structured_action = 4`, `general_typed_builder = 0`,
   `repo_convention_builder = 3`, `constrained_local_generator = 0`, and
-  `not_currently_expressible = 2`. `MAT-028` is now assigned to
-  `psf/requests#7315`, the next same-repo convention row with a small source
-  deletion plus adapter expectation update.
+  `not_currently_expressible = 2`. `MAT-028` now materializes and
+  live-validates `psf/requests#7315` with exact accepted-diff parity using
+  reusable bounded source deletion, pytest function rename, and pytest
+  assertion expectation update records. Remaining non-materialized MAT-007
+  counts are now `current_structured_action = 4`,
+  `general_typed_builder = 0`, `repo_convention_builder = 2`,
+  `constrained_local_generator = 0`, and `not_currently_expressible = 2`.
 
 ## Active Tasks
 
-### `MAT-028`: Held-out Requests adapter convention candidate
-
-- Status: active
-- Owner: worker.
-- Scope: attempt `psf/requests#7315` with reusable repo-convention and bounded
-  source/test update action records. Allowed writes are focused
-  repo-convention materializer/planner extensions and tests as needed, focused
-  `docs/MAT_028_*`, generated artifacts under `/tmp`, and plan updates. Avoid
-  transition scoring, issue/PR ranking, validation-policy changes,
-  local-knowledge records, matrix manifests, and unrelated materializer
-  families.
-- Acceptance: determine pinned base/head refs, accepted changed files,
-  validation command, mutation scope, candidate-after diff/hash metadata,
-  accepted-diff comparison, and live validation result for `requests-7315`.
-  Use reusable convention/source/test action kinds rather than a PR-named
-  action. Requests validation must import checkout-local source with
-  `PYTHONPATH=src` or use the DATA-008 editable-venv recipe. If target
-  selection, source deletion, adapter test expectation update, local convention
-  detection, parity, or validation blocks, record the exact blocker without
-  broadening scope silently.
-- Tests: focused repo-convention/materializer tests if code changes are made,
-  JSON/report checks if artifacts are written,
-  `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and live
-  focused validation when materialized.
+No active worker task is assigned after `MAT-028` completion. Coordinator
+review should choose the next bounded repo-convention row.
 
 ## Ready Queue
 
-No separate ready worker task is queued while `MAT-028` is active. Remaining
-repo-convention rows after this are `click-3405` and `pytest-14429`.
+No separate ready worker task is queued until coordinator review. Remaining
+repo-convention rows are `click-3405` and `pytest-14429`.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
@@ -235,6 +217,26 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `MAT-028`: materialized `psf/requests#7315` from base
+  `e8d2c015eecda8273612dd4562425e00cd164ba5` to accepted head
+  `fd628095d7b9ddbf3e987d8a4bf0e6062768916f`. The candidate changed only
+  `src/requests/adapters.py` and `tests/test_adapters.py`, recorded
+  candidate-after diff/AST/hash/convention metadata plus mutation scope, and
+  used reusable `delete_exact_source_lines_after_anchor`,
+  `rename_pytest_function`, and `replace_pytest_assertion_expected_literal`
+  action records. Full accepted-diff parity and repo-convention scoped parity
+  are true. Live focused validation imported checkout-local Requests with
+  `PYTHONPATH=src`; the selected test
+  `tests/test_adapters.py::test_request_url_handles_leading_path_separators`
+  passed. Remaining non-materialized MAT-007 counts are
+  `current_structured_action = 4`, `general_typed_builder = 0`,
+  `repo_convention_builder = 2`, `constrained_local_generator = 0`, and
+  `not_currently_expressible = 2`. Artifacts:
+  `docs/MAT_028_REQUESTS_7315_ADAPTER_CONVENTION_CANDIDATE_2026-05-19.md`,
+  `/tmp/j3-mat-028-requests-7315/final/candidate.json`,
+  `/tmp/j3-mat-028-requests-7315/final/report.md`,
+  `/tmp/j3-mat-028-requests-7315/final/candidate.diff`, and
+  `/tmp/j3-mat-028-requests-7315/accepted.diff`.
 - `MAT-027`: materialized `psf/requests#7423` from base
   `e8d2c015eecda8273612dd4562425e00cd164ba5` to accepted head
   `da905d0eb1de1184d323d39dfc2ce2b423df7bee`. The candidate changed only

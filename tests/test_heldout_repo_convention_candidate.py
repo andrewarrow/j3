@@ -6,6 +6,7 @@ from textwrap import dedent
 
 from j3.heldout_repo_convention_candidate import (
     build_requests_clean_proxy_conftest_spec,
+    build_requests_leading_slash_adapter_spec,
     materialize_repo_convention_candidate,
 )
 
@@ -112,6 +113,134 @@ def test_blocks_when_local_pytest_fixture_convention_is_missing(
     assert record["mutation_scope"]["actual_changed_files"] == []
 
 
+def test_requests_leading_slash_spec_uses_reusable_action_kinds(
+    tmp_path: Path,
+) -> None:
+    repo = _write_requests_adapter_fixture_repo(tmp_path / "requests")
+
+    spec = build_requests_leading_slash_adapter_spec(repo)
+
+    assert [action.kind for action in spec.actions] == [
+        "delete_exact_source_lines_after_anchor",
+        "rename_pytest_function",
+        "replace_pytest_assertion_expected_literal",
+    ]
+    assert all("7315" not in action.kind for action in spec.actions)
+    assert spec.base_ref == "e8d2c015eecda8273612dd4562425e00cd164ba5"
+    assert spec.accepted_head_ref == "fd628095d7b9ddbf3e987d8a4bf0e6062768916f"
+    assert spec.validation_command.startswith("PYTHONPATH=src python -m pytest ")
+    assert spec.allowed_write_paths == (
+        "src/requests/adapters.py",
+        "tests/test_adapters.py",
+    )
+
+
+def test_materializes_requests_leading_slash_adapter_with_reusable_actions(
+    tmp_path: Path,
+) -> None:
+    accepted_repo = _write_requests_adapter_fixture_repo(tmp_path / "accepted")
+    accepted_candidate = materialize_repo_convention_candidate(
+        accepted_repo,
+        build_requests_leading_slash_adapter_spec(
+            accepted_repo,
+            base_ref=_repo_head(accepted_repo),
+        ),
+        write=True,
+        validate=False,
+    )
+    accepted_diff = tmp_path / "accepted.diff"
+    accepted_diff.write_text(
+        str(accepted_candidate.candidate_after["candidate_diff"]),
+        encoding="utf-8",
+    )
+
+    repo = _write_requests_adapter_fixture_repo(tmp_path / "candidate")
+    candidate = materialize_repo_convention_candidate(
+        repo,
+        build_requests_leading_slash_adapter_spec(repo, base_ref=_repo_head(repo)),
+        write=True,
+        validate=False,
+        accepted_diff_path=accepted_diff,
+    )
+    record = candidate.to_record()
+
+    assert record["status"] == "materialized"
+    assert record["accepted_head_ref"] == "fd628095d7b9ddbf3e987d8a4bf0e6062768916f"
+    assert record["residual_labels"] == ["candidate_validation_deferred"]
+    assert record["mutation_scope"]["mode"] == (
+        "heldout_repo_convention_bounded_source_test_update"
+    )
+    assert record["mutation_scope"]["actual_changed_files"] == [
+        "src/requests/adapters.py",
+        "tests/test_adapters.py",
+    ]
+    assert record["mutation_scope"]["writes_outside_allowlist"] == []
+    assert record["accepted_diff_comparison"]["accepted_changed_files"] == [
+        "src/requests/adapters.py",
+        "tests/test_adapters.py",
+    ]
+    assert record["accepted_diff_comparison"]["normalized_diff_equal"] is True
+    assert (
+        record["accepted_diff_comparison"]["scope_comparisons"]["repo_convention"][
+            "normalized_diff_equal"
+        ]
+        is True
+    )
+    assert [action["kind"] for action in record["action_records"]] == [
+        "delete_exact_source_lines_after_anchor",
+        "rename_pytest_function",
+        "replace_pytest_assertion_expected_literal",
+    ]
+    assert record["zero_hosted_llm_source_judgment"] is True
+
+    action_results = record["candidate_after"]["action_results"]
+    assert [result["action_kind"] for result in action_results] == [
+        "delete_exact_source_lines_after_anchor",
+        "rename_pytest_function",
+        "replace_pytest_assertion_expected_literal",
+    ]
+    source_result = action_results[0]
+    assert source_result["candidate_after"]["ast_parse_ok"] is True
+    assert source_result["convention_evidence"]["anchor_function_name"] == "request_url"
+    assert source_result["convention_evidence"]["deleted_line_count"] == 2
+    expectation_result = action_results[2]
+    assert (
+        expectation_result["convention_evidence"]["new_expected_literal"] == "//v:h"
+    )
+    assert (
+        repo / "tests" / "test_adapters.py"
+    ).read_text() == _requests_adapter_test_after_source()
+
+
+def test_blocks_when_adapter_test_import_convention_is_missing(
+    tmp_path: Path,
+) -> None:
+    repo = _write_requests_adapter_fixture_repo(
+        tmp_path / "requests",
+        adapter_test_source=dedent(
+            '''
+            def test_request_url_trims_leading_path_separators():
+                pass
+            '''
+        ).lstrip(),
+    )
+
+    candidate = materialize_repo_convention_candidate(
+        repo,
+        build_requests_leading_slash_adapter_spec(repo, base_ref=_repo_head(repo)),
+        write=True,
+        validate=False,
+        accepted_diff_path=tmp_path / "missing.diff",
+    )
+    record = candidate.to_record()
+
+    assert record["status"] == "blocked"
+    assert record["blockers"][0]["reason"] == "repo_convention_test_expectation_blocked"
+    assert record["mutation_scope"]["actual_changed_files"] == [
+        "src/requests/adapters.py"
+    ]
+
+
 def _write_requests_conftest_fixture_repo(
     repo: Path,
     *,
@@ -161,6 +290,98 @@ def _write_requests_conftest_fixture_repo(
         check=True,
     )
     return repo
+
+
+def _write_requests_adapter_fixture_repo(
+    repo: Path,
+    *,
+    adapters_source: str | None = None,
+    adapter_test_source: str | None = None,
+) -> Path:
+    (repo / "src" / "requests").mkdir(parents=True)
+    (repo / "tests").mkdir(parents=True)
+    (repo / "src" / "requests" / "adapters.py").write_text(
+        adapters_source or _requests_adapter_before_source(),
+        encoding="utf-8",
+    )
+    (repo / "tests" / "test_adapters.py").write_text(
+        adapter_test_source or _requests_adapter_test_before_source(),
+        encoding="utf-8",
+    )
+    subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+    subprocess.run(["git", "add", "."], cwd=repo, check=True)
+    subprocess.run(
+        [
+            "git",
+            "-c",
+            "user.name=j3-test",
+            "-c",
+            "user.email=j3-test@example.invalid",
+            "commit",
+            "-q",
+            "-m",
+            "base",
+        ],
+        cwd=repo,
+        check=True,
+    )
+    return repo
+
+
+def _requests_adapter_before_source() -> str:
+    return dedent(
+        '''
+        class HTTPAdapter:
+            def request_url(self, request, proxies):
+                proxy = None
+                scheme = "http"
+
+                is_proxied_http_request = proxy and scheme != "https"
+                using_socks_proxy = False
+                if proxy:
+                    proxy_scheme = "http"
+                    using_socks_proxy = proxy_scheme.startswith("socks")
+
+                url = request.path_url
+                if url.startswith("//"):  # Don't confuse urllib3
+                    url = f"/{url.lstrip('/')}"
+
+                if is_proxied_http_request and not using_socks_proxy:
+                    url = request.url
+
+                return url
+        '''
+    ).lstrip()
+
+
+def _requests_adapter_test_before_source() -> str:
+    return dedent(
+        '''
+        import requests.adapters
+
+
+        def test_request_url_trims_leading_path_separators():
+            """See also https://github.com/psf/requests/issues/6643."""
+            a = requests.adapters.HTTPAdapter()
+            p = requests.Request(method="GET", url="http://127.0.0.1:10000//v:h").prepare()
+            assert "/v:h" == a.request_url(p, {})
+        '''
+    ).lstrip()
+
+
+def _requests_adapter_test_after_source() -> str:
+    return dedent(
+        '''
+        import requests.adapters
+
+
+        def test_request_url_handles_leading_path_separators():
+            """See also https://github.com/psf/requests/issues/6643."""
+            a = requests.adapters.HTTPAdapter()
+            p = requests.Request(method="GET", url="http://127.0.0.1:10000//v:h").prepare()
+            assert "//v:h" == a.request_url(p, {})
+        '''
+    ).lstrip()
 
 
 def _repo_head(repo: Path) -> str:

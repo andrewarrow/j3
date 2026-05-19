@@ -5444,3 +5444,25 @@ meaningful work. Do not replace this file with a daily reset.
   advice residuals from `TRANS-012`; product transition routing remains
   shadow-only.
 - Blockers: none.
+
+### 2026-05-19 - Coordinator Review And Dispatch - MAT-017
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, and
+  `plans/progress.md`.
+- Tests: `python -m py_compile j3/heldout_typed_builder_candidate.py
+  tests/test_heldout_typed_builder_candidate.py` -> passed; `pytest
+  tests/test_heldout_typed_builder_candidate.py -q` -> 18 passed; `pytest
+  tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check` ->
+  passed.
+- Result: reviewed `MAT-016` in the coordinator workspace. The Flask #5903
+  row fully materialized both accepted files with normalized diff parity and a
+  reusable `makedirs_exist_ok_rewrite` action, with no
+  `statement_block_replace`. The next bounded materialization slice is
+  `MAT-017`, the final unresolved MAT-013 typed/general-AST row:
+  `pallets/click#3430` helper extraction and duplicate call-site replacement.
+- Next: dispatch a worker for `MAT-017` with ownership of
+  `j3/heldout_typed_builder_candidate.py`,
+  `tests/test_heldout_typed_builder_candidate.py`, optional `docs/MAT_017_*`,
+  generated `/tmp` artifacts, and plan updates.
+- Blockers: none.

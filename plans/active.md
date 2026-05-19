@@ -119,12 +119,18 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-No active worker task is currently assigned in this workspace after `MAT-016`
-completion. Coordinator review should select the next bounded ready task.
+- `MAT-017`: assigned to attempt the final unresolved MAT-013
+  typed/general-AST row, `pallets/click#3430`, with reusable helper extraction
+  and duplicate call-site replacement action records. Keep the slice in
+  `j3/heldout_typed_builder_candidate.py`,
+  `tests/test_heldout_typed_builder_candidate.py`, optional focused docs,
+  generated `/tmp` artifacts, and plan updates. Do not edit transition
+  scoring, issue/PR ranking, validation policy, local knowledge, or matrix
+  manifests.
 
 ## Ready Queue
 
-No ready worker task is currently queued pending coordinator review.
+No ready worker task is currently queued while `MAT-017` is active.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 

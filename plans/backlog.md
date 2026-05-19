@@ -3118,13 +3118,36 @@ Long-term target:
   examples/tutorial/flaskr/__init__.py`, and used reusable
   `makedirs_exist_ok_rewrite` actions without `statement_block_replace`.
 
+### MAT-017: Click #3430 helper extraction materialization probe
+
+- Status: active
+- Why: after `MAT-016`, `pallets/click#3430` is the final unresolved
+  MAT-013 `general_typed_builder` row. It tests whether helper extraction plus
+  duplicate call-site replacement can be represented as reusable materializer
+  actions rather than PR-specific source generation.
+- Write scope: `j3/heldout_typed_builder_candidate.py`,
+  `tests/test_heldout_typed_builder_candidate.py`, optional `docs/MAT_017_*`,
+  generated artifacts under `/tmp`, and plan updates. Avoid transition
+  scoring, issue/PR ranking, validation-policy, local-knowledge, and matrix
+  manifest files.
+- Acceptance: attempt `pallets/click#3430` using reusable action records.
+  Determine and record base/head refs, accepted changed files, mutation scope,
+  candidate-after diff/AST metadata, accepted-diff comparison, validation
+  result or exact blocker, and whether the edit stays in a reusable helper
+  extraction/call-replacement builder layer. Prefer narrow actions for adding
+  helper definitions and replacing repeated local expressions/call sites; use
+  `statement_block_replace` only if a precise blocker shows why those actions
+  are insufficient.
+- Tests: focused materializer tests, plan consistency, `git diff --check`, and
+  live validation or a recorded validation blocker.
+
 ## Next Recommended Queue
 
 Start with these unless fresh evidence changes the order:
 
-1. Integrate `MODEL-004`, then choose between `MODEL-005` boundary/literal
-   ranking, targeted residual evidence, or another bounded ready task based on
-   the scorer residuals that remain.
-2. Integrate `SCALE-001`, then decide whether `SCALE-002` provenance policy is
-   the right follow-on or whether the evidence loop should return to
-   materialization/ranking work first.
+1. Finish `MAT-017` for the final unresolved MAT-013 typed/general-AST row.
+2. Refresh the materialization coverage panel after `MAT-014` through
+   `MAT-017` so the remaining gap counts reflect the new typed-builder and
+   reusable-idiom evidence.
+3. Separately decide whether to pursue the `TRANS-012` shadow-advice-only
+   residual examples; product transition routing remains shadow-only.

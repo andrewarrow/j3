@@ -450,6 +450,27 @@ Long-term target:
   `remain_shadow_only`, and `TRANS-003` remains blocked pending remaining
   scorer-ranking residual work rather than a full matrix rerun.
 
+### TRANS-008: Rerun targeted greenshot_6_subset after MODEL-007
+
+- Status: active
+- Why: `MODEL-007` fixed the deterministic V1/advice mapping-key residual
+  from `project_urls_header_dict_key`. The affected subset needs a targeted
+  evidence rerun before deciding whether any remaining failures justify
+  another scorer slice, V3 policy work, or a full standard matrix rerun.
+- Write scope: generated outputs under `/tmp`, a concise evidence doc if
+  useful, and plan updates only unless a local runner bug blocks evidence.
+  Avoid scorer implementation changes and do not broaden
+  `examples/transition_shadow_matrix.json`.
+- Acceptance: rerun `greenshot_6_subset`, aggregate matrix and residual
+  counts, compare against `TRANS-007`, make the guarded-trial decision
+  explicit, and record whether `project_urls_header_dict_key` is resolved,
+  whether V1/advice residuals remain, and whether V3 still underperforms the
+  deterministic scorer.
+- Tests: `run-transition-shadow-matrix --only greenshot_6_subset`, checksum
+  verification, `report-transition-residuals --matrix`,
+  `decide-transition-guarded-trial`, `pytest tests/test_plan_consistency.py -q`,
+  and `git diff --check`.
+
 ## Workstream E: Repo State, Actions, And Models
 
 ### REPO-001: Summarize repo-state encoder coverage

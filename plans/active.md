@@ -75,15 +75,16 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-No active worker task is recorded after `MODEL-007`. Coordinator should assign
-the follow-up targeted `greenshot_6_subset` evidence rerun or the next bounded
-transition residual task.
+- `TRANS-008` -> worker pending: rerun targeted `greenshot_6_subset`
+  transition evidence after `MODEL-007`. Scope is evidence only: generated
+  outputs under `/tmp`, optional concise evidence doc, and plan updates unless
+  a local runner bug blocks the run. Do not broaden the standard matrix.
 
 ## Ready Queue
 
 No additional ready task is currently staged on this board. Do not broaden the
-standard matrix manifest until the `MODEL-007` scorer residual is integrated
-and a follow-up targeted subset rerun is assigned.
+standard matrix manifest until `TRANS-008` is integrated and the remaining
+subset residuals are reviewed.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 

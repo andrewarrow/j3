@@ -4825,10 +4825,28 @@ meaningful work. Do not replace this file with a daily reset.
   `add_dict_key Project-URL = None` using target-context and failure-hint
   evidence, not preferred labels. Production routing, matrix runner behavior,
   and V3 product-gate policy remain unchanged and shadow-only.
-- Commit: this commit; final hash reported in worker handoff.
-- Push: to be performed after this committed entry; final result reported in
-  worker handoff.
+- Commit: 12c2a72.
+- Push: succeeded.
 - Next: coordinator should assign a targeted `greenshot_6_subset` rerun before
   considering any full standard matrix expansion, then review remaining
   residuals.
+- Blockers: none.
+
+### 2026-05-19 - Coordinator Integration And Dispatch - TRANS-008
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, and
+  `plans/progress.md`.
+- Tests: `pytest tests/test_transition_action_scoring.py
+  tests/test_transition_scorer_advice.py -q` -> 29 passed; `pytest
+  tests/test_transition_shadow_scorer.py tests/test_plan_consistency.py -q` ->
+  10 passed; `git diff --check` -> passed.
+- Result: reviewed `MODEL-007` in the coordinator workspace and confirmed the
+  implementation stays inside deterministic V1/advice scoring with no
+  production routing or V3 product-gate changes. The next bounded step is an
+  evidence-only rerun of `greenshot_6_subset` to compare against `TRANS-007`
+  before any full standard matrix expansion.
+- Commit: pending.
+- Push: pending.
+- Next: dispatch `TRANS-008` after plan verification.
 - Blockers: none.

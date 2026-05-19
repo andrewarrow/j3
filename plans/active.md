@@ -97,9 +97,10 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-- `MODEL-009` -> worker pending: address the four V3 top-candidate failures
-  that keep `TRANS-010` residual count nonzero: `greenshot_3/wrap_try_except`
-  and the `greenshot_5_subset` V3 residual cluster
+- `MODEL-009` -> worker Bohr
+  (`019e3e70-1295-7d52-b9cb-5c3561fdbafe`): address the four V3
+  top-candidate failures that keep `TRANS-010` residual count nonzero:
+  `greenshot_3/wrap_try_except` and the `greenshot_5_subset` V3 residual cluster
   (`express_shipping_boundary_preferred_helper`,
   `free_shipping_threshold_module_constant`, and
   `quote_total_helper_discount`). Scope is transition action scorer features

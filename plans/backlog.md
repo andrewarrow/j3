@@ -3660,7 +3660,7 @@ Long-term target:
 
 ### MAT-031: Repo-convention closure coverage refresh
 
-- Status: active
+- Status: done
 - Why: `MAT-027` through `MAT-030` now account for all four original
   `repo_convention_builder` rows from the MAT-007 panel. A compact closure
   record should make the final counts, parity scopes, validation evidence,
@@ -3680,12 +3680,25 @@ Long-term target:
   blocker instead of closing the bucket.
 - Tests: parse any JSONL/JSON artifact written,
   `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+- Completion note: reconciled the four original MAT-007
+  `repo_convention_builder` rows after `MAT-027` through `MAT-030`.
+  `requests-7423`, `requests-7315`, `pytest-14429`, and `click-3405` are all
+  materialized and live-validated, with DATA-029 `pytest-14466` and DATA-035
+  `scrapy-7351` kept as separate validated reference rows outside the
+  held-out count. Remaining non-materialized MAT-007 counts are
+  `current_structured_action = 4`, `general_typed_builder = 0`,
+  `repo_convention_builder = 0`, `constrained_local_generator = 0`, and
+  `not_currently_expressible = 2`. Recommended next bounded row:
+  `pallets/click#3423` from the `current_structured_action` panel. Artifacts:
+  `docs/MAT_031_REPO_CONVENTION_CLOSURE_COVERAGE_2026-05-19.md`,
+  `docs/MAT_031_REPO_CONVENTION_CLOSURE_COVERAGE_2026-05-19.jsonl`, and
+  `/tmp/j3-mat-031-repo-convention-closure/MAT_031_REPO_CONVENTION_CLOSURE_COVERAGE_2026-05-19.jsonl`.
 
 ## Next Recommended Queue
 
 Start with these unless fresh evidence changes the order:
 
-1. Review `MAT-031`, then dispatch the next bounded
+1. Review `MAT-031`, then dispatch `pallets/click#3423` as the next bounded
    `current_structured_action` materialization row if closure evidence is
    consistent.
 2. Separately decide whether to pursue the `TRANS-012` shadow-advice-only

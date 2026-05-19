@@ -193,32 +193,15 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-### `MAT-031`: Repo-convention closure coverage refresh
-
-- Status: active
-- Owner: worker MAT-031.
-- Started: 2026-05-19.
-- Write scope: focused repo-convention closure evidence docs, generated
-  artifacts under `/tmp`, and plan updates. Avoid materializer code,
-  transition scoring, issue/PR ranking, validation-policy changes,
-  local-knowledge records, matrix manifests, and `plans/strategy.md`.
-- Acceptance: reconcile the MAT-007 held-out coverage after `MAT-027` through
-  `MAT-030`; record all four original `repo_convention_builder` rows as
-  materialized/live-validated with their evidence tasks, parity scopes,
-  validation status, and reusable action kinds; keep DATA reference rows
-  separate; update remaining non-materialized MAT-007 counts; and recommend
-  the next bounded row or workstream from the remaining panel. If any
-  repo-convention artifact is missing or contradictory, record the exact
-  blocker instead of closing the bucket.
-- Expected tests: parse any JSONL/JSON artifact written, `pytest
-  tests/test_plan_consistency.py -q`, and `git diff --check`.
+No active worker task is currently recorded after `MAT-031` closure.
 
 ## Ready Queue
 
-No queued worker task remains while `MAT-031` is active. After it completes,
-review the remaining MAT-007 panel and either dispatch the next
-`current_structured_action` row or move to the shadow-advice-only residual
-examples if that is higher leverage.
+Review `MAT-031`, then dispatch `pallets/click#3423` as the next bounded
+`current_structured_action` materialization row if closure evidence remains
+consistent. The shadow-advice-only residual examples remain a separate
+workstream and should not be mixed into MAT-007 held-out materialization
+counts.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
@@ -243,6 +226,20 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `MAT-031`: reconciled repo-convention closure coverage after `MAT-027`
+  through `MAT-030`. All four original MAT-007 `repo_convention_builder` rows
+  are now accounted for as materialized and live-validated:
+  `requests-7423` (`MAT-027`), `requests-7315` (`MAT-028`),
+  `pytest-14429` (`MAT-029`), and `click-3405` (`MAT-030`). DATA-029
+  `pytest-14466` and DATA-035 `scrapy-7351` remain validated reference rows
+  outside the held-out count. Remaining non-materialized MAT-007 counts are
+  `current_structured_action = 4`, `general_typed_builder = 0`,
+  `repo_convention_builder = 0`, `constrained_local_generator = 0`, and
+  `not_currently_expressible = 2`. Recommended next bounded row:
+  `pallets/click#3423` from the `current_structured_action` panel. Artifacts:
+  `docs/MAT_031_REPO_CONVENTION_CLOSURE_COVERAGE_2026-05-19.md`,
+  `docs/MAT_031_REPO_CONVENTION_CLOSURE_COVERAGE_2026-05-19.jsonl`, and
+  `/tmp/j3-mat-031-repo-convention-closure/MAT_031_REPO_CONVENTION_CLOSURE_COVERAGE_2026-05-19.jsonl`.
 - `MAT-030`: materialized `pallets/click#3405` from base
   `98302ac4f49e443a48abd3fbb95c86202b89547d` to accepted head
   `b761eda3bad977ec2f485451d85fd8ec365f0bf4`. The candidate changed only

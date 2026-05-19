@@ -1036,7 +1036,7 @@ Long-term target:
 
 ### TRANS-017: Rerun expanded standard residual evidence after MODEL-016
 
-- Status: active
+- Status: done
 - Owner: worker TRANS-017, assigned on 2026-05-19.
 - Why: `MODEL-016` changed the full advice input record that feeds
   `transition-advice.jsonl`, so the expanded standard matrix needs a fresh
@@ -1058,6 +1058,17 @@ Long-term target:
 - Notes: this is evidence-only. If the residual report clears but the guarded
   decision still remains `remain_shadow_only`, record the precise remaining
   suite-gate blocker instead of changing routing.
+- Completion note: reran the expanded standard transition matrix after
+  `MODEL-016` under `/tmp/j3-trans-017-expanded-standard-after-model016`.
+  Matrix totals and suite gates are unchanged from `TRANS-016`: 5 suites, 60
+  tasks, 60 ranked solved tasks, 12,753 candidates, 19 held-out groups, 0
+  matrix residuals, 4 baseline residuals, and zero hosted usage. The residual
+  report now has 0 examples, so
+  `greenshot_5_subset/visible_balance_attribute_decoys` is gone. Generated
+  transition advice and shadow outcomes top-rank the passing
+  `amount_cents -> balance_cents` candidate and record `improved`. The guarded
+  decision remains `remain_shadow_only` because not all suite gates are
+  `ready_for_guarded_opt_in`; product routing remains shadow-only.
 
 ## Workstream E: Repo State, Actions, And Models
 

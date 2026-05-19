@@ -7264,3 +7264,42 @@ meaningful work. Do not replace this file with a daily reset.
   after `MODEL-016`, to confirm whether the full residual report clears and
   to refresh the guarded decision.
 - Blockers: none for dispatch; product routing remains shadow-only.
+
+### 2026-05-19 - TRANS-017 - Expanded standard residual evidence after MODEL-016
+
+- Owner: worker TRANS-017.
+- Files changed:
+  `docs/TRANS_017_EXPANDED_STANDARD_AFTER_MODEL016_EVIDENCE_2026-05-19.md`,
+  `plans/active.md`, `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `python cli.py run-transition-shadow-matrix --matrix
+  examples/transition_shadow_matrix.json --out
+  /tmp/j3-trans-017-expanded-standard-after-model016 --json` -> passed;
+  `shasum -a 256 -c
+  /tmp/j3-trans-017-expanded-standard-after-model016/evidence/checksums.sha256`
+  -> passed; `python cli.py report-transition-residuals --matrix
+  /tmp/j3-trans-017-expanded-standard-after-model016 --out
+  /tmp/j3-trans-017-expanded-standard-after-model016-residual-report.json
+  --json` -> 0 residual-report examples; `python cli.py
+  decide-transition-guarded-trial --matrix
+  /tmp/j3-trans-017-expanded-standard-after-model016 --out
+  /tmp/j3-trans-017-expanded-standard-after-model016-guarded-decision.json
+  --json` -> `remain_shadow_only`; `pytest tests/test_plan_consistency.py -q`
+  -> 6 passed; `git diff --check` -> passed.
+- Result: reran the expanded standard transition matrix after `MODEL-016`.
+  Matrix totals and suite gates are unchanged from `TRANS-016`: 5 suites, 60
+  tasks, 60 ranked solved tasks, 12,753 candidates, 19 held-out groups, 0
+  matrix residuals, 4 baseline residuals, and zero hosted usage. The residual
+  report now has 0 examples, down from 1 in `TRANS-016`; the remaining
+  shadow-advice-only `visible_balance_attribute_decoys` example is gone. The
+  generated transition advice and shadow outcome now top-rank the passing
+  `amount_cents -> balance_cents` candidate and record the comparison as
+  `improved`. Guarded decision remains `remain_shadow_only` because not all
+  suite gates are `ready_for_guarded_opt_in`; product routing remains
+  shadow-only.
+- Commit: pending worker commit.
+- Push: pending worker push.
+- Next: coordinator review. The last expanded-standard residual-report example
+  is resolved, but guarded product routing remains blocked by suite gates:
+  `greenshot_bugs`, `greenshot_3`, and `greenshot_4` are still only
+  `ready_for_shadow_mode`.
+- Blockers: none for evidence generation; no product routing change was made.

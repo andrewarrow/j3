@@ -38,6 +38,9 @@ EXACT_SOURCE_LINES_REPLACEMENT_SCHEMA_VERSION = "bounded-source-lines-replacemen
 PYTEST_FUNCTION_INSERTION_SCHEMA_VERSION = (
     "repo-convention-pytest-function-insertion-v1"
 )
+PYTEST_MARK_DECORATOR_INSERTION_SCHEMA_VERSION = (
+    "repo-convention-pytest-mark-decorator-insertion-v1"
+)
 DEFAULT_REQUESTS_CLEAN_PROXY_BASE_REF = (
     "e8d2c015eecda8273612dd4562425e00cd164ba5"
 )
@@ -75,11 +78,19 @@ DEFAULT_PYTEST_ARGUMENT_REPR_VALIDATION_COMMAND = (
     "testing/test_parseopt.py::test_argument_repr_uninitialized "
     "testing/test_parseopt.py::test_argument_repr_initialized -q"
 )
+DEFAULT_CLICK_PAGER_BASE_REF = "98302ac4f49e443a48abd3fbb95c86202b89547d"
+DEFAULT_CLICK_PAGER_HEAD_REF = "b761eda3bad977ec2f485451d85fd8ec365f0bf4"
+DEFAULT_CLICK_PAGER_VALIDATION_COMMAND = (
+    "PYTHONPATH=src python -m pytest "
+    "tests/test_termui.py::test_get_pager_file_with_real_pager_binary_stream "
+    "tests/test_termui.py::test_echo_via_pager_real_pager_handles_ansi -q"
+)
 REQUESTS_CONFTEST_PATH = "tests/conftest.py"
 REQUESTS_ADAPTERS_PATH = "src/requests/adapters.py"
 REQUESTS_ADAPTER_TEST_PATH = "tests/test_adapters.py"
 PYTEST_ARGPARSING_PATH = "src/_pytest/config/argparsing.py"
 PYTEST_PARSEOPT_TEST_PATH = "testing/test_parseopt.py"
+CLICK_TERMUI_TEST_PATH = "tests/test_termui.py"
 
 
 class RepoConventionCandidateError(ValueError):
@@ -370,6 +381,61 @@ class PytestFunctionInsertionAction:
         }
 
 
+@dataclass(frozen=True, slots=True)
+class PytestMarkDecoratorInsertionAction:
+    """Reusable repo-convention action for inserting a pytest mark decorator."""
+
+    target_file: str
+    function_name: str
+    marker_source: str
+    marker_name: str
+    marker_condition_name: str | None = None
+    kind: str = "insert_pytest_mark_decorator_before_function"
+    schema_version: str = PYTEST_MARK_DECORATOR_INSERTION_SCHEMA_VERSION
+    max_added_lines: int = 6
+    require_pytest_import: bool = True
+    require_imported_name: str | None = None
+    require_existing_marker_name: str | None = None
+    require_function_arguments: tuple[str, ...] = ()
+    require_source_fragments: tuple[str, ...] = ()
+    rationale: str | None = None
+
+    def __post_init__(self) -> None:
+        _validate_relative_path(self.target_file)
+        if not self.function_name.startswith("test_"):
+            raise ValueError("function_name must be a pytest test function")
+        if not self.marker_source.strip():
+            raise ValueError("marker_source is required")
+        if not self.marker_name:
+            raise ValueError("marker_name is required")
+        if self.max_added_lines < 1:
+            raise ValueError("max_added_lines must be >= 1")
+
+    def to_record(self) -> dict[str, object]:
+        return {
+            "schema_version": self.schema_version,
+            "kind": self.kind,
+            "target": {
+                "file_path": self.target_file,
+                "function_name": self.function_name,
+                "marker_name": self.marker_name,
+                "position": "before_existing_decorators",
+            },
+            "constraints": {
+                "max_added_lines": self.max_added_lines,
+                "must_parse_ast_before": True,
+                "must_parse_ast_after": True,
+                "require_pytest_import": self.require_pytest_import,
+                "require_imported_name": self.require_imported_name,
+                "require_existing_marker_name": self.require_existing_marker_name,
+                "require_function_arguments": list(self.require_function_arguments),
+                "require_source_fragments": list(self.require_source_fragments),
+            },
+            "marker_source": self.marker_source,
+            "rationale": self.rationale,
+        }
+
+
 RepoConventionAction = (
     PytestFixtureInsertionAction
     | ExactSourceLinesDeletionAction
@@ -377,6 +443,7 @@ RepoConventionAction = (
     | PytestAssertionExpectationAction
     | ExactSourceLinesReplacementAction
     | PytestFunctionInsertionAction
+    | PytestMarkDecoratorInsertionAction
 )
 
 
@@ -397,9 +464,11 @@ class RepoConventionSpec:
     fixture_action: PytestFixtureInsertionAction | None = None
     source_deletion_action: ExactSourceLinesDeletionAction | None = None
     source_replacement_action: ExactSourceLinesReplacementAction | None = None
+    source_replacement_actions: tuple[ExactSourceLinesReplacementAction, ...] = ()
     test_function_rename_action: PytestFunctionRenameAction | None = None
     test_assertion_expectation_action: PytestAssertionExpectationAction | None = None
     test_function_insertion_action: PytestFunctionInsertionAction | None = None
+    test_mark_decorator_actions: tuple[PytestMarkDecoratorInsertionAction, ...] = ()
     source_test_scope_paths: tuple[str, ...] | None = None
     action_family_reuse_evidence: tuple[dict[str, object], ...] = field(
         default_factory=tuple
@@ -419,9 +488,11 @@ class RepoConventionSpec:
                 self.fixture_action,
                 self.source_deletion_action,
                 self.source_replacement_action,
+                *self.source_replacement_actions,
                 self.test_function_rename_action,
                 self.test_assertion_expectation_action,
                 self.test_function_insertion_action,
+                *self.test_mark_decorator_actions,
             )
             if action is not None
         )
@@ -811,6 +882,135 @@ def build_pytest_argument_repr_parser_fixture_spec(
     )
 
 
+def build_click_pager_windows_skip_spec(
+    repo_path: Path,
+    *,
+    base_ref: str = DEFAULT_CLICK_PAGER_BASE_REF,
+    accepted_head_ref: str = DEFAULT_CLICK_PAGER_HEAD_REF,
+    validation_command: str = DEFAULT_CLICK_PAGER_VALIDATION_COMMAND,
+) -> RepoConventionSpec:
+    """Build the held-out Click pager convention candidate spec."""
+
+    _repo_file(repo_path, CLICK_TERMUI_TEST_PATH)
+    helper_replacement = ExactSourceLinesReplacementAction(
+        target_file=CLICK_TERMUI_TEST_PATH,
+        anchor_function_name="_get_real_pager_command",
+        old_lines=(
+            '    """Return a platform pager used to exercise the BinaryIO pager branch."""',
+            '    pager_name = "more" if WIN else "cat"',
+            "    pager_path = shutil.which(pager_name)",
+            '    assert pager_path is not None, f"{pager_name} not available"',
+        ),
+        new_lines=(
+            '    """Return a real pager binary path used to exercise the pipe pager branch.',
+            "",
+            "    ..warning::",
+            "        Unix-only for now: ``more.com`` on Windows is interactive and goes",
+            "        through ``_tempfilepager`` rather than ``_pipepager``.",
+            '    """',
+            '    pager_path = shutil.which("cat")',
+            '    assert pager_path is not None, "cat not available"',
+        ),
+        max_old_lines=4,
+        max_new_lines=8,
+        rationale=(
+            "constrain the real pager helper to the Unix pipe-pager path and "
+            "record why Windows uses a different pager backend"
+        ),
+    )
+    binary_stream_docstring = ExactSourceLinesReplacementAction(
+        target_file=CLICK_TERMUI_TEST_PATH,
+        anchor_function_name="test_get_pager_file_with_real_pager_binary_stream",
+        old_lines=(
+            '    """A real pager should exercise the BinaryIO branch on Unix and Windows."""',
+        ),
+        new_lines=('    """A real pager should exercise the BinaryIO branch."""',),
+        max_old_lines=1,
+        max_new_lines=1,
+        rationale=(
+            "update the local pager stream test docstring after the Windows "
+            "skip marker narrows the exercised backend"
+        ),
+    )
+    skip_binary_stream = PytestMarkDecoratorInsertionAction(
+        target_file=CLICK_TERMUI_TEST_PATH,
+        function_name="test_get_pager_file_with_real_pager_binary_stream",
+        marker_source=_click_windows_pipe_pager_skip_marker_source(),
+        marker_name="pytest.mark.skipif",
+        marker_condition_name="WIN",
+        require_imported_name="WIN",
+        require_existing_marker_name="pytest.mark.parametrize",
+        require_function_arguments=("monkeypatch", "capfd"),
+        require_source_fragments=("_run_get_pager_file_with_real_pager(",),
+        rationale=(
+            "insert the repo-local Windows skip marker before the existing "
+            "parametrize decorator for the stream pager test"
+        ),
+    )
+    skip_echo = PytestMarkDecoratorInsertionAction(
+        target_file=CLICK_TERMUI_TEST_PATH,
+        function_name="test_echo_via_pager_real_pager_handles_ansi",
+        marker_source=_click_windows_pipe_pager_skip_marker_source(),
+        marker_name="pytest.mark.skipif",
+        marker_condition_name="WIN",
+        require_imported_name="WIN",
+        require_existing_marker_name="pytest.mark.parametrize",
+        require_function_arguments=("monkeypatch", "capfd"),
+        require_source_fragments=("click.echo_via_pager(", "_get_real_pager_command()"),
+        rationale=(
+            "insert the same repo-local Windows skip marker before the existing "
+            "parametrize decorator for the echo_via_pager test"
+        ),
+    )
+    return RepoConventionSpec(
+        candidate_id="mat-030-click-pager-windows-skip",
+        repo_id="pallets/click",
+        repo_url="https://github.com/pallets/click",
+        repo_split="held_out",
+        base_ref=base_ref,
+        accepted_head_ref=accepted_head_ref,
+        reference_pr_url="https://github.com/pallets/click/pull/3405",
+        prompt=(
+            "Keep Click pager tests focused on the Unix pipe-pager backend by "
+            "using cat as the real pager helper and skipping those tests on "
+            "Windows, where more.com follows the tempfile pager path."
+        ),
+        validation_command=validation_command,
+        allowed_write_paths=(CLICK_TERMUI_TEST_PATH,),
+        source_replacement_action=helper_replacement,
+        source_replacement_actions=(binary_stream_docstring,),
+        test_mark_decorator_actions=(skip_binary_stream, skip_echo),
+        source_test_scope_paths=(CLICK_TERMUI_TEST_PATH,),
+        action_family_reuse_evidence=(
+            {
+                "action_kind": "replace_exact_source_lines_after_anchor",
+                "reused_from": [
+                    "replace_function_region",
+                    "bounded source-region materialization",
+                ],
+                "evidence": (
+                    "same bounded exact-line replacement family, used inside "
+                    "test helper and pytest function anchors with AST parse "
+                    "before and after"
+                ),
+            },
+            {
+                "action_kind": "insert_pytest_mark_decorator_before_function",
+                "reused_from": [
+                    "insert_pytest_function_after_anchor",
+                    "repo-local pytest marker convention",
+                ],
+                "evidence": (
+                    "reuses pytest test convention detection while checking "
+                    "pytest import, imported WIN platform sentinel, existing "
+                    "parametrize marker, monkeypatch/capfd fixture arguments, "
+                    "and pager stream source fragments"
+                ),
+            },
+        ),
+    )
+
+
 def materialize_repo_convention_candidate(
     repo_path: Path,
     spec: RepoConventionSpec,
@@ -987,6 +1187,12 @@ def materialize_repo_convention_action(
         return materialize_exact_source_lines_replacement(repo_path, action, write=write)
     if isinstance(action, PytestFunctionInsertionAction):
         return materialize_pytest_function_insertion(repo_path, action, write=write)
+    if isinstance(action, PytestMarkDecoratorInsertionAction):
+        return materialize_pytest_mark_decorator_insertion(
+            repo_path,
+            action,
+            write=write,
+        )
     raise TypeError(f"unsupported repo-convention action: {type(action)!r}")
 
 
@@ -1486,6 +1692,236 @@ def materialize_pytest_function_insertion(
     )
 
 
+def materialize_pytest_mark_decorator_insertion(
+    repo_path: Path,
+    action: PytestMarkDecoratorInsertionAction,
+    *,
+    write: bool = False,
+) -> BoundedRepoActionResult:
+    """Insert a pytest mark decorator before a selected test function."""
+
+    repo = repo_path.expanduser().resolve()
+    target_path = _repo_file(repo, action.target_file)
+    before = target_path.read_text(encoding="utf-8")
+    tree = _parse_python(before, filename=action.target_file, field="test_file")
+    convention_evidence = _pytest_test_convention_evidence(tree)
+    if action.require_pytest_import and not _imports_pytest(tree):
+        raise RepoConventionCandidateError(
+            "target test file does not import pytest",
+            blocker={
+                "field": "pytest_mark_convention",
+                "reason": "repo_convention_mark_decorator_blocked",
+                "message": "target test file does not import pytest",
+            },
+        )
+    imported_names = set(_imported_names(tree))
+    if (
+        action.require_imported_name is not None
+        and action.require_imported_name not in imported_names
+    ):
+        raise RepoConventionCandidateError(
+            "required imported name was not detected",
+            blocker={
+                "field": "pytest_mark_convention",
+                "reason": "repo_convention_mark_decorator_blocked",
+                "message": (
+                    f"target test file does not import {action.require_imported_name}"
+                ),
+            },
+        )
+
+    target = _find_top_level_function(tree, action.function_name)
+    if target is None or target.end_lineno is None:
+        raise RepoConventionCandidateError(
+            f"pytest function not found: {action.function_name}",
+            blocker={
+                "field": "pytest_mark_target",
+                "reason": "repo_convention_mark_decorator_blocked",
+                "message": f"pytest function not found: {action.function_name}",
+            },
+        )
+
+    existing_marker_names = [
+        _decorator_qualified_name(decorator) for decorator in target.decorator_list
+    ]
+    existing_marker_names = [name for name in existing_marker_names if name]
+    if action.marker_name in existing_marker_names:
+        return BoundedRepoActionResult(
+            schema_version="pytest-mark-decorator-insertion-candidate-after-v1",
+            status="already_applied",
+            action_kind=action.kind,
+            target_file=action.target_file,
+            diff="",
+            diff_summary={"hunk_count": 0, "changed_line_count": 0},
+            ast_delta=python_ast_delta_metadata(before, before),
+            ast_parse_ok=True,
+            convention_evidence={
+                **convention_evidence,
+                "imported_names": sorted(imported_names),
+                "function_name": action.function_name,
+                "existing_marker_names": existing_marker_names,
+                "inserted_marker_name": action.marker_name,
+            },
+            sha256_before=_sha256_text(before),
+            sha256_after=_sha256_text(before),
+            changed_line_count=0,
+            patched_source=before,
+            wrote_file=False,
+        )
+    if (
+        action.require_existing_marker_name is not None
+        and action.require_existing_marker_name not in existing_marker_names
+    ):
+        raise RepoConventionCandidateError(
+            "required existing pytest marker was not detected",
+            blocker={
+                "field": "pytest_mark_convention",
+                "reason": "repo_convention_mark_decorator_blocked",
+                "message": (
+                    "target test function is missing required marker "
+                    f"{action.require_existing_marker_name}"
+                ),
+            },
+        )
+
+    missing_arguments = [
+        name for name in action.require_function_arguments if name not in _argument_names(target)
+    ]
+    if missing_arguments:
+        raise RepoConventionCandidateError(
+            "required pytest fixture arguments were not detected",
+            blocker={
+                "field": "pytest_mark_convention",
+                "reason": "repo_convention_mark_decorator_blocked",
+                "message": (
+                    "target test function is missing required arguments: "
+                    + ", ".join(missing_arguments)
+                ),
+            },
+        )
+
+    source_lines = before.splitlines(keepends=True)
+    function_source = "".join(source_lines[target.lineno - 1 : target.end_lineno])
+    missing_fragments = [
+        fragment
+        for fragment in action.require_source_fragments
+        if fragment not in function_source
+    ]
+    if missing_fragments:
+        raise RepoConventionCandidateError(
+            "required pager test source fragments were not detected",
+            blocker={
+                "field": "pytest_mark_convention",
+                "reason": "repo_convention_mark_decorator_blocked",
+                "message": (
+                    "target test function is missing required source fragments: "
+                    + ", ".join(missing_fragments)
+                ),
+            },
+        )
+
+    marker_lines = _insertion_lines(action.marker_source)
+    added_line_count = sum(1 for line in marker_lines if line.strip())
+    if added_line_count > action.max_added_lines:
+        raise RepoConventionCandidateError(
+            "pytest mark insertion added-line budget exceeded",
+            blocker={
+                "field": "pytest_mark_source",
+                "reason": "repo_convention_mark_decorator_blocked",
+                "message": "pytest mark insertion added-line budget exceeded",
+            },
+        )
+    _parse_python(
+        action.marker_source + "\ndef __j3_marker_probe():\n    pass\n",
+        filename=action.target_file,
+        field="pytest_mark_source",
+    )
+
+    insert_line = min(
+        [target.lineno]
+        + [decorator.lineno for decorator in target.decorator_list if decorator.lineno]
+    )
+    insert_index = insert_line - 1
+    patched = "".join(source_lines[:insert_index] + marker_lines + source_lines[insert_index:])
+    patched_tree = _parse_python(patched, filename=action.target_file, field="test_file")
+    patched_target = _find_top_level_function(patched_tree, action.function_name)
+    if patched_target is None:
+        raise RepoConventionCandidateError(
+            "pytest function missing after mark insertion",
+            blocker={
+                "field": "pytest_mark_source",
+                "reason": "repo_convention_mark_decorator_blocked",
+                "message": "pytest function missing after mark insertion",
+            },
+        )
+    inserted_marker_names = [
+        _decorator_qualified_name(decorator)
+        for decorator in patched_target.decorator_list
+    ]
+    inserted_marker_names = [name for name in inserted_marker_names if name]
+    if action.marker_name not in inserted_marker_names:
+        raise RepoConventionCandidateError(
+            "inserted pytest marker was not detected after patching",
+            blocker={
+                "field": "pytest_mark_source",
+                "reason": "repo_convention_mark_decorator_blocked",
+                "message": "inserted pytest marker was not detected after patching",
+            },
+        )
+    marker_uses_condition = (
+        action.marker_condition_name is None
+        or any(
+            _node_uses_name(decorator, action.marker_condition_name)
+            for decorator in patched_target.decorator_list
+            if _decorator_qualified_name(decorator) == action.marker_name
+        )
+    )
+    if not marker_uses_condition:
+        raise RepoConventionCandidateError(
+            "inserted pytest marker does not use required condition",
+            blocker={
+                "field": "pytest_mark_source",
+                "reason": "repo_convention_mark_decorator_blocked",
+                "message": (
+                    "inserted pytest marker does not use condition "
+                    f"{action.marker_condition_name}"
+                ),
+            },
+        )
+
+    if write:
+        target_path.write_text(patched, encoding="utf-8")
+
+    diff = _unified_diff(before, patched, action.target_file)
+    return BoundedRepoActionResult(
+        schema_version="pytest-mark-decorator-insertion-candidate-after-v1",
+        status="materialized" if write else "candidate_after",
+        action_kind=action.kind,
+        target_file=action.target_file,
+        diff=diff,
+        diff_summary=_diff_summary(diff),
+        ast_delta=python_ast_delta_metadata(before, patched),
+        ast_parse_ok=True,
+        convention_evidence={
+            **convention_evidence,
+            "imported_names": sorted(imported_names),
+            "function_name": action.function_name,
+            "function_arguments": _argument_names(target),
+            "existing_marker_names": existing_marker_names,
+            "inserted_marker_name": action.marker_name,
+            "marker_condition_name": action.marker_condition_name,
+            "marker_uses_condition": marker_uses_condition,
+            "required_source_fragments": list(action.require_source_fragments),
+            "insertion_line": insert_index + 1,
+        },
+        sha256_before=_sha256_text(before),
+        sha256_after=_sha256_text(patched),
+        changed_line_count=added_line_count,
+        patched_source=patched,
+        wrote_file=write,
+    )
+
+
 def materialize_pytest_fixture_insertion(
     repo_path: Path,
     action: PytestFixtureInsertionAction,
@@ -1748,6 +2184,17 @@ def _pytest_argument_repr_tests_source() -> str:
     )
 
 
+def _click_windows_pipe_pager_skip_marker_source() -> str:
+    return "\n".join(
+        [
+            "@pytest.mark.skipif(",
+            "    WIN,",
+            '    reason="Exercises the pipe pager path; Windows uses _tempfilepager.",',
+            ")",
+        ]
+    )
+
+
 def _repo_file(repo: Path, relative_path: str) -> Path:
     _validate_relative_path(relative_path)
     path = repo / relative_path
@@ -1852,6 +2299,40 @@ def _imported_modules(tree: ast.Module) -> list[str]:
     return modules
 
 
+def _imported_names(tree: ast.Module) -> list[str]:
+    names: list[str] = []
+    for node in tree.body:
+        if isinstance(node, ast.Import):
+            names.extend(alias.asname or alias.name.split(".")[0] for alias in node.names)
+        elif isinstance(node, ast.ImportFrom):
+            names.extend(alias.asname or alias.name for alias in node.names)
+    return names
+
+
+def _argument_names(node: ast.FunctionDef | ast.AsyncFunctionDef) -> list[str]:
+    return [arg.arg for arg in node.args.args]
+
+
+def _decorator_qualified_name(decorator: ast.AST) -> str | None:
+    target = decorator.func if isinstance(decorator, ast.Call) else decorator
+    return _qualified_name(target)
+
+
+def _qualified_name(node: ast.AST) -> str | None:
+    if isinstance(node, ast.Name):
+        return node.id
+    if isinstance(node, ast.Attribute):
+        parent = _qualified_name(node.value)
+        if parent is None:
+            return node.attr
+        return f"{parent}.{node.attr}"
+    return None
+
+
+def _node_uses_name(node: ast.AST, name: str) -> bool:
+    return any(isinstance(child, ast.Name) and child.id == name for child in ast.walk(node))
+
+
 def _pytest_fixture_convention_evidence(tree: ast.Module) -> dict[str, object]:
     fixture_names = [
         node.name
@@ -1941,7 +2422,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     parser.add_argument(
         "--candidate",
-        choices=("requests-7423", "requests-7315", "pytest-14429"),
+        choices=("requests-7423", "requests-7315", "pytest-14429", "click-3405"),
         default="requests-7423",
     )
     parser.add_argument("--repo-path", type=Path, required=True)
@@ -1958,8 +2439,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         spec = build_requests_clean_proxy_conftest_spec(args.repo_path)
     elif args.candidate == "requests-7315":
         spec = build_requests_leading_slash_adapter_spec(args.repo_path)
-    else:
+    elif args.candidate == "pytest-14429":
         spec = build_pytest_argument_repr_parser_fixture_spec(args.repo_path)
+    else:
+        spec = build_click_pager_windows_skip_spec(args.repo_path)
     candidate = materialize_repo_convention_candidate(
         args.repo_path,
         spec,

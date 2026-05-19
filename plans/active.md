@@ -183,43 +183,23 @@ This is the live coordinator board. Keep it current and compact.
   live-validates `pytest-dev/pytest#14429` with source/test scoped parity
   using reusable bounded source replacement and pytest parser-fixture test
   insertion records; full accepted-diff parity is false because the accepted
-  PR also adds `changelog/13817.bugfix.rst`. Remaining non-materialized
-  MAT-007 counts are now `current_structured_action = 4`,
-  `general_typed_builder = 0`, `repo_convention_builder = 1`,
-  `constrained_local_generator = 0`, and `not_currently_expressible = 2`.
+  PR also adds `changelog/13817.bugfix.rst`. `MAT-030` now materializes and
+  live-validates `pallets/click#3405` with exact accepted-diff parity using
+  reusable bounded source replacement and pytest mark-decorator insertion
+  records. Remaining non-materialized MAT-007 counts are now
+  `current_structured_action = 4`, `general_typed_builder = 0`,
+  `repo_convention_builder = 0`, `constrained_local_generator = 0`, and
+  `not_currently_expressible = 2`.
 
 ## Active Tasks
 
-### `MAT-030`: Held-out Click pager convention candidate
-
-- Status: active
-- Owner: worker MAT-030.
-- Started: 2026-05-19.
-- Write scope: focused repo-convention materializer/planner extensions and
-  tests as needed, optional `docs/MAT_030_*`, generated artifacts under
-  `/tmp`, and plan updates. Avoid transition scoring, issue/PR ranking,
-  validation-policy changes, local-knowledge records, matrix manifests, and
-  unrelated materializer families.
-- Acceptance: attempt `pallets/click#3405` using reusable repo-convention and
-  bounded source/test update action records, not a PR-named action kind.
-  Determine and record pinned base/head refs, accepted changed files,
-  validation command, mutation scope, candidate-after diff/hash metadata,
-  accepted-diff comparison, and live validation result. If the accepted PR
-  spans changelog or docs, separate full accepted-diff parity from source/test
-  scoped parity explicitly. If target selection, pager helper construction,
-  local monkeypatch/skip/fixture/stream test convention detection, parity, or
-  validation blocks, record the exact blocker without broadening scope
-  silently.
-- Expected tests: focused repo-convention/materializer tests if code changes
-  are made, JSON/report checks if artifacts are written,
-  `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and live
-  focused validation when materialized.
+No active worker tasks.
 
 ## Ready Queue
 
-No queued worker task remains while `MAT-030` is active. After it completes,
-review repo-convention closure coverage and decide whether to dispatch a
-coverage refresh or move to the shadow-advice-only residual examples.
+No queued worker task remains. Next coordinator step: review repo-convention
+closure coverage after `MAT-030`, then decide whether to dispatch a coverage
+refresh or move to the shadow-advice-only residual examples.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
@@ -244,6 +224,27 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `MAT-030`: materialized `pallets/click#3405` from base
+  `98302ac4f49e443a48abd3fbb95c86202b89547d` to accepted head
+  `b761eda3bad977ec2f485451d85fd8ec365f0bf4`. The candidate changed only
+  `tests/test_termui.py`, recorded candidate-after diff/hash/convention
+  metadata plus mutation scope, and used reusable
+  `replace_exact_source_lines_after_anchor` and
+  `insert_pytest_mark_decorator_before_function` action records. Full
+  accepted-diff parity, repo-convention scoped parity, and source/test scoped
+  parity are true; the accepted PR has no docs or changelog files. Live
+  focused validation passed with `PYTHONPATH=src python -m pytest
+  tests/test_termui.py::test_get_pager_file_with_real_pager_binary_stream
+  tests/test_termui.py::test_echo_via_pager_real_pager_handles_ansi -q`.
+  Remaining non-materialized MAT-007 counts are `current_structured_action =
+  4`, `general_typed_builder = 0`, `repo_convention_builder = 0`,
+  `constrained_local_generator = 0`, and `not_currently_expressible = 2`.
+  Artifacts:
+  `docs/MAT_030_CLICK_3405_PAGER_CONVENTION_CANDIDATE_2026-05-19.md`,
+  `/tmp/j3-mat-030-click-3405-live/final/candidate.json`,
+  `/tmp/j3-mat-030-click-3405-live/final/report.md`,
+  `/tmp/j3-mat-030-click-3405-live/final/candidate.diff`, and
+  `/tmp/j3-mat-030-click-3405-live/accepted.diff`.
 - `MAT-029`: materialized `pytest-dev/pytest#14429` from base
   `8f81c76744daf72d4f77cfc8423f4bdc60733d78` to accepted head
   `641a97b7695430f9fc4e9113b31d797447dc9654`. The candidate changed only

@@ -6213,3 +6213,45 @@ meaningful work. Do not replace this file with a daily reset.
   repo-convention row, `pallets/click#3405`, with reusable pager helper and
   Click test-convention action records.
 - Blockers: none.
+
+### 2026-05-19 - MAT-030 - Click #3405 pager convention materialization
+
+- Owner: worker MAT-030.
+- Files changed: `j3/heldout_repo_convention_candidate.py`,
+  `tests/test_heldout_repo_convention_candidate.py`,
+  `docs/MAT_030_CLICK_3405_PAGER_CONVENTION_CANDIDATE_2026-05-19.md`,
+  `plans/active.md`, `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `python -m py_compile j3/heldout_repo_convention_candidate.py
+  tests/test_heldout_repo_convention_candidate.py` -> passed; `pytest
+  tests/test_heldout_repo_convention_candidate.py -q` -> 12 passed; live
+  fresh checkout run `PYTHONPATH=/Users/aa/os/j3 python -m
+  j3.heldout_repo_convention_candidate --candidate click-3405 --repo-path
+  /tmp/j3-mat-030-click-3405-live/repo --accepted-diff
+  /tmp/j3-mat-030-click-3405-live/accepted.diff --out
+  /tmp/j3-mat-030-click-3405-live/final/candidate.json --report
+  /tmp/j3-mat-030-click-3405-live/final/report.md --diff-out
+  /tmp/j3-mat-030-click-3405-live/final/candidate.diff --validate
+  --validation-timeout-seconds 180` -> validated; validation command
+  `PYTHONPATH=src python -m pytest
+  tests/test_termui.py::test_get_pager_file_with_real_pager_binary_stream
+  tests/test_termui.py::test_echo_via_pager_real_pager_handles_ansi -q` ->
+  passed; `python -m json.tool
+  /tmp/j3-mat-030-click-3405-live/final/candidate.json` -> passed.
+- Result: materialized `pallets/click#3405` from base
+  `98302ac4f49e443a48abd3fbb95c86202b89547d` to accepted head
+  `b761eda3bad977ec2f485451d85fd8ec365f0bf4`. The candidate changed only
+  `tests/test_termui.py`, recorded candidate-after diff/hash/convention
+  metadata plus mutation scope, and used reusable
+  `replace_exact_source_lines_after_anchor` and
+  `insert_pytest_mark_decorator_before_function` action records. Full
+  accepted-diff parity, repo-convention scoped parity, and source/test scoped
+  parity are true; the accepted PR has no docs or changelog files. Remaining
+  non-materialized MAT-007 counts are now `current_structured_action = 4`,
+  `general_typed_builder = 0`, `repo_convention_builder = 0`,
+  `constrained_local_generator = 0`, and `not_currently_expressible = 2`.
+- Commit: pending.
+- Push: pending.
+- Next: coordinator should review repo-convention closure coverage and decide
+  whether to dispatch a closure refresh or move to the shadow-advice-only
+  residual examples.
+- Blockers: none.

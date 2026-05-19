@@ -3621,7 +3621,7 @@ Long-term target:
 
 ### MAT-030: Held-out Click pager convention candidate
 
-- Status: active
+- Status: done
 - Why: `click-3405` is the final remaining `repo_convention_builder` row after
   `MAT-029`. It is the broadest remaining convention case, spanning Click
   pager helper behavior plus local monkeypatch, skip, fixture, and stream test
@@ -3645,6 +3645,18 @@ Long-term target:
   JSON/report checks if artifacts are written,
   `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and live
   focused validation when materialized.
+- Completion note: materialized and live-validated `pallets/click#3405` from
+  base `98302ac4f49e443a48abd3fbb95c86202b89547d` to accepted head
+  `b761eda3bad977ec2f485451d85fd8ec365f0bf4`. The candidate changed only
+  `tests/test_termui.py` and used reusable
+  `replace_exact_source_lines_after_anchor` and
+  `insert_pytest_mark_decorator_before_function` action records. Full
+  accepted-diff parity, repo-convention scoped parity, and source/test scoped
+  parity are true; the accepted PR has no docs or changelog files. Focused
+  live validation passed. Remaining non-materialized MAT-007 counts are now
+  `current_structured_action = 4`, `general_typed_builder = 0`,
+  `repo_convention_builder = 0`, `constrained_local_generator = 0`, and
+  `not_currently_expressible = 2`.
 
 ## Next Recommended Queue
 

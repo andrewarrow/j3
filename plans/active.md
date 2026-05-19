@@ -99,8 +99,9 @@ This is the live coordinator board. Keep it current and compact.
   `missing_attributes` and traceback locations in advice-side failure-hint
   records. A focused advice-path replay now top-ranks
   `amount_cents -> balance_cents` over the same-location `available_cents` and
-  `pending_cents` decoys. Product routing remains shadow-only until a later
-  matrix evidence replay changes the gate.
+  `pending_cents` decoys. `TRANS-017` is assigned to rerun the expanded
+  standard matrix and confirm whether the full residual report clears. Product
+  routing remains shadow-only.
   Tests-only wedge guarded opt-in also remains
   blocked after `REAL-003` scored `pass@3 = 0/4`; `GS7-008` now materializes
   and live-validates the `iniconfig` calibration candidate. `REAL-005` extends
@@ -263,13 +264,34 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-No active worker tasks are currently recorded after `MODEL-016` completion.
+### `TRANS-017`: Rerun expanded standard residual evidence after MODEL-016
+
+- Status: active
+- Owner: worker TRANS-017, assigned on 2026-05-19.
+- Why: `MODEL-016` fixed the advice input parity gap that kept the
+  `visible_balance_attribute_decoys` residual in full matrix evidence. A fresh
+  expanded-standard replay should confirm whether the generated
+  `transition-advice.jsonl`, normalized shadow outcomes, residual report, and
+  guarded-trial decision now reflect that fix.
+- Write scope: generated artifacts under
+  `/tmp/j3-trans-017-expanded-standard-after-model016`, one concise evidence
+  doc under `docs/TRANS_017_*`, and plan updates. Do not edit scorer code,
+  candidate generation, product routing, matrix manifests, guarded-trial
+  policy, local-knowledge records, materializer code, or `plans/strategy.md`.
+- Acceptance: rerun the expanded standard transition matrix after
+  `MODEL-016`, verify checksums, generate the residual report and
+  guarded-trial decision, compare against `TRANS-016`, and record whether
+  `visible_balance_attribute_decoys` leaves the residual report. Product
+  routing must remain shadow-only unless a separate coordinator-approved
+  guarded-routing task changes it.
+- Tests: `run-transition-shadow-matrix`, checksum verification,
+  `report-transition-residuals --matrix`, `decide-transition-guarded-trial`,
+  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
 
 ## Ready Queue
 
-No additional ready worker tasks are currently recorded. Coordinator review
-should decide whether to dispatch a focused `TRANS-017` replay for
-`visible_balance_attribute_decoys`.
+No additional ready worker tasks are currently recorded while `TRANS-017` is
+active.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 

@@ -1034,6 +1034,31 @@ Long-term target:
   `pending_cents`. Product routing remains shadow-only pending a separate
   matrix replay.
 
+### TRANS-017: Rerun expanded standard residual evidence after MODEL-016
+
+- Status: active
+- Owner: worker TRANS-017, assigned on 2026-05-19.
+- Why: `MODEL-016` changed the full advice input record that feeds
+  `transition-advice.jsonl`, so the expanded standard matrix needs a fresh
+  replay to confirm whether the last shadow-advice-only residual,
+  `greenshot_5_subset/visible_balance_attribute_decoys`, is gone outside the
+  direct advice smoke.
+- Write scope: generated outputs under
+  `/tmp/j3-trans-017-expanded-standard-after-model016`, a concise evidence doc
+  under `docs/TRANS_017_*`, and plan updates. Do not edit scorer logic,
+  candidate generation, product routing, matrix manifests, guarded-trial
+  policy, local-knowledge records, materializer code, or `plans/strategy.md`.
+- Acceptance: rerun the expanded standard matrix, regenerate residual and
+  guarded-decision evidence, compare against `TRANS-016`, prove whether
+  `visible_balance_attribute_decoys` leaves the residual report, and keep
+  product routing shadow-only.
+- Tests: `run-transition-shadow-matrix`, checksum verification,
+  `report-transition-residuals --matrix`, `decide-transition-guarded-trial`,
+  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+- Notes: this is evidence-only. If the residual report clears but the guarded
+  decision still remains `remain_shadow_only`, record the precise remaining
+  suite-gate blocker instead of changing routing.
+
 ## Workstream E: Repo State, Actions, And Models
 
 ### REPO-001: Summarize repo-state encoder coverage

@@ -7244,3 +7244,23 @@ meaningful work. Do not replace this file with a daily reset.
   after `MODEL-016` to confirm whether `visible_balance_attribute_decoys`
   leaves the full residual report and to refresh the guarded decision.
 - Blockers: none for advice input parity; product routing remains shadow-only.
+
+### 2026-05-19 - Coordinator Review And Dispatch - TRANS-017
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, and
+  `plans/progress.md`.
+- Tests: `python -m py_compile j3/transition_scorer_advice.py
+  tests/test_transition_scorer_advice.py` -> passed; `pytest
+  tests/test_transition_scorer_advice.py -q` -> 9 passed; `pytest
+  tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check` ->
+  passed.
+- Result: reviewed and closed `MODEL-016`. The fix is additive and scoped to
+  advice-side failure-hint record parity: `missing_attributes` and
+  `traceback_locations` now survive into transition advice scoring, and the
+  advice-path regression top-ranks the passing visible-balance attribute
+  candidate without changing routing.
+- Next: dispatch `TRANS-017`, an evidence-only expanded standard matrix rerun
+  after `MODEL-016`, to confirm whether the full residual report clears and
+  to refresh the guarded decision.
+- Blockers: none for dispatch; product routing remains shadow-only.

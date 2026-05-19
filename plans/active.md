@@ -88,15 +88,17 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-None.
+- `TRANS-010` -> worker pending: rerun the full current standard transition
+  shadow matrix after `MODEL-007`, `MODEL-008`, and the clean `TRANS-009`
+  subset before broadening the manifest. Scope is evidence only: generated
+  outputs under `/tmp`, a concise evidence doc if useful, and plan updates.
+  Do not edit `examples/transition_shadow_matrix.json` in this slice.
 
 ## Ready Queue
 
-- `TRANS-003`: ready for coordinator review. `TRANS-009` confirms the targeted
-  `greenshot_6_subset` gate reaches `ready_for_guarded_opt_in`, residual count
-  is zero, and guarded decision is `guarded_opt_in_trial`; the next transition
-  step is cautious standard matrix manifest expansion, not scorer or runner
-  changes.
+No additional ready task is currently staged on this board. `TRANS-003` is
+unblocked by `TRANS-009`, but manifest expansion should wait for `TRANS-010`
+to refresh the current full standard matrix after the latest scorer fixes.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 

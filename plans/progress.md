@@ -5013,9 +5013,26 @@ meaningful work. Do not replace this file with a daily reset.
   is `ready_for_guarded_opt_in`; guarded decision is
   `guarded_opt_in_trial`; trial scope is
   `narrow_opt_in_transition_ranking`.
-- Commit: pending worker commit.
-- Push: pending worker push.
+- Commit: 3921bf8.
+- Push: succeeded.
 - Next: coordinator can move `TRANS-003` out of blocked status and review
   cautious standard matrix manifest expansion before broadening
   `examples/transition_shadow_matrix.json`.
+- Blockers: none.
+
+### 2026-05-19 - Coordinator Dispatch - TRANS-010
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, and
+  `plans/progress.md`.
+- Tests: `pytest tests/test_plan_consistency.py -q` -> 6 passed.
+- Result: reviewed `TRANS-009`. The targeted GreenShot-6 subset is clean and
+  reaches `ready_for_guarded_opt_in`, but the last full standard matrix
+  evidence predates several fixes and still had residuals outside
+  `greenshot_6_subset`. The next bounded step is evidence-only: rerun the
+  full current standard matrix before editing
+  `examples/transition_shadow_matrix.json`.
+- Commit: pending.
+- Push: pending.
+- Next: dispatch `TRANS-010` after plan verification.
 - Blockers: none.

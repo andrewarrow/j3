@@ -519,6 +519,26 @@ Long-term target:
   `guarded_opt_in_trial`; `TRANS-003` can move out of blocked status and is
   ready for coordinator-reviewed standard matrix manifest expansion.
 
+### TRANS-010: Refresh full standard matrix after MODEL-008
+
+- Status: active
+- Why: `TRANS-009` proves the targeted GreenShot-6 blocker is gone, but the
+  last full standard matrix evidence (`TRANS-005`) predates `TRANS-006`,
+  `ACT-003`, `ACT-004`, `MODEL-007`, and `MODEL-008`. Before broadening the
+  manifest, rerun the current standard matrix to see whether remaining
+  `greenshot_3`, `greenshot_5_subset`, or other suite residuals still block
+  guarded transition ranking.
+- Write scope: generated outputs under `/tmp`, a concise evidence doc if
+  useful, and plan updates only unless a local runner bug blocks evidence.
+  Do not edit `examples/transition_shadow_matrix.json` in this slice.
+- Acceptance: rerun the full current `examples/transition_shadow_matrix.json`,
+  aggregate suite gates and residual counts, compare against `TRANS-005` and
+  `TRANS-009`, make the guarded-trial decision explicit, and record whether
+  `TRANS-003` should proceed to manifest expansion or return to residual work.
+- Tests: `run-transition-shadow-matrix`, checksum verification,
+  `report-transition-residuals --matrix`, `decide-transition-guarded-trial`,
+  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+
 ## Workstream E: Repo State, Actions, And Models
 
 ### REPO-001: Summarize repo-state encoder coverage

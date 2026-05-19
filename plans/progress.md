@@ -4732,7 +4732,8 @@ meaningful work. Do not replace this file with a daily reset.
   whether `candidate_after_unavailable` labels and the
   `dynamic_field_error_message` generation gap are gone before paying for a
   full standard matrix rerun.
-- Commit: pending.
-- Push: pending.
-- Next: dispatch a worker for `TRANS-007` after plan consistency checks pass.
+- Commit: 98a5497.
+- Push: succeeded.
+- Next: worker Schrodinger (`019e3e39-472c-7243-98bd-e000c594b9fb`) is
+  running `TRANS-007`.
 - Blockers: none.

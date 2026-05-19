@@ -65,7 +65,7 @@ This is the live coordinator board. Keep it current and compact.
 ## Active Tasks
 
 - `TRANS-007`: rerun targeted post-fix `greenshot_6_subset` evidence.
-  - Owner: coordinator dispatch in progress; worker pending.
+  - Owner: worker Schrodinger (`019e3e39-472c-7243-98bd-e000c594b9fb`).
   - Scope: generated subset matrix artifacts under `/tmp`, one concise
     evidence doc if useful, and plan updates only unless a runner bug blocks
     evidence.

@@ -199,13 +199,39 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-No active worker tasks are recorded after `MAT-032`; coordinator review should
-choose the next bounded `current_structured_action` row.
+### `MAT-033`: Held-out Flask autoescape current action candidate
+
+- Status: active
+- Owner: worker MAT-033.
+- Started: 2026-05-19.
+- Write scope: focused current structured-action/source-region materializer
+  extensions and tests as needed, optional `docs/MAT_033_*`, generated
+  artifacts under `/tmp`, and plan updates. Likely code scope is
+  `j3/heldout_source_region_candidate.py` and
+  `tests/test_heldout_source_region_candidate.py`; avoid repo-convention
+  materializer code unless a concrete blocker requires it.
+- Acceptance: attempt `pallets/flask#6013` using reusable current structured
+  action records for the targeted `select_jinja_autoescape` expression
+  replacement and any accepted changelog/source-doc text updates, not a
+  PR-named action kind. Determine and record pinned base/head refs, accepted
+  changed files, validation command, mutation scope, candidate-after
+  diff/hash metadata, accepted-diff comparison, and live validation result.
+  The accepted diff appears to touch `CHANGES.rst` and
+  `src/flask/sansio/app.py`; separate full accepted-diff parity from
+  source-only or source/docs scoped parity if the worker intentionally covers a
+  narrower scope. If target selection, expression replacement, text insertion,
+  parity, or validation blocks, record the exact blocker without broadening
+  scope silently.
+- Expected tests: focused source-region/current-action materializer tests if
+  code changes are made, JSON/report checks if artifacts are written,
+  `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and live
+  focused Flask validation when materialized.
 
 ## Ready Queue
 
-The remaining `current_structured_action` rows after `click-3423` are
-`flask-6013`, `flask-5898`, and `pytest-14472`; the shadow-advice-only
+No queued worker task remains while `MAT-033` is active. The remaining
+`current_structured_action` rows after `flask-6013` are `flask-5898` and
+`pytest-14472`; the shadow-advice-only
 residual examples remain a separate workstream and should not be mixed into
 MAT-007 held-out materialization counts.
 

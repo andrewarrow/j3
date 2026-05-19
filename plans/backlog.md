@@ -3735,11 +3735,40 @@ Long-term target:
   `/tmp/j3-mat-032-click-3423-live/final/report.md`, and
   `/tmp/j3-mat-032-click-3423-live/final/candidate.diff`.
 
+### MAT-033: Held-out Flask autoescape current action candidate
+
+- Status: active
+- Why: `MAT-032` closes the smallest Click current-action row. `flask-6013` is
+  the next compact remaining row: a targeted expression replacement in
+  `Flask.select_jinja_autoescape` plus accepted text updates.
+- Write scope: focused current structured-action/source-region materializer
+  extensions and tests as needed, optional `docs/MAT_033_*`, generated
+  artifacts under `/tmp`, and plan updates. Likely code scope is
+  `j3/heldout_source_region_candidate.py` and
+  `tests/test_heldout_source_region_candidate.py`; avoid repo-convention
+  materializer code unless a concrete blocker requires it.
+- Acceptance: attempt `pallets/flask#6013` using reusable current structured
+  action records for the targeted `select_jinja_autoescape` expression
+  replacement and any accepted changelog/source-doc text updates, not a
+  PR-named action kind. Determine and record pinned base/head refs, accepted
+  changed files, validation command, mutation scope, candidate-after
+  diff/hash metadata, accepted-diff comparison, and live validation result.
+  The accepted diff appears to touch `CHANGES.rst` and
+  `src/flask/sansio/app.py`; separate full accepted-diff parity from
+  source-only or source/docs scoped parity if the worker intentionally covers a
+  narrower scope. If target selection, expression replacement, text insertion,
+  parity, or validation blocks, record the exact blocker without broadening
+  scope silently.
+- Tests: focused source-region/current-action materializer tests if code
+  changes are made, JSON/report checks if artifacts are written,
+  `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and live
+  focused Flask validation when materialized.
+
 ## Next Recommended Queue
 
 Start with these unless fresh evidence changes the order:
 
-1. Review `MAT-032`, then continue the remaining `current_structured_action`
-   rows if the Click replay is materialized cleanly.
+1. Review `MAT-033`, then continue the remaining `current_structured_action`
+   rows if the Flask replay is materialized cleanly.
 2. Separately decide whether to pursue the `TRANS-012` shadow-advice-only
    residual examples; product transition routing remains shadow-only.

@@ -4382,3 +4382,25 @@ meaningful work. Do not replace this file with a daily reset.
 - Next: worker Lovelace (`019e3e0f-4b73-7141-a80d-cb3da6da5fb2`) is running
   `SCALE-001`.
 - Blockers: none.
+
+### 2026-05-19 - SCALE-001 - Local pretraining feasibility inventory
+
+- Owner: worker Lovelace (`019e3e0f-4b73-7141-a80d-cb3da6da5fb2`).
+- Files changed:
+  `docs/SCALE_001_LOCAL_PRETRAINING_FEASIBILITY_INVENTORY_2026-05-19.md`,
+  `plans/active.md`, `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `git diff --check` -> passed;
+  `pytest tests/test_plan_consistency.py -q` -> 6 passed.
+- Result: drafted a focused local pretraining feasibility inventory. The doc
+  separates feasible near-term local encoders, small rankers, and shadow-only
+  transition models from frontier-scale language/code pretraining; inventories
+  current prompt/spec, deterministic encoder, transition, real-repo ladder,
+  issue/PR replay, materialization, local knowledge, Apache corpus, hard
+  negative, and validation artifacts; and records missing data, objective,
+  compute, evaluation, and data-policy questions without changing
+  `plans/strategy.md`.
+- Commit: pending.
+- Push: pending.
+- Next: use the inventory as the link target for `SCALE-002` data provenance
+  and release policy.
+- Blockers: none.

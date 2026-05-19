@@ -67,19 +67,11 @@ This is the live coordinator board. Keep it current and compact.
     same mapping appears in competing candidates.
   - Expected tests: focused transition action scoring/ranking tests,
     `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
-- `SCALE-001`: draft local pretraining feasibility inventory.
-  - Owner: worker Lovelace (`019e3e0f-4b73-7141-a80d-cb3da6da5fb2`).
-  - Scope: focused documentation under `docs/` plus required plan updates.
-  - Acceptance: separates near-term local encoders from frontier-scale
-    language/code pretraining and lists the local data that exists versus what
-    is still missing.
-  - Expected tests: `git diff --check` and
-    `pytest tests/test_plan_consistency.py -q`.
 
 ## Ready Queue
 
-`MODEL-004` and `SCALE-001` are active. Keep `MODEL-005` queued until
-`MODEL-004` returns because it would touch the same scorer files.
+`MODEL-004` is active. Keep `MODEL-005` queued until `MODEL-004` returns
+because it would touch the same scorer files.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
@@ -103,6 +95,15 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `SCALE-001`: added
+  `docs/SCALE_001_LOCAL_PRETRAINING_FEASIBILITY_INVENTORY_2026-05-19.md`,
+  which separates near-term local encoder and small-model work from
+  frontier-scale language/code pretraining. The inventory ties current
+  repo-local prompt/spec, deterministic encoder, transition, real-repo,
+  issue/PR, materialization, local-knowledge, Apache corpus, hard-negative, and
+  validation artifacts to concrete data, objective, compute, evaluation, and
+  data-policy gaps. Next scale step is `SCALE-002` data provenance and release
+  policy.
 - `MODEL-003`: added an explicit scorer feature and penalty for unvalidated
   `add_keyword_arg` candidates when failure hints do not name the candidate
   keyword path. Failure hint records now preserve missing-name, missing-key,

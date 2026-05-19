@@ -488,7 +488,7 @@ Long-term target:
 
 ### SCALE-001: Draft local pretraining feasibility inventory
 
-- Status: active
+- Status: done
 - Why: the frontier target needs a sober estimate of data, compute, objectives,
   and model shapes.
 - Write scope: focused doc under `docs/`, with links to current local data
@@ -496,6 +496,13 @@ Long-term target:
 - Acceptance: separates near-term local encoders from frontier-scale
   language/code pretraining; lists what data exists and what is missing.
 - Tests: `git diff --check`.
+- Completion note: added
+  `docs/SCALE_001_LOCAL_PRETRAINING_FEASIBILITY_INVENTORY_2026-05-19.md`.
+  The inventory concludes that near-term prompt/spec, repo-state,
+  local-knowledge, action-ranking, and transition encoders are feasible in
+  shadow mode, while frontier-scale language/code pretraining remains blocked
+  by data volume, provenance policy, objective, compute, and broad held-out
+  evaluation gaps. `SCALE-002` is the next policy task.
 
 ### SCALE-002: Define data provenance and release policy
 

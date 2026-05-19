@@ -71,11 +71,24 @@ This is the live coordinator board. Keep it current and compact.
   precise blocker showing why pure typed-builder action records are
   insufficient.
 
+### `MODEL-003`: Penalize add-keyword decoys
+
+- Status: active
+- Owner: pending worker spawn.
+- Write scope: transition scorer/advice fixtures, features, and tests for
+  add-keyword decoy ranking only, especially `j3/transition_action_scoring.py`,
+  `j3/transition_scorer_advice.py`, `j3/transition_ranking.py`,
+  `tests/test_transition_action_scoring.py`,
+  `tests/test_transition_shadow_scorer.py`, and task-specific planning
+  updates. Avoid typed-builder materialization and local-knowledge modules.
+- Acceptance: focused residual fixtures reduce false priority for unvalidated
+  `add_keyword_arg` candidates unless failure hints name a missing keyword
+  path, without changing production ranking gates.
+
 ## Ready Queue
 
-The active set is below the default parallelism limit after `KNOW-006`
-completed. Reassess after `MAT-014` returns, or dispatch one disjoint ready
-task if the coordinator loop continues before then.
+The active set is at the default parallelism limit. Reassess after `MAT-014`
+or `MODEL-003` returns.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 

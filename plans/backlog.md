@@ -427,7 +427,7 @@ Long-term target:
 
 ### MODEL-003: Penalize add-keyword decoys
 
-- Status: ready
+- Status: active
 - Why: `ACT-001` and `TRANS-002` show unvalidated `add_keyword_arg` candidates
   outranking passing candidates in several residual clusters.
 - Write scope: transition scorer fixtures/features/tests for add-keyword

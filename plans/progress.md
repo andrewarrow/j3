@@ -4232,6 +4232,26 @@ meaningful work. Do not replace this file with a daily reset.
   `KNOW-006`.
 - Blockers: none.
 
+### 2026-05-18 - Coordinator Dispatch - MODEL-003
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, and
+  `plans/progress.md`.
+- Tests: `pytest tests/test_local_knowledge.py -q` -> 9 passed; `pytest
+  tests/test_real_repo_tests_planner.py -q` -> 7 passed; `pytest
+  tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check` ->
+  passed.
+- Result: reviewed the completed `KNOW-006` result while `MAT-014` continues.
+  The h11 tests-only row now has citeable import-style attribution and no
+  `missing_knowledge` residual when all required purposes are present. With
+  one worker slot free, selected the disjoint ready `MODEL-003` scorer slice
+  to address transition residuals where unvalidated `add_keyword_arg` decoys
+  outrank passing candidates.
+- Commit: pending.
+- Push: pending.
+- Next: spawn one worker for `MODEL-003` and record its worker ID.
+- Blockers: none.
+
 ### 2026-05-19 - KNOW-006 - Held-out h11 import-style knowledge gap
 
 - Owner: worker James (`019e3dfa-a857-7941-8a7a-827462b044cf`).

@@ -3380,11 +3380,37 @@ Long-term target:
   `/tmp/j3-mat-023-click-3434/final/candidate.diff`, and
   `/tmp/j3-mat-023-click-3434/final/accepted.diff`.
 
+### MAT-024: Held-out Click default-map splitting source/docs/test candidate
+
+- Status: active
+- Why: after `MAT-023`, the remaining constrained held-out rows are
+  `click-3420` and `click-3364`. `click-3364` is the smaller row and pressure
+  tests whether the source-region materializer can handle a bounded source
+  behavior change with docs and regression tests, before attempting the broader
+  ANSI-aware wrapping row.
+- Write scope: held-out source-region candidate materializer extensions and
+  focused tests as needed, optional `docs/MAT_024_*`, generated artifacts
+  under `/tmp`, and plan updates. Avoid transition scoring, issue/PR ranking,
+  validation-policy changes, local-knowledge records, matrix manifests, and
+  unrelated materializer families.
+- Acceptance: attempt `pallets/click#3364` using reusable bounded
+  source-region plus docs/test insertion or refinement action records, not a
+  PR-named action kind. Determine and record pinned base/head refs, accepted
+  changed files, validation command, mutation scope, candidate-after diff/hash
+  metadata, accepted-diff comparison, and live validation result. Explicitly
+  separate full accepted-diff parity from source/test scoped parity and
+  source/docs/test scoped parity if the accepted PR spans docs and tests. If
+  target selection, source-region materialization, docs/test
+  insertion/refinement, parity, or validation blocks, record the exact blocker.
+- Tests: focused source-region candidate tests, JSON/report checks if added,
+  `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and live
+  focused validation when materialized.
+
 ## Next Recommended Queue
 
 Start with these unless fresh evidence changes the order:
 
-1. Continue constrained source/test materialization with coordinator review of
-   the remaining Click formatter rows, likely `click-3420` or `click-3364`.
+1. Continue constrained source/test materialization with `MAT-024`
+   `click-3364`, then reassess the broader `click-3420` ANSI wrapping row.
 2. Separately decide whether to pursue the `TRANS-012` shadow-advice-only
    residual examples; product transition routing remains shadow-only.

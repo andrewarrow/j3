@@ -157,18 +157,39 @@ This is the live coordinator board. Keep it current and compact.
   source/test scoped parity is true. Remaining non-materialized MAT-007 counts
   are now `current_structured_action = 4`, `general_typed_builder = 0`,
   `repo_convention_builder = 4`, `constrained_local_generator = 2`, and
-  `not_currently_expressible = 2`.
+  `not_currently_expressible = 2`. `MAT-024` is now assigned to
+  `pallets/click#3364`, the smaller remaining Click row with source, docs, and
+  tests.
 
 ## Active Tasks
 
-No active worker task is currently recorded. The coordinator should review
-`MAT-023` and dispatch the next bounded ready task or record a concrete
-blocker.
+### `MAT-024`: Held-out Click default-map splitting source/docs/test candidate
+
+- Status: active
+- Owner: worker.
+- Scope: attempt `pallets/click#3364` with reusable bounded source-region plus
+  docs/test insertion or refinement action records. Allowed writes are focused
+  extensions to `j3/heldout_source_region_candidate.py`,
+  `tests/test_heldout_source_region_candidate.py`, focused `docs/MAT_024_*`,
+  generated artifacts under `/tmp`, and plan updates. Avoid transition
+  scoring, issue/PR ranking, local-knowledge records, matrix manifests, and
+  unrelated materializer families.
+- Acceptance: determine pinned base/head refs, accepted changed files,
+  validation command, mutation scope, candidate-after diff/hash metadata,
+  accepted-diff comparison, and live validation result for `click-3364`. Use
+  reusable action kinds rather than a PR-named action. Explicitly separate full
+  accepted-diff parity from source/test scoped parity and source/docs/test
+  scoped parity if the accepted PR spans docs and tests. If target selection,
+  source-region materialization, docs/test insertion/refinement, parity, or
+  validation blocks, record the exact blocker.
+- Tests: focused source-region candidate tests, JSON/report checks if added,
+  `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and live
+  focused validation when materialized.
 
 ## Ready Queue
 
-No separate ready worker task is queued while `MAT-023` awaits coordinator
-review.
+No separate ready worker task is queued while `MAT-024` is active. `click-3420`
+remains the broader ANSI wrapping row after `MAT-024`.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 

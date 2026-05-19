@@ -6704,3 +6704,24 @@ meaningful work. Do not replace this file with a daily reset.
   the remaining narrow `greenshot_bugs/missing_guard` shadow-advice residual
   before the harder GreenShot-5 semantic API residuals.
 - Blockers: none.
+
+### 2026-05-19 - Coordinator Review And Dispatch - MODEL-012
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, and
+  `plans/progress.md`.
+- Tests: `pytest tests/test_transition_action_scoring.py -q` -> 27 passed;
+  direct replay over
+  `/tmp/j3-trans-012-expanded-standard/suite/{greenshot_bugs,greenshot_4}/candidate-outcomes.jsonl`
+  -> `last_item`, `final_score_tail`, `last_order_id_tail`, and
+  `newest_event_tail` all top-rank the passing `replace_expr`;
+  `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check`
+  -> passed.
+- Result: reviewed and closed `MODEL-011`. The scorer patch is narrow to
+  tail-intent `seq[-1]` expression replacements and same-target `0 ->
+  negative` literal decoys, and product routing remains shadow-only.
+- Next: dispatch `MODEL-012` for the remaining narrow
+  `greenshot_bugs/missing_guard` shadow-advice residual, where advisory
+  scoring prefers an unrelated `change_operator` candidate in `apply_discount`
+  over the passing `insert_guard` candidate in `average`.
+- Blockers: none.

@@ -664,7 +664,8 @@ Long-term target:
 
 ### MODEL-012: Add guard-insertion advice over unrelated operator decoy evidence
 
-- Status: ready
+- Status: active
+- Owner: worker MODEL-012, assigned on 2026-05-19.
 - Why: after `MODEL-011`, the remaining narrow non-GreenShot-5
   shadow-advice residual is `greenshot_bugs/missing_guard`: the passing
   candidate inserts an empty-sequence guard in `average`, while the advisory

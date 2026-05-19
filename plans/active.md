@@ -230,28 +230,29 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-No active worker tasks are currently recorded. The coordinator should review
-`MODEL-011`, then dispatch the next bounded shadow-advice residual slice or
-record why the remaining residuals should stay paused.
+### `MODEL-012`: Add guard-insertion advice over unrelated operator decoy evidence
+
+- Status: active
+- Owner: worker MODEL-012, assigned on 2026-05-19.
+- Scope: focused scorer logic in `j3/transition_action_scoring.py`, focused
+  tests in `tests/test_transition_action_scoring.py`, optional concise
+  evidence doc under `docs/MODEL_012_*`, and plan updates.
+- Acceptance: add local shadow-advice/V1 evidence that promotes the passing
+  `insert_guard` candidate for `greenshot_bugs/missing_guard` only when
+  failure/test context and target symbol indicate the guarded function; prove
+  the residual no longer selects the unrelated `change_operator` decoy in
+  `apply_discount`; preserve existing scorer behavior outside that slice; keep
+  product routing shadow-only.
+- Guardrails: do not edit product routing, matrix manifests, candidate
+  generation, ranker routing, guarded-trial policy, local-knowledge records,
+  materializer code, or `plans/strategy.md`.
+- Expected tests: `pytest tests/test_transition_action_scoring.py -q`,
+  focused residual/advice replay or locally added test for `missing_guard`,
+  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
 
 ## Ready Queue
 
-### `MODEL-012`: Add guard-insertion advice over unrelated operator decoy evidence
-
-- Status: ready
-- Why: after `MODEL-011` resolves the four tail-index literal-decoy examples,
-  the remaining narrow non-GreenShot-5 shadow-advice residual is
-  `greenshot_bugs/missing_guard`, where the advisory scorer prefers an
-  unrelated comparison-operator change in `apply_discount` over the passing
-  empty-sequence guard in `average`.
-- Write scope: focused scorer logic/tests only if the coordinator accepts this
-  slice. Product routing, matrix manifests, candidate generation, ranker
-  routing, guarded-trial policy, and local-knowledge records remain out of
-  scope.
-- Acceptance: add local advice evidence that promotes the passing
-  `insert_guard` candidate only when failure/test context indicates the target
-  guarded function, and prove the `missing_guard` residual no longer selects
-  the unrelated operator decoy without changing product routing.
+No ready worker tasks are currently recorded while `MODEL-012` is active.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 

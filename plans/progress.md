@@ -6125,8 +6125,26 @@ meaningful work. Do not replace this file with a daily reset.
   `current_structured_action = 4`, `general_typed_builder = 0`,
   `repo_convention_builder = 2`, `constrained_local_generator = 0`, and
   `not_currently_expressible = 2`.
-- Commit: 212c2f6 implementation/evidence.
-- Push: implementation/evidence commit pushed successfully to `origin/main`.
+- Commit: 212c2f6 implementation/evidence; push-result metadata: 817fdf6.
+- Push: implementation/evidence and push-result commits pushed successfully to
+  `origin/main`.
 - Next: coordinator should review `MAT-028` and choose the next bounded
   repo-convention row from `click-3405` or `pytest-14429`.
+- Blockers: none.
+
+### 2026-05-19 - Coordinator Review And Dispatch - MAT-029
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, and
+  `plans/progress.md`.
+- Tests: `pytest tests/test_heldout_repo_convention_candidate.py -q` -> 6
+  passed; `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check` -> passed.
+- Result: reviewed `MAT-028`; exact accepted-diff parity, repo-convention
+  scoped parity, mutation scope, JSON artifact, and checkout-local live
+  validation are consistent. The next bounded repo-convention row is
+  `pytest-14429`, which is smaller than `click-3405` and tests pytest
+  parser-fixture conventions.
+- Next: dispatch a worker for `MAT-029` to attempt `pytest-dev/pytest#14429`
+  with reusable repo-convention and bounded source/test update action records.
 - Blockers: none.

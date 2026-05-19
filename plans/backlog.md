@@ -3578,11 +3578,38 @@ Long-term target:
   `general_typed_builder = 0`, `repo_convention_builder = 2`,
   `constrained_local_generator = 0`, and `not_currently_expressible = 2`.
 
+### MAT-029: Held-out pytest parser fixture convention candidate
+
+- Status: active
+- Why: after `MAT-028`, the remaining repo-convention rows are
+  `pytest-14429` and `click-3405`. `pytest-14429` is smaller (`+27/-1`, three
+  files) and broadens the convention proof from Requests to pytest parser
+  fixture conventions before the larger Click pager row.
+- Write scope: focused repo-convention materializer/planner extensions and
+  tests as needed, optional `docs/MAT_029_*`, generated artifacts under
+  `/tmp`, and plan updates. Avoid transition scoring, issue/PR ranking,
+  validation-policy changes, local-knowledge records, matrix manifests, and
+  unrelated materializer families.
+- Acceptance: attempt `pytest-dev/pytest#14429` using reusable
+  repo-convention and bounded source/test update action records, not a
+  PR-named action kind. Determine and record pinned base/head refs, accepted
+  changed files, validation command, mutation scope, candidate-after diff/hash
+  metadata, accepted-diff comparison, and live validation result. If the
+  accepted PR spans changelog or docs, separate full accepted-diff parity from
+  source/test scoped parity explicitly. If target selection, defensive source
+  guard insertion, pytest parser-fixture test construction, parity, or
+  validation blocks, record the exact blocker without broadening scope
+  silently.
+- Tests: focused repo-convention/materializer tests if code changes are made,
+  JSON/report checks if artifacts are written,
+  `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and live
+  focused validation when materialized.
+
 ## Next Recommended Queue
 
 Start with these unless fresh evidence changes the order:
 
-1. Coordinator review should choose the next bounded repo-convention row from
-   `click-3405` and `pytest-14429`.
+1. Complete active `MAT-029` for `pytest-dev/pytest#14429`; the remaining
+   repo-convention row after that is `click-3405`.
 2. Separately decide whether to pursue the `TRANS-012` shadow-advice-only
    residual examples; product transition routing remains shadow-only.

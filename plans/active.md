@@ -183,16 +183,40 @@ This is the live coordinator board. Keep it current and compact.
   counts are now `current_structured_action = 4`,
   `general_typed_builder = 0`, `repo_convention_builder = 2`,
   `constrained_local_generator = 0`, and `not_currently_expressible = 2`.
+  `MAT-029` is now assigned to `pytest-dev/pytest#14429`, the smaller
+  remaining repo-convention row with pytest parser-fixture conventions.
 
 ## Active Tasks
 
-No active worker task is assigned after `MAT-028` completion. Coordinator
-review should choose the next bounded repo-convention row.
+### `MAT-029`: Held-out pytest parser fixture convention candidate
+
+- Status: active
+- Owner: worker.
+- Scope: attempt `pytest-dev/pytest#14429` with reusable repo-convention and
+  bounded source/test update action records. Allowed writes are focused
+  repo-convention materializer/planner extensions and tests as needed, focused
+  `docs/MAT_029_*`, generated artifacts under `/tmp`, and plan updates. Avoid
+  transition scoring, issue/PR ranking, validation-policy changes,
+  local-knowledge records, matrix manifests, and unrelated materializer
+  families.
+- Acceptance: determine pinned base/head refs, accepted changed files,
+  validation command, mutation scope, candidate-after diff/hash metadata,
+  accepted-diff comparison, and live validation result for `pytest-14429`.
+  Use reusable convention/source/test action kinds rather than a PR-named
+  action. If the accepted PR spans changelog or docs, separate full parity from
+  source/test scoped parity explicitly. If target selection, defensive source
+  guard insertion, pytest parser-fixture test construction, parity, or
+  validation blocks, record the exact blocker without broadening scope
+  silently.
+- Tests: focused repo-convention/materializer tests if code changes are made,
+  JSON/report checks if artifacts are written,
+  `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and live
+  focused validation when materialized.
 
 ## Ready Queue
 
-No separate ready worker task is queued until coordinator review. Remaining
-repo-convention rows are `click-3405` and `pytest-14429`.
+No separate ready worker task is queued while `MAT-029` is active. Remaining
+repo-convention row after this is `click-3405`.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 

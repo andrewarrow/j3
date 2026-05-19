@@ -371,6 +371,21 @@ Long-term target:
   `report-transition-residuals --matrix`, guarded decision if applicable, and
   focused transition tests if command behavior changes.
 
+### TRANS-005: Rerun post-scorer transition matrix evidence
+
+- Status: active
+- Why: `MODEL-003`, `MODEL-004`, and `MODEL-005` added the scorer features
+  that `ACTION_COVERAGE_MAP.md` identified as the remaining ranking blockers.
+- Write scope: generated outputs under `/tmp`, a concise evidence doc or
+  progress notes, and plan updates only unless a local runner bug blocks the
+  evidence run.
+- Acceptance: rerun the standard transition shadow matrix after the scorer
+  slices, aggregate residuals, make the guarded-trial decision explicit, and
+  record whether `TRANS-003` remains blocked or can move to ready.
+- Tests: `run-transition-shadow-matrix`, checksum verification,
+  `report-transition-residuals --matrix`, `decide-transition-guarded-trial`,
+  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+
 ## Workstream E: Repo State, Actions, And Models
 
 ### REPO-001: Summarize repo-state encoder coverage
@@ -530,6 +545,19 @@ Long-term target:
   provenance fields, checksum discipline, split/leakage controls,
   redistribution boundaries, release exclusions, retention classes, and
   manifest readiness checks for larger local training corpora.
+
+### SCALE-003: Add durable training manifest schema skeleton
+
+- Status: active
+- Why: `SCALE-002` defines the policy, but future training/evaluation work
+  needs a machine-checkable manifest contract before consuming durable rows.
+- Write scope: small manifest schema/validator implementation, focused tests,
+  optional compact example under `examples/`, and plan updates.
+- Acceptance: schema validation covers required common fields, source-kind
+  fields, checksum/split/redistribution/retention classes, and exclusion
+  reasons well enough for a future manifest builder to target.
+- Tests: focused manifest tests, `pytest tests/test_plan_consistency.py -q`,
+  and `git diff --check`.
 
 ## Workstream G: Hard Feasibility Proofs
 

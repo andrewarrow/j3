@@ -4509,8 +4509,27 @@ meaningful work. Do not replace this file with a daily reset.
   above equivalent-looking decoys. Existing add-keyword and mapping-target
   scorer tests remain intact. Production ranking gates remain unchanged and
   shadow-only.
-- Commit: d9930da.
+- Commit: d9930da; completion metadata: ae5df50.
 - Push: succeeded.
 - Next: coordinator should review `MODEL-005`, then decide whether to rerun
   targeted residual evidence or move to the next bounded scorer/data task.
+- Blockers: none.
+
+### 2026-05-19 - Coordinator Review And Dispatch - TRANS-005 / SCALE-003
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, and
+  `plans/progress.md`.
+- Tests: `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check -- plans/active.md plans/backlog.md plans/progress.md` ->
+  passed.
+- Result: reviewed the completed `MODEL-005` and `SCALE-002` batch. The
+  planned scorer residual slices are complete, so the next transition task is
+  evidence, not another scorer edit: rerun the transition shadow matrix and
+  record whether `TRANS-003` remains blocked. In parallel, `SCALE-003` turns
+  the new data policy into a small machine-checkable manifest contract.
+- Commit: pending.
+- Push: pending.
+- Next: dispatch workers for `TRANS-005` and `SCALE-003` after plan
+  consistency checks pass.
 - Blockers: none.

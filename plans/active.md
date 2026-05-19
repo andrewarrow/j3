@@ -57,14 +57,30 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-No active worker tasks are recorded after `MODEL-005` returns. The coordinator
-should review completed scorer and data-policy work, then dispatch the next
-bounded ready task.
+- `TRANS-005`: rerun post-scorer transition matrix evidence.
+  - Owner: coordinator dispatch in progress; worker pending.
+  - Scope: generated matrix artifacts under `/tmp`, concise evidence doc or
+    progress notes, and plan updates only unless a runner bug blocks the run.
+  - Acceptance: rerun the standard transition shadow matrix after
+    `MODEL-003` through `MODEL-005`, publish residual/gate counts, and record
+    whether `TRANS-003` can be unblocked or remains blocked.
+  - Expected tests: matrix command, residual report, guarded-trial decision,
+    checksum verification, `pytest tests/test_plan_consistency.py -q`, and
+    `git diff --check`.
+- `SCALE-003`: add durable training manifest schema skeleton.
+  - Owner: coordinator dispatch in progress; worker pending.
+  - Scope: small manifest schema/validator implementation, focused tests,
+    optional compact example, and plan updates.
+  - Acceptance: machine-readable manifest rows enforce the key `SCALE-002`
+    provenance, checksum, split, redistribution, retention, and exclusion
+    fields needed before model/data work can consume durable rows.
+  - Expected tests: focused manifest tests, `pytest tests/test_plan_consistency.py
+    -q`, and `git diff --check`.
 
 ## Ready Queue
 
-`MODEL-005` has returned. Keep additional scorer work queued until the
-coordinator reviews the boundary/literal scorer result.
+`TRANS-005` and `SCALE-003` are being dispatched. Avoid additional transition
+scorer work until the post-scorer matrix evidence returns.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 

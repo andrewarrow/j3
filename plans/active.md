@@ -81,8 +81,13 @@ This is the live coordinator board. Keep it current and compact.
   and `TRANS-015` confirmed the expanded standard matrix totals and suite
   gates stayed unchanged while the residual report narrowed from 2 to 1
   shadow-advice-only GreenShot-5 example. `profile_signature_propagation` is
-  gone in full replay; only `visible_balance_attribute_decoys` remains. The
-  guarded decision remains `remain_shadow_only`, and product routing remains
+  gone in full replay; only `visible_balance_attribute_decoys` remains.
+  `MODEL-015` added narrow AttributeError visible-balance attribute-repair
+  advice evidence, and direct replay now top-ranks the passing
+  `amount_cents -> balance_cents` candidate over the same-location
+  `available_cents` and `pending_cents` decoys. A follow-up transition rerun
+  should confirm whether the residual report is fully clear. The guarded
+  decision remains `remain_shadow_only`, and product routing remains
   shadow-only.
   Tests-only wedge guarded opt-in also remains
   blocked after `REAL-003` scored `pass@3 = 0/4`; `GS7-008` now materializes
@@ -246,30 +251,12 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-### `MODEL-015`: Add visible-balance attribute-repair shadow-advice evidence
-
-- Status: active
-- Owner: worker MODEL-015, assigned on 2026-05-19.
-- Scope: `j3/transition_action_scoring.py`, focused tests in
-  `tests/test_transition_action_scoring.py`, optional concise evidence doc
-  under `docs/MODEL_015_*`, and plan updates.
-- Acceptance: add narrow shadow-advice evidence that ranks the passing
-  `change_attribute amount_cents -> balance_cents` candidate for
-  `greenshot_5_subset/visible_balance_attribute_decoys` ahead of same-location
-  failing decoys `available_cents` and `pending_cents`, using local public
-  API/test-name evidence for visible balance behavior; prove direct replay
-  top-ranks the passing candidate; keep product routing shadow-only.
-- Guardrails: do not edit product routing, matrix manifests, candidate
-  generation, ranker routing, guarded-trial policy, local-knowledge records,
-  materializer code, or `plans/strategy.md`; avoid broad attribute-repair
-  scoring without source or candidate-after semantic evidence.
-- Expected tests: `pytest tests/test_transition_action_scoring.py -q`,
-  focused residual/advice replay for `visible_balance_attribute_decoys`,
-  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+No active worker tasks are currently recorded.
 
 ## Ready Queue
 
-No ready worker tasks are currently recorded while `MODEL-015` is active.
+1. `TRANS-016`: rerun expanded standard transition residual evidence after
+   `MODEL-015`.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
@@ -289,6 +276,35 @@ Review before assigning more work if:
 - the next useful task is unclear
 
 ## Recently Completed
+
+### `MODEL-015`: Add visible-balance attribute-repair shadow-advice evidence
+
+- Status: completed by worker MODEL-015 on 2026-05-19.
+- Result: added narrow V1/advice scorer evidence for
+  `AttributeError`-driven visible-balance attribute repair. A
+  `change_attribute` candidate is promoted only when the missing attribute
+  matches the failed access, the hinted file and symbol line up, public
+  `visible_balance` context is present, and the public test name points to the
+  replacement attribute. Same-location `available_cents` and `pending_cents`
+  decoys are demoted only when a visible-balance match exists in the group.
+  Product routing remains shadow-only.
+- Commit: pending.
+- Push: pending.
+- Tests: `python -m py_compile j3/transition_action_scoring.py
+  tests/test_transition_action_scoring.py` -> passed; `pytest
+  tests/test_transition_action_scoring.py -q` -> 33 passed; direct replay over
+  `/tmp/j3-trans-015-expanded-standard-after-model014/suite/greenshot_5_subset/candidate-outcomes.jsonl`
+  for `visible_balance_attribute_decoys` -> rank 1 passing
+  `change_attribute amount_cents -> balance_cents` scored
+  `3.220000000000`, rank 2 failing `available_cents` scored
+  `1.470000000000`, rank 3 failing `pending_cents` scored
+  `1.470000000000`; `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check` -> passed.
+- Recommended next: `TRANS-016`, a focused expanded-standard matrix/residual
+  rerun after `MODEL-015` to confirm whether
+  `visible_balance_attribute_decoys` leaves the residual report.
+- Blockers: none for the visible-balance attribute-repair slice; broad
+  attribute-repair scoring remains intentionally out of scope.
 
 ### `TRANS-015`: Rerun expanded standard residual evidence after MODEL-014
 

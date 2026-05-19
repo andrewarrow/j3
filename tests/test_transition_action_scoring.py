@@ -1174,6 +1174,68 @@ def test_future_scorer_prefers_symbol_aligned_signature_propagation() -> None:
     assert propagation_score["score"] > unrelated_score["score"]
 
 
+def test_future_scorer_prefers_visible_balance_attribute_repair() -> None:
+    groups = build_transition_action_choice_groups(
+        [
+            _visible_balance_attribute_candidate_row(
+                rank_index=1,
+                replacement="available_cents",
+                passed=False,
+            ),
+            _visible_balance_attribute_candidate_row(
+                rank_index=2,
+                replacement="balance_cents",
+                passed=True,
+            ),
+            _visible_balance_attribute_candidate_row(
+                rank_index=3,
+                replacement="pending_cents",
+                passed=False,
+            ),
+        ],
+        embedding_dim=8,
+    )
+
+    ranked = rank_transition_action_candidates(groups[0])
+    available_score = score_transition_action_candidate(
+        groups[0]["candidates"][0],
+        group=groups[0],
+    )
+    balance_score = score_transition_action_candidate(
+        groups[0]["candidates"][1],
+        group=groups[0],
+    )
+    pending_score = score_transition_action_candidate(
+        groups[0]["candidates"][2],
+        group=groups[0],
+    )
+
+    assert [candidate["rank_index"] for candidate in ranked] == [2, 1, 3]
+    assert (
+        balance_score["features"]["attribute_repair_missing_attribute_from_matches_hint"]
+        == 1.0
+    )
+    assert (
+        balance_score["features"]["attribute_repair_to_matches_visible_balance_intent"]
+        == 1.0
+    )
+    assert (
+        balance_score["features"]["attribute_repair_visible_balance_match"] == 1.0
+    )
+    assert (
+        available_score["features"]["attribute_repair_visible_balance_match"] == 0.0
+    )
+    assert (
+        available_score["features"][
+            "change_attribute_decoy_competes_with_visible_balance_match"
+        ]
+        == 1.0
+    )
+    assert pending_score["features"]["attribute_repair_visible_balance_match"] == 0.0
+    assert balance_score["score"] > available_score["score"]
+    assert balance_score["score"] > pending_score["score"]
+
+
 def test_baseline_orders_are_stable_and_distinct() -> None:
     group = build_transition_action_choice_groups(
         _fixture_candidate_rows(),
@@ -2295,6 +2357,98 @@ def _signature_propagation_candidate_row(
         "overlapping_candidate_ranks": [],
         "equivalent_passing_candidate_ranks": [],
         "overlapping_passing_candidate_ranks": [],
+    }
+
+
+def _visible_balance_attribute_candidate_row(
+    *,
+    rank_index: int,
+    replacement: str,
+    passed: bool,
+) -> dict[str, object]:
+    return {
+        "task": "visible_balance_attribute_decoys",
+        "task_family": "attribute_repair",
+        "source_type": "handcrafted",
+        "split": "validation",
+        "language": "python",
+        "phase": "ranked",
+        "repair_plan_id": "plan-visible-balance-attribute-repair",
+        "file_path": "shop/accounts.py",
+        "action": "change_attribute",
+        "symbol": "account_balance",
+        "start_line": 12,
+        "end_line": 12,
+        "node_kind": "Attribute",
+        "params": {"from": "amount_cents", "to": replacement},
+        "reason": f"try attribute {replacement}",
+        "model_score": 0.0,
+        "failure_hint_score": 152.0,
+        "ranker_score": None,
+        "target_context": {
+            "callee_count": 0,
+            "caller_count": 1,
+            "qualified_symbol": "shop.accounts.account_balance",
+            "role": "helper",
+            "upstream_callers": [{"distance": 1, "symbol": "visible_balance"}],
+        },
+        "before_source": (
+            "from dataclasses import dataclass\n\n"
+            "@dataclass\n"
+            "class Account:\n"
+            "    available_cents: int\n"
+            "    balance_cents: int\n"
+            "    pending_cents: int\n\n"
+            "def account_balance(account: Account) -> int:\n"
+            "    return account.amount_cents\n"
+        ),
+        "patched_source": (
+            "from dataclasses import dataclass\n\n"
+            "@dataclass\n"
+            "class Account:\n"
+            "    available_cents: int\n"
+            "    balance_cents: int\n"
+            "    pending_cents: int\n\n"
+            "def account_balance(account: Account) -> int:\n"
+            f"    return account.{replacement}\n"
+        ),
+        "passed": passed,
+        "preferred": passed,
+        "rank_index": rank_index,
+        "first_passing_index": 2,
+        "is_first_pass": passed and rank_index == 2,
+        "passing_candidates": 1,
+        "failure_hints": [
+            {
+                "asserted_mapping_keys": [],
+                "assertion_diff_lines": [],
+                "assertions": [],
+                "exception_type": "AttributeError",
+                "expected_strings": [],
+                "function_names": ["Account", "account_balance", "visible_balance"],
+                "missing_attributes": ["amount_cents"],
+                "missing_keys": [],
+                "missing_modules": [],
+                "missing_names": [],
+                "nodeid": "tests/test_shop.py::test_visible_balance_uses_balance_cents",
+                "source_files": ["shop/accounts.py", "shop/api.py"],
+                "summary": "AttributeError: Account has no amount_cents",
+                "traceback_locations": [
+                    {"exception_type": None, "file_path": "tests/test_shop.py", "line": 44},
+                    {"exception_type": None, "file_path": "shop/api.py", "line": 35},
+                    {
+                        "exception_type": "AttributeError",
+                        "file_path": "shop/accounts.py",
+                        "line": 12,
+                    },
+                ],
+                "type_error_names": [],
+            }
+        ],
+        "equivalent_candidate_ranks": [],
+        "overlapping_candidate_ranks": [rank for rank in (1, 2, 3) if rank != rank_index],
+        "equivalent_passing_candidate_ranks": [],
+        "overlapping_passing_candidate_ranks": [] if passed else [2],
     }
 
 

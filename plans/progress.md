@@ -7089,3 +7089,34 @@ meaningful work. Do not replace this file with a daily reset.
   candidates where only `amount_cents -> balance_cents` passes.
 - Blockers: none for `MODEL-015`; broad attribute-repair scoring remains
   under-specified without source or candidate-after semantic evidence.
+
+### 2026-05-19 - MODEL-015 - Visible-balance attribute-repair shadow-advice evidence
+
+- Owner: worker MODEL-015.
+- Files changed: `j3/transition_action_scoring.py`,
+  `tests/test_transition_action_scoring.py`, `plans/active.md`,
+  `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `python -m py_compile j3/transition_action_scoring.py
+  tests/test_transition_action_scoring.py` -> passed; `pytest
+  tests/test_transition_action_scoring.py -q` -> 33 passed; direct replay over
+  `/tmp/j3-trans-015-expanded-standard-after-model014/suite/greenshot_5_subset/candidate-outcomes.jsonl`
+  for `visible_balance_attribute_decoys` -> rank 1 passing
+  `change_attribute amount_cents -> balance_cents` scored
+  `3.220000000000`, rank 2 failing `available_cents` scored
+  `1.470000000000`, rank 3 failing `pending_cents` scored
+  `1.470000000000`; `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check` -> passed.
+- Result: added narrow V1/advice evidence for the final GreenShot-5
+  shadow-advice-only residual. The scorer promotes `balance_cents` only when
+  the AttributeError missing attribute, hinted file/symbol, public
+  `visible_balance` context, and public test-name replacement intent all line
+  up; same-location `available_cents` and `pending_cents` decoys are demoted
+  only when that matching candidate exists. Product routing remains
+  shadow-only.
+- Commit: pending.
+- Push: pending.
+- Next: run `TRANS-016`, an expanded-standard matrix/residual replay after
+  `MODEL-015`, to confirm whether `visible_balance_attribute_decoys` leaves
+  the residual report and to refresh the guarded decision.
+- Blockers: none for the visible-balance attribute-repair slice; broad
+  attribute-repair scoring remains intentionally out of scope.

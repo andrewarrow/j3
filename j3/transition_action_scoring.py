@@ -84,6 +84,10 @@ def score_transition_action_candidate(
         - 0.55 * features[
             "rename_symbol_call_site_decoy_competes_with_signature_propagation"
         ]
+        + 1.30 * features["attribute_repair_visible_balance_match"]
+        - 0.45 * features[
+            "change_attribute_decoy_competes_with_visible_balance_match"
+        ]
         + 1.20 * features["failure_hint_file_match"]
         - 0.75 * features["failure_hint_file_mismatch"]
         + 1.00 * features["failure_hint_symbol_match"]
@@ -1087,6 +1091,17 @@ _SIGNATURE_PROPAGATION_FEATURE_NAMES = (
     "rename_symbol_call_site_decoy_competes_with_signature_propagation",
 )
 
+_ATTRIBUTE_REPAIR_FEATURE_NAMES = (
+    "attribute_repair_evidence_available",
+    "attribute_repair_missing_attribute_from_matches_hint",
+    "attribute_repair_visible_balance_context_available",
+    "attribute_repair_to_matches_visible_balance_intent",
+    "attribute_repair_file_match",
+    "attribute_repair_symbol_match",
+    "attribute_repair_visible_balance_match",
+    "change_attribute_decoy_competes_with_visible_balance_match",
+)
+
 _BOUNDARY_OPERATOR_ACTION_KINDS = {"change_operator", "modify_condition"}
 _LITERAL_ACTION_KINDS = {"change_literal", "change_return_value"}
 _MODULE_CONSTANT_ACTION_KIND = "change_module_constant"
@@ -1646,6 +1661,173 @@ def _signature_propagation_features(
         ] = 1.0
 
     return features
+
+
+def _attribute_repair_features(
+    candidate: Mapping[str, object],
+    *,
+    action_kind: str,
+    params: Mapping[str, object],
+    failure_hints: Sequence[object],
+    group: Mapping[str, object] | None,
+) -> dict[str, float]:
+    features = {name: 0.0 for name in _ATTRIBUTE_REPAIR_FEATURE_NAMES}
+    if action_kind != "change_attribute":
+        return features
+
+    missing_attributes = _attribute_error_missing_attribute_hints(failure_hints)
+    original = params.get("from")
+    replacement = params.get("to")
+    if (
+        not isinstance(original, str)
+        or not isinstance(replacement, str)
+        or original not in missing_attributes
+    ):
+        return features
+
+    features["attribute_repair_evidence_available"] = 1.0
+    features["attribute_repair_missing_attribute_from_matches_hint"] = 1.0
+    if _attribute_context_names_visible_balance(candidate, failure_hints):
+        features["attribute_repair_visible_balance_context_available"] = 1.0
+    if _attribute_matches_visible_balance_test_intent(replacement, failure_hints):
+        features["attribute_repair_to_matches_visible_balance_intent"] = 1.0
+    if _candidate_matches_hint_source_file(candidate, failure_hints):
+        features["attribute_repair_file_match"] = 1.0
+    if _candidate_matches_hint_function(candidate, failure_hints):
+        features["attribute_repair_symbol_match"] = 1.0
+
+    if (
+        features["attribute_repair_visible_balance_context_available"] > 0.0
+        and features["attribute_repair_to_matches_visible_balance_intent"] > 0.0
+        and features["attribute_repair_file_match"] > 0.0
+        and features["attribute_repair_symbol_match"] > 0.0
+    ):
+        features["attribute_repair_visible_balance_match"] = 1.0
+    elif _change_attribute_decoy_competes_with_visible_balance_match(
+        candidate,
+        group=group,
+    ):
+        features["change_attribute_decoy_competes_with_visible_balance_match"] = 1.0
+
+    return features
+
+
+def _attribute_error_missing_attribute_hints(
+    failure_hints: Sequence[object],
+) -> set[str]:
+    names: set[str] = set()
+    for raw_hint in failure_hints:
+        hint = _mapping(raw_hint)
+        if hint.get("exception_type") != "AttributeError":
+            continue
+        names.update(
+            str(name)
+            for name in _list(hint.get("missing_attributes"))
+            if isinstance(name, str) and name
+        )
+    return names
+
+
+def _attribute_context_names_visible_balance(
+    candidate: Mapping[str, object],
+    failure_hints: Sequence[object],
+) -> bool:
+    nodeid_mentions_visible_balance = False
+    function_or_caller_mentions_visible_balance = False
+    action = _mapping(candidate.get("action"))
+    target_context = _mapping(candidate.get("target_context"))
+
+    for raw_hint in failure_hints:
+        hint = _mapping(raw_hint)
+        nodeid = hint.get("nodeid")
+        if isinstance(nodeid, str) and _text_mentions_visible_balance(nodeid):
+            nodeid_mentions_visible_balance = True
+        for name in _list(hint.get("function_names")):
+            if isinstance(name, str) and name == "visible_balance":
+                function_or_caller_mentions_visible_balance = True
+
+    for caller in _list(target_context.get("upstream_callers")):
+        caller_record = _mapping(caller)
+        if caller_record.get("symbol") == "visible_balance":
+            function_or_caller_mentions_visible_balance = True
+
+    return (
+        nodeid_mentions_visible_balance
+        and function_or_caller_mentions_visible_balance
+        and action.get("symbol") == "account_balance"
+    )
+
+
+def _attribute_matches_visible_balance_test_intent(
+    attribute_name: str,
+    failure_hints: Sequence[object],
+) -> bool:
+    attribute_tokens = _word_tokens(attribute_name)
+    if not attribute_tokens:
+        return False
+    for raw_hint in failure_hints:
+        hint = _mapping(raw_hint)
+        nodeid = hint.get("nodeid")
+        if not isinstance(nodeid, str) or not _text_mentions_visible_balance(nodeid):
+            continue
+        nodeid_tokens = _word_tokens(nodeid)
+        if attribute_tokens <= nodeid_tokens:
+            return True
+    return False
+
+
+def _text_mentions_visible_balance(text: str) -> bool:
+    tokens = _word_tokens(text)
+    return {"visible", "balance"} <= tokens
+
+
+def _change_attribute_decoy_competes_with_visible_balance_match(
+    candidate: Mapping[str, object],
+    *,
+    group: Mapping[str, object] | None,
+) -> bool:
+    signature = _change_attribute_signature(candidate)
+    if group is None or signature is None:
+        return False
+    for raw_other in _list(group.get("candidates")):
+        other = _mapping(raw_other)
+        if other is candidate or _change_attribute_signature(other) != signature:
+            continue
+        other_action = _mapping(other.get("action"))
+        if other_action.get("kind") != "change_attribute":
+            continue
+        other_validation = _mapping(other.get("validation"))
+        other_hints = _list(other_validation.get("failure_hints"))
+        other_features = _attribute_repair_features(
+            other,
+            action_kind="change_attribute",
+            params=_mapping(other_action.get("params")),
+            failure_hints=other_hints,
+            group=None,
+        )
+        if other_features["attribute_repair_visible_balance_match"] > 0.0:
+            return True
+    return False
+
+
+def _change_attribute_signature(
+    candidate: Mapping[str, object],
+) -> tuple[object, ...] | None:
+    action = _mapping(candidate.get("action"))
+    if action.get("kind") != "change_attribute":
+        return None
+    params = _mapping(action.get("params"))
+    original = params.get("from")
+    if not isinstance(original, str) or not original:
+        return None
+    return (
+        action.get("file_path"),
+        action.get("symbol"),
+        action.get("node_kind"),
+        action.get("start_line"),
+        action.get("end_line"),
+        original,
+    )
 
 
 def _type_error_name_hints(failure_hints: Sequence[object]) -> set[str]:
@@ -2238,6 +2420,13 @@ def _candidate_score_features(
         failure_hints=failure_hints,
         group=group,
     )
+    attribute_repair_features = _attribute_repair_features(
+        candidate,
+        action_kind=action_kind,
+        params=params,
+        failure_hints=failure_hints,
+        group=group,
+    )
     ranker_score = _score_value(scores.get("ranker_score"))
     model_score = _score_value(scores.get("model_score"))
     failure_hint_score = _score_value(scores.get("failure_hint_score"))
@@ -2280,6 +2469,7 @@ def _candidate_score_features(
         **guard_features,
         **missing_import_features,
         **signature_propagation_features,
+        **attribute_repair_features,
     }
 
 

@@ -930,7 +930,7 @@ Long-term target:
 
 ### MODEL-015: Add visible-balance attribute-repair shadow-advice evidence
 
-- Status: active
+- Status: done
 - Owner: worker MODEL-015, assigned on 2026-05-19.
 - Why: after `TRANS-015`, the only remaining residual-report example is
   `greenshot_5_subset/visible_balance_attribute_decoys`. It is a
@@ -954,6 +954,32 @@ Long-term target:
   and three same-location `change_attribute` candidates with identical
   failure-hint scores. Avoid broad attribute-repair scoring without source or
   candidate-after semantic evidence.
+- Completion note: added narrow V1/advice features for AttributeError
+  visible-balance attribute repair. Direct replay over the `TRANS-015`
+  artifact now ranks the passing `amount_cents -> balance_cents`
+  `change_attribute` candidate first at `3.220000000000`, ahead of the failing
+  `available_cents` and `pending_cents` decoys at `1.470000000000`. Product
+  routing remains shadow-only. Recommended next bounded task: `TRANS-016`.
+
+### TRANS-016: Rerun expanded standard residual evidence after MODEL-015
+
+- Status: ready
+- Why: `MODEL-015` directly replayed the final shadow-advice-only residual,
+  but the standard evidence bundle should confirm whether
+  `visible_balance_attribute_decoys` leaves the residual report and whether
+  suite gates and guarded decision remain unchanged.
+- Write scope: generated artifacts under `/tmp/j3-trans-016-*`, one concise
+  evidence doc under `docs/TRANS_016_*`, and plan updates. Do not edit scorer
+  code, product routing, matrix manifests, guarded-trial policy, candidate
+  generation, local-knowledge records, materializer code, or `plans/strategy.md`.
+- Acceptance: rerun the expanded standard transition matrix after `MODEL-015`,
+  verify checksums, generate the residual report and guarded-trial decision,
+  record whether residual-report examples are now empty, and keep product
+  routing shadow-only unless a separate coordinator-approved guarded task
+  changes that stance.
+- Tests: `run-transition-shadow-matrix`, checksum verification,
+  `report-transition-residuals --matrix`, `decide-transition-guarded-trial`,
+  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
 
 ## Workstream E: Repo State, Actions, And Models
 

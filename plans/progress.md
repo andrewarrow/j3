@@ -4846,7 +4846,8 @@ meaningful work. Do not replace this file with a daily reset.
   production routing or V3 product-gate changes. The next bounded step is an
   evidence-only rerun of `greenshot_6_subset` to compare against `TRANS-007`
   before any full standard matrix expansion.
-- Commit: pending.
-- Push: pending.
-- Next: dispatch `TRANS-008` after plan verification.
+- Commit: 94147ba.
+- Push: succeeded.
+- Next: worker Darwin (`019e3e4c-03ab-7250-95ed-6fd817a88f05`) is running
+  `TRANS-008`.
 - Blockers: none.

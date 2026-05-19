@@ -5578,3 +5578,27 @@ meaningful work. Do not replace this file with a daily reset.
   `docs/MAT_019_*`, optional copied JSONL artifact under `/tmp`, and plan
   updates. Do not edit materializer code or tests.
 - Blockers: none.
+
+### 2026-05-19 - MAT-019 - Constrained source/test coverage reconciliation
+
+- Owner: worker Codex.
+- Files changed:
+  `docs/MAT_019_CONSTRAINED_SOURCE_TEST_COVERAGE_RECONCILIATION_2026-05-19.md`,
+  `docs/MAT_019_CONSTRAINED_SOURCE_TEST_COVERAGE_RECONCILIATION_2026-05-19.jsonl`,
+  `plans/active.md`, `plans/backlog.md`, and `plans/progress.md`.
+- Tests: JSONL parse check -> 10 records loaded; `pytest
+  tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check` ->
+  passed.
+- Result: reconciled the constrained source/test materialization panel before
+  assigning another implementation row. `MAT-008` (`requests-7427`) and
+  `MAT-009` (`pytest-14475`) already cover two original MAT-007 held-out
+  constrained rows, reducing the held-out constrained remainder from 7 to 5:
+  `click-3434`, `click-3420`, `click-3364`, `requests-7433`, and
+  `requests-7328`. DATA-029 `pytest-14466` and DATA-035 `scrapy-7351` remain
+  validated reference rows outside the held-out count. The stale MAT-018 next
+  recommendation naming `requests-7427` and `pytest-14475` is corrected.
+- Commit: pending worker commit.
+- Push: pending.
+- Next: assign `MAT-020` for `psf/requests#7433`, with `requests-7328` as the
+  compact alternate if setup or target selection blocks.
+- Blockers: none.

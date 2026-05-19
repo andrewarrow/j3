@@ -3186,7 +3186,7 @@ Long-term target:
 
 ### MAT-019: Reconcile constrained source/test materialization coverage
 
-- Status: active
+- Status: done
 - Why: `MAT-018` correctly closed the original `general_typed_builder` bucket,
   but its recommended constrained next row was stale: `psf/requests#7427` and
   the alternate `pytest-dev/pytest#14475` were already materialized and
@@ -3205,14 +3205,53 @@ Long-term target:
   with a reason.
 - Tests: JSONL parse check if a JSONL artifact is written,
   `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+- Completion note: reconciled the constrained source/test panel before the
+  next implementation row. `MAT-008` (`requests-7427`) and `MAT-009`
+  (`pytest-14475`) already cover two original MAT-007 held-out constrained
+  rows, so the constrained held-out remainder is 5 rows:
+  `click-3434`, `click-3420`, `click-3364`, `requests-7433`, and
+  `requests-7328`. DATA-029 `pytest-14466` and DATA-035 `scrapy-7351` remain
+  validated reference rows outside the held-out count. The stale MAT-018
+  recommendation naming `requests-7427` and `pytest-14475` is corrected; the
+  next recommended implementation row is `psf/requests#7433`, with
+  `requests-7328` as the compact alternate. Artifacts:
+  `docs/MAT_019_CONSTRAINED_SOURCE_TEST_COVERAGE_RECONCILIATION_2026-05-19.md`,
+  `docs/MAT_019_CONSTRAINED_SOURCE_TEST_COVERAGE_RECONCILIATION_2026-05-19.jsonl`,
+  and
+  `/tmp/j3-mat-019-constrained-source-test-coverage/MAT_019_CONSTRAINED_SOURCE_TEST_COVERAGE_RECONCILIATION_2026-05-19.jsonl`.
+
+### MAT-020: Held-out requests stream-wrapper source/test candidate
+
+- Status: ready
+- Why: MAT-019 identified `psf/requests#7433` as the smallest genuinely
+  uncovered constrained source/test row after removing the already-covered
+  `requests-7427` and `pytest-14475` rows. It is compact enough for one
+  bounded implementation pass while still testing a new local data-flow
+  predicate rather than another domain-boundary or scanner fix.
+- Write scope: held-out source-region candidate materializer extensions and
+  focused tests as needed, optional `docs/MAT_020_*`, generated artifacts
+  under `/tmp`, and plan updates. Avoid transition scoring, issue/PR ranking,
+  validation-policy, local-knowledge, matrix manifests, and unrelated
+  materializer families.
+- Acceptance: attempt `psf/requests#7433` using reusable source-region and
+  pytest insertion action records, not a PR-named action kind. Determine and
+  record the pinned base ref, accepted changed files, validation command,
+  mutation scope, candidate-after diff/AST metadata, accepted-diff comparison,
+  and live validation result. If target selection, repo setup, source-region
+  materialization, pytest insertion, or validation blocks, record the exact
+  blocker. Keep `requests-7328` as the compact alternate for a later task if
+  this row blocks.
+- Tests: focused source-region candidate tests, JSON/report checks if added,
+  `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and live
+  focused validation when materialized.
 
 ## Next Recommended Queue
 
 Start with these unless fresh evidence changes the order:
 
-1. Finish `MAT-019` constrained-source coverage reconciliation so the next
-   implementation row is not a duplicate of `MAT-008` or `MAT-009`.
-2. Assign the next genuinely uncovered constrained-source/test row identified
-   by `MAT-019`.
+1. Assign `MAT-020` for `psf/requests#7433`, the next genuinely uncovered
+   constrained source/test row identified by MAT-019.
+2. Keep `requests-7328` as the compact alternate if `requests-7433` exposes
+   a setup or target-selection blocker.
 3. Separately decide whether to pursue the `TRANS-012` shadow-advice-only
    residual examples; product transition routing remains shadow-only.

@@ -124,23 +124,25 @@ This is the live coordinator board. Keep it current and compact.
   panel: all seven original MAT-007 `general_typed_builder` rows are now
   accounted for, with four pure typed-builder rows, one broader general-AST row,
   one filesystem-idiom row, and one helper-extraction/call-replacement row.
-  Remaining non-materialized MAT-007 counts are
+  `MAT-019` then reconciled the constrained source/test panel: MAT-008
+  (`requests-7427`) and MAT-009 (`pytest-14475`) already cover two of the
+  original seven constrained held-out rows, while DATA-029 and DATA-035 remain
+  validated reference rows outside the held-out count. Remaining
+  non-materialized MAT-007 counts are now
   `current_structured_action = 4`, `general_typed_builder = 0`,
-  `repo_convention_builder = 4`, `constrained_local_generator = 7`, and
+  `repo_convention_builder = 4`, `constrained_local_generator = 5`, and
   `not_currently_expressible = 2`.
 
 ## Active Tasks
 
-- `MAT-019`: assigned to reconcile the constrained source/test materialization
-  coverage panel before any new constrained implementation row. Account for
-  already-completed `MAT-008` (`psf/requests#7427`) and `MAT-009`
-  (`pytest-dev/pytest#14475`) plus DATA reference rows, correct the stale
-  `MAT-018` next-row recommendation, and identify the next genuinely
-  uncovered constrained-source/test row.
+No active worker task is currently assigned.
 
 ## Ready Queue
 
-No ready worker task is currently queued while `MAT-019` is active.
+- `MAT-020`: implement the next genuinely uncovered constrained source/test
+  row, `psf/requests#7433`, using reusable source-region and pytest insertion
+  action records. Keep `requests-7328` as the compact alternate if
+  `requests-7433` exposes a setup or target-selection blocker.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
@@ -165,6 +167,20 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `MAT-019`: reconciled constrained source/test materialization coverage before
+  the next implementation row. `requests-7427` and `pytest-14475` are already
+  materialized/live-validated held-out constrained rows from `MAT-008` and
+  `MAT-009`, so the MAT-007 constrained held-out remainder is 5 rows:
+  `click-3434`, `click-3420`, `click-3364`, `requests-7433`, and
+  `requests-7328`. DATA-029 `pytest-14466` and DATA-035 `scrapy-7351` remain
+  validated reference rows and are not counted as held-out wins. The stale
+  MAT-018 next recommendation naming `requests-7427`/`pytest-14475` is
+  corrected; the next recommended row is `psf/requests#7433`, with
+  `requests-7328` as the compact alternate. Artifacts:
+  `docs/MAT_019_CONSTRAINED_SOURCE_TEST_COVERAGE_RECONCILIATION_2026-05-19.md`,
+  `docs/MAT_019_CONSTRAINED_SOURCE_TEST_COVERAGE_RECONCILIATION_2026-05-19.jsonl`,
+  and
+  `/tmp/j3-mat-019-constrained-source-test-coverage/MAT_019_CONSTRAINED_SOURCE_TEST_COVERAGE_RECONCILIATION_2026-05-19.jsonl`.
 - `MAT-018`: refreshed the real PR materialization coverage panel after
   `MAT-014` through `MAT-017`. All seven original MAT-007
   `general_typed_builder` rows are now accounted for: four pure typed-builder
@@ -174,9 +190,11 @@ Review before assigning more work if:
   (`click-3430`). Remaining non-materialized MAT-007 counts are
   `current_structured_action = 4`, `general_typed_builder = 0`,
   `repo_convention_builder = 4`, `constrained_local_generator = 7`, and
-  `not_currently_expressible = 2`. The next recommended materialization
-  workstream is constrained source/test generation, starting with
-  `psf/requests#7427` and `pytest-dev/pytest#14475` as the alternate.
+  `not_currently_expressible = 2`. MAT-019 later corrected the constrained
+  count to 5 after accounting for MAT-008/MAT-009. The next recommended
+  materialization workstream is constrained source/test generation, starting with
+  `psf/requests#7427` and `pytest-dev/pytest#14475` as the alternate; MAT-019
+  supersedes those specific next-row names because both were already covered.
   Artifacts:
   `docs/MAT_018_REAL_PR_MATERIALIZATION_COVERAGE_REFRESH_2026-05-19.md`,
   `docs/MAT_018_REAL_PR_MATERIALIZATION_COVERAGE_REFRESH_2026-05-19.jsonl`,

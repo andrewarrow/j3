@@ -284,8 +284,9 @@ Review before assigning more work if:
   full replay. Guarded decision remains `remain_shadow_only` because not all
   suite gates are `ready_for_guarded_opt_in`; product routing remains
   shadow-only.
-- Commit: pending.
-- Push: pending.
+- Commit: `b0304b1` documentation/evidence; push-result metadata recorded in
+  follow-up planning update.
+- Push: documentation/evidence commit pushed successfully to `origin/main`.
 - Tests: matrix run -> passed; checksum verification -> passed;
   residual report generation -> 3 examples; guarded decision ->
   `remain_shadow_only`; `pytest tests/test_plan_consistency.py -q` ->

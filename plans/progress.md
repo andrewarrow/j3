@@ -6657,3 +6657,23 @@ meaningful work. Do not replace this file with a daily reset.
   evidence in `j3/transition_action_scoring.py` with focused scorer tests;
   product routing remains shadow-only.
 - Blockers: none.
+
+### 2026-05-19 - Coordinator Review And Dispatch - MODEL-011
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, and
+  `plans/progress.md`.
+- Tests: parsed
+  `/tmp/j3-model-010-trans-012-shadow-advice-triage/residual-examples.json`
+  -> 8 rows; counted
+  `/tmp/j3-model-010-trans-012-shadow-advice-triage/residual-examples.jsonl`
+  -> 8 rows; `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check` -> passed.
+- Result: reviewed and closed `MODEL-010`. The recommended next bounded task
+  is `MODEL-011`, a shadow-advice/V1 scorer slice for the four tail-index
+  literal-decoy residuals where advisory scoring prefers failing `0 -> -2`
+  literal candidates over passing `seq[-1]` `replace_expr` candidates.
+  Product routing remains shadow-only.
+- Next: dispatch worker `MODEL-011` with write scope limited to scorer logic,
+  focused scorer tests, optional evidence doc, and plan updates.
+- Blockers: none.

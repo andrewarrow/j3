@@ -230,14 +230,29 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-No active worker tasks are currently recorded.
+### `MODEL-011`: Add shadow-advice tail-index decoy scoring evidence
+
+- Status: active
+- Owner: worker MODEL-011, assigned on 2026-05-19.
+- Scope: `j3/transition_action_scoring.py`, focused scorer tests in
+  `tests/test_transition_action_scoring.py`, optional saved-artifact replay or
+  evidence doc under `docs/MODEL_011_*`, and plan updates.
+- Acceptance: add a shadow-advice/V1 scoring feature or prior that promotes
+  passing tail-index `replace_expr` candidates over nearby negative literal
+  decoys for `last_item`, `final_score_tail`, `last_order_id_tail`, and
+  `newest_event_tail`; prove with focused tests or saved-artifact replay that
+  the advisory scorer no longer selects the failing literal candidate for
+  those four examples; keep product routing shadow-only.
+- Guardrails: do not edit product routing, matrix manifests, candidate
+  generation, ranker routing, guarded-trial policy, or local-knowledge records.
+- Expected tests: `pytest tests/test_transition_action_scoring.py -q`,
+  focused residual/advice replay for the four tail-index examples if available
+  or locally added, `pytest tests/test_plan_consistency.py -q`, and
+  `git diff --check`.
 
 ## Ready Queue
 
-- `MODEL-011`: Add shadow-advice tail-index decoy scoring evidence. Scope:
-  `j3/transition_action_scoring.py`, focused scorer tests, optional
-  saved-artifact replay/evidence doc, and plan updates. Product routing remains
-  shadow-only.
+No ready worker tasks are currently recorded while `MODEL-011` is active.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 

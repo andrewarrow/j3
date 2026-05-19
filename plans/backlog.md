@@ -632,7 +632,8 @@ Long-term target:
 
 ### MODEL-011: Add shadow-advice tail-index decoy scoring evidence
 
-- Status: ready
+- Status: active
+- Owner: worker MODEL-011, assigned on 2026-05-19.
 - Why: `MODEL-010` found the largest coherent `TRANS-012` shadow-advice
   residual cluster: four tail-index examples where the advisory scorer prefers
   failing nearby negative literal candidates over passing tail-access

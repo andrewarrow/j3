@@ -235,24 +235,43 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-No active worker tasks are currently recorded pending coordinator review after
-`MODEL-013`.
+### `TRANS-014`: Rerun expanded standard residual evidence after MODEL-013
+
+- Status: active
+- Owner: worker TRANS-014, assigned on 2026-05-19.
+- Scope: generated outputs under `/tmp/j3-trans-014-expanded-standard-after-model013`,
+  a concise evidence doc under `docs/TRANS_014_*`, and plan updates.
+- Acceptance: rerun the expanded standard transition matrix after
+  `MODEL-013`, regenerate matrix residual, advice/residual, checksum, and
+  guarded-decision evidence, compare against `TRANS-013`, and record whether
+  `receipt_label_nested_module_import_decoy` is gone and which semantic API
+  residuals remain.
+- Guardrails: do not edit scorer logic, candidate generation, product routing,
+  matrix manifests, guarded-trial policy, local-knowledge records,
+  materializer code, or `plans/strategy.md`.
+- Expected tests: `python cli.py run-transition-shadow-matrix --matrix
+  examples/transition_shadow_matrix.json --out
+  /tmp/j3-trans-014-expanded-standard-after-model013`, checksum verification,
+  `python cli.py report-transition-residuals --matrix
+  /tmp/j3-trans-014-expanded-standard-after-model013`, `python cli.py
+  decide-transition-guarded-trial --matrix
+  /tmp/j3-trans-014-expanded-standard-after-model013`,
+  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
 
 ## Ready Queue
 
-No ready worker tasks are currently recorded pending coordinator review after
-`MODEL-013`.
+No ready worker tasks are currently recorded while `TRANS-014` is active.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
 ## Paused Or Blocked
 
-- Two GreenShot-5 shadow-advice-only examples remain as separate semantic API
-  scorer work after the `MODEL-013` direct saved-artifact replay:
+- Two GreenShot-5 shadow-advice-only examples are expected to remain as
+  separate semantic API scorer work after the `MODEL-013` direct
+  saved-artifact replay:
   `profile_signature_propagation` and `visible_balance_attribute_decoys`.
-  They are not matrix residuals or suite-gate failures, and likely need
-  separate candidate-after/source semantic evidence unless a coordinator
-  review finds a shared source/candidate-after signal.
+  They are not matrix residuals or suite-gate failures, and `TRANS-014` should
+  confirm the full replay shape before implementation continues.
 - `MODEL-002`: superseded by bounded scorer subtasks in the backlog, beginning
   with `MODEL-003` through `MODEL-009`.
 
@@ -279,20 +298,18 @@ Review before assigning more work if:
   `greenshot_5_subset/receipt_label_nested_module_import_decoy` ahead of the
   wrong top-level `shop.money` import and nearby `100 -> 98` literal decoy.
   Product routing remains shadow-only.
-- Commit: implementation/evidence commit in this worker iteration; final hash
-  reported in worker handoff.
-- Push: pending at time of plan edit; final push result reported in worker
-  handoff.
+- Commit: `8fc6d77` implementation/evidence.
+- Push: implementation/evidence commit pushed successfully to `origin/main`.
 - Tests: `python -m py_compile j3/transition_action_scoring.py
   tests/test_transition_action_scoring.py` -> passed; `pytest
   tests/test_transition_action_scoring.py -q` -> 31 passed; direct
   `/tmp/j3-trans-013-expanded-standard-after-model012/suite/greenshot_5_subset/candidate-outcomes.jsonl`
   replay for `receipt_label_nested_module_import_decoy` -> passing nested
-  `add_import` ranked first.
-- Recommended next: coordinator should review `MODEL-013`, then choose between
-  a small residual replay to confirm the remaining report shape or separate
-  scorer tasks for `profile_signature_propagation` and
-  `visible_balance_attribute_decoys`.
+  `add_import` ranked first; `pytest tests/test_plan_consistency.py -q` ->
+  6 passed; `git diff --check` -> passed.
+- Recommended next: `TRANS-014`, a post-`MODEL-013` expanded-standard
+  residual replay before separate scorer tasks for
+  `profile_signature_propagation` and `visible_balance_attribute_decoys`.
 - Blockers: none for the nested-package missing-import slice.
 
 ### `TRANS-013`: Rerun expanded standard residual evidence after advice fixes

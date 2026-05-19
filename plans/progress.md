@@ -6867,12 +6867,34 @@ meaningful work. Do not replace this file with a daily reset.
   missing symbol. The direct replay now selects the passing nested import
   ahead of the wrong top-level import and nearby literal decoy. Product
   routing remains shadow-only.
-- Commit: implementation/evidence commit in this worker iteration; final hash
-  reported in worker handoff.
-- Push: pending at time of plan edit; final push result reported in worker
-  handoff.
-- Next: coordinator should review `MODEL-013`, then either run a small
-  post-MODEL-013 residual replay or dispatch separate semantic scorer tasks
-  for `profile_signature_propagation` and
-  `visible_balance_attribute_decoys`.
+- Commit: `8fc6d77` implementation/evidence.
+- Push: implementation/evidence commit pushed successfully to `origin/main`.
+- Next: coordinator should review `MODEL-013`, then dispatch `TRANS-014` to
+  confirm the remaining report shape before separate semantic scorer tasks for
+  `profile_signature_propagation` and `visible_balance_attribute_decoys`.
 - Blockers: none for the nested-package missing-import slice.
+
+### 2026-05-19 - Coordinator Review And Dispatch - TRANS-014
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, and
+  `plans/progress.md`.
+- Tests: `python -m py_compile j3/transition_action_scoring.py
+  tests/test_transition_action_scoring.py` -> passed; `pytest
+  tests/test_transition_action_scoring.py -q` -> 31 passed; direct replay over
+  `/tmp/j3-trans-013-expanded-standard-after-model012/suite/greenshot_5_subset/candidate-outcomes.jsonl`
+  for `receipt_label_nested_module_import_decoy` -> rank 1 passing
+  `add_import` from `shop.reports.money` scored `3.533400378231`, rank 2
+  failing `add_import` from `shop.money` scored `1.633400378231`, rank 3
+  failing `change_literal` scored `1.630000000000`;
+  `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check`
+  -> passed.
+- Result: reviewed and closed `MODEL-013`. The nested-package missing-import
+  scorer change is narrow to `NameError` missing-name groups with local group
+  evidence tying a nested module path to the missing symbol. Product routing
+  remains shadow-only.
+- Next: dispatch `TRANS-014` to rerun the expanded standard matrix and
+  residual evidence after `MODEL-013`, confirm the missing-import residual is
+  gone in full replay, and decide whether the next bounded semantic API task
+  should target signature propagation or attribute repair.
+- Blockers: none.

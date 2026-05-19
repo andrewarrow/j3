@@ -819,6 +819,29 @@ Long-term target:
   ahead of the wrong top-level `shop.money` import and the nearby
   `100 -> 98` literal decoy. Product routing remains shadow-only.
 
+### TRANS-014: Rerun expanded standard residual evidence after MODEL-013
+
+- Status: active
+- Owner: worker TRANS-014, assigned on 2026-05-19.
+- Why: `MODEL-013` directly replayed the nested-package missing-import
+  residual, but the committed expanded-standard residual evidence still
+  predates that scorer change. A fresh evidence run should confirm whether
+  `receipt_label_nested_module_import_decoy` leaves the residual report and
+  whether only the signature-propagation and attribute-repair semantic API
+  examples remain.
+- Write scope: generated outputs under
+  `/tmp/j3-trans-014-expanded-standard-after-model013`, a concise evidence doc
+  under `docs/TRANS_014_*`, and plan updates. Do not edit scorer logic,
+  candidate generation, product routing, matrix manifests, guarded-trial
+  policy, local-knowledge records, materializer code, or `plans/strategy.md`.
+- Acceptance: rerun the expanded standard matrix, regenerate residual and
+  guarded-decision evidence, compare against `TRANS-013`, prove whether the
+  nested missing-import residual is resolved in full replay, and identify the
+  next bounded semantic API scorer task or blocker.
+- Tests: `run-transition-shadow-matrix`, checksum verification,
+  `report-transition-residuals --matrix`, `decide-transition-guarded-trial`,
+  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+
 ## Workstream E: Repo State, Actions, And Models
 
 ### REPO-001: Summarize repo-state encoder coverage

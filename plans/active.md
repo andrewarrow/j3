@@ -230,31 +230,14 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-### `MODEL-010`: Triage TRANS-012 shadow-advice residuals
-
-- Status: active
-- Owner: worker MODEL-010.
-- Started: 2026-05-19.
-- Write scope: focused residual evidence docs, generated artifacts under
-  `/tmp`, and plan updates. Avoid scorer implementation, ranker changes,
-  candidate generation, product routing, matrix manifests, local-knowledge
-  records, materializer code, and `plans/strategy.md`.
-- Acceptance: parse the `TRANS-012` residual report and suite scorer/advice
-  artifacts; record all eight `shadow_scorer_top_candidate_failed` examples
-  with suite, task, family, production top, shadow-scorer top, V3 comparison,
-  passing candidate ranks, missing-feature labels, and whether the example is
-  new relative to `TRANS-011`. Group them into coherent implementation
-  clusters and recommend exactly one bounded next scorer/advice task with
-  write scope and focused tests. If artifacts are missing or contradictory,
-  record the exact blocker instead of inventing a scorer task.
-- Expected tests: parse any JSON/JSONL artifact written, `pytest
-  tests/test_plan_consistency.py -q`, and `git diff --check`.
+No active worker tasks are currently recorded.
 
 ## Ready Queue
 
-No queued worker task remains while `MODEL-010` is active. After it completes,
-dispatch the recommended bounded scorer/advice slice if the evidence is
-consistent; product routing remains shadow-only.
+- `MODEL-011`: Add shadow-advice tail-index decoy scoring evidence. Scope:
+  `j3/transition_action_scoring.py`, focused scorer tests, optional
+  saved-artifact replay/evidence doc, and plan updates. Product routing remains
+  shadow-only.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
@@ -278,6 +261,27 @@ Review before assigning more work if:
 - the next useful task is unclear
 
 ## Recently Completed
+
+### `MODEL-010`: Triage TRANS-012 shadow-advice residuals
+
+- Status: completed by worker MODEL-010 on 2026-05-19.
+- Result: extracted all eight `TRANS-012`
+  `shadow_scorer_top_candidate_failed` examples, compared them with
+  `TRANS-011`, and grouped them into four clusters. Seven examples carry over
+  from `TRANS-011`; the new example is
+  `greenshot_5_subset/receipt_label_nested_module_import_decoy`. The largest
+  coherent cluster is four tail-index literal decoys where the advisory scorer
+  prefers `0 -> -2` literal changes over passing `seq[-1]` expression
+  replacements. Product routing remains shadow-only.
+- Commit: pending.
+- Push: pending.
+- Artifacts:
+  `docs/MODEL_010_TRANS_012_SHADOW_ADVICE_TRIAGE_2026-05-19.md`,
+  `/tmp/j3-model-010-trans-012-shadow-advice-triage/residual-examples.json`,
+  and
+  `/tmp/j3-model-010-trans-012-shadow-advice-triage/residual-examples.jsonl`.
+- Recommended next: `MODEL-011`, a bounded shadow-advice scorer slice for
+  tail-index decoy scoring evidence.
 
 ### `MAT-036`: Current-action closure coverage refresh
 

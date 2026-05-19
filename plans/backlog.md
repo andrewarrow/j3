@@ -601,7 +601,7 @@ Long-term target:
 
 ### MODEL-010: Triage TRANS-012 shadow-advice residuals
 
-- Status: active
+- Status: done
 - Why: after the MAT-007 materializable panel closed, the next ready
   non-materializer workstream is the separate `TRANS-012`
   shadow-advice-only residual set. These examples are not matrix residuals or
@@ -621,6 +621,38 @@ Long-term target:
   record the exact blocker instead of inventing a scorer task.
 - Tests: parse any JSON/JSONL artifact written,
   `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+- Completion note: extracted all eight `TRANS-012`
+  `shadow_scorer_top_candidate_failed` examples, compared them with
+  `TRANS-011`, and grouped them into four implementation clusters. Seven
+  examples carry over from `TRANS-011`; the new example is
+  `greenshot_5_subset/receipt_label_nested_module_import_decoy`. The largest
+  coherent cluster is four tail-index literal decoys where the advisory scorer
+  prefers failing `0 -> -2` literal candidates over passing `seq[-1]`
+  expression replacements. Recommended next bounded task: `MODEL-011`.
+
+### MODEL-011: Add shadow-advice tail-index decoy scoring evidence
+
+- Status: ready
+- Why: `MODEL-010` found the largest coherent `TRANS-012` shadow-advice
+  residual cluster: four tail-index examples where the advisory scorer prefers
+  failing nearby negative literal candidates over passing tail-access
+  `replace_expr` candidates. V3 and production already choose the passing
+  `seq[-1]` candidate at rank 1 for all four examples.
+- Write scope: `j3/transition_action_scoring.py`, focused tests in
+  `tests/test_transition_action_scoring.py`, optional saved-artifact replay or
+  evidence doc under `docs/MODEL_011_*`, and plan updates. Do not edit product
+  routing, matrix manifests, candidate generation, ranker routing,
+  guarded-trial policy, or local-knowledge records.
+- Acceptance: add a shadow-advice/V1 scoring feature or prior that promotes
+  passing tail-index `replace_expr` candidates over nearby negative literal
+  decoys for `last_item`, `final_score_tail`, `last_order_id_tail`, and
+  `newest_event_tail`; prove with focused tests or a saved-artifact replay that
+  the advisory scorer no longer selects the failing literal candidate for those
+  four examples; keep product routing shadow-only.
+- Tests: `pytest tests/test_transition_action_scoring.py -q`, focused
+  residual/advice replay for the four tail-index examples if available or
+  locally added, `pytest tests/test_plan_consistency.py -q`, and
+  `git diff --check`.
 
 ### TRANS-011: Rerun standard matrix after MODEL-009
 

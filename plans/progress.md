@@ -6628,3 +6628,31 @@ meaningful work. Do not replace this file with a daily reset.
   `TRANS-012` `shadow_scorer_top_candidate_failed` examples and recommend one
   bounded scorer/advice implementation slice.
 - Blockers: none.
+
+### 2026-05-19 - MODEL-010 - TRANS-012 shadow-advice residual triage
+
+- Owner: worker MODEL-010.
+- Files changed:
+  `docs/MODEL_010_TRANS_012_SHADOW_ADVICE_TRIAGE_2026-05-19.md`,
+  `plans/active.md`, `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `python -m json.tool
+  /tmp/j3-model-010-trans-012-shadow-advice-triage/residual-examples.json`
+  plus JSONL parse -> 8 rows; `pytest tests/test_plan_consistency.py -q` ->
+  6 passed; `git diff --check` -> passed.
+- Result: extracted all eight `TRANS-012`
+  `shadow_scorer_top_candidate_failed` examples, compared them with
+  `TRANS-011`, and grouped them into four implementation clusters. Seven
+  examples carry over from `TRANS-011`; the new example is
+  `greenshot_5_subset/receipt_label_nested_module_import_decoy`. The largest
+  coherent cluster is four tail-index literal decoys where the advisory scorer
+  prefers failing `0 -> -2` literal candidates over passing `seq[-1]`
+  expression replacements. Generated triage artifacts are
+  `/tmp/j3-model-010-trans-012-shadow-advice-triage/residual-examples.json`
+  and
+  `/tmp/j3-model-010-trans-012-shadow-advice-triage/residual-examples.jsonl`.
+- Commit: pending.
+- Push: pending.
+- Next: dispatch `MODEL-011` to add shadow-advice tail-index decoy scoring
+  evidence in `j3/transition_action_scoring.py` with focused scorer tests;
+  product routing remains shadow-only.
+- Blockers: none.

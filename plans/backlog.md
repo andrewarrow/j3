@@ -1068,7 +1068,9 @@ Long-term target:
   transition advice and shadow outcomes top-rank the passing
   `amount_cents -> balance_cents` candidate and record `improved`. The guarded
   decision remains `remain_shadow_only` because not all suite gates are
-  `ready_for_guarded_opt_in`; product routing remains shadow-only.
+  `ready_for_guarded_opt_in`; product routing remains shadow-only. Commit
+  `55e6e87` pushed successfully to `origin/main`; completion metadata recorded
+  in follow-up planning commit.
 
 ## Workstream E: Repo State, Actions, And Models
 

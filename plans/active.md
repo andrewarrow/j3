@@ -309,8 +309,9 @@ Review before assigning more work if:
   record the comparison as `improved`. Guarded decision remains
   `remain_shadow_only` because not all suite gates are
   `ready_for_guarded_opt_in`; product routing remains shadow-only.
-- Commit: pending worker commit.
-- Push: pending worker push.
+- Commit: `55e6e87` documentation/evidence.
+- Push: documentation/evidence commit pushed successfully to `origin/main`;
+  completion metadata recorded in follow-up planning commit.
 - Tests: `python cli.py run-transition-shadow-matrix --matrix
   examples/transition_shadow_matrix.json --out
   /tmp/j3-trans-017-expanded-standard-after-model016 --json` -> passed;

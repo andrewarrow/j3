@@ -2589,7 +2589,7 @@ Long-term target:
 
 ### MAT-014: Requests #7437 pure typed-builder materialization probe
 
-- Status: active
+- Status: done
 - Why: MAT-013 recommends `psf/requests#7437` as the next bounded row to test
   whether assignment annotation/type-ignore placement stays in the pure
   typed-builder layer rather than relying on broader `statement_block_replace`.
@@ -2606,10 +2606,17 @@ Long-term target:
   insufficient.
 - Tests: focused typed-builder materializer tests, plan consistency,
   `git diff --check`, and live validation or a recorded validation blocker.
+- Completion note: materialized and live-validated `psf/requests#7437` from
+  base `0b401c76b6e80a4eecf3c690085b2553f6e261ca` to accepted head
+  `dfe9ab8143fb71c72673738f25f0571347226b63`. The candidate changed only
+  `src/requests/models.py`, matched the accepted PR diff after normalization,
+  passed `python -m py_compile src/requests/models.py`, and stayed in the
+  pure typed-builder layer using reusable `type_annotation_update` and
+  `assignment_type_ignore_update` actions without `statement_block_replace`.
 
 ## Next Recommended Queue
 
 Start with these unless fresh evidence changes the order:
 
-1. `MAT-014`: materialize `psf/requests#7437`.
-2. `KNOW-006`: close the h11 import-style knowledge attribution gap.
+1. Review MAT-014 and KNOW-006 results, then dispatch the next bounded ready
+   task.

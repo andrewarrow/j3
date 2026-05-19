@@ -4275,3 +4275,36 @@ meaningful work. Do not replace this file with a daily reset.
 - Next: keep tests-only attribution gates intact while the coordinator chooses
   the next ready task after `MAT-014` or another disjoint slice returns.
 - Blockers: none.
+
+### 2026-05-19 - MAT-014 - Requests #7437 pure typed-builder materialization probe
+
+- Owner: worker Dalton (`019e3dfa-a835-7f91-9d8f-77e6d1fc3ea2`).
+- Files changed: `j3/heldout_typed_builder_candidate.py`,
+  `tests/test_heldout_typed_builder_candidate.py`,
+  `docs/MAT_014_REQUESTS_7437_TYPED_BUILDER_CANDIDATE_2026-05-19.md`,
+  `plans/active.md`, `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `python -m py_compile j3/heldout_typed_builder_candidate.py
+  tests/test_heldout_typed_builder_candidate.py` -> passed; `pytest
+  tests/test_heldout_typed_builder_candidate.py -q` -> 12 passed; live fresh
+  checkout run `python -m j3.heldout_typed_builder_candidate --candidate
+  requests-7437 --repo-path /tmp/j3-mat-014-requests-7437-repo
+  --accepted-diff /tmp/j3-mat-014-requests-7437-final/accepted.diff --out
+  /tmp/j3-mat-014-requests-7437-final/candidate.json --report
+  /tmp/j3-mat-014-requests-7437-final/report.md --diff-out
+  /tmp/j3-mat-014-requests-7437-final/candidate.diff --validate` -> passed;
+  `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check`
+  -> passed.
+- Result: materialized and live-validated `psf/requests#7437` from base
+  `0b401c76b6e80a4eecf3c690085b2553f6e261ca` to accepted head
+  `dfe9ab8143fb71c72673738f25f0571347226b63`. The candidate changed only
+  `src/requests/models.py`, matched the accepted PR diff after normalization,
+  and passed `python -m py_compile src/requests/models.py` in `0.024s`.
+  The row stays in the pure typed-builder layer using reusable
+  `type_annotation_update` and `assignment_type_ignore_update`; no
+  `statement_block_replace` was used.
+- Commit: pending.
+- Push: pending.
+- Next: coordinator should review the MAT-014 and KNOW-006 results, then choose
+  the next bounded ready task from the remaining materialization/ranking
+  blockers.
+- Blockers: none.

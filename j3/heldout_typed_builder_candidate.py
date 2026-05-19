@@ -39,6 +39,9 @@ DEFAULT_CLICK_3396_VALIDATION_COMMAND = (
 CLICK_INTERNAL_UTILS_PATH = "src/click/_utils.py"
 CLICK_CORE_PATH = "src/click/core.py"
 CLICK_PARSER_PATH = "src/click/parser.py"
+DEFAULT_REQUESTS_7437_BASE_REF = "0b401c76b6e80a4eecf3c690085b2553f6e261ca"
+DEFAULT_REQUESTS_7437_HEAD_REF = "dfe9ab8143fb71c72673738f25f0571347226b63"
+DEFAULT_REQUESTS_7437_VALIDATION_COMMAND = "python -m py_compile src/requests/models.py"
 
 
 class HeldoutTypedBuilderCandidateError(ValueError):
@@ -252,6 +255,49 @@ class AssignmentAnnotationUpdateAction:
 
 
 @dataclass(frozen=True, slots=True)
+class AssignmentTypeIgnoreUpdateAction:
+    """Add or update a type-ignore comment for one assignment target."""
+
+    target_file: str
+    assignment_name: str
+    type_ignore_codes: tuple[str, ...]
+    function_name: str
+    class_name: str | None = None
+    kind: str = "assignment_type_ignore_update"
+    schema_version: str = TYPED_ACTION_SCHEMA_VERSION
+    rationale: str | None = None
+
+    def __post_init__(self) -> None:
+        _validate_relative_path(self.target_file)
+        if not self.assignment_name:
+            raise ValueError("assignment_name is required")
+        if not self.type_ignore_codes:
+            raise ValueError("type_ignore_codes are required")
+        if not self.function_name:
+            raise ValueError("function_name is required")
+
+    def to_record(self) -> dict[str, object]:
+        return {
+            "schema_version": self.schema_version,
+            "kind": self.kind,
+            "target": {
+                "file_path": self.target_file,
+                "class_name": self.class_name,
+                "function_name": self.function_name,
+                "assignment_name": self.assignment_name,
+            },
+            "type_ignore_codes": list(self.type_ignore_codes),
+            "constraints": {
+                "must_parse_ast": True,
+                "single_assignment_target": True,
+                "single_line_assignment": True,
+                "assignment_target_must_match_exactly_once": True,
+            },
+            "rationale": self.rationale,
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class FunctionSignatureUpdateAction:
     """Update parameter and return annotations for one function target."""
 
@@ -439,6 +485,7 @@ TypedAction = (
     | TypeAliasUpdateAction
     | ImportMemberRemoveAction
     | AssignmentAnnotationUpdateAction
+    | AssignmentTypeIgnoreUpdateAction
     | FunctionSignatureUpdateAction
     | BooleanConditionInsertAction
     | StatementBlockReplaceAction
@@ -530,6 +577,7 @@ class HeldoutTypedBuilderCandidate:
     mutation_scope: dict[str, object]
     accepted_diff_comparison: dict[str, object]
     validation: dict[str, object]
+    typed_builder_layer_judgment: dict[str, object]
     blockers: list[dict[str, str]]
     residual_labels: list[str]
     zero_hosted_llm_source_judgment: bool = True
@@ -557,6 +605,9 @@ class HeldoutTypedBuilderCandidate:
             "mutation_scope": _json_copy(self.mutation_scope),
             "accepted_diff_comparison": _json_copy(self.accepted_diff_comparison),
             "validation": _json_copy(self.validation),
+            "typed_builder_layer_judgment": _json_copy(
+                self.typed_builder_layer_judgment
+            ),
             "blockers": [dict(blocker) for blocker in self.blockers],
             "residual_labels": list(self.residual_labels),
             "zero_hosted_llm_source_judgment": self.zero_hosted_llm_source_judgment,
@@ -989,6 +1040,77 @@ def build_click_sentinel_parser_spec(
     )
 
 
+def build_requests_response_reason_spec(
+    repo_path: Path,
+    *,
+    base_ref: str = DEFAULT_REQUESTS_7437_BASE_REF,
+    accepted_head_ref: str = DEFAULT_REQUESTS_7437_HEAD_REF,
+    validation_command: str = DEFAULT_REQUESTS_7437_VALIDATION_COMMAND,
+) -> HeldoutTypedBuilderSpec:
+    """Build the held-out requests#7437 Response.reason typing candidate spec."""
+
+    _repo_file(repo_path, REQUESTS_MODELS_PATH)
+    return HeldoutTypedBuilderSpec(
+        candidate_id="mat-014-requests-response-reason-typing",
+        repo_id="psf/requests",
+        repo_url="https://github.com/psf/requests",
+        repo_split="held_out",
+        base_ref=base_ref,
+        accepted_head_ref=accepted_head_ref,
+        reference_pr_url="https://github.com/psf/requests/pull/7437",
+        prompt=(
+            "Tighten Response.reason typing while placing the accepted "
+            "assignment type-ignore without a statement-block replacement."
+        ),
+        target_file=REQUESTS_MODELS_PATH,
+        validation_command=validation_command,
+        allowed_write_paths=(REQUESTS_MODELS_PATH,),
+        typed_actions=(
+            TypeAnnotationUpdateAction(
+                target_file=REQUESTS_MODELS_PATH,
+                class_name="Response",
+                annotations=(("reason", "str"),),
+                rationale="update the class-scope Response.reason annotation",
+            ),
+            AssignmentTypeIgnoreUpdateAction(
+                target_file=REQUESTS_MODELS_PATH,
+                class_name="Response",
+                function_name="__init__",
+                assignment_name="self.reason",
+                type_ignore_codes=("assignment",),
+                rationale=(
+                    "place the accepted assignment type-ignore on the "
+                    "constructor initialization of Response.reason"
+                ),
+            ),
+        ),
+        action_family_reuse_evidence=(
+            {
+                "action_kind": "type_annotation_update",
+                "reusable_parameters": ["target_file", "class_name", "annotations"],
+                "evidence": (
+                    "reuses the MAT-010/MAT-011 class annotation updater for "
+                    "an existing Response attribute annotation"
+                ),
+            },
+            {
+                "action_kind": "assignment_type_ignore_update",
+                "reusable_parameters": [
+                    "target_file",
+                    "class_name",
+                    "function_name",
+                    "assignment_name",
+                    "type_ignore_codes",
+                ],
+                "evidence": (
+                    "places a typed assignment-level ignore by scoped AST "
+                    "target and ignore code, avoiding statement_block_replace"
+                ),
+            },
+        ),
+    )
+
+
 def materialize_heldout_typed_builder_candidate(
     repo_path: Path,
     spec: HeldoutTypedBuilderSpec,
@@ -1138,6 +1260,8 @@ def materialize_heldout_typed_builder_candidate(
         else:
             residual_labels = ["candidate_validation_deferred"]
 
+    typed_builder_layer_judgment = _typed_builder_layer_judgment(spec.typed_actions)
+
     return HeldoutTypedBuilderCandidate(
         candidate_id=spec.candidate_id,
         repo_id=spec.repo_id,
@@ -1159,6 +1283,7 @@ def materialize_heldout_typed_builder_candidate(
         mutation_scope=mutation_scope,
         accepted_diff_comparison=accepted_diff_comparison,
         validation=validation,
+        typed_builder_layer_judgment=typed_builder_layer_judgment,
         blockers=blockers,
         residual_labels=residual_labels,
     )
@@ -1210,6 +1335,10 @@ def render_candidate_report(candidate: HeldoutTypedBuilderCandidate) -> str:
         f"(`{candidate.validation_command}`)",
         f"- Accepted diff normalized match: "
         f"`{comparison.get('normalized_diff_equal')}`",
+        f"- Typed-builder layer: "
+        f"`{candidate.typed_builder_layer_judgment.get('layer')}`",
+        f"- Stays pure typed-builder: "
+        f"`{candidate.typed_builder_layer_judgment.get('stays_pure_typed_builder_layer')}`",
         f"- Zero hosted LLM source judgment: "
         f"`{candidate.zero_hosted_llm_source_judgment}`",
         "",
@@ -1229,6 +1358,22 @@ def render_candidate_report(candidate: HeldoutTypedBuilderCandidate) -> str:
         lines.append("- none")
     lines.append("")
     return "\n".join(lines)
+
+
+def _typed_builder_layer_judgment(actions: Sequence[TypedAction]) -> dict[str, object]:
+    action_kinds = [action.kind for action in actions]
+    uses_statement_block_replace = "statement_block_replace" in action_kinds
+    return {
+        "schema_version": "typed-builder-layer-judgment-v1",
+        "layer": (
+            "general_ast_typed_builder"
+            if uses_statement_block_replace
+            else "pure_typed_builder"
+        ),
+        "stays_pure_typed_builder_layer": not uses_statement_block_replace,
+        "uses_statement_block_replace": uses_statement_block_replace,
+        "action_kinds": action_kinds,
+    }
 
 
 def _apply_typed_action(source: str, action: TypedAction) -> str:
@@ -1275,6 +1420,15 @@ def _apply_typed_action(source: str, action: TypedAction) -> str:
             assignment_name=action.assignment_name,
             annotation=action.annotation,
             value=action.value,
+            class_name=action.class_name,
+            function_name=action.function_name,
+        )
+    if isinstance(action, AssignmentTypeIgnoreUpdateAction):
+        return _ensure_assignment_type_ignore(
+            source,
+            target_file=action.target_file,
+            assignment_name=action.assignment_name,
+            type_ignore_codes=action.type_ignore_codes,
             class_name=action.class_name,
             function_name=action.function_name,
         )
@@ -1556,6 +1710,79 @@ def _ensure_assignment_annotation(
     indent = original[: len(original) - len(original.lstrip())]
     newline = "\n" if original.endswith("\n") else ""
     lines[assignment.lineno - 1] = f"{indent}{replacement}{newline}"
+    patched = "".join(lines)
+    _parse_python(patched, filename=target_file, field="typed_builder")
+    return patched
+
+
+def _ensure_assignment_type_ignore(
+    source: str,
+    *,
+    target_file: str,
+    assignment_name: str,
+    type_ignore_codes: Sequence[str],
+    class_name: str | None,
+    function_name: str,
+) -> str:
+    tree = _parse_python(source, filename=target_file, field="typed_builder")
+    function = _find_scoped_function(
+        tree,
+        class_name=class_name,
+        parent_function_name=None,
+        function_name=function_name,
+    )
+    if function is None or function.end_lineno is None:
+        target = _function_target_label(class_name, None, function_name)
+        raise HeldoutTypedBuilderCandidateError(
+            f"function not found: {target}",
+            blocker={
+                "field": "typed_builder",
+                "reason": "typed_target_not_found",
+                "message": f"function not found: {target}",
+            },
+        )
+
+    matches = [
+        node
+        for node in ast.walk(function)
+        if isinstance(node, ast.Assign | ast.AnnAssign)
+        and _assignment_target_name(node) == assignment_name
+    ]
+    if len(matches) != 1:
+        raise HeldoutTypedBuilderCandidateError(
+            f"assignment target match count was {len(matches)}: {assignment_name}",
+            blocker={
+                "field": "typed_builder",
+                "reason": "assignment_type_ignore_update_blocked",
+                "message": (
+                    "assignment target must match exactly once in function: "
+                    f"{assignment_name}"
+                ),
+            },
+        )
+    assignment = matches[0]
+    if assignment.end_lineno != assignment.lineno:
+        raise HeldoutTypedBuilderCandidateError(
+            f"multi-line assignment type-ignore update is not supported: {assignment_name}",
+            blocker={
+                "field": "typed_builder",
+                "reason": "assignment_type_ignore_update_blocked",
+                "message": (
+                    "multi-line assignment type-ignore update is not supported: "
+                    f"{assignment_name}"
+                ),
+            },
+        )
+
+    lines = source.splitlines(keepends=True)
+    original = lines[assignment.lineno - 1]
+    updated = _append_or_replace_type_ignore(
+        original,
+        type_ignore_codes=type_ignore_codes,
+    )
+    if updated == original:
+        return source
+    lines[assignment.lineno - 1] = updated
     patched = "".join(lines)
     _parse_python(patched, filename=target_file, field="typed_builder")
     return patched
@@ -2071,16 +2298,40 @@ def _find_assignment(
 
 def _assignment_target_name(node: ast.Assign | ast.AnnAssign) -> str | None:
     if isinstance(node, ast.AnnAssign):
-        return node.target.id if isinstance(node.target, ast.Name) else None
+        return _assignment_target_label(node.target)
     if len(node.targets) != 1:
         return None
-    target = node.targets[0]
-    return target.id if isinstance(target, ast.Name) else None
+    return _assignment_target_label(node.targets[0])
+
+
+def _assignment_target_label(target: ast.expr) -> str | None:
+    if isinstance(target, ast.Name):
+        return target.id
+    if isinstance(target, ast.Attribute):
+        return ast.unparse(target)
+    return None
 
 
 def _assignment_value(node: ast.Assign | ast.AnnAssign) -> str | None:
     value = node.value
     return ast.unparse(value) if value is not None else None
+
+
+def _append_or_replace_type_ignore(
+    line: str,
+    *,
+    type_ignore_codes: Sequence[str],
+) -> str:
+    newline = "\n" if line.endswith("\n") else ""
+    body = line[:-1] if newline else line
+    type_ignore = f"# type: ignore[{', '.join(type_ignore_codes)}]"
+    if type_ignore in body:
+        return line
+    if "# type: ignore" in body:
+        body = re.sub(r"# type: ignore(?:\[[^\]]+\])?", type_ignore, body, count=1)
+    else:
+        body = f"{body.rstrip()}  {type_ignore}"
+    return f"{body}{newline}"
 
 
 def _class_scope_annotation_names(class_node: ast.ClassDef) -> set[str]:
@@ -2519,7 +2770,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     parser.add_argument(
         "--candidate",
-        choices=("click-3422", "requests-7441", "click-3396"),
+        choices=("click-3422", "requests-7441", "click-3396", "requests-7437"),
         default="click-3422",
     )
     parser.add_argument("--repo-path", type=Path, required=True)
@@ -2534,6 +2785,8 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.candidate == "click-3396":
         spec = build_click_sentinel_parser_spec(args.repo_path)
+    elif args.candidate == "requests-7437":
+        spec = build_requests_response_reason_spec(args.repo_path)
     elif args.candidate == "requests-7441":
         spec = build_requests_headers_mapping_spec(args.repo_path)
     else:

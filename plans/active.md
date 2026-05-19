@@ -50,26 +50,12 @@ This is the live coordinator board. Keep it current and compact.
   a reusable shadow gate: strict readiness is `blocked`,
   behavior-negative-only readiness is `ranked_shadow_only` with
   `pass@1 = 1.0` and `pass@k = 1.0`, leakage risk is `blocked_high`, and the
-  production decision is `remain_shadow_only`.
+  production decision is `remain_shadow_only`. `MAT-014` materializes and
+  live-validates `psf/requests#7437` in the pure typed-builder layer using
+  reusable `type_annotation_update` and `assignment_type_ignore_update`
+  actions; `statement_block_replace` was not needed.
 
 ## Active Tasks
-
-### `MAT-014`: Requests #7437 pure typed-builder materialization probe
-
-- Status: active
-- Owner: worker Dalton (`019e3dfa-a835-7f91-9d8f-77e6d1fc3ea2`).
-- Write scope: `j3/heldout_typed_builder_candidate.py`,
-  `tests/test_heldout_typed_builder_candidate.py`, optional
-  `docs/MAT_014_*`, generated artifacts under `/tmp`, and task-specific
-  planning updates. Avoid issue/PR ranking, validation-policy, and local
-  knowledge modules.
-- Acceptance: attempt `psf/requests#7437` using reusable typed-builder action
-  records. Record base/head refs, accepted changed files, mutation scope,
-  candidate-after diff/AST metadata, accepted-diff comparison, validation
-  result or exact blocker, and whether the row stays in the pure typed-builder
-  layer. Do not use `statement_block_replace` unless the worker records a
-  precise blocker showing why pure typed-builder action records are
-  insufficient.
 
 ### `MODEL-003`: Penalize add-keyword decoys
 
@@ -87,8 +73,9 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Ready Queue
 
-The active set is at the default parallelism limit. Reassess after `MAT-014`
-or `MODEL-003` returns.
+The active set is below the default parallelism limit after `MAT-014`
+completed. Reassess after `MODEL-003` returns, or dispatch one disjoint ready
+task if the coordinator loop continues before then.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
@@ -112,6 +99,18 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `MAT-014`: materialized and live-validated `psf/requests#7437` from base
+  `0b401c76b6e80a4eecf3c690085b2553f6e261ca` to accepted head
+  `dfe9ab8143fb71c72673738f25f0571347226b63`. The candidate changed only
+  `src/requests/models.py`, matched the accepted PR diff after normalization,
+  and passed `python -m py_compile src/requests/models.py` in `0.024s`. The
+  row stays in the pure typed-builder layer using reusable
+  `type_annotation_update` and `assignment_type_ignore_update`; no
+  `statement_block_replace` was used. Artifacts:
+  `/tmp/j3-mat-014-requests-7437-final/candidate.json`,
+  `/tmp/j3-mat-014-requests-7437-final/report.md`,
+  `/tmp/j3-mat-014-requests-7437-final/candidate.diff`, and
+  `/tmp/j3-mat-014-requests-7437-final/accepted.diff`.
 - `KNOW-006`: added citeable local knowledge for package-relative test import
   style and wired tests-only attribution to cite it. The held-out
   `h11-tests-bytesify-memoryview` row now records `import_style` attribution

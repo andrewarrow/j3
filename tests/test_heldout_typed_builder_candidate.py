@@ -8,6 +8,7 @@ from j3.heldout_typed_builder_candidate import (
     build_click_sentinel_parser_spec,
     build_click_utils_annotation_spec,
     build_requests_headers_mapping_spec,
+    build_requests_response_reason_spec,
     materialize_heldout_typed_builder_candidate,
 )
 
@@ -231,6 +232,111 @@ def test_requests_headers_mapping_validation_command_can_pass(
     assert record["residual_labels"] == ["candidate_validation_passed"]
 
 
+def test_requests_response_reason_spec_stays_pure_typed_builder(
+    tmp_path: Path,
+) -> None:
+    repo = _write_requests_7437_fixture_repo(tmp_path / "requests")
+
+    spec = build_requests_response_reason_spec(repo)
+
+    assert [action.kind for action in spec.typed_actions] == [
+        "type_annotation_update",
+        "assignment_type_ignore_update",
+    ]
+    assert spec.allowed_write_paths == ("src/requests/models.py",)
+    for action in spec.typed_actions:
+        assert "requests" not in action.kind
+        assert "7437" not in action.kind
+        assert action.kind != "statement_block_replace"
+
+
+def test_materializes_requests_response_reason_without_statement_block_replace(
+    tmp_path: Path,
+) -> None:
+    accepted_repo = _write_requests_7437_fixture_repo(tmp_path / "accepted")
+    (accepted_repo / "src" / "requests" / "models.py").write_text(
+        _requests_7437_models_after(),
+        encoding="utf-8",
+    )
+    accepted_diff = tmp_path / "accepted.diff"
+    accepted_diff.write_text(
+        _git_stdout(accepted_repo, "diff", "--", "src/requests/models.py"),
+        encoding="utf-8",
+    )
+
+    repo = _write_requests_7437_fixture_repo(tmp_path / "candidate")
+    candidate = materialize_heldout_typed_builder_candidate(
+        repo,
+        build_requests_response_reason_spec(repo, base_ref=_repo_head(repo)),
+        write=True,
+        validate=False,
+        accepted_diff_path=accepted_diff,
+    )
+    record = candidate.to_record()
+
+    assert record["status"] == "materialized"
+    assert record["residual_labels"] == ["candidate_validation_deferred"]
+    assert record["mutation_scope"]["mode"] == "heldout_typed_builder_one_file"
+    assert record["mutation_scope"]["actual_changed_files"] == [
+        "src/requests/models.py"
+    ]
+    assert record["mutation_scope"]["writes_outside_allowlist"] == []
+    assert record["accepted_diff_comparison"]["accepted_changed_files"] == [
+        "src/requests/models.py"
+    ]
+    assert record["accepted_diff_comparison"]["normalized_diff_equal"] is True
+    assert record["typed_builder_layer_judgment"] == {
+        "schema_version": "typed-builder-layer-judgment-v1",
+        "layer": "pure_typed_builder",
+        "stays_pure_typed_builder_layer": True,
+        "uses_statement_block_replace": False,
+        "action_kinds": [
+            "type_annotation_update",
+            "assignment_type_ignore_update",
+        ],
+    }
+
+    target_after = record["candidate_after"]["target_file"]["candidate_after"]
+    assert target_after["ast_parse_ok"] is True
+    assert target_after["diff_summary"]["changed_line_count"] == 4
+    candidate_diff = record["candidate_after"]["candidate_diff"]
+    assert "-    reason: str | None\n" in candidate_diff
+    assert "+    reason: str\n" in candidate_diff
+    assert "-        self.reason = None\n" in candidate_diff
+    assert "+        self.reason = None  # type: ignore[assignment]\n" in candidate_diff
+    action_kinds = [action["kind"] for action in record["action_records"]]
+    assert "statement_block_replace" not in action_kinds
+
+
+def test_requests_response_reason_validation_command_can_pass(
+    tmp_path: Path,
+) -> None:
+    accepted_repo = _write_requests_7437_fixture_repo(tmp_path / "accepted")
+    (accepted_repo / "src" / "requests" / "models.py").write_text(
+        _requests_7437_models_after(),
+        encoding="utf-8",
+    )
+    accepted_diff = tmp_path / "accepted.diff"
+    accepted_diff.write_text(
+        _git_stdout(accepted_repo, "diff", "--", "src/requests/models.py"),
+        encoding="utf-8",
+    )
+
+    repo = _write_requests_7437_fixture_repo(tmp_path / "candidate")
+    candidate = materialize_heldout_typed_builder_candidate(
+        repo,
+        build_requests_response_reason_spec(repo, base_ref=_repo_head(repo)),
+        write=True,
+        validate=True,
+        accepted_diff_path=accepted_diff,
+    )
+    record = candidate.to_record()
+
+    assert record["status"] == "validated"
+    assert record["validation"]["status"] == "passed"
+    assert record["residual_labels"] == ["candidate_validation_passed"]
+
+
 def test_click_sentinel_parser_spec_uses_general_action_families(
     tmp_path: Path,
 ) -> None:
@@ -439,6 +545,28 @@ def _write_requests_fixture_repo(repo: Path) -> Path:
     )
     (repo / "src" / "requests" / "models.py").write_text(
         _requests_models_before(),
+        encoding="utf-8",
+    )
+    subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+    subprocess.run(["git", "add", "."], cwd=repo, check=True)
+    subprocess.run(
+        ["git", "commit", "-q", "-m", "fixture"],
+        cwd=repo,
+        check=True,
+        env={
+            "GIT_AUTHOR_NAME": "Tester",
+            "GIT_AUTHOR_EMAIL": "tester@example.com",
+            "GIT_COMMITTER_NAME": "Tester",
+            "GIT_COMMITTER_EMAIL": "tester@example.com",
+        },
+    )
+    return repo
+
+
+def _write_requests_7437_fixture_repo(repo: Path) -> Path:
+    (repo / "src" / "requests").mkdir(parents=True)
+    (repo / "src" / "requests" / "models.py").write_text(
+        _requests_7437_models_before(),
         encoding="utf-8",
     )
     subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
@@ -1249,5 +1377,91 @@ def _requests_models_after() -> str:
         class Request(RequestHooksMixin):
             method: str | None
             headers: Mapping[str, str | bytes]
+        '''
+    ).lstrip()
+
+
+def _requests_7437_models_before() -> str:
+    return dedent(
+        '''
+        from __future__ import annotations
+
+        import datetime
+
+
+        def cookiejar_from_dict(value: dict[str, str]) -> object:
+            return object()
+
+
+        class PreparedRequest:
+            pass
+
+
+        class RequestsCookieJar:
+            pass
+
+
+        class Response:
+            url: str
+            encoding: str | None
+            history: list[Response]
+            reason: str | None
+            cookies: RequestsCookieJar
+            elapsed: datetime.timedelta
+            request: PreparedRequest
+
+            def __init__(self) -> None:
+                self.url = ""
+                self.encoding = None
+                self.history = []
+
+                #: Textual reason of responded HTTP Status, e.g. "Not Found" or "OK".
+                self.reason = None
+
+                #: A CookieJar of Cookies the server sent back.
+                self.cookies = cookiejar_from_dict({})
+        '''
+    ).lstrip()
+
+
+def _requests_7437_models_after() -> str:
+    return dedent(
+        '''
+        from __future__ import annotations
+
+        import datetime
+
+
+        def cookiejar_from_dict(value: dict[str, str]) -> object:
+            return object()
+
+
+        class PreparedRequest:
+            pass
+
+
+        class RequestsCookieJar:
+            pass
+
+
+        class Response:
+            url: str
+            encoding: str | None
+            history: list[Response]
+            reason: str
+            cookies: RequestsCookieJar
+            elapsed: datetime.timedelta
+            request: PreparedRequest
+
+            def __init__(self) -> None:
+                self.url = ""
+                self.encoding = None
+                self.history = []
+
+                #: Textual reason of responded HTTP Status, e.g. "Not Found" or "OK".
+                self.reason = None  # type: ignore[assignment]
+
+                #: A CookieJar of Cookies the server sent back.
+                self.cookies = cookiejar_from_dict({})
         '''
     ).lstrip()

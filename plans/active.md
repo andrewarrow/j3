@@ -102,11 +102,12 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-- `TRANS-011` -> worker pending: rerun the full current standard transition
-  shadow matrix after `MODEL-009`, regenerate residual and guarded-decision
-  evidence, and compare against `TRANS-010` before any `TRANS-003` manifest
-  expansion. Scope is evidence only: generated outputs under `/tmp`, optional
-  concise evidence doc, and plan updates. Do not edit
+- `TRANS-011` -> worker Helmholtz
+  (`019e3e7c-69fe-7960-902d-0589bd429b8d`): rerun the full current standard
+  transition shadow matrix after `MODEL-009`, regenerate residual and
+  guarded-decision evidence, and compare against `TRANS-010` before any
+  `TRANS-003` manifest expansion. Scope is evidence only: generated outputs
+  under `/tmp`, optional concise evidence doc, and plan updates. Do not edit
   `examples/transition_shadow_matrix.json` in this slice.
 
 ## Ready Queue

@@ -4534,3 +4534,29 @@ meaningful work. Do not replace this file with a daily reset.
   `TRANS-005`; worker Chandrasekhar
   (`019e3e20-7557-7593-924c-45fbdea6f3b4`) is running `SCALE-003`.
 - Blockers: none.
+
+### 2026-05-19 - SCALE-003 - Durable training manifest schema skeleton
+
+- Owner: worker Chandrasekhar (`019e3e20-7557-7593-924c-45fbdea6f3b4`).
+- Files changed: `j3/training_manifest.py`, `tests/test_training_manifest.py`,
+  `plans/active.md`, `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `python -m py_compile j3/training_manifest.py
+  tests/test_training_manifest.py` -> passed; `pytest
+  tests/test_training_manifest.py -q` -> 27 passed; `pytest
+  tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check` ->
+  passed.
+- Result: added a row-local durable training/eval manifest validator aligned
+  with `docs/TRAINING_DATA_POLICY.md`. The skeleton defines allowed artifact,
+  source, split, redistribution, retention, review, and exclusion classes;
+  validates mandatory common provenance fields plus source-kind fields for
+  repo code, docs, issue/PR rows, candidates, synthetic prompts, validations,
+  teacher labels, and local knowledge; enforces SHA-256 checksum shape and
+  durable-row checksum requirements; requires split/leakage metadata for future
+  overlap checks; and handles excluded scratch rows and local-only durable rows
+  without building datasets.
+- Commit: pending.
+- Push: pending.
+- Next: build a tiny manifest builder/checker over existing reviewed artifacts
+  only after the coordinator chooses a concrete source set and cross-row
+  overlap policy.
+- Blockers: none.

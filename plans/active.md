@@ -67,20 +67,11 @@ This is the live coordinator board. Keep it current and compact.
   - Expected tests: matrix command, residual report, guarded-trial decision,
     checksum verification, `pytest tests/test_plan_consistency.py -q`, and
     `git diff --check`.
-- `SCALE-003`: add durable training manifest schema skeleton.
-  - Owner: worker Chandrasekhar (`019e3e20-7557-7593-924c-45fbdea6f3b4`).
-  - Scope: small manifest schema/validator implementation, focused tests,
-    optional compact example, and plan updates.
-  - Acceptance: machine-readable manifest rows enforce the key `SCALE-002`
-    provenance, checksum, split, redistribution, retention, and exclusion
-    fields needed before model/data work can consume durable rows.
-  - Expected tests: focused manifest tests, `pytest tests/test_plan_consistency.py
-    -q`, and `git diff --check`.
 
 ## Ready Queue
 
-`TRANS-005` and `SCALE-003` are being dispatched. Avoid additional transition
-scorer work until the post-scorer matrix evidence returns.
+`TRANS-005` remains active. Avoid additional transition scorer work until the
+post-scorer matrix evidence returns.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
@@ -104,6 +95,16 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `SCALE-003`: added `j3.training_manifest`, a small durable training/eval
+  manifest row validator aligned with `docs/TRAINING_DATA_POLICY.md`. The
+  schema skeleton defines artifact, source, split, redistribution, retention,
+  review, and exclusion classes; validates common provenance fields,
+  source-kind-specific fields for repo code, docs, issue/PR rows, candidates,
+  synthetic prompts, validations, teacher labels, and local knowledge; enforces
+  SHA-256 checksum shape and durable-row checksum requirements; and requires
+  split/leakage metadata for future overlap checks. Focused tests cover valid
+  rows, missing fields, source-kind errors, invalid classes/checksums, and
+  excluded/local-only handling.
 - `MODEL-005`: added boundary/literal and module-constant evidence to the
   shadow transition scorer. V1/V2/V3 feature surfaces now expose failure-hint
   file, symbol, and target-name alignment; task-family alignment for

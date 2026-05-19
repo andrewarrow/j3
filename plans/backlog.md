@@ -548,7 +548,7 @@ Long-term target:
 
 ### SCALE-003: Add durable training manifest schema skeleton
 
-- Status: active
+- Status: done
 - Why: `SCALE-002` defines the policy, but future training/evaluation work
   needs a machine-checkable manifest contract before consuming durable rows.
 - Write scope: small manifest schema/validator implementation, focused tests,
@@ -558,6 +558,12 @@ Long-term target:
   reasons well enough for a future manifest builder to target.
 - Tests: focused manifest tests, `pytest tests/test_plan_consistency.py -q`,
   and `git diff --check`.
+- Completion note: added `j3.training_manifest` and focused tests for the
+  durable row contract. The skeleton validates policy enums, mandatory common
+  fields, source-kind-specific fields, SHA-256 checksum shape, durable-row
+  checksum requirements, split/leakage metadata, teacher-label split
+  restrictions, and excluded/local-only row handling without building a
+  dataset.
 
 ## Workstream G: Hard Feasibility Proofs
 

@@ -4803,3 +4803,32 @@ meaningful work. Do not replace this file with a daily reset.
 - Next: worker Tesla (`019e3e43-fb3e-7691-a4b4-65313cdebc39`) is running
   `MODEL-007`.
 - Blockers: none.
+
+### 2026-05-19 - MODEL-007 - Mapping-key advice residual
+
+- Owner: worker Tesla (`019e3e43-fb3e-7691-a4b4-65313cdebc39`).
+- Files changed: `j3/transition_action_scoring.py`,
+  `tests/test_transition_action_scoring.py`,
+  `tests/test_transition_scorer_advice.py`, `plans/active.md`,
+  `plans/backlog.md`, and `plans/progress.md`.
+- Tests: new focused scorer/advice residual tests first reproduced the add-key
+  placeholder over existing-key rename failure, then passed after the scorer
+  change; `pytest tests/test_transition_action_scoring.py
+  tests/test_transition_scorer_advice.py -q` -> 29 passed; direct
+  two-candidate replay from the `TRANS-007` candidate outcomes now ranks
+  `[1, 2]`; `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check` -> passed.
+- Result: added deterministic V1/advice scorer features for an existing
+  same-mapping dictionary-key rename to a public missing key and for the
+  competing `None` placeholder add-key decoy. The `project_urls_header_dict_key`
+  shape now prefers `change_dict_key Project_URL -> Project-URL` over
+  `add_dict_key Project-URL = None` using target-context and failure-hint
+  evidence, not preferred labels. Production routing, matrix runner behavior,
+  and V3 product-gate policy remain unchanged and shadow-only.
+- Commit: this commit; final hash reported in worker handoff.
+- Push: to be performed after this committed entry; final result reported in
+  worker handoff.
+- Next: coordinator should assign a targeted `greenshot_6_subset` rerun before
+  considering any full standard matrix expansion, then review remaining
+  residuals.
+- Blockers: none.

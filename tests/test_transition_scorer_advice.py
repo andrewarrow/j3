@@ -208,6 +208,84 @@ def test_ranked_candidates_use_same_mapping_key_value_target_evidence() -> None:
     assert ranked == (value_candidate, key_decoy)
 
 
+def test_advice_prefers_existing_key_rename_over_placeholder_add(tmp_path) -> None:
+    rename_candidate = _patch_candidate(
+        kind=PatchActionKind.CHANGE_DICT_KEY,
+        params={"from": "Project_URL", "to": "Project-URL"},
+        patched_source=(
+            "def project_url_headers(homepage, repository):\n"
+            "    return {'Homepage': homepage, 'Project-URL': repository}\n"
+        ),
+        model_score=0.0,
+        ranker_score=0.0,
+        failure_hint_score=1.0,
+        target_context={
+            "qualified_symbol": "pkgmeta.metadata.project_url_headers",
+            "role": "helper",
+            "dict_key_from": "Project_URL",
+            "dict_key_from_in_same_mapping": True,
+            "dict_key_to": "Project-URL",
+            "dict_literal_key_count": 2,
+            "dict_literal_keys": ["Homepage", "Project_URL"],
+        },
+        file_path="pkgmeta/metadata.py",
+        symbol="project_url_headers",
+        node_kind="Dict",
+    )
+    add_decoy = _patch_candidate(
+        kind=PatchActionKind.ADD_DICT_KEY,
+        params={"key": "Project-URL", "value": None},
+        patched_source=(
+            "def project_url_headers(homepage, repository):\n"
+            "    return {'Homepage': homepage, 'Project_URL': repository, "
+            "'Project-URL': None}\n"
+        ),
+        model_score=0.9137659547000444,
+        ranker_score=0.0,
+        failure_hint_score=0.9,
+        target_context={
+            "qualified_symbol": "pkgmeta.metadata.project_url_headers",
+            "role": "helper",
+        },
+        file_path="pkgmeta/metadata.py",
+        symbol="project_url_headers",
+        node_kind="Dict",
+    )
+    hints = (
+        PytestFailureHint(
+            exception_type="KeyError",
+            missing_keys={"Project-URL"},
+            asserted_mapping_keys={"Project-URL"},
+            function_names={"build_project_urls"},
+        ),
+    )
+
+    advice = build_transition_scorer_advice(
+        repo=tmp_path,
+        test_command=(
+            "python -m pytest "
+            "tests/test_pkgmeta.py::test_project_urls_use_core_metadata_header_name"
+        ),
+        baseline_exit_code=1,
+        candidates=[rename_candidate, add_decoy],
+        selected=rename_candidate,
+        tested_candidates=[rename_candidate, add_decoy],
+        passing_candidates=[rename_candidate],
+        candidate_hints=[hints, hints],
+        first_passing_index=1,
+        context={
+            "task": "project_urls_header_dict_key",
+            "task_family": "mapping_key",
+        },
+    )
+
+    assert advice["mode"] == "shadow"
+    assert advice["decision"] == "shadow_only_not_wired_to_routing"
+    assert advice["scorer_ranked_candidate_ranks"] == [1, 2]
+    assert advice["scorer_top_candidate"]["action"] == "change_dict_key"
+    assert advice["validation_comparison"]["would_have"] == "same"
+
+
 def test_ranked_candidates_use_module_constant_file_and_name_alignment() -> None:
     literal_neighbor = _patch_candidate(
         kind=PatchActionKind.CHANGE_LITERAL,

@@ -25,7 +25,11 @@ This is the live coordinator board. Keep it current and compact.
   examples, no `candidate_generation_gap`, and no
   `candidate_after_unavailable` label. The subset gate is still
   `not_ready_underperforms_existing_rank_order`, so the guarded decision
-  remains `remain_shadow_only` and `TRANS-003` remains blocked.
+  remains `remain_shadow_only` and `TRANS-003` remains blocked. `MODEL-007`
+  fixes the deterministic V1/advice ordering for the
+  `project_urls_header_dict_key` residual in focused tests and direct
+  two-candidate replay, but no matrix rerun has been recorded yet; transition
+  ranking remains shadow-only until follow-up evidence is collected.
   Tests-only wedge guarded opt-in also remains
   blocked after `REAL-003` scored `pass@3 = 0/4`; `GS7-008` now materializes
   and live-validates the `iniconfig` calibration candidate. `REAL-005` extends
@@ -71,15 +75,9 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-- `MODEL-007` -> worker Tesla
-  (`019e3e43-fb3e-7691-a4b4-65313cdebc39`): fix the GreenShot-6 mapping-key
-  advice residual from `TRANS-007`. Scope is deterministic transition
-  scorer/advice ranking only, focused on the `project_urls_header_dict_key`
-  shape where
-  `change_dict_key Project_URL -> Project-URL` should outrank the
-  `add_dict_key Project-URL = None` decoy when public missing-key and
-  same-mapping evidence support a rename. Do not change production routing or
-  V3 product gates in this slice.
+No active worker task is recorded after `MODEL-007`. Coordinator should assign
+the follow-up targeted `greenshot_6_subset` evidence rerun or the next bounded
+transition residual task.
 
 ## Ready Queue
 
@@ -111,6 +109,14 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `MODEL-007`: fixed the GreenShot-6 `project_urls_header_dict_key`
+  deterministic V1/advice residual. The scorer now recognizes a
+  `change_dict_key` candidate that renames an existing same-mapping key to a
+  public missing key and demotes the competing `add_dict_key` `None`
+  placeholder in that shape. Focused action-choice and advice fixtures rank
+  `Project_URL -> Project-URL` above `Project-URL = None`; a direct replay of
+  the two `TRANS-007` candidates now ranks `[1, 2]`. Production routing and
+  V3 product-gate policy remain unchanged and shadow-only.
 - `TRANS-007`: reran targeted post-fix `greenshot_6_subset` transition matrix
   evidence after `TRANS-006`, `ACT-003`, and `ACT-004`. The subset covered 12
   tasks, 12 ranked solved tasks, 9,696 candidates, and 7 held-out groups, with

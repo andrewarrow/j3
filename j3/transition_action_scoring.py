@@ -68,6 +68,10 @@ def score_transition_action_candidate(
         + 0.85 * features["mapping_subscript_from_matches_missing_key"]
         + 0.65 * features["mapping_subscript_to_matches_returned_mapping_key"]
         + 0.75 * features["mapping_dict_key_to_matches_missing_key"]
+        + 2.20 * features["mapping_existing_key_rename_to_missing_key"]
+        - 1.05 * features[
+            "mapping_add_key_placeholder_competes_with_existing_key_rename"
+        ]
         + 1.20 * features["failure_hint_file_match"]
         - 0.75 * features["failure_hint_file_mismatch"]
         + 1.00 * features["failure_hint_symbol_match"]
@@ -1009,6 +1013,8 @@ _MAPPING_TARGET_FEATURE_NAMES = (
     "mapping_subscript_from_matches_missing_key",
     "mapping_subscript_to_matches_returned_mapping_key",
     "mapping_dict_key_to_matches_missing_key",
+    "mapping_existing_key_rename_to_missing_key",
+    "mapping_add_key_placeholder_competes_with_existing_key_rename",
 )
 
 _BOUNDARY_LITERAL_FEATURE_NAMES = (
@@ -1078,6 +1084,12 @@ def _mapping_target_features(
             features["mapping_key_renames_asserted_key_with_value_assertion"] = 1.0
         if isinstance(replacement, str) and replacement in missing_keys:
             features["mapping_dict_key_to_matches_missing_key"] = 1.0
+        if _mapping_existing_key_rename_to_missing_key(
+            params,
+            target_context=target_context,
+            missing_keys=missing_keys,
+        ):
+            features["mapping_existing_key_rename_to_missing_key"] = 1.0
 
     if action_kind == "add_dict_key":
         key = params.get("key")
@@ -1085,6 +1097,20 @@ def _mapping_target_features(
             features["mapping_add_key_matches_missing_key"] = 1.0
         if isinstance(key, str) and key in asserted_keys:
             features["mapping_add_key_matches_asserted_key"] = 1.0
+        if (
+            isinstance(key, str)
+            and key in missing_keys
+            and "value" in params
+            and params.get("value") is None
+            and _same_mapping_has_existing_key_rename_to(
+                candidate,
+                replacement=key,
+                group=group,
+            )
+        ):
+            features[
+                "mapping_add_key_placeholder_competes_with_existing_key_rename"
+            ] = 1.0
 
     if action_kind == "change_subscript_key":
         original = params.get("from")
@@ -1151,6 +1177,63 @@ def _mapping_value_matches_assertion_delta(
     return False
 
 
+def _mapping_existing_key_rename_to_missing_key(
+    params: Mapping[str, object],
+    *,
+    target_context: Mapping[str, object],
+    missing_keys: set[str],
+) -> bool:
+    original = params.get("from", target_context.get("dict_key_from"))
+    replacement = params.get("to", target_context.get("dict_key_to"))
+    return (
+        isinstance(original, str)
+        and isinstance(replacement, str)
+        and replacement in missing_keys
+        and _mapping_key_exists_in_target_context(original, target_context)
+    )
+
+
+def _mapping_key_exists_in_target_context(
+    key: str,
+    target_context: Mapping[str, object],
+) -> bool:
+    context_from = target_context.get("dict_key_from")
+    if (
+        target_context.get("dict_key_from_in_same_mapping") is True
+        and context_from == key
+    ):
+        return True
+    dict_keys = {str(item) for item in _list(target_context.get("dict_literal_keys"))}
+    return key in dict_keys
+
+
+def _same_mapping_has_existing_key_rename_to(
+    candidate: Mapping[str, object],
+    *,
+    replacement: str,
+    group: Mapping[str, object] | None,
+) -> bool:
+    signature = _mapping_target_signature(candidate)
+    if group is None or signature is None:
+        return False
+    for other in _list(group.get("candidates")):
+        other_record = _mapping(other)
+        if _mapping_target_signature(other_record) != signature:
+            continue
+        other_action = _mapping(other_record.get("action"))
+        if other_action.get("kind") != "change_dict_key":
+            continue
+        other_params = _mapping(other_action.get("params"))
+        other_context = _mapping(other_record.get("target_context"))
+        if _mapping_existing_key_rename_to_missing_key(
+            other_params,
+            target_context=other_context,
+            missing_keys={replacement},
+        ):
+            return True
+    return False
+
+
 def _same_json_scalar(left: object, right: object) -> bool:
     return left == right and type(left) is type(right)
 
@@ -1188,6 +1271,9 @@ def _mapping_target_signature(candidate: Mapping[str, object]) -> tuple[object, 
     mapping_name = target_context.get("mapping_name")
     if isinstance(mapping_name, str) and mapping_name:
         return ("mapping_name", file_path, symbol, mapping_name)
+    qualified_symbol = target_context.get("qualified_symbol")
+    if isinstance(qualified_symbol, str) and qualified_symbol:
+        return ("qualified_symbol", file_path, qualified_symbol)
     dict_keys = tuple(
         sorted(str(key) for key in _list(target_context.get("dict_literal_keys")))
     )

@@ -617,7 +617,7 @@ Long-term target:
 
 ### MODEL-007: Fix GreenShot-6 mapping-key advice residual
 
-- Status: active
+- Status: done
 - Why: `TRANS-007` still has a real deterministic shadow-advice residual for
   `greenshot_6_subset/project_urls_header_dict_key`: the passing
   `change_dict_key Project_URL -> Project-URL` candidate is outranked by an
@@ -637,6 +637,12 @@ Long-term target:
   remains unchanged and shadow-only.
 - Tests: focused transition scorer/advice tests,
   `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+- Completion note: added V1/advice scorer features for an existing
+  same-mapping key rename to a public missing key and for the competing
+  `None` placeholder add-key decoy. Focused scorer and advice fixtures now
+  rank `change_dict_key Project_URL -> Project-URL` above
+  `add_dict_key Project-URL = None` without changing production routing or
+  V3 product-gate policy.
 
 ## Workstream F: Long-Term Training Scale
 

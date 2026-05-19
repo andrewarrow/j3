@@ -203,6 +203,77 @@ def test_future_scorer_prefers_add_dict_key_for_missing_same_mapping_key() -> No
     assert add_score["features"]["mapping_same_mapping_competes_with_key_and_value"] == 1.0
 
 
+def test_future_scorer_prefers_existing_key_rename_over_placeholder_add() -> None:
+    failure_hints = [
+        {
+            "exception_type": "KeyError",
+            "missing_keys": ["Project-URL"],
+            "asserted_mapping_keys": ["Project-URL"],
+            "function_names": ["build_project_urls"],
+        }
+    ]
+    groups = build_transition_action_choice_groups(
+        [
+            _mapping_candidate_row(
+                rank_index=1,
+                action="change_dict_key",
+                params={"from": "Project_URL", "to": "Project-URL"},
+                passed=True,
+                failure_hint_score=1.0,
+                failure_hints=failure_hints,
+                target_context={
+                    "qualified_symbol": "pkgmeta.metadata.project_url_headers",
+                    "role": "helper",
+                    "dict_key_from": "Project_URL",
+                    "dict_key_from_in_same_mapping": True,
+                    "dict_key_to": "Project-URL",
+                    "dict_literal_key_count": 2,
+                    "dict_literal_keys": ["Homepage", "Project_URL"],
+                },
+            ),
+            _mapping_candidate_row(
+                rank_index=2,
+                action="add_dict_key",
+                params={"key": "Project-URL", "value": None},
+                passed=False,
+                model_score=0.9137659547000444,
+                failure_hint_score=0.9,
+                failure_hints=failure_hints,
+                target_context={
+                    "qualified_symbol": "pkgmeta.metadata.project_url_headers",
+                    "role": "helper",
+                },
+            ),
+        ],
+        embedding_dim=8,
+    )
+
+    ranked = rank_transition_action_candidates(groups[0])
+    rename_score = score_transition_action_candidate(
+        groups[0]["candidates"][0],
+        group=groups[0],
+    )
+    add_score = score_transition_action_candidate(
+        groups[0]["candidates"][1],
+        group=groups[0],
+    )
+
+    assert [candidate["rank_index"] for candidate in ranked[:2]] == [1, 2]
+    assert (
+        rename_score["features"]["mapping_existing_key_rename_to_missing_key"]
+        == 1.0
+    )
+    assert (
+        add_score["features"][
+            "mapping_add_key_placeholder_competes_with_existing_key_rename"
+        ]
+        == 1.0
+    )
+    assert rename_score["features"]["mapping_same_mapping_competitor_count"] == 1.0
+    assert add_score["features"]["mapping_same_mapping_competitor_count"] == 1.0
+    assert rename_score["score"] > add_score["score"]
+
+
 def test_future_scorer_prefers_returned_mapping_subscript_key_over_add_key_decoy() -> None:
     groups = build_transition_action_choice_groups(
         [

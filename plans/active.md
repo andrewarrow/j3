@@ -105,14 +105,18 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-No active worker task is recorded after `TRANS-011` completion.
+- `TRANS-003`: assigned for cautious manifest expansion. Add a small
+  GreenShot-5 slice to `greenshot_5_subset`:
+  `profile_badge_public_api_signature_propagation`,
+  `return_window_policy_default`,
+  `receipt_label_nested_module_import_decoy`, and
+  `loyalty_points_wrapper_exception_handler`. Keep transition ranking product
+  routing shadow-only; do not change scorer, candidate generation, or guarded
+  trial policy.
 
 ## Ready Queue
 
-- `TRANS-003`: resume coordinator-reviewed standard matrix manifest expansion
-  from zero-matrix-residual `TRANS-011` evidence. Keep product routing
-  shadow-only; the full guarded decision remains `remain_shadow_only` because
-  not all suite gates are `ready_for_guarded_opt_in`.
+No ready worker task is currently queued while `TRANS-003` is active.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 

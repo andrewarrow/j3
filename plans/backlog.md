@@ -348,7 +348,7 @@ Long-term target:
 
 ### TRANS-003: Expand standard matrix manifest cautiously
 
-- Status: ready
+- Status: active
 - Blocker: none for manifest expansion after `TRANS-011`. The full current
   standard matrix now has 0 matrix residuals after `MODEL-009`; guarded
   product routing remains shadow-only because the full guarded decision is
@@ -358,6 +358,13 @@ Long-term target:
   impractical.
 - Write scope: `examples/transition_shadow_matrix.json`, tests, docs.
 - Acceptance: manifest balances runtime, suite diversity, and held-out evidence.
+  The first expansion adds exactly four GreenShot-5 tasks to the existing
+  `greenshot_5_subset` selection:
+  `profile_badge_public_api_signature_propagation`,
+  `return_window_policy_default`,
+  `receipt_label_nested_module_import_decoy`, and
+  `loyalty_points_wrapper_exception_handler`; product routing remains
+  shadow-only.
 - Tests: `pytest tests/test_transition_shadow_matrix.py -q`.
 
 ### TRANS-004: Rerun targeted matrix evidence after subscript-key fix

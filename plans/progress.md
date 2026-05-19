@@ -5217,3 +5217,24 @@ meaningful work. Do not replace this file with a daily reset.
 - Blockers: full standard transition ranking remains shadow-only because
   `greenshot_bugs`, `greenshot_3`, and `greenshot_4` are only
   `ready_for_shadow_mode`, not `ready_for_guarded_opt_in`.
+
+### 2026-05-19 - Coordinator Dispatch - TRANS-003
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, and
+  `plans/progress.md`.
+- Tests: `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check -- plans/active.md plans/backlog.md plans/progress.md` ->
+  passed.
+- Result: selected the first cautious standard matrix manifest expansion from
+  the zero-matrix-residual `TRANS-011` baseline. The slice adds four
+  GreenShot-5 tasks to `greenshot_5_subset`:
+  `profile_badge_public_api_signature_propagation`,
+  `return_window_policy_default`,
+  `receipt_label_nested_module_import_decoy`, and
+  `loyalty_points_wrapper_exception_handler`. This extends suite diversity
+  without changing scorer behavior, candidate generation, product routing, or
+  guarded-trial policy.
+- Next: dispatch a worker to update the manifest, focused manifest tests, docs,
+  and plan notes; then run the expanded matrix as a separate evidence step.
+- Blockers: none.

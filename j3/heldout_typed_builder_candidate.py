@@ -39,6 +39,10 @@ DEFAULT_CLICK_3396_VALIDATION_COMMAND = (
 CLICK_INTERNAL_UTILS_PATH = "src/click/_utils.py"
 CLICK_CORE_PATH = "src/click/core.py"
 CLICK_PARSER_PATH = "src/click/parser.py"
+DEFAULT_CLICK_3430_BASE_REF = "63daae27b124b717cffa8b458e1a0a43525f2b34"
+DEFAULT_CLICK_3430_HEAD_REF = "843879880e94023317699ac2e85e5f7a44fb1b68"
+DEFAULT_CLICK_3430_VALIDATION_COMMAND = "python -m py_compile src/click/core.py"
+CLICK_CHANGES_PATH = "CHANGES.rst"
 DEFAULT_REQUESTS_7437_BASE_REF = "0b401c76b6e80a4eecf3c690085b2553f6e261ca"
 DEFAULT_REQUESTS_7437_HEAD_REF = "dfe9ab8143fb71c72673738f25f0571347226b63"
 DEFAULT_REQUESTS_7437_VALIDATION_COMMAND = "python -m py_compile src/requests/models.py"
@@ -501,6 +505,189 @@ class MakedirsExistOkRewriteAction:
 
 
 @dataclass(frozen=True, slots=True)
+class HelperFunctionInsertAction:
+    """Insert one or more module-level helper functions at an anchored location."""
+
+    target_file: str
+    helper_names: tuple[str, ...]
+    helper_source: str
+    insert_after_function_name: str
+    kind: str = "helper_function_insert"
+    schema_version: str = TYPED_ACTION_SCHEMA_VERSION
+    max_helper_lines: int = 40
+    rationale: str | None = None
+
+    def __post_init__(self) -> None:
+        _validate_relative_path(self.target_file)
+        if not self.helper_names:
+            raise ValueError("helper_names are required")
+        if not self.helper_source.strip():
+            raise ValueError("helper_source is required")
+        if not self.insert_after_function_name:
+            raise ValueError("insert_after_function_name is required")
+        if len(_normalized_block_lines(self.helper_source)) > self.max_helper_lines:
+            raise ValueError("helper source line budget exceeded")
+
+    def to_record(self) -> dict[str, object]:
+        return {
+            "schema_version": self.schema_version,
+            "kind": self.kind,
+            "target": {
+                "file_path": self.target_file,
+                "helper_names": list(self.helper_names),
+                "insert_after_function_name": self.insert_after_function_name,
+            },
+            "helper_source": textwrap.dedent(self.helper_source).strip("\n"),
+            "constraints": {
+                "max_helper_lines": self.max_helper_lines,
+                "must_parse_ast": True,
+                "helper_names_must_match_source": True,
+                "insert_anchor_must_match_once": True,
+            },
+            "rationale": self.rationale,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class LocalAssignmentReplaceAction:
+    """Replace one scoped assignment computation with helper-call statements."""
+
+    target_file: str
+    assignment_name: str
+    replacement_statements: tuple[str, ...]
+    function_name: str
+    old_value: str | None = None
+    class_name: str | None = None
+    parent_function_name: str | None = None
+    remove_prior_assignments: tuple[str, ...] = ()
+    kind: str = "local_assignment_replace"
+    schema_version: str = TYPED_ACTION_SCHEMA_VERSION
+    max_replacement_statements: int = 4
+    rationale: str | None = None
+
+    def __post_init__(self) -> None:
+        _validate_relative_path(self.target_file)
+        if not self.assignment_name:
+            raise ValueError("assignment_name is required")
+        if not self.function_name:
+            raise ValueError("function_name is required")
+        if len(self.replacement_statements) > self.max_replacement_statements:
+            raise ValueError("replacement statement budget exceeded")
+
+    def to_record(self) -> dict[str, object]:
+        return {
+            "schema_version": self.schema_version,
+            "kind": self.kind,
+            "target": {
+                "file_path": self.target_file,
+                "class_name": self.class_name,
+                "parent_function_name": self.parent_function_name,
+                "function_name": self.function_name,
+                "assignment_name": self.assignment_name,
+            },
+            "old_value": self.old_value,
+            "remove_prior_assignments": list(self.remove_prior_assignments),
+            "replacement_statements": list(self.replacement_statements),
+            "constraints": {
+                "max_replacement_statements": self.max_replacement_statements,
+                "must_parse_ast": True,
+                "assignment_must_match_exactly_once": True,
+                "empty_replacement_removes_assignment": True,
+                "removed_assignments_must_be_immediately_before_target": True,
+            },
+            "rationale": self.rationale,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class KeywordArgumentValueReplaceAction:
+    """Replace one scoped keyword argument value with a helper-call expression."""
+
+    target_file: str
+    keyword_name: str
+    old_value: str
+    new_value: str
+    function_name: str
+    class_name: str | None = None
+    parent_function_name: str | None = None
+    kind: str = "keyword_argument_value_replace"
+    schema_version: str = TYPED_ACTION_SCHEMA_VERSION
+    rationale: str | None = None
+
+    def __post_init__(self) -> None:
+        _validate_relative_path(self.target_file)
+        if not self.keyword_name:
+            raise ValueError("keyword_name is required")
+        if not self.old_value:
+            raise ValueError("old_value is required")
+        if not self.new_value:
+            raise ValueError("new_value is required")
+        if not self.function_name:
+            raise ValueError("function_name is required")
+
+    def to_record(self) -> dict[str, object]:
+        return {
+            "schema_version": self.schema_version,
+            "kind": self.kind,
+            "target": {
+                "file_path": self.target_file,
+                "class_name": self.class_name,
+                "parent_function_name": self.parent_function_name,
+                "function_name": self.function_name,
+                "keyword_name": self.keyword_name,
+            },
+            "old_value": self.old_value,
+            "new_value": self.new_value,
+            "constraints": {
+                "must_parse_ast": True,
+                "new_value_must_parse_as_expression": True,
+                "keyword_argument_must_match_exactly_once": True,
+            },
+            "rationale": self.rationale,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class TextBlockInsertAfterAction:
+    """Insert a small text block after a unique literal anchor line."""
+
+    target_file: str
+    anchor_line: str
+    inserted_block: str
+    kind: str = "text_block_insert_after"
+    schema_version: str = TYPED_ACTION_SCHEMA_VERSION
+    max_inserted_lines: int = 12
+    rationale: str | None = None
+
+    def __post_init__(self) -> None:
+        _validate_relative_path(self.target_file)
+        if not self.anchor_line:
+            raise ValueError("anchor_line is required")
+        if not self.inserted_block.strip():
+            raise ValueError("inserted_block is required")
+        if len(_normalized_block_lines(self.inserted_block)) > self.max_inserted_lines:
+            raise ValueError("inserted block line budget exceeded")
+
+    def to_record(self) -> dict[str, object]:
+        return {
+            "schema_version": self.schema_version,
+            "kind": self.kind,
+            "target": {
+                "file_path": self.target_file,
+                "anchor_line": self.anchor_line,
+                "position": "after",
+            },
+            "inserted_block": textwrap.dedent(self.inserted_block).strip("\n"),
+            "constraints": {
+                "max_inserted_lines": self.max_inserted_lines,
+                "anchor_line_must_match_exactly_once": True,
+                "idempotent_if_block_already_present": True,
+            },
+            "rationale": self.rationale,
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class ReturnAnnotationUpdateAction:
     """Add or update one function return annotation."""
 
@@ -548,6 +735,10 @@ TypedAction = (
     | BooleanConditionInsertAction
     | StatementBlockReplaceAction
     | MakedirsExistOkRewriteAction
+    | HelperFunctionInsertAction
+    | LocalAssignmentReplaceAction
+    | KeywordArgumentValueReplaceAction
+    | TextBlockInsertAfterAction
     | ReturnAnnotationUpdateAction
 )
 
@@ -1099,6 +1290,245 @@ def build_click_sentinel_parser_spec(
     )
 
 
+def build_click_deprecated_helpers_spec(
+    repo_path: Path,
+    *,
+    base_ref: str = DEFAULT_CLICK_3430_BASE_REF,
+    accepted_head_ref: str = DEFAULT_CLICK_3430_HEAD_REF,
+    validation_command: str = DEFAULT_CLICK_3430_VALIDATION_COMMAND,
+) -> HeldoutTypedBuilderSpec:
+    """Build the held-out click#3430 deprecated helper extraction spec."""
+
+    _repo_file(repo_path, CLICK_CHANGES_PATH)
+    _repo_file(repo_path, CLICK_CORE_PATH)
+    return HeldoutTypedBuilderSpec(
+        candidate_id="mat-017-click-deprecated-helper-extraction",
+        repo_id="pallets/click",
+        repo_url="https://github.com/pallets/click",
+        repo_split="held_out",
+        base_ref=base_ref,
+        accepted_head_ref=accepted_head_ref,
+        reference_pr_url="https://github.com/pallets/click/pull/3430",
+        prompt=(
+            "Extract shared helpers for deprecated labels and warning suffixes, "
+            "then replace duplicate local call-site computations."
+        ),
+        target_file=CLICK_CORE_PATH,
+        validation_command=validation_command,
+        allowed_write_paths=(CLICK_CHANGES_PATH, CLICK_CORE_PATH),
+        typed_actions=(
+            TextBlockInsertAfterAction(
+                target_file=CLICK_CHANGES_PATH,
+                anchor_line=(
+                    "    :issue:`2809` :pr:`3256`"
+                ),
+                inserted_block="""
+                    -   Fix missing space between option help text and the ``(DEPRECATED)``
+                        label, and localize the option label so it matches the command label.
+                        The label and the ``DeprecationWarning`` reason suffix are now produced
+                        by shared helpers. :pr:`3423`
+                """,
+                rationale=(
+                    "record the accepted changelog entry with an anchored text "
+                    "insert separate from the Python helper extraction"
+                ),
+            ),
+            HelperFunctionInsertAction(
+                target_file=CLICK_CORE_PATH,
+                helper_names=(
+                    "_format_deprecated_label",
+                    "_format_deprecated_suffix",
+                ),
+                insert_after_function_name="_check_nested_chain",
+                helper_source="""
+                    def _format_deprecated_label(deprecated: bool | str) -> str:
+                        \"\"\"Return the parenthesized deprecation label shown in help text.\"\"\"
+                        label = _(\"deprecated\").upper()
+                        if isinstance(deprecated, str):
+                            return f\"({label}: {deprecated})\"
+                        return f\"({label})\"
+
+
+                    def _format_deprecated_suffix(deprecated: bool | str) -> str:
+                        \"\"\"Return the trailing reason for a ``DeprecationWarning`` message,
+                        prefixed with a space, or an empty string when no reason was given.
+                        \"\"\"
+                        if isinstance(deprecated, str):
+                            return f\" {deprecated}\"
+                        return \"\"
+                """,
+                rationale=(
+                    "add reusable module helpers after an existing module-level "
+                    "helper anchor"
+                ),
+            ),
+            LocalAssignmentReplaceAction(
+                target_file=CLICK_CORE_PATH,
+                class_name="Command",
+                function_name="get_short_help_str",
+                assignment_name="text",
+                old_value="f'{_(text)} {deprecated_message}'",
+                remove_prior_assignments=("localised_deprectated", "deprecated_message"),
+                replacement_statements=(
+                    'text = f"{_(text)} {_format_deprecated_label(self.deprecated)}"',
+                ),
+                rationale=(
+                    "replace duplicated deprecated-label local computation "
+                    "with the extracted helper call"
+                ),
+            ),
+            LocalAssignmentReplaceAction(
+                target_file=CLICK_CORE_PATH,
+                class_name="Command",
+                function_name="format_help_text",
+                assignment_name="text",
+                old_value="f'{_(text)} {deprecated_message}'",
+                remove_prior_assignments=("localised_deprectated", "deprecated_message"),
+                replacement_statements=(
+                    'text = f"{_(text)} {_format_deprecated_label(self.deprecated)}"',
+                ),
+                rationale=(
+                    "replace the second duplicated deprecated-label local "
+                    "computation with the same helper call"
+                ),
+            ),
+            LocalAssignmentReplaceAction(
+                target_file=CLICK_CORE_PATH,
+                class_name="Command",
+                function_name="invoke",
+                assignment_name="extra_message",
+                old_value=(
+                    "f' {self.deprecated}' if isinstance(self.deprecated, str) else ''"
+                ),
+                replacement_statements=(),
+                rationale=(
+                    "remove the command warning suffix local expression after "
+                    "the call-site keyword is represented by the shared helper"
+                ),
+            ),
+            KeywordArgumentValueReplaceAction(
+                target_file=CLICK_CORE_PATH,
+                class_name="Command",
+                function_name="invoke",
+                keyword_name="extra_message",
+                old_value="extra_message",
+                new_value="_format_deprecated_suffix(self.deprecated)",
+                rationale=(
+                    "inline the warning suffix helper at the format call-site"
+                ),
+            ),
+            LocalAssignmentReplaceAction(
+                target_file=CLICK_CORE_PATH,
+                class_name="Parameter",
+                function_name="handle_parse_result",
+                assignment_name="extra_message",
+                old_value=(
+                    "f' {self.deprecated}' if isinstance(self.deprecated, str) else ''"
+                ),
+                replacement_statements=(),
+                rationale=(
+                    "remove the parameter warning suffix local expression after "
+                    "the call-site keyword is represented by the shared helper"
+                ),
+            ),
+            KeywordArgumentValueReplaceAction(
+                target_file=CLICK_CORE_PATH,
+                class_name="Parameter",
+                function_name="handle_parse_result",
+                keyword_name="extra_message",
+                old_value="extra_message",
+                new_value="_format_deprecated_suffix(self.deprecated)",
+                rationale=(
+                    "inline the warning suffix helper at the parameter format "
+                    "call-site"
+                ),
+            ),
+            LocalAssignmentReplaceAction(
+                target_file=CLICK_CORE_PATH,
+                class_name="Option",
+                function_name="__init__",
+                assignment_name="help",
+                old_value=(
+                    "f'{help} {deprecated_message}' if help is not None else "
+                    "deprecated_message"
+                ),
+                remove_prior_assignments=("deprecated_message",),
+                replacement_statements=(
+                    "label = _format_deprecated_label(deprecated)",
+                    'help = f"{help} {label}" if help is not None else label',
+                ),
+                rationale=(
+                    "replace option help deprecated-label construction with "
+                    "a shared helper call"
+                ),
+            ),
+        ),
+        action_family_reuse_evidence=(
+            {
+                "action_kind": "helper_function_insert",
+                "reusable_parameters": [
+                    "target_file",
+                    "helper_names",
+                    "insert_after_function_name",
+                    "helper_source",
+                ],
+                "evidence": (
+                    "extracts helper definitions by target file, helper names, "
+                    "insert anchor, and source body; not a click#3430-named "
+                    "patch"
+                ),
+            },
+            {
+                "action_kind": "local_assignment_replace",
+                "reusable_parameters": [
+                    "target_file",
+                    "class_name",
+                    "parent_function_name",
+                    "function_name",
+                    "assignment_name",
+                    "old_value",
+                    "remove_prior_assignments",
+                    "replacement_statements",
+                ],
+                "evidence": (
+                    "replaces repeated scoped local computations with helper "
+                    "call statements while requiring exact AST assignment "
+                    "targets and immediate prior locals"
+                ),
+            },
+            {
+                "action_kind": "keyword_argument_value_replace",
+                "reusable_parameters": [
+                    "target_file",
+                    "class_name",
+                    "parent_function_name",
+                    "function_name",
+                    "keyword_name",
+                    "old_value",
+                    "new_value",
+                ],
+                "evidence": (
+                    "replaces duplicate call-site keyword values by scoped "
+                    "function and keyword name rather than by block patch"
+                ),
+            },
+            {
+                "action_kind": "text_block_insert_after",
+                "reusable_parameters": [
+                    "target_file",
+                    "anchor_line",
+                    "inserted_block",
+                ],
+                "evidence": (
+                    "records the auxiliary changelog edit as an anchored text "
+                    "insert so source helper parity and documentation parity "
+                    "stay separately visible"
+                ),
+            },
+        ),
+    )
+
+
 def build_requests_response_reason_spec(
     repo_path: Path,
     *,
@@ -1567,6 +1997,13 @@ def _typed_builder_layer_judgment(actions: Sequence[TypedAction]) -> dict[str, o
         layer = "pure_typed_builder"
     elif set(action_kinds) == {"makedirs_exist_ok_rewrite"}:
         layer = "filesystem_idiom_builder"
+    elif set(action_kinds) <= {
+        "helper_function_insert",
+        "local_assignment_replace",
+        "keyword_argument_value_replace",
+        "text_block_insert_after",
+    }:
+        layer = "helper_extraction_call_replacement_builder"
     else:
         layer = "mixed_reusable_builder"
     return {
@@ -1673,6 +2110,44 @@ def _apply_typed_action(source: str, action: TypedAction) -> str:
             module_name=action.module_name,
             path_expression=action.path_expression,
             exception_name=action.exception_name,
+        )
+    if isinstance(action, HelperFunctionInsertAction):
+        return _insert_helper_functions(
+            source,
+            target_file=action.target_file,
+            helper_names=action.helper_names,
+            helper_source=action.helper_source,
+            insert_after_function_name=action.insert_after_function_name,
+        )
+    if isinstance(action, LocalAssignmentReplaceAction):
+        return _replace_local_assignment(
+            source,
+            target_file=action.target_file,
+            class_name=action.class_name,
+            parent_function_name=action.parent_function_name,
+            function_name=action.function_name,
+            assignment_name=action.assignment_name,
+            old_value=action.old_value,
+            remove_prior_assignments=action.remove_prior_assignments,
+            replacement_statements=action.replacement_statements,
+        )
+    if isinstance(action, KeywordArgumentValueReplaceAction):
+        return _replace_keyword_argument_value(
+            source,
+            target_file=action.target_file,
+            class_name=action.class_name,
+            parent_function_name=action.parent_function_name,
+            function_name=action.function_name,
+            keyword_name=action.keyword_name,
+            old_value=action.old_value,
+            new_value=action.new_value,
+        )
+    if isinstance(action, TextBlockInsertAfterAction):
+        return _insert_text_block_after(
+            source,
+            target_file=action.target_file,
+            anchor_line=action.anchor_line,
+            inserted_block=action.inserted_block,
         )
     if isinstance(action, ReturnAnnotationUpdateAction):
         return _ensure_return_annotation(
@@ -2389,6 +2864,355 @@ def _rewrite_text_makedirs_exist_ok_idiom(
     return "".join(lines[:start] + [replacement] + lines[start + 4 :])
 
 
+def _insert_helper_functions(
+    source: str,
+    *,
+    target_file: str,
+    helper_names: Sequence[str],
+    helper_source: str,
+    insert_after_function_name: str,
+) -> str:
+    helper_block = textwrap.dedent(helper_source).strip("\n")
+    helper_tree = _parse_python(helper_block + "\n", filename=target_file, field="typed_builder")
+    helper_defs = [
+        node
+        for node in helper_tree.body
+        if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
+    ]
+    helper_def_names = tuple(node.name for node in helper_defs)
+    if helper_def_names != tuple(helper_names) or len(helper_defs) != len(helper_tree.body):
+        raise HeldoutTypedBuilderCandidateError(
+            "helper source must contain exactly the named helper functions",
+            blocker={
+                "field": "typed_builder",
+                "reason": "helper_function_insert_blocked",
+                "message": (
+                    "helper source must contain exactly the helper_names in order"
+                ),
+            },
+        )
+
+    tree = _parse_python(source, filename=target_file, field="typed_builder")
+    existing = {
+        node.name
+        for node in tree.body
+        if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
+    }
+    if set(helper_names) <= existing:
+        return source
+    if existing & set(helper_names):
+        raise HeldoutTypedBuilderCandidateError(
+            "some helper functions already exist",
+            blocker={
+                "field": "typed_builder",
+                "reason": "helper_function_insert_blocked",
+                "message": "helper names are partially present in the target file",
+            },
+        )
+
+    anchors = [
+        node
+        for node in tree.body
+        if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
+        and node.name == insert_after_function_name
+    ]
+    if len(anchors) != 1 or anchors[0].end_lineno is None:
+        raise HeldoutTypedBuilderCandidateError(
+            f"helper insert anchor match count was {len(anchors)}",
+            blocker={
+                "field": "typed_builder",
+                "reason": "helper_function_insert_blocked",
+                "message": "insert_after_function_name must match exactly once",
+            },
+        )
+
+    lines = source.splitlines(keepends=True)
+    insert_index = anchors[0].end_lineno
+    while insert_index < len(lines) and not lines[insert_index].strip():
+        insert_index += 1
+    insertion = helper_block.splitlines(keepends=True)
+    if insertion and not insertion[-1].endswith("\n"):
+        insertion[-1] = f"{insertion[-1]}\n"
+    insertion = insertion + ["\n\n"]
+    patched = "".join(lines[:insert_index] + insertion + lines[insert_index:])
+    _parse_python(patched, filename=target_file, field="typed_builder")
+    return patched
+
+
+def _replace_local_assignment(
+    source: str,
+    *,
+    target_file: str,
+    class_name: str | None,
+    parent_function_name: str | None,
+    function_name: str,
+    assignment_name: str,
+    old_value: str | None,
+    remove_prior_assignments: Sequence[str],
+    replacement_statements: Sequence[str],
+) -> str:
+    for statement in replacement_statements:
+        _parse_statement_block(statement, target_file=target_file)
+    tree = _parse_python(source, filename=target_file, field="typed_builder")
+    function = _find_scoped_function(
+        tree,
+        class_name=class_name,
+        parent_function_name=parent_function_name,
+        function_name=function_name,
+    )
+    if function is None or function.end_lineno is None:
+        target = _function_target_label(class_name, parent_function_name, function_name)
+        raise HeldoutTypedBuilderCandidateError(
+            f"function not found: {target}",
+            blocker={
+                "field": "typed_builder",
+                "reason": "typed_target_not_found",
+                "message": f"function not found: {target}",
+            },
+        )
+
+    matches = _find_assignment_matches_in_bodies(
+        function.body,
+        assignment_name=assignment_name,
+        old_value=old_value,
+    )
+    if len(matches) != 1:
+        raise HeldoutTypedBuilderCandidateError(
+            f"local assignment match count was {len(matches)}: {assignment_name}",
+            blocker={
+                "field": "typed_builder",
+                "reason": "local_assignment_replace_blocked",
+                "message": "assignment target and old value must match exactly once",
+            },
+        )
+    body, index, assignment = matches[0]
+    if assignment.end_lineno is None:
+        raise HeldoutTypedBuilderCandidateError(
+            f"assignment line range is unavailable: {assignment_name}",
+            blocker={
+                "field": "typed_builder",
+                "reason": "local_assignment_replace_blocked",
+                "message": "matched assignment has no end line",
+            },
+        )
+
+    remove_names = tuple(remove_prior_assignments)
+    start_body_index = index
+    if remove_names:
+        start_body_index = index - len(remove_names)
+        if start_body_index < 0:
+            found_names: list[str] = []
+        else:
+            found_names = [
+                _assignment_target_name(node)
+                if isinstance(node, ast.Assign | ast.AnnAssign)
+                else None
+                for node in body[start_body_index:index]
+            ]
+        if tuple(found_names) != remove_names:
+            raise HeldoutTypedBuilderCandidateError(
+                "prior assignment targets did not match",
+                blocker={
+                    "field": "typed_builder",
+                    "reason": "local_assignment_replace_blocked",
+                    "message": (
+                        "remove_prior_assignments must match immediately "
+                        "before the target assignment"
+                    ),
+                },
+            )
+
+    first_statement = body[start_body_index]
+    if first_statement.end_lineno is None:
+        raise HeldoutTypedBuilderCandidateError(
+            "prior assignment line range is unavailable",
+            blocker={
+                "field": "typed_builder",
+                "reason": "local_assignment_replace_blocked",
+                "message": "prior assignment has no end line",
+            },
+        )
+
+    lines = source.splitlines(keepends=True)
+    original = lines[assignment.lineno - 1]
+    indent = original[: len(original) - len(original.lstrip())]
+    replacement = [
+        f"{indent}{statement}\n"
+        for statement in replacement_statements
+    ]
+    patched = "".join(
+        lines[: first_statement.lineno - 1]
+        + replacement
+        + lines[assignment.end_lineno :]
+    )
+    _parse_python(patched, filename=target_file, field="typed_builder")
+    return patched
+
+
+def _replace_keyword_argument_value(
+    source: str,
+    *,
+    target_file: str,
+    class_name: str | None,
+    parent_function_name: str | None,
+    function_name: str,
+    keyword_name: str,
+    old_value: str,
+    new_value: str,
+) -> str:
+    _parse_expression(new_value, target_file=target_file)
+    tree = _parse_python(source, filename=target_file, field="typed_builder")
+    function = _find_scoped_function(
+        tree,
+        class_name=class_name,
+        parent_function_name=parent_function_name,
+        function_name=function_name,
+    )
+    if function is None or function.end_lineno is None:
+        target = _function_target_label(class_name, parent_function_name, function_name)
+        raise HeldoutTypedBuilderCandidateError(
+            f"function not found: {target}",
+            blocker={
+                "field": "typed_builder",
+                "reason": "typed_target_not_found",
+                "message": f"function not found: {target}",
+            },
+        )
+
+    keyword_lines: list[int] = []
+    for node in ast.walk(function):
+        if not isinstance(node, ast.Call):
+            continue
+        for keyword in node.keywords:
+            if keyword.arg != keyword_name:
+                continue
+            if ast.unparse(keyword.value) != old_value:
+                continue
+            lineno = getattr(keyword, "lineno", None)
+            if lineno is not None:
+                keyword_lines.append(lineno)
+    if len(keyword_lines) != 1:
+        raise HeldoutTypedBuilderCandidateError(
+            f"keyword argument match count was {len(keyword_lines)}: {keyword_name}",
+            blocker={
+                "field": "typed_builder",
+                "reason": "keyword_argument_value_replace_blocked",
+                "message": "keyword argument and old value must match exactly once",
+            },
+        )
+
+    lines = source.splitlines(keepends=True)
+    index = keyword_lines[0] - 1
+    pattern = rf"(?P<prefix>\b{re.escape(keyword_name)}\s*=\s*){re.escape(old_value)}(?P<suffix>\s*,?)"
+    replaced, count = re.subn(
+        pattern,
+        rf"\g<prefix>{new_value}\g<suffix>",
+        lines[index],
+        count=1,
+    )
+    if count != 1:
+        raise HeldoutTypedBuilderCandidateError(
+            f"could not update keyword argument line: {keyword_name}",
+            blocker={
+                "field": "typed_builder",
+                "reason": "keyword_argument_value_replace_blocked",
+                "message": f"could not update keyword argument line: {keyword_name}",
+            },
+        )
+    replaced = _expand_single_line_method_call_if_needed(replaced)
+    lines[index] = replaced
+    patched = "".join(lines)
+    _parse_python(patched, filename=target_file, field="typed_builder")
+    return patched
+
+
+def _expand_single_line_method_call_if_needed(line: str) -> str:
+    if len(line.rstrip("\n")) <= 88 or ").format(" not in line:
+        return line
+    match = re.match(
+        r"^(?P<indent>\s*)\)\.format\((?P<arguments>.*)\)(?P<newline>\n?)$",
+        line,
+    )
+    if match is None:
+        return line
+    arguments = _split_simple_call_arguments(match.group("arguments"))
+    if len(arguments) < 2:
+        return line
+    indent = match.group("indent")
+    newline = match.group("newline") or "\n"
+    return "".join(
+        [f"{indent}).format(\n"]
+        + [f"{indent}    {argument},\n" for argument in arguments]
+        + [f"{indent}){newline}"]
+    )
+
+
+def _split_simple_call_arguments(arguments: str) -> list[str]:
+    parts: list[str] = []
+    current: list[str] = []
+    depth = 0
+    in_string: str | None = None
+    escape_next = False
+    for character in arguments:
+        if in_string is not None:
+            current.append(character)
+            if escape_next:
+                escape_next = False
+            elif character == "\\":
+                escape_next = True
+            elif character == in_string:
+                in_string = None
+            continue
+        if character in {"'", '"'}:
+            in_string = character
+            current.append(character)
+            continue
+        if character in "([{":
+            depth += 1
+        elif character in ")]}":
+            depth -= 1
+        if character == "," and depth == 0:
+            parts.append("".join(current).strip())
+            current = []
+            continue
+        current.append(character)
+    if current:
+        parts.append("".join(current).strip())
+    return parts
+
+
+def _insert_text_block_after(
+    source: str,
+    *,
+    target_file: str,
+    anchor_line: str,
+    inserted_block: str,
+) -> str:
+    block_lines = textwrap.dedent(inserted_block).strip("\n").splitlines()
+    block = "\n".join(block_lines)
+    if block in source:
+        return source
+
+    lines = source.splitlines(keepends=True)
+    matches = [
+        index
+        for index, line in enumerate(lines)
+        if line.rstrip("\n") == anchor_line
+    ]
+    if len(matches) != 1:
+        raise HeldoutTypedBuilderCandidateError(
+            f"text anchor match count was {len(matches)} in {target_file}",
+            blocker={
+                "field": "typed_builder",
+                "reason": "text_block_insert_after_blocked",
+                "message": "anchor line must match exactly once",
+            },
+        )
+
+    insertion = [f"{line}\n" for line in block_lines]
+    return "".join(lines[: matches[0] + 1] + insertion + lines[matches[0] + 1 :])
+
+
 def _remove_instance_assignment_annotations(
     source: str,
     *,
@@ -2688,6 +3512,46 @@ def _find_assignment(
         if isinstance(node, ast.Assign) and _assignment_target_name(node) == assignment_name:
             return node
     return None
+
+
+def _find_assignment_matches_in_bodies(
+    body: Sequence[ast.stmt],
+    *,
+    assignment_name: str,
+    old_value: str | None,
+) -> list[tuple[Sequence[ast.stmt], int, ast.Assign | ast.AnnAssign]]:
+    matches: list[tuple[Sequence[ast.stmt], int, ast.Assign | ast.AnnAssign]] = []
+    for index, node in enumerate(body):
+        if (
+            isinstance(node, ast.Assign | ast.AnnAssign)
+            and _assignment_target_name(node) == assignment_name
+            and (old_value is None or _assignment_value(node) == old_value)
+        ):
+            matches.append((body, index, node))
+        for child_body in _child_statement_bodies(node):
+            matches.extend(
+                _find_assignment_matches_in_bodies(
+                    child_body,
+                    assignment_name=assignment_name,
+                    old_value=old_value,
+                )
+            )
+    return matches
+
+
+def _child_statement_bodies(node: ast.stmt) -> list[Sequence[ast.stmt]]:
+    bodies: list[Sequence[ast.stmt]] = []
+    for field_name in ("body", "orelse", "finalbody"):
+        value = getattr(node, field_name, None)
+        if isinstance(value, list) and all(isinstance(item, ast.stmt) for item in value):
+            bodies.append(value)
+    handlers = getattr(node, "handlers", None)
+    if isinstance(handlers, list):
+        for handler in handlers:
+            handler_body = getattr(handler, "body", None)
+            if isinstance(handler_body, list):
+                bodies.append(handler_body)
+    return bodies
 
 
 def _assignment_target_name(node: ast.Assign | ast.AnnAssign) -> str | None:
@@ -3168,6 +4032,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             "click-3422",
             "requests-7441",
             "click-3396",
+            "click-3430",
             "requests-7437",
             "flask-5808",
             "flask-5903",
@@ -3186,6 +4051,8 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.candidate == "click-3396":
         spec = build_click_sentinel_parser_spec(args.repo_path)
+    elif args.candidate == "click-3430":
+        spec = build_click_deprecated_helpers_spec(args.repo_path)
     elif args.candidate == "flask-5903":
         spec = build_flask_instance_folder_spec(args.repo_path)
     elif args.candidate == "flask-5808":

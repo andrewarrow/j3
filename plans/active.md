@@ -115,22 +115,23 @@ This is the live coordinator board. Keep it current and compact.
   not needed. `MAT-016` materializes and live-validates `pallets/flask#5903`
   in a reusable filesystem idiom builder layer using
   `makedirs_exist_ok_rewrite` for both the tutorial docs code block and Python
-  source file; `statement_block_replace` was not needed.
+  source file; `statement_block_replace` was not needed. `MAT-017`
+  materializes and live-validates `pallets/click#3430` in a reusable helper
+  extraction / duplicate call-site replacement builder layer using
+  `helper_function_insert`, `local_assignment_replace`,
+  `keyword_argument_value_replace`, and `text_block_insert_after`;
+  `statement_block_replace` was not needed.
 
 ## Active Tasks
 
-- `MAT-017`: assigned to attempt the final unresolved MAT-013
-  typed/general-AST row, `pallets/click#3430`, with reusable helper extraction
-  and duplicate call-site replacement action records. Keep the slice in
-  `j3/heldout_typed_builder_candidate.py`,
-  `tests/test_heldout_typed_builder_candidate.py`, optional focused docs,
-  generated `/tmp` artifacts, and plan updates. Do not edit transition
-  scoring, issue/PR ranking, validation policy, local knowledge, or matrix
-  manifests.
+No active worker task is currently assigned.
 
 ## Ready Queue
 
-No ready worker task is currently queued while `MAT-017` is active.
+- `MAT-018`: refresh the real PR materialization coverage panel after
+  `MAT-014` through `MAT-017`, updating the remaining typed/general-AST gap
+  counts and risk classes without editing transition scoring, issue/PR
+  ranking, validation policy, local knowledge, or matrix manifests.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
@@ -155,6 +156,22 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `MAT-017`: materialized and live-validated `pallets/click#3430` from base
+  `63daae27b124b717cffa8b458e1a0a43525f2b34` to accepted head
+  `843879880e94023317699ac2e85e5f7a44fb1b68`. The candidate changed
+  `CHANGES.rst` and `src/click/core.py`, matched the accepted PR diff after
+  normalization, and passed `python -m py_compile src/click/core.py` in
+  `0.029s`. The row uses reusable `helper_function_insert`,
+  `local_assignment_replace`, `keyword_argument_value_replace`, and
+  `text_block_insert_after` action records in a helper extraction /
+  call-site replacement builder layer; no `statement_block_replace` was used.
+  `src/click/core.py` records Python AST parse/diff/hash metadata, while
+  `CHANGES.rst` records expected non-Python AST parse failure plus diff/hash
+  metadata. Artifacts:
+  `/tmp/j3-mat-017-click-3430-final/candidate.json`,
+  `/tmp/j3-mat-017-click-3430-final/report.md`,
+  `/tmp/j3-mat-017-click-3430-final/candidate.diff`, and
+  `/tmp/j3-mat-017-click-3430-final/accepted.diff`.
 - `MAT-016`: materialized and live-validated `pallets/flask#5903` from base
   `407eb76b27884848383a37c7274654f0271e4bc4` to accepted head
   `3d03098a97ddc6a908aa4a50c2ef7381f8297d0a`. The candidate changed

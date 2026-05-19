@@ -5,6 +5,7 @@ from pathlib import Path
 from textwrap import dedent
 
 from j3.heldout_typed_builder_candidate import (
+    build_click_deprecated_helpers_spec,
     build_click_sentinel_parser_spec,
     build_click_utils_annotation_spec,
     build_flask_instance_folder_spec,
@@ -587,6 +588,137 @@ def test_flask_instance_folder_validation_command_can_pass(
     assert record["residual_labels"] == ["candidate_validation_passed"]
 
 
+def test_click_deprecated_helpers_spec_uses_reusable_helper_actions(
+    tmp_path: Path,
+) -> None:
+    repo = _write_click_3430_fixture_repo(tmp_path / "click")
+
+    spec = build_click_deprecated_helpers_spec(repo)
+
+    assert spec.allowed_write_paths == ("CHANGES.rst", "src/click/core.py")
+    assert [action.kind for action in spec.typed_actions] == [
+        "text_block_insert_after",
+        "helper_function_insert",
+        "local_assignment_replace",
+        "local_assignment_replace",
+        "local_assignment_replace",
+        "keyword_argument_value_replace",
+        "local_assignment_replace",
+        "keyword_argument_value_replace",
+        "local_assignment_replace",
+    ]
+    for action in spec.typed_actions:
+        assert "click" not in action.kind
+        assert "3430" not in action.kind
+        assert action.kind != "statement_block_replace"
+
+
+def test_materializes_click_deprecated_helpers_without_statement_block_replace(
+    tmp_path: Path,
+) -> None:
+    accepted_repo = _write_click_3430_fixture_repo(tmp_path / "accepted")
+    (accepted_repo / "CHANGES.rst").write_text(
+        _click_3430_changes_after(),
+        encoding="utf-8",
+    )
+    (accepted_repo / "src" / "click" / "core.py").write_text(
+        _click_3430_core_after(),
+        encoding="utf-8",
+    )
+    accepted_diff = tmp_path / "accepted.diff"
+    accepted_diff.write_text(
+        _git_stdout(accepted_repo, "diff", "--", "CHANGES.rst", "src/click/core.py"),
+        encoding="utf-8",
+    )
+
+    repo = _write_click_3430_fixture_repo(tmp_path / "candidate")
+    candidate = materialize_heldout_typed_builder_candidate(
+        repo,
+        build_click_deprecated_helpers_spec(repo, base_ref=_repo_head(repo)),
+        write=True,
+        validate=False,
+        accepted_diff_path=accepted_diff,
+    )
+    record = candidate.to_record()
+
+    assert record["status"] == "materialized"
+    assert record["residual_labels"] == ["candidate_validation_deferred"]
+    assert record["mutation_scope"]["mode"] == "heldout_typed_builder_multi_file"
+    assert record["mutation_scope"]["actual_changed_files"] == [
+        "CHANGES.rst",
+        "src/click/core.py",
+    ]
+    assert record["mutation_scope"]["writes_outside_allowlist"] == []
+    assert record["accepted_diff_comparison"]["accepted_changed_files"] == [
+        "CHANGES.rst",
+        "src/click/core.py",
+    ]
+    assert record["accepted_diff_comparison"]["normalized_diff_equal"] is True
+    assert record["typed_builder_layer_judgment"] == {
+        "schema_version": "typed-builder-layer-judgment-v1",
+        "layer": "helper_extraction_call_replacement_builder",
+        "stays_pure_typed_builder_layer": False,
+        "uses_statement_block_replace": False,
+        "action_kinds": [
+            "text_block_insert_after",
+            "helper_function_insert",
+            "local_assignment_replace",
+            "local_assignment_replace",
+            "local_assignment_replace",
+            "keyword_argument_value_replace",
+            "local_assignment_replace",
+            "keyword_argument_value_replace",
+            "local_assignment_replace",
+        ],
+    }
+
+    files = record["candidate_after"]["files"]
+    assert files["src/click/core.py"]["candidate_after"]["ast_parse_ok"] is True
+    assert files["CHANGES.rst"]["candidate_after"]["ast_parse_ok"] is False
+    candidate_diff = record["candidate_after"]["candidate_diff"]
+    assert "+def _format_deprecated_label(deprecated: bool | str) -> str:\n" in candidate_diff
+    assert "+def _format_deprecated_suffix(deprecated: bool | str) -> str:\n" in candidate_diff
+    assert "-            localised_deprectated = _(\"deprecated\").upper()\n" in candidate_diff
+    assert "+            text = f\"{_(text)} {_format_deprecated_label(self.deprecated)}\"\n" in candidate_diff
+    assert "+                extra_message=_format_deprecated_suffix(self.deprecated),\n" in candidate_diff
+    assert "+            label = _format_deprecated_label(deprecated)\n" in candidate_diff
+    action_kinds = [action["kind"] for action in record["action_records"]]
+    assert "statement_block_replace" not in action_kinds
+
+
+def test_click_deprecated_helpers_validation_command_can_pass(
+    tmp_path: Path,
+) -> None:
+    accepted_repo = _write_click_3430_fixture_repo(tmp_path / "accepted")
+    (accepted_repo / "CHANGES.rst").write_text(
+        _click_3430_changes_after(),
+        encoding="utf-8",
+    )
+    (accepted_repo / "src" / "click" / "core.py").write_text(
+        _click_3430_core_after(),
+        encoding="utf-8",
+    )
+    accepted_diff = tmp_path / "accepted.diff"
+    accepted_diff.write_text(
+        _git_stdout(accepted_repo, "diff", "--", "CHANGES.rst", "src/click/core.py"),
+        encoding="utf-8",
+    )
+
+    repo = _write_click_3430_fixture_repo(tmp_path / "candidate")
+    candidate = materialize_heldout_typed_builder_candidate(
+        repo,
+        build_click_deprecated_helpers_spec(repo, base_ref=_repo_head(repo)),
+        write=True,
+        validate=True,
+        accepted_diff_path=accepted_diff,
+    )
+    record = candidate.to_record()
+
+    assert record["status"] == "validated"
+    assert record["validation"]["status"] == "passed"
+    assert record["residual_labels"] == ["candidate_validation_passed"]
+
+
 def test_click_sentinel_parser_spec_uses_general_action_families(
     tmp_path: Path,
 ) -> None:
@@ -769,6 +901,32 @@ def _write_click_3396_fixture_repo(repo: Path) -> Path:
     )
     (repo / "src" / "click" / "parser.py").write_text(
         _click_3396_parser_before(),
+        encoding="utf-8",
+    )
+    subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+    subprocess.run(["git", "add", "."], cwd=repo, check=True)
+    subprocess.run(
+        ["git", "commit", "-q", "-m", "fixture"],
+        cwd=repo,
+        check=True,
+        env={
+            "GIT_AUTHOR_NAME": "Tester",
+            "GIT_AUTHOR_EMAIL": "tester@example.com",
+            "GIT_COMMITTER_NAME": "Tester",
+            "GIT_COMMITTER_EMAIL": "tester@example.com",
+        },
+    )
+    return repo
+
+
+def _write_click_3430_fixture_repo(repo: Path) -> Path:
+    (repo / "src" / "click").mkdir(parents=True)
+    (repo / "CHANGES.rst").write_text(
+        _click_3430_changes_before(),
+        encoding="utf-8",
+    )
+    (repo / "src" / "click" / "core.py").write_text(
+        _click_3430_core_before(),
         encoding="utf-8",
     )
     subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
@@ -1595,6 +1753,438 @@ def _click_3396_parser_after() -> str:
                     value = tuple(state.rargs[:nargs])
 
                 return value
+        '''
+    ).lstrip()
+
+
+def _click_3430_changes_before() -> str:
+    return dedent(
+        '''
+        Unreleased
+        ----------
+
+        -   Show custom error messages from types when :func:`prompt` with
+            ``hide_input=True`` fails validation, instead of always showing a
+            generic message. Built-in type messages mask the input value.
+            :issue:`2809` :pr:`3256`
+        -   Document short option stacking (``-abc`` is parsed as ``-a -b -c``) and
+            clarify that multi-character short option names are not supported.
+            :issue:`2779` :pr:`3431`
+        '''
+    ).lstrip()
+
+
+def _click_3430_changes_after() -> str:
+    return dedent(
+        '''
+        Unreleased
+        ----------
+
+        -   Show custom error messages from types when :func:`prompt` with
+            ``hide_input=True`` fails validation, instead of always showing a
+            generic message. Built-in type messages mask the input value.
+            :issue:`2809` :pr:`3256`
+        -   Fix missing space between option help text and the ``(DEPRECATED)``
+            label, and localize the option label so it matches the command label.
+            The label and the ``DeprecationWarning`` reason suffix are now produced
+            by shared helpers. :pr:`3423`
+        -   Document short option stacking (``-abc`` is parsed as ``-a -b -c``) and
+            clarify that multi-character short option names are not supported.
+            :issue:`2779` :pr:`3431`
+        '''
+    ).lstrip()
+
+
+def _click_3430_core_before() -> str:
+    return dedent(
+        '''
+        from __future__ import annotations
+
+        import inspect
+        import typing as t
+        from abc import ABC
+
+
+        def _(value: str) -> str:
+            return value
+
+
+        def echo(value: str, err: bool = False) -> None:
+            pass
+
+
+        def style(value: str, fg: str | None = None) -> str:
+            return value
+
+
+        class ParameterSource:
+            DEFAULT_MAP = 3
+
+
+        class Context:
+            pass
+
+
+        class HelpFormatter:
+            def write_paragraph(self) -> None:
+                pass
+
+            def indentation(self) -> HelpFormatter:
+                return self
+
+            def __enter__(self) -> HelpFormatter:
+                return self
+
+            def __exit__(self, *args: object) -> None:
+                pass
+
+            def write_text(self, text: str) -> None:
+                pass
+
+
+        UNSET = object()
+
+
+        def make_default_short_help(help: str, limit: int) -> str:
+            return help[:limit]
+
+
+        def _check_nested_chain(base_command: object, cmd_name: str, cmd: object) -> None:
+            if cmd_name:
+                return
+            raise RuntimeError("nested")
+
+
+        def batch(iterable: object, batch_size: int) -> list[tuple[object, ...]]:
+            return []
+
+
+        class Command:
+            short_help: str | None = None
+            help: str | None = None
+            deprecated: bool | str = False
+            name: str | None = None
+            callback: t.Callable[..., object] | None = None
+
+            def get_short_help_str(self, limit: int = 45) -> str:
+                if self.short_help:
+                    text = inspect.cleandoc(self.short_help)
+                elif self.help:
+                    text = make_default_short_help(self.help, limit)
+                else:
+                    text = ""
+
+                if self.deprecated:
+                    localised_deprectated = _("deprecated").upper()
+                    deprecated_message = (
+                        f"({localised_deprectated}: {self.deprecated})"
+                        if isinstance(self.deprecated, str)
+                        else f"({localised_deprectated})"
+                    )
+                    text = f"{_(text)} {deprecated_message}"
+
+                return text.strip()
+
+            def format_help_text(self, ctx: Context, formatter: HelpFormatter) -> None:
+                if self.help is not None:
+                    text = inspect.cleandoc(self.help).partition("\\f")[0]
+                else:
+                    text = ""
+
+                if self.deprecated:
+                    localised_deprectated = _("deprecated").upper()
+                    deprecated_message = (
+                        f"({localised_deprectated}: {self.deprecated})"
+                        if isinstance(self.deprecated, str)
+                        else f"({localised_deprectated})"
+                    )
+                    text = f"{_(text)} {deprecated_message}"
+
+                if text:
+                    formatter.write_paragraph()
+
+                    with formatter.indentation():
+                        formatter.write_text(text)
+
+            def invoke(self, ctx: Context) -> t.Any:
+                if self.deprecated:
+                    extra_message = (
+                        f" {self.deprecated}" if isinstance(self.deprecated, str) else ""
+                    )
+                    message = _(
+                        "DeprecationWarning: The command {name!r} is deprecated.{extra_message}"
+                    ).format(name=self.name, extra_message=extra_message)
+                    echo(style(message, fg="red"), err=True)
+
+                if self.callback is not None:
+                    return self.callback()
+
+
+        class Parameter(ABC):
+            deprecated: bool | str = False
+            param_type_name = "option"
+            human_readable_name = "value"
+
+            def consume_value(self, ctx: Context, opts: dict[str, object]) -> tuple[object, int]:
+                return object(), 1
+
+            def handle_parse_result(
+                self, ctx: Context, opts: dict[str, object], args: list[str]
+            ) -> tuple[object, list[str]]:
+                value, source = self.consume_value(ctx, opts)
+
+                if (
+                    self.deprecated
+                    and value is not UNSET
+                    and source < ParameterSource.DEFAULT_MAP
+                ):
+                    extra_message = (
+                        f" {self.deprecated}" if isinstance(self.deprecated, str) else ""
+                    )
+                    message = _(
+                        "DeprecationWarning: The {param_type} {name!r} is deprecated."
+                        "{extra_message}"
+                    ).format(
+                        param_type=self.param_type_name,
+                        name=self.human_readable_name,
+                        extra_message=extra_message,
+                    )
+                    echo(style(message, fg="red"), err=True)
+
+                return value, args
+
+
+        class Option(Parameter):
+            def __init__(
+                self,
+                param_decls: list[str] | None = None,
+                prompt: bool | str = False,
+                prompt_required: bool = True,
+                help: str | None = None,
+                deprecated: bool | str = False,
+                **attrs: t.Any,
+            ) -> None:
+                if help:
+                    help = inspect.cleandoc(help)
+
+                super().__init__()
+
+                if prompt is True:
+                    prompt_text: str | None = "Prompt"
+                elif prompt is False:
+                    prompt_text = None
+                else:
+                    prompt_text = prompt
+
+                if deprecated:
+                    deprecated_message = (
+                        f"(DEPRECATED: {deprecated})"
+                        if isinstance(deprecated, str)
+                        else "(DEPRECATED)"
+                    )
+                    help = (
+                        f"{help} {deprecated_message}"
+                        if help is not None
+                        else deprecated_message
+                    )
+
+                self.prompt = prompt_text
+                self.prompt_required = prompt_required
+                self.help = help
+        '''
+    ).lstrip()
+
+
+def _click_3430_core_after() -> str:
+    return dedent(
+        '''
+        from __future__ import annotations
+
+        import inspect
+        import typing as t
+        from abc import ABC
+
+
+        def _(value: str) -> str:
+            return value
+
+
+        def echo(value: str, err: bool = False) -> None:
+            pass
+
+
+        def style(value: str, fg: str | None = None) -> str:
+            return value
+
+
+        class ParameterSource:
+            DEFAULT_MAP = 3
+
+
+        class Context:
+            pass
+
+
+        class HelpFormatter:
+            def write_paragraph(self) -> None:
+                pass
+
+            def indentation(self) -> HelpFormatter:
+                return self
+
+            def __enter__(self) -> HelpFormatter:
+                return self
+
+            def __exit__(self, *args: object) -> None:
+                pass
+
+            def write_text(self, text: str) -> None:
+                pass
+
+
+        UNSET = object()
+
+
+        def make_default_short_help(help: str, limit: int) -> str:
+            return help[:limit]
+
+
+        def _check_nested_chain(base_command: object, cmd_name: str, cmd: object) -> None:
+            if cmd_name:
+                return
+            raise RuntimeError("nested")
+
+
+        def _format_deprecated_label(deprecated: bool | str) -> str:
+            """Return the parenthesized deprecation label shown in help text."""
+            label = _("deprecated").upper()
+            if isinstance(deprecated, str):
+                return f"({label}: {deprecated})"
+            return f"({label})"
+
+
+        def _format_deprecated_suffix(deprecated: bool | str) -> str:
+            """Return the trailing reason for a ``DeprecationWarning`` message,
+            prefixed with a space, or an empty string when no reason was given.
+            """
+            if isinstance(deprecated, str):
+                return f" {deprecated}"
+            return ""
+
+
+        def batch(iterable: object, batch_size: int) -> list[tuple[object, ...]]:
+            return []
+
+
+        class Command:
+            short_help: str | None = None
+            help: str | None = None
+            deprecated: bool | str = False
+            name: str | None = None
+            callback: t.Callable[..., object] | None = None
+
+            def get_short_help_str(self, limit: int = 45) -> str:
+                if self.short_help:
+                    text = inspect.cleandoc(self.short_help)
+                elif self.help:
+                    text = make_default_short_help(self.help, limit)
+                else:
+                    text = ""
+
+                if self.deprecated:
+                    text = f"{_(text)} {_format_deprecated_label(self.deprecated)}"
+
+                return text.strip()
+
+            def format_help_text(self, ctx: Context, formatter: HelpFormatter) -> None:
+                if self.help is not None:
+                    text = inspect.cleandoc(self.help).partition("\\f")[0]
+                else:
+                    text = ""
+
+                if self.deprecated:
+                    text = f"{_(text)} {_format_deprecated_label(self.deprecated)}"
+
+                if text:
+                    formatter.write_paragraph()
+
+                    with formatter.indentation():
+                        formatter.write_text(text)
+
+            def invoke(self, ctx: Context) -> t.Any:
+                if self.deprecated:
+                    message = _(
+                        "DeprecationWarning: The command {name!r} is deprecated.{extra_message}"
+                    ).format(
+                        name=self.name,
+                        extra_message=_format_deprecated_suffix(self.deprecated),
+                    )
+                    echo(style(message, fg="red"), err=True)
+
+                if self.callback is not None:
+                    return self.callback()
+
+
+        class Parameter(ABC):
+            deprecated: bool | str = False
+            param_type_name = "option"
+            human_readable_name = "value"
+
+            def consume_value(self, ctx: Context, opts: dict[str, object]) -> tuple[object, int]:
+                return object(), 1
+
+            def handle_parse_result(
+                self, ctx: Context, opts: dict[str, object], args: list[str]
+            ) -> tuple[object, list[str]]:
+                value, source = self.consume_value(ctx, opts)
+
+                if (
+                    self.deprecated
+                    and value is not UNSET
+                    and source < ParameterSource.DEFAULT_MAP
+                ):
+                    message = _(
+                        "DeprecationWarning: The {param_type} {name!r} is deprecated."
+                        "{extra_message}"
+                    ).format(
+                        param_type=self.param_type_name,
+                        name=self.human_readable_name,
+                        extra_message=_format_deprecated_suffix(self.deprecated),
+                    )
+                    echo(style(message, fg="red"), err=True)
+
+                return value, args
+
+
+        class Option(Parameter):
+            def __init__(
+                self,
+                param_decls: list[str] | None = None,
+                prompt: bool | str = False,
+                prompt_required: bool = True,
+                help: str | None = None,
+                deprecated: bool | str = False,
+                **attrs: t.Any,
+            ) -> None:
+                if help:
+                    help = inspect.cleandoc(help)
+
+                super().__init__()
+
+                if prompt is True:
+                    prompt_text: str | None = "Prompt"
+                elif prompt is False:
+                    prompt_text = None
+                else:
+                    prompt_text = prompt
+
+                if deprecated:
+                    label = _format_deprecated_label(deprecated)
+                    help = f"{help} {label}" if help is not None else label
+
+                self.prompt = prompt_text
+                self.prompt_required = prompt_required
+                self.help = help
         '''
     ).lstrip()
 

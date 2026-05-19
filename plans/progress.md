@@ -5466,3 +5466,41 @@ meaningful work. Do not replace this file with a daily reset.
   `tests/test_heldout_typed_builder_candidate.py`, optional `docs/MAT_017_*`,
   generated `/tmp` artifacts, and plan updates.
 - Blockers: none.
+
+### 2026-05-19 - MAT-017 - Click #3430 helper extraction materialization
+
+- Owner: worker Codex.
+- Files changed: `j3/heldout_typed_builder_candidate.py`,
+  `tests/test_heldout_typed_builder_candidate.py`,
+  `docs/MAT_017_CLICK_3430_HELPER_EXTRACTION_CANDIDATE_2026-05-19.md`,
+  `plans/active.md`, `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `python -m py_compile j3/heldout_typed_builder_candidate.py
+  tests/test_heldout_typed_builder_candidate.py` -> passed; `pytest
+  tests/test_heldout_typed_builder_candidate.py -q` -> 21 passed; live fresh
+  checkout run `PYTHONPATH=/Users/aa/os/j3 python -m
+  j3.heldout_typed_builder_candidate --candidate click-3430 --repo-path
+  /tmp/j3-click3430-base-check --accepted-diff
+  /tmp/j3-mat-017-click-3430-final/accepted.diff --out
+  /tmp/j3-mat-017-click-3430-final/candidate.json --report
+  /tmp/j3-mat-017-click-3430-final/report.md --diff-out
+  /tmp/j3-mat-017-click-3430-final/candidate.diff --validate` -> passed;
+  `pytest tests/test_plan_consistency.py -q` -> passed; `git diff --check`
+  -> passed.
+- Result: materialized and live-validated `pallets/click#3430` from base
+  `63daae27b124b717cffa8b458e1a0a43525f2b34` to accepted head
+  `843879880e94023317699ac2e85e5f7a44fb1b68`. The candidate changed
+  `CHANGES.rst` and `src/click/core.py`, matched the accepted PR diff after
+  normalization, and passed `python -m py_compile src/click/core.py` in
+  `0.029s`. The row uses reusable `helper_function_insert`,
+  `local_assignment_replace`, `keyword_argument_value_replace`, and
+  `text_block_insert_after` action records; no PR-named action kind or
+  `statement_block_replace` was used. `src/click/core.py` has AST parse
+  metadata, while `CHANGES.rst` records expected non-Python AST parse failure
+  plus diff/hash metadata.
+- Commit: pending.
+- Push: pending.
+- Next: coordinator should assign `MAT-018` to refresh the materialization
+  coverage panel after `MAT-014` through `MAT-017`, then decide whether to
+  pursue broader real-PR materialization gaps or the `TRANS-012`
+  shadow-advice-only residual examples.
+- Blockers: none.

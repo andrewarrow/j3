@@ -3120,7 +3120,7 @@ Long-term target:
 
 ### MAT-017: Click #3430 helper extraction materialization probe
 
-- Status: active
+- Status: done
 - Why: after `MAT-016`, `pallets/click#3430` is the final unresolved
   MAT-013 `general_typed_builder` row. It tests whether helper extraction plus
   duplicate call-site replacement can be represented as reusable materializer
@@ -3140,14 +3140,39 @@ Long-term target:
   are insufficient.
 - Tests: focused materializer tests, plan consistency, `git diff --check`, and
   live validation or a recorded validation blocker.
+- Completion note: materialized and live-validated `pallets/click#3430` from
+  base `63daae27b124b717cffa8b458e1a0a43525f2b34` to accepted head
+  `843879880e94023317699ac2e85e5f7a44fb1b68`. The candidate changed
+  `CHANGES.rst` and `src/click/core.py`, matched the accepted PR diff after
+  normalization, passed `python -m py_compile src/click/core.py`, and used
+  reusable `helper_function_insert`, `local_assignment_replace`,
+  `keyword_argument_value_replace`, and `text_block_insert_after` actions
+  without `statement_block_replace`.
+
+### MAT-018: Refresh real PR materialization coverage after MAT-017
+
+- Status: ready
+- Why: `MAT-014` through `MAT-017` completed the four unresolved MAT-013
+  typed/general-AST rows after the original coverage refresh. The coverage
+  panel should now separate pure typed-builder wins, reusable filesystem idiom
+  coverage, helper extraction/call-site replacement coverage, and any remaining
+  non-typed gaps.
+- Write scope: focused `docs/MAT_018_*`, `plans/active.md`,
+  `plans/backlog.md`, and `plans/progress.md`; optional copied JSONL artifact
+  under `/tmp`. Avoid transition scoring, issue/PR ranking, validation-policy,
+  local-knowledge, matrix manifests, and materializer code.
+- Acceptance: update the real PR materialization coverage summary with
+  `MAT-014` through `MAT-017` evidence, including remaining gap counts, risk
+  classes, covered rows, source-scoped vs full-diff parity where relevant, and
+  recommended next materialization workstream.
+- Tests: `pytest tests/test_plan_consistency.py -q` and `git diff --check`.
 
 ## Next Recommended Queue
 
 Start with these unless fresh evidence changes the order:
 
-1. Finish `MAT-017` for the final unresolved MAT-013 typed/general-AST row.
-2. Refresh the materialization coverage panel after `MAT-014` through
+1. Refresh the materialization coverage panel after `MAT-014` through
    `MAT-017` so the remaining gap counts reflect the new typed-builder and
    reusable-idiom evidence.
-3. Separately decide whether to pursue the `TRANS-012` shadow-advice-only
+2. Separately decide whether to pursue the `TRANS-012` shadow-advice-only
    residual examples; product transition routing remains shadow-only.

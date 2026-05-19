@@ -823,6 +823,111 @@ def test_future_scorer_does_not_reward_tail_access_without_tail_intent() -> None
     )
 
 
+def test_future_scorer_prefers_guard_insert_over_unrelated_operator_decoy() -> None:
+    groups = build_transition_action_choice_groups(
+        [
+            _guard_candidate_row(
+                rank_index=1,
+                action="insert_guard",
+                symbol="average",
+                params={"condition": "not values", "return": 0},
+                node_kind="Return",
+                passed=True,
+                model_score=0.8811021258317153,
+                failure_hint_score=92.0,
+            ),
+            _guard_candidate_row(
+                rank_index=2,
+                action="change_operator",
+                symbol="apply_discount",
+                params={"from": ">", "to": "<"},
+                node_kind="Compare",
+                passed=False,
+                model_score=0.454596635082278,
+                failure_hint_score=20.0,
+            ),
+        ],
+        embedding_dim=8,
+    )
+
+    ranked = rank_transition_action_candidates(groups[0])
+    guard_score = score_transition_action_candidate(
+        groups[0]["candidates"][0],
+        group=groups[0],
+    )
+    operator_score = score_transition_action_candidate(
+        groups[0]["candidates"][1],
+        group=groups[0],
+    )
+
+    assert [candidate["rank_index"] for candidate in ranked] == [1, 2]
+    assert guard_score["features"]["guard_insert_condition_checks_empty_value"] == 1.0
+    assert guard_score["features"]["guard_failure_context_mentions_empty_input"] == 1.0
+    assert guard_score["features"]["guard_insert_file_and_symbol_match"] == 1.0
+    assert guard_score["features"]["guard_insert_matches_empty_input_failure"] == 1.0
+    assert (
+        operator_score["features"][
+            "guard_operator_decoy_competes_with_guarded_symbol"
+        ]
+        == 1.0
+    )
+    assert guard_score["score"] > operator_score["score"]
+
+
+def test_future_scorer_does_not_reward_guard_without_empty_target_evidence() -> None:
+    groups = build_transition_action_choice_groups(
+        [
+            _guard_candidate_row(
+                rank_index=1,
+                action="insert_guard",
+                symbol="average",
+                params={"condition": "values is not None", "return": 0},
+                node_kind="Return",
+                passed=False,
+                model_score=0.9,
+                failure_hint_score=90.0,
+                hinted_symbol="apply_discount",
+                nodeid="tests/test_bugs.py::test_apply_discount_threshold",
+                exception_type="AssertionError",
+            ),
+            _guard_candidate_row(
+                rank_index=2,
+                action="change_operator",
+                symbol="apply_discount",
+                params={"from": ">", "to": ">="},
+                node_kind="Compare",
+                passed=True,
+                model_score=0.1,
+                failure_hint_score=10.0,
+                hinted_symbol="apply_discount",
+                nodeid="tests/test_bugs.py::test_apply_discount_threshold",
+                exception_type="AssertionError",
+            ),
+        ],
+        embedding_dim=8,
+    )
+
+    guard_score = score_transition_action_candidate(
+        groups[0]["candidates"][0],
+        group=groups[0],
+    )
+    operator_score = score_transition_action_candidate(
+        groups[0]["candidates"][1],
+        group=groups[0],
+    )
+
+    assert guard_score["features"]["guard_insert_condition_checks_empty_value"] == 0.0
+    assert guard_score["features"]["guard_failure_context_mentions_empty_input"] == 0.0
+    assert guard_score["features"]["guard_insert_file_and_symbol_match"] == 0.0
+    assert guard_score["features"]["guard_insert_matches_empty_input_failure"] == 0.0
+    assert (
+        operator_score["features"][
+            "guard_operator_decoy_competes_with_guarded_symbol"
+        ]
+        == 0.0
+    )
+
+
 def test_baseline_orders_are_stable_and_distinct() -> None:
     group = build_transition_action_choice_groups(
         _fixture_candidate_rows(),
@@ -1649,6 +1754,104 @@ def _tail_index_candidate_row(
                     else f"tests/test_bugs.py::test_{symbol}_returns_first"
                 ),
                 "summary": f"assert {actual!r} == {expected!r}",
+            }
+        ],
+        "equivalent_candidate_ranks": [],
+        "overlapping_candidate_ranks": [],
+        "equivalent_passing_candidate_ranks": [],
+        "overlapping_passing_candidate_ranks": [],
+    }
+
+
+def _guard_candidate_row(
+    *,
+    rank_index: int,
+    action: str,
+    symbol: str,
+    params: dict[str, object],
+    node_kind: str,
+    passed: bool,
+    model_score: float,
+    failure_hint_score: float,
+    hinted_symbol: str = "average",
+    nodeid: str = "tests/test_bugs.py::test_average_empty_values_returns_zero",
+    exception_type: str = "ZeroDivisionError",
+) -> dict[str, object]:
+    return {
+        "task": "missing_guard",
+        "task_family": "unclassified",
+        "source_type": "handcrafted",
+        "split": "validation",
+        "language": "python",
+        "phase": "ranked",
+        "repair_plan_id": "plan-missing-guard",
+        "file_path": "bugs.py",
+        "action": action,
+        "symbol": symbol,
+        "start_line": 20 if action == "insert_guard" else 2,
+        "end_line": 20 if action == "insert_guard" else 2,
+        "node_kind": node_kind,
+        "params": params,
+        "reason": (
+            "insert empty-sequence guard for values"
+            if action == "insert_guard"
+            else "try comparison operator <"
+        ),
+        "model_score": model_score,
+        "failure_hint_score": failure_hint_score,
+        "ranker_score": None,
+        "target_context": {
+            "callee_count": 0,
+            "caller_count": 0,
+            "qualified_symbol": f"bugs.{symbol}",
+            "role": "helper",
+        },
+        "before_source": (
+            "def apply_discount(total, discount):\n"
+            "    return total if discount > 100 else total - discount\n\n"
+            "def average(values):\n"
+            "    return sum(values) / len(values)\n"
+        ),
+        "patched_source": (
+            "def apply_discount(total, discount):\n"
+            "    return total if discount > 100 else total - discount\n\n"
+            "def average(values):\n"
+            "    if not values:\n"
+            "        return 0\n"
+            "    return sum(values) / len(values)\n"
+        )
+        if action == "insert_guard"
+        else (
+            "def apply_discount(total, discount):\n"
+            "    return total if discount < 100 else total - discount\n\n"
+            "def average(values):\n"
+            "    return sum(values) / len(values)\n"
+        ),
+        "passed": passed,
+        "preferred": passed,
+        "rank_index": rank_index,
+        "first_passing_index": 1,
+        "is_first_pass": passed and rank_index == 1,
+        "passing_candidates": 1,
+        "failure_hints": [
+            {
+                "exception_type": exception_type,
+                "function_names": [hinted_symbol],
+                "nodeid": nodeid,
+                "source_files": ["bugs.py"],
+                "summary": (
+                    "ZeroDivisionError: division by zero"
+                    if exception_type == "ZeroDivisionError"
+                    else "assert total == discounted"
+                ),
+                "traceback_locations": [
+                    {"file_path": "tests/test_bugs.py", "line": 22},
+                    {
+                        "exception_type": exception_type,
+                        "file_path": "bugs.py",
+                        "line": 20,
+                    },
+                ],
             }
         ],
         "equivalent_candidate_ranks": [],

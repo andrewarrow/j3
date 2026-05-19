@@ -6725,3 +6725,31 @@ meaningful work. Do not replace this file with a daily reset.
   scoring prefers an unrelated `change_operator` candidate in `apply_discount`
   over the passing `insert_guard` candidate in `average`.
 - Blockers: none.
+
+### 2026-05-19 - MODEL-012 - Guard-insertion advice over operator decoy
+
+- Owner: worker MODEL-012.
+- Files changed: `j3/transition_action_scoring.py`,
+  `tests/test_transition_action_scoring.py`, `plans/active.md`,
+  `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `python -m py_compile j3/transition_action_scoring.py
+  tests/test_transition_action_scoring.py` -> passed; `pytest
+  tests/test_transition_action_scoring.py -q` -> 29 passed; direct replay over
+  `/tmp/j3-trans-012-expanded-standard/suite/greenshot_bugs/candidate-outcomes.jsonl`
+  for `missing_guard` -> rank 1 `insert_guard` on `average` scored
+  `3.860551062916` and passed, rank 2 `change_operator` on
+  `apply_discount` scored `0.777298317541` and failed; `pytest
+  tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check` ->
+  passed.
+- Result: added narrow V1/advice scorer evidence for empty-input
+  `insert_guard` candidates only when failure context names the guarded source
+  file and function, plus a limited same-file operator-decoy feature when an
+  unrelated operator candidate competes with that symbol-aligned guard. Focused
+  tests cover the `greenshot_bugs/missing_guard` shape and a no-empty/no-target
+  evidence case. Product routing remains shadow-only.
+- Commit: pending; final hash will be recorded after commit.
+- Push: pending.
+- Next: coordinator should review `MODEL-012`, then choose between the harder
+  GreenShot-5 semantic API shadow-advice residuals or a fresh `TRANS-012`
+  advice/residual replay to verify the narrowed residual set.
+- Blockers: none.

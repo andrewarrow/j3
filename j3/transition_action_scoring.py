@@ -73,6 +73,8 @@ def score_transition_action_candidate(
         - 1.05 * features[
             "mapping_add_key_placeholder_competes_with_existing_key_rename"
         ]
+        + 2.10 * features["guard_insert_matches_empty_input_failure"]
+        - 0.70 * features["guard_operator_decoy_competes_with_guarded_symbol"]
         + 2.35 * features["tail_index_replace_expr_matches_tail_intent"]
         - 0.65 * features["tail_index_literal_decoy_competes_with_tail_expr"]
         + 1.20 * features["failure_hint_file_match"]
@@ -1051,10 +1053,23 @@ _TAIL_INDEX_FEATURE_NAMES = (
     "tail_index_literal_decoy_competes_with_tail_expr",
 )
 
+_GUARD_INSERTION_FEATURE_NAMES = (
+    "guard_insertion_evidence_available",
+    "guard_insert_condition_checks_empty_value",
+    "guard_failure_context_mentions_empty_input",
+    "guard_insert_file_and_symbol_match",
+    "guard_insert_matches_empty_input_failure",
+    "guard_operator_decoy_competes_with_guarded_symbol",
+)
+
 _BOUNDARY_OPERATOR_ACTION_KINDS = {"change_operator", "modify_condition"}
 _LITERAL_ACTION_KINDS = {"change_literal", "change_return_value"}
 _MODULE_CONSTANT_ACTION_KIND = "change_module_constant"
 _TAIL_INTENT_WORDS = frozenset({"last", "tail", "newest", "final"})
+_GUARD_FAILURE_EXCEPTION_TYPES = frozenset(
+    {"IndexError", "StopIteration", "ZeroDivisionError"}
+)
+_GUARD_EMPTY_CONTEXT_WORDS = frozenset({"empty", "none", "zero"})
 
 
 def _mapping_target_features(
@@ -1463,6 +1478,195 @@ def _tail_index_features(
     return features
 
 
+def _guard_insertion_features(
+    candidate: Mapping[str, object],
+    *,
+    action_kind: str,
+    params: Mapping[str, object],
+    failure_hints: Sequence[object],
+    group: Mapping[str, object] | None,
+) -> dict[str, float]:
+    features = {name: 0.0 for name in _GUARD_INSERTION_FEATURE_NAMES}
+    if action_kind not in {"insert_guard", *_BOUNDARY_OPERATOR_ACTION_KINDS}:
+        return features
+
+    if action_kind == "insert_guard":
+        features["guard_insertion_evidence_available"] = 1.0
+        empty_condition = _guard_condition_checks_empty_value(params)
+        file_and_symbol_match = _guard_candidate_matches_hinted_file_and_symbol(
+            candidate,
+            failure_hints,
+        )
+        context_mentions_empty = _guard_failure_context_mentions_empty_input(
+            failure_hints,
+        )
+        if empty_condition:
+            features["guard_insert_condition_checks_empty_value"] = 1.0
+        if context_mentions_empty:
+            features["guard_failure_context_mentions_empty_input"] = 1.0
+        if file_and_symbol_match:
+            features["guard_insert_file_and_symbol_match"] = 1.0
+        if empty_condition and file_and_symbol_match and context_mentions_empty:
+            features["guard_insert_matches_empty_input_failure"] = 1.0
+
+    elif _operator_decoy_competes_with_guarded_symbol(
+        candidate,
+        group=group,
+        failure_hints=failure_hints,
+    ):
+        features["guard_operator_decoy_competes_with_guarded_symbol"] = 1.0
+
+    return features
+
+
+def _guard_condition_checks_empty_value(params: Mapping[str, object]) -> bool:
+    if "return" not in params:
+        return False
+    condition = params.get("condition")
+    if not isinstance(condition, str) or not condition.strip():
+        return False
+    try:
+        parsed = ast.parse(condition, mode="eval")
+    except SyntaxError:
+        return False
+    return _ast_expr_is_empty_guard(parsed.body)
+
+
+def _ast_expr_is_empty_guard(node: ast.AST) -> bool:
+    if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.Not):
+        return isinstance(
+            node.operand,
+            (ast.Attribute, ast.Call, ast.Name, ast.Subscript),
+        )
+    if isinstance(node, ast.Compare):
+        return _compare_checks_len_zero(node) or _compare_checks_none(node)
+    return False
+
+
+def _compare_checks_len_zero(compare: ast.Compare) -> bool:
+    if len(compare.ops) != 1 or len(compare.comparators) != 1:
+        return False
+    left = compare.left
+    right = compare.comparators[0]
+    return (
+        isinstance(compare.ops[0], (ast.Eq, ast.LtE))
+        and _ast_call_is_len(left)
+        and _ast_node_is_numeric_zero(right)
+    ) or (
+        isinstance(compare.ops[0], (ast.Eq, ast.GtE))
+        and _ast_node_is_numeric_zero(left)
+        and _ast_call_is_len(right)
+    )
+
+
+def _compare_checks_none(compare: ast.Compare) -> bool:
+    if len(compare.ops) != 1 or len(compare.comparators) != 1:
+        return False
+    return (
+        isinstance(compare.ops[0], (ast.Is, ast.Eq))
+        and isinstance(compare.comparators[0], ast.Constant)
+        and compare.comparators[0].value is None
+    )
+
+
+def _ast_call_is_len(node: ast.AST) -> bool:
+    return (
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id == "len"
+        and len(node.args) == 1
+    )
+
+
+def _ast_node_is_numeric_zero(node: ast.AST) -> bool:
+    return (
+        isinstance(node, ast.Constant)
+        and node.value == 0
+        and type(node.value) in {int, float}
+    )
+
+
+def _guard_candidate_matches_hinted_file_and_symbol(
+    candidate: Mapping[str, object],
+    failure_hints: Sequence[object],
+) -> bool:
+    action = _mapping(candidate.get("action"))
+    file_path = action.get("file_path")
+    symbol = action.get("symbol")
+    hinted_files, function_names, _target_names = _boundary_literal_hint_sets(
+        failure_hints
+    )
+    return (
+        isinstance(file_path, str)
+        and isinstance(symbol, str)
+        and file_path in hinted_files
+        and symbol in function_names
+    )
+
+
+def _guard_failure_context_mentions_empty_input(
+    failure_hints: Sequence[object],
+) -> bool:
+    tokens: set[str] = set()
+    for raw_hint in failure_hints:
+        hint = _mapping(raw_hint)
+        exception_type = hint.get("exception_type")
+        if (
+            isinstance(exception_type, str)
+            and exception_type in _GUARD_FAILURE_EXCEPTION_TYPES
+        ):
+            return True
+        for field in ("nodeid", "summary"):
+            value = hint.get(field)
+            if isinstance(value, str):
+                tokens.update(_word_tokens(value))
+    return bool(tokens & _GUARD_EMPTY_CONTEXT_WORDS)
+
+
+def _operator_decoy_competes_with_guarded_symbol(
+    candidate: Mapping[str, object],
+    *,
+    group: Mapping[str, object] | None,
+    failure_hints: Sequence[object],
+) -> bool:
+    if group is None:
+        return False
+    action = _mapping(candidate.get("action"))
+    file_path = action.get("file_path")
+    symbol = action.get("symbol")
+    hinted_files, function_names, _target_names = _boundary_literal_hint_sets(
+        failure_hints
+    )
+    if (
+        not isinstance(file_path, str)
+        or file_path not in hinted_files
+        or not isinstance(symbol, str)
+        or symbol in function_names
+    ):
+        return False
+
+    for other in _list(group.get("candidates")):
+        other_record = _mapping(other)
+        other_action = _mapping(other_record.get("action"))
+        if other_action.get("kind") != "insert_guard":
+            continue
+        if other_action.get("file_path") != file_path:
+            continue
+        other_validation = _mapping(other_record.get("validation"))
+        other_hints = _list(other_validation.get("failure_hints")) or failure_hints
+        other_params = _mapping(other_action.get("params"))
+        if (
+            _guard_condition_checks_empty_value(other_params)
+            and _guard_candidate_matches_hinted_file_and_symbol(
+                other_record,
+                other_hints,
+            )
+            and _guard_failure_context_mentions_empty_input(other_hints)
+        ):
+            return True
+    return False
+
+
 def _tail_index_intent_available(
     candidate: Mapping[str, object],
     failure_hints: Sequence[object],
@@ -1653,6 +1857,13 @@ def _candidate_score_features(
         failure_hints=failure_hints,
         group=group,
     )
+    guard_features = _guard_insertion_features(
+        candidate,
+        action_kind=action_kind,
+        params=params,
+        failure_hints=failure_hints,
+        group=group,
+    )
     ranker_score = _score_value(scores.get("ranker_score"))
     model_score = _score_value(scores.get("model_score"))
     failure_hint_score = _score_value(scores.get("failure_hint_score"))
@@ -1692,6 +1903,7 @@ def _candidate_score_features(
         **mapping_features,
         **boundary_literal_features,
         **tail_index_features,
+        **guard_features,
     }
 
 
@@ -1745,6 +1957,8 @@ def _candidate_v2_features(
     for name in _BOUNDARY_LITERAL_FEATURE_NAMES:
         features[name] = float(base[name])
     for name in _TAIL_INDEX_FEATURE_NAMES:
+        features[name] = float(base[name])
+    for name in _GUARD_INSERTION_FEATURE_NAMES:
         features[name] = float(base[name])
     _add_feature(features, f"action:{action_kind}", 1.0)
 

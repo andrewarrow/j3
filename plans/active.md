@@ -230,25 +230,8 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-### `MODEL-012`: Add guard-insertion advice over unrelated operator decoy evidence
-
-- Status: active
-- Owner: worker MODEL-012, assigned on 2026-05-19.
-- Scope: focused scorer logic in `j3/transition_action_scoring.py`, focused
-  tests in `tests/test_transition_action_scoring.py`, optional concise
-  evidence doc under `docs/MODEL_012_*`, and plan updates.
-- Acceptance: add local shadow-advice/V1 evidence that promotes the passing
-  `insert_guard` candidate for `greenshot_bugs/missing_guard` only when
-  failure/test context and target symbol indicate the guarded function; prove
-  the residual no longer selects the unrelated `change_operator` decoy in
-  `apply_discount`; preserve existing scorer behavior outside that slice; keep
-  product routing shadow-only.
-- Guardrails: do not edit product routing, matrix manifests, candidate
-  generation, ranker routing, guarded-trial policy, local-knowledge records,
-  materializer code, or `plans/strategy.md`.
-- Expected tests: `pytest tests/test_transition_action_scoring.py -q`,
-  focused residual/advice replay or locally added test for `missing_guard`,
-  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+No active worker tasks are currently recorded while the coordinator reviews
+`MODEL-012` and chooses the next bounded assignment.
 
 ## Ready Queue
 
@@ -258,9 +241,9 @@ Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
 ## Paused Or Blocked
 
-- Shadow-advice-only residual-report examples from `greenshot_bugs/missing_guard`
-  and three `greenshot_5_subset` tasks remain visible for separate
-  scorer/advice follow-ups, but they are not matrix residuals in `TRANS-012`.
+- Shadow-advice-only residual-report examples from three `greenshot_5_subset`
+  tasks remain visible for separate scorer/advice follow-ups, but they are not
+  matrix residuals in `TRANS-012`.
 - `MODEL-002`: superseded by bounded scorer subtasks in the backlog, beginning
   with `MODEL-003` through `MODEL-009`.
 
@@ -275,6 +258,29 @@ Review before assigning more work if:
 - the next useful task is unclear
 
 ## Recently Completed
+
+### `MODEL-012`: Add guard-insertion advice over unrelated operator decoy evidence
+
+- Status: completed by worker MODEL-012 on 2026-05-19.
+- Result: added narrow V1/advice scorer evidence for `insert_guard` candidates
+  that check an empty input only when failure context names the guarded file
+  and symbol, plus a guarded-symbol operator-decoy feature limited to same-file
+  operator candidates whose symbol is not the hinted failure symbol. A direct
+  replay against the `TRANS-012` `greenshot_bugs/missing_guard`
+  candidate-outcome artifact now top-ranks the passing `insert_guard` in
+  `average` over the unrelated `change_operator` decoy in `apply_discount`.
+  Product routing remains shadow-only.
+- Commit: pending; final hash will be recorded after commit.
+- Push: pending.
+- Tests: `pytest tests/test_transition_action_scoring.py -q` -> 29 passed;
+  direct `/tmp/j3-trans-012-expanded-standard/suite/greenshot_bugs/candidate-outcomes.jsonl`
+  replay for `missing_guard` -> passing `insert_guard` ranked first;
+  `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check` -> passed.
+- Recommended next: coordinator should review `MODEL-012`, then choose between
+  the harder GreenShot-5 semantic API shadow-advice residuals or a fresh
+  `TRANS-012` advice/residual replay to verify the narrowed residual set.
+- Blockers: none.
 
 ### `MODEL-011`: Add shadow-advice tail-index decoy scoring evidence
 

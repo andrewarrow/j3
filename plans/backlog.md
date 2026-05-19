@@ -664,7 +664,7 @@ Long-term target:
 
 ### MODEL-012: Add guard-insertion advice over unrelated operator decoy evidence
 
-- Status: active
+- Status: done
 - Owner: worker MODEL-012, assigned on 2026-05-19.
 - Why: after `MODEL-011`, the remaining narrow non-GreenShot-5
   shadow-advice residual is `greenshot_bugs/missing_guard`: the passing
@@ -684,6 +684,13 @@ Long-term target:
 - Tests: `pytest tests/test_transition_action_scoring.py -q`, focused
   residual/advice replay or locally added test for `missing_guard`,
   `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+- Completion note: added narrow V1/advice features that reward an
+  `insert_guard` only when the guard condition checks empty input and the
+  failure context names the same file and function, plus a same-file
+  operator-decoy feature only when a symbol-aligned guarded candidate is
+  present. Focused tests cover the `missing_guard` replay shape and a
+  no-empty/no-target-evidence guard case; direct artifact replay now ranks
+  the passing `insert_guard` first for `greenshot_bugs/missing_guard`.
 
 ### TRANS-011: Rerun standard matrix after MODEL-009
 

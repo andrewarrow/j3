@@ -34,6 +34,10 @@ PYTEST_FUNCTION_RENAME_SCHEMA_VERSION = "repo-convention-pytest-function-rename-
 PYTEST_ASSERTION_EXPECTATION_SCHEMA_VERSION = (
     "repo-convention-pytest-assertion-expectation-v1"
 )
+EXACT_SOURCE_LINES_REPLACEMENT_SCHEMA_VERSION = "bounded-source-lines-replacement-v1"
+PYTEST_FUNCTION_INSERTION_SCHEMA_VERSION = (
+    "repo-convention-pytest-function-insertion-v1"
+)
 DEFAULT_REQUESTS_CLEAN_PROXY_BASE_REF = (
     "e8d2c015eecda8273612dd4562425e00cd164ba5"
 )
@@ -57,9 +61,25 @@ DEFAULT_REQUESTS_LEADING_SLASH_VALIDATION_COMMAND = (
     "PYTHONPATH=src python -m pytest "
     "tests/test_adapters.py::test_request_url_handles_leading_path_separators -q"
 )
+DEFAULT_PYTEST_ARGUMENT_REPR_BASE_REF = (
+    "8f81c76744daf72d4f77cfc8423f4bdc60733d78"
+)
+DEFAULT_PYTEST_ARGUMENT_REPR_HEAD_REF = (
+    "641a97b7695430f9fc4e9113b31d797447dc9654"
+)
+DEFAULT_PYTEST_ARGUMENT_REPR_VALIDATION_COMMAND = (
+    "trap 'rm -f src/_pytest/_version.py' EXIT; "
+    "printf '%s\\n' 'version = \"99.0.0\"' "
+    "'version_tuple = (99, 0, 0)' > src/_pytest/_version.py; "
+    "PYTHONPATH=src python -m pytest "
+    "testing/test_parseopt.py::test_argument_repr_uninitialized "
+    "testing/test_parseopt.py::test_argument_repr_initialized -q"
+)
 REQUESTS_CONFTEST_PATH = "tests/conftest.py"
 REQUESTS_ADAPTERS_PATH = "src/requests/adapters.py"
 REQUESTS_ADAPTER_TEST_PATH = "tests/test_adapters.py"
+PYTEST_ARGPARSING_PATH = "src/_pytest/config/argparsing.py"
+PYTEST_PARSEOPT_TEST_PATH = "testing/test_parseopt.py"
 
 
 class RepoConventionCandidateError(ValueError):
@@ -250,11 +270,113 @@ class PytestAssertionExpectationAction:
         }
 
 
+@dataclass(frozen=True, slots=True)
+class ExactSourceLinesReplacementAction:
+    """Reusable bounded source action for replacing exact lines in a function."""
+
+    target_file: str
+    anchor_function_name: str
+    old_lines: tuple[str, ...]
+    new_lines: tuple[str, ...]
+    kind: str = "replace_exact_source_lines_after_anchor"
+    schema_version: str = EXACT_SOURCE_LINES_REPLACEMENT_SCHEMA_VERSION
+    anchor_class_name: str | None = None
+    max_old_lines: int = 4
+    max_new_lines: int = 8
+    rationale: str | None = None
+
+    def __post_init__(self) -> None:
+        _validate_relative_path(self.target_file)
+        if not self.anchor_function_name:
+            raise ValueError("anchor_function_name is required")
+        if not self.old_lines:
+            raise ValueError("old_lines is required")
+        if not self.new_lines:
+            raise ValueError("new_lines is required")
+        if len(self.old_lines) > self.max_old_lines:
+            raise ValueError("old_lines exceeds max_old_lines")
+        if len(self.new_lines) > self.max_new_lines:
+            raise ValueError("new_lines exceeds max_new_lines")
+
+    def to_record(self) -> dict[str, object]:
+        return {
+            "schema_version": self.schema_version,
+            "kind": self.kind,
+            "target": {
+                "file_path": self.target_file,
+                "anchor_class_name": self.anchor_class_name,
+                "anchor_function_name": self.anchor_function_name,
+                "position": "inside_anchor_function",
+            },
+            "constraints": {
+                "max_old_lines": self.max_old_lines,
+                "max_new_lines": self.max_new_lines,
+                "must_parse_ast_before": True,
+                "must_parse_ast_after": True,
+                "replace_exact_lines_only": True,
+            },
+            "old_lines": list(self.old_lines),
+            "new_lines": list(self.new_lines),
+            "rationale": self.rationale,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class PytestFunctionInsertionAction:
+    """Reusable repo-convention action for inserting pytest test functions."""
+
+    target_file: str
+    anchor_function_name: str
+    function_names: tuple[str, ...]
+    insertion_source: str
+    kind: str = "insert_pytest_function_after_anchor"
+    schema_version: str = PYTEST_FUNCTION_INSERTION_SCHEMA_VERSION
+    max_added_lines: int = 40
+    require_pytest_import: bool = True
+    require_fixture_names: tuple[str, ...] = ()
+    rationale: str | None = None
+
+    def __post_init__(self) -> None:
+        _validate_relative_path(self.target_file)
+        if not self.anchor_function_name:
+            raise ValueError("anchor_function_name is required")
+        if not self.function_names:
+            raise ValueError("function_names is required")
+        for name in self.function_names:
+            if not name.startswith("test_"):
+                raise ValueError("function_names must be pytest test functions")
+        if self.max_added_lines < 1:
+            raise ValueError("max_added_lines must be >= 1")
+
+    def to_record(self) -> dict[str, object]:
+        return {
+            "schema_version": self.schema_version,
+            "kind": self.kind,
+            "target": {
+                "file_path": self.target_file,
+                "anchor_function_name": self.anchor_function_name,
+                "function_names": list(self.function_names),
+                "position": "after_anchor_function",
+            },
+            "constraints": {
+                "max_added_lines": self.max_added_lines,
+                "must_parse_ast": True,
+                "preserve_existing_imports": True,
+                "require_pytest_import": self.require_pytest_import,
+                "require_fixture_names": list(self.require_fixture_names),
+            },
+            "insertion_source": self.insertion_source,
+            "rationale": self.rationale,
+        }
+
+
 RepoConventionAction = (
     PytestFixtureInsertionAction
     | ExactSourceLinesDeletionAction
     | PytestFunctionRenameAction
     | PytestAssertionExpectationAction
+    | ExactSourceLinesReplacementAction
+    | PytestFunctionInsertionAction
 )
 
 
@@ -274,8 +396,11 @@ class RepoConventionSpec:
     allowed_write_paths: tuple[str, ...]
     fixture_action: PytestFixtureInsertionAction | None = None
     source_deletion_action: ExactSourceLinesDeletionAction | None = None
+    source_replacement_action: ExactSourceLinesReplacementAction | None = None
     test_function_rename_action: PytestFunctionRenameAction | None = None
     test_assertion_expectation_action: PytestAssertionExpectationAction | None = None
+    test_function_insertion_action: PytestFunctionInsertionAction | None = None
+    source_test_scope_paths: tuple[str, ...] | None = None
     action_family_reuse_evidence: tuple[dict[str, object], ...] = field(
         default_factory=tuple
     )
@@ -293,8 +418,10 @@ class RepoConventionSpec:
             for action in (
                 self.fixture_action,
                 self.source_deletion_action,
+                self.source_replacement_action,
                 self.test_function_rename_action,
                 self.test_assertion_expectation_action,
+                self.test_function_insertion_action,
             )
             if action is not None
         )
@@ -586,6 +713,104 @@ def build_requests_leading_slash_adapter_spec(
     )
 
 
+def build_pytest_argument_repr_parser_fixture_spec(
+    repo_path: Path,
+    *,
+    base_ref: str = DEFAULT_PYTEST_ARGUMENT_REPR_BASE_REF,
+    accepted_head_ref: str = DEFAULT_PYTEST_ARGUMENT_REPR_HEAD_REF,
+    validation_command: str = DEFAULT_PYTEST_ARGUMENT_REPR_VALIDATION_COMMAND,
+) -> RepoConventionSpec:
+    """Build the held-out pytest Argument.__repr__ parser-fixture candidate."""
+
+    _repo_file(repo_path, PYTEST_ARGPARSING_PATH)
+    _repo_file(repo_path, PYTEST_PARSEOPT_TEST_PATH)
+    source_replacement = ExactSourceLinesReplacementAction(
+        target_file=PYTEST_ARGPARSING_PATH,
+        anchor_class_name="Argument",
+        anchor_function_name="__repr__",
+        old_lines=(
+            "        args: list[str] = []",
+            '        args += ["opts: " + repr(self.names())]',
+            '        args += ["dest: " + repr(self.dest)]',
+            "        if self._action.type:",
+        ),
+        new_lines=(
+            '        action = getattr(self, "_action", None)',
+            "        if action is None:",
+            '            return "Argument(<uninitialized>)"',
+            "        args: list[str] = []",
+            '        args += ["opts: " + repr(self.names())]',
+            '        args += ["dest: " + repr(self.dest)]',
+            "        if action.type:",
+        ),
+        max_old_lines=4,
+        max_new_lines=7,
+        rationale=(
+            "insert a defensive _action guard at the start of Argument.__repr__ "
+            "and use the guarded local action for the existing type check"
+        ),
+    )
+    test_insertion = PytestFunctionInsertionAction(
+        target_file=PYTEST_PARSEOPT_TEST_PATH,
+        anchor_function_name="test_argcomplete",
+        function_names=(
+            "test_argument_repr_uninitialized",
+            "test_argument_repr_initialized",
+        ),
+        insertion_source=_pytest_argument_repr_tests_source(),
+        require_fixture_names=("parser",),
+        rationale=(
+            "append parser-fixture style pytest coverage after the existing "
+            "parseopt function tests"
+        ),
+    )
+    return RepoConventionSpec(
+        candidate_id="mat-029-pytest-argument-repr-parser-fixture",
+        repo_id="pytest-dev/pytest",
+        repo_url="https://github.com/pytest-dev/pytest",
+        repo_split="held_out",
+        base_ref=base_ref,
+        accepted_head_ref=accepted_head_ref,
+        reference_pr_url="https://github.com/pytest-dev/pytest/pull/14429",
+        prompt=(
+            "Prevent Argument.__repr__ from masking construction failures when "
+            "_action is not initialized, and add parser-fixture tests for the "
+            "uninitialized and initialized repr behavior."
+        ),
+        validation_command=validation_command,
+        allowed_write_paths=(PYTEST_ARGPARSING_PATH, PYTEST_PARSEOPT_TEST_PATH),
+        source_replacement_action=source_replacement,
+        test_function_insertion_action=test_insertion,
+        source_test_scope_paths=(PYTEST_ARGPARSING_PATH, PYTEST_PARSEOPT_TEST_PATH),
+        action_family_reuse_evidence=(
+            {
+                "action_kind": "replace_exact_source_lines_after_anchor",
+                "reused_from": [
+                    "replace_function_region",
+                    "bounded source-region materialization",
+                ],
+                "evidence": (
+                    "same bounded source-edit family, narrowed to exact-line "
+                    "replacement inside a named class method with AST parse "
+                    "before and after"
+                ),
+            },
+            {
+                "action_kind": "insert_pytest_function_after_anchor",
+                "reused_from": [
+                    "insert_pytest_function_after_anchor",
+                    "repo-local pytest parser fixture convention",
+                ],
+                "evidence": (
+                    "reuses the pytest insertion family while checking the "
+                    "target file imports pytest and already defines the parser "
+                    "fixture used by the inserted tests"
+                ),
+            },
+        ),
+    )
+
+
 def materialize_repo_convention_candidate(
     repo_path: Path,
     spec: RepoConventionSpec,
@@ -649,10 +874,15 @@ def materialize_repo_convention_candidate(
             timeout_seconds=validation_timeout_seconds,
         )
 
+    scope_path_sets = {
+        "repo_convention": spec.allowed_write_paths,
+    }
+    if spec.source_test_scope_paths is not None:
+        scope_path_sets["source_test"] = spec.source_test_scope_paths
     accepted_diff_comparison = _accepted_diff_comparison(
         candidate_diff,
         accepted_diff_path=accepted_diff_path,
-        scope_path_sets={"repo_convention": spec.allowed_write_paths},
+        scope_path_sets=scope_path_sets,
     )
     if accepted_diff_comparison.get("accepted_diff_available") is False:
         blockers.append(
@@ -753,6 +983,10 @@ def materialize_repo_convention_action(
         return materialize_pytest_function_rename(repo_path, action, write=write)
     if isinstance(action, PytestAssertionExpectationAction):
         return materialize_pytest_assertion_expectation(repo_path, action, write=write)
+    if isinstance(action, ExactSourceLinesReplacementAction):
+        return materialize_exact_source_lines_replacement(repo_path, action, write=write)
+    if isinstance(action, PytestFunctionInsertionAction):
+        return materialize_pytest_function_insertion(repo_path, action, write=write)
     raise TypeError(f"unsupported repo-convention action: {type(action)!r}")
 
 
@@ -827,6 +1061,91 @@ def materialize_exact_source_lines_deletion(
         sha256_before=_sha256_text(before),
         sha256_after=_sha256_text(patched),
         changed_line_count=len(delete_lines),
+        patched_source=patched,
+        wrote_file=write,
+    )
+
+
+def materialize_exact_source_lines_replacement(
+    repo_path: Path,
+    action: ExactSourceLinesReplacementAction,
+    *,
+    write: bool = False,
+) -> BoundedRepoActionResult:
+    """Replace exact source lines inside a named function or class method."""
+
+    repo = repo_path.expanduser().resolve()
+    target_path = _repo_file(repo, action.target_file)
+    before = target_path.read_text(encoding="utf-8")
+    tree = _parse_python(before, filename=action.target_file, field="source_file")
+    anchor = (
+        _find_method_in_class(tree, action.anchor_class_name, action.anchor_function_name)
+        if action.anchor_class_name is not None
+        else _find_function(tree, action.anchor_function_name)
+    )
+    if anchor is None or anchor.end_lineno is None:
+        raise RepoConventionCandidateError(
+            f"anchor function not found: {action.anchor_function_name}",
+            blocker={
+                "field": "source_replacement",
+                "reason": "repo_convention_source_replacement_blocked",
+                "message": f"anchor function not found: {action.anchor_function_name}",
+            },
+        )
+
+    source_lines = before.splitlines(keepends=True)
+    old_lines = [f"{line}\n" for line in action.old_lines]
+    new_lines = [f"{line}\n" for line in action.new_lines]
+    start_index = _find_exact_line_block(
+        source_lines,
+        old_lines,
+        start=anchor.lineno - 1,
+        end=anchor.end_lineno,
+    )
+    if start_index is None:
+        raise RepoConventionCandidateError(
+            "source replacement lines not found inside anchor function",
+            blocker={
+                "field": "source_replacement",
+                "reason": "repo_convention_source_replacement_blocked",
+                "message": (
+                    "the exact source lines to replace were not found inside "
+                    f"{action.anchor_function_name}"
+                ),
+            },
+        )
+
+    patched = "".join(
+        source_lines[:start_index]
+        + new_lines
+        + source_lines[start_index + len(old_lines) :]
+    )
+    _parse_python(patched, filename=action.target_file, field="source_file")
+    if write:
+        target_path.write_text(patched, encoding="utf-8")
+
+    diff = _unified_diff(before, patched, action.target_file)
+    return BoundedRepoActionResult(
+        schema_version="exact-source-lines-replacement-candidate-after-v1",
+        status="materialized" if write else "candidate_after",
+        action_kind=action.kind,
+        target_file=action.target_file,
+        diff=diff,
+        diff_summary=_diff_summary(diff),
+        ast_delta=python_ast_delta_metadata(before, patched),
+        ast_parse_ok=True,
+        convention_evidence={
+            "anchor_class_name": action.anchor_class_name,
+            "anchor_function_name": action.anchor_function_name,
+            "anchor_function_found": True,
+            "old_line_count": len(old_lines),
+            "new_line_count": len(new_lines),
+            "replacement_start_line": start_index + 1,
+            "replace_exact_lines_only": True,
+        },
+        sha256_before=_sha256_text(before),
+        sha256_after=_sha256_text(patched),
+        changed_line_count=len(old_lines) + len(new_lines),
         patched_source=patched,
         wrote_file=write,
     )
@@ -1009,6 +1328,159 @@ def materialize_pytest_assertion_expectation(
         sha256_before=_sha256_text(before),
         sha256_after=_sha256_text(patched),
         changed_line_count=1,
+        patched_source=patched,
+        wrote_file=write,
+    )
+
+
+def materialize_pytest_function_insertion(
+    repo_path: Path,
+    action: PytestFunctionInsertionAction,
+    *,
+    write: bool = False,
+) -> BoundedRepoActionResult:
+    """Insert pytest test functions after an anchor and record metadata."""
+
+    repo = repo_path.expanduser().resolve()
+    target_path = _repo_file(repo, action.target_file)
+    before = target_path.read_text(encoding="utf-8")
+    if all(f"def {name}(" in before for name in action.function_names):
+        tree = _parse_python(before, filename=action.target_file, field="test_file")
+        convention_evidence = _pytest_test_convention_evidence(tree)
+        fixture_evidence = _pytest_fixture_convention_evidence(tree)
+        return BoundedRepoActionResult(
+            schema_version="pytest-function-insertion-candidate-after-v1",
+            status="already_applied",
+            action_kind=action.kind,
+            target_file=action.target_file,
+            diff="",
+            diff_summary={"hunk_count": 0, "changed_line_count": 0},
+            ast_delta=python_ast_delta_metadata(before, before),
+            ast_parse_ok=True,
+            convention_evidence={
+                **convention_evidence,
+                **_prefixed_fixture_evidence(fixture_evidence),
+                "inserted_test_function_names": list(action.function_names),
+            },
+            sha256_before=_sha256_text(before),
+            sha256_after=_sha256_text(before),
+            changed_line_count=0,
+            patched_source=before,
+            wrote_file=False,
+        )
+
+    tree = _parse_python(before, filename=action.target_file, field="test_file")
+    convention_evidence = _pytest_test_convention_evidence(tree)
+    fixture_evidence = _pytest_fixture_convention_evidence(tree)
+    if action.require_pytest_import and not fixture_evidence["imports_pytest"]:
+        raise RepoConventionCandidateError(
+            "target test file does not import pytest",
+            blocker={
+                "field": "parser_fixture_test_convention",
+                "reason": "repo_convention_test_insertion_blocked",
+                "message": "target test file does not import pytest",
+            },
+        )
+    existing_fixtures = set(str(name) for name in fixture_evidence["existing_fixture_names"])
+    missing_fixtures = [
+        name for name in action.require_fixture_names if name not in existing_fixtures
+    ]
+    if missing_fixtures:
+        raise RepoConventionCandidateError(
+            "required pytest fixture convention was not detected",
+            blocker={
+                "field": "parser_fixture_test_convention",
+                "reason": "repo_convention_test_insertion_blocked",
+                "message": (
+                    "target test file is missing required pytest fixtures: "
+                    + ", ".join(missing_fixtures)
+                ),
+            },
+        )
+
+    anchor = _find_top_level_function(tree, action.anchor_function_name)
+    if anchor is None or anchor.end_lineno is None:
+        raise RepoConventionCandidateError(
+            f"pytest anchor function not found: {action.anchor_function_name}",
+            blocker={
+                "field": "parser_fixture_test_insertion",
+                "reason": "repo_convention_test_insertion_blocked",
+                "message": f"pytest anchor function not found: {action.anchor_function_name}",
+            },
+        )
+
+    insertion_lines = _insertion_lines(action.insertion_source)
+    added_line_count = sum(1 for line in insertion_lines if line.strip())
+    if added_line_count > action.max_added_lines:
+        raise RepoConventionCandidateError(
+            "pytest function insertion added-line budget exceeded",
+            blocker={
+                "field": "parser_fixture_test_insertion",
+                "reason": "repo_convention_test_insertion_blocked",
+                "message": "pytest function insertion added-line budget exceeded",
+            },
+        )
+    insertion_tree = _parse_python(
+        action.insertion_source + "\n",
+        filename=action.target_file,
+        field="test_insertion",
+    )
+    inserted_names = [
+        node.name
+        for node in insertion_tree.body
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+        and node.name.startswith("test_")
+    ]
+    missing_inserted = [
+        name for name in action.function_names if name not in set(inserted_names)
+    ]
+    if missing_inserted:
+        raise RepoConventionCandidateError(
+            "inserted pytest functions were not found in insertion source",
+            blocker={
+                "field": "parser_fixture_test_insertion",
+                "reason": "repo_convention_test_insertion_blocked",
+                "message": (
+                    "inserted pytest functions were not found: "
+                    + ", ".join(missing_inserted)
+                ),
+            },
+        )
+
+    source_lines = before.splitlines(keepends=True)
+    insert_index = anchor.end_lineno
+    while insert_index < len(source_lines) and not source_lines[insert_index].strip():
+        insert_index += 1
+    patched = "".join(
+        source_lines[: anchor.end_lineno]
+        + ["\n", "\n"]
+        + insertion_lines
+        + source_lines[insert_index:]
+    )
+    _parse_python(patched, filename=action.target_file, field="test_file")
+    if write:
+        target_path.write_text(patched, encoding="utf-8")
+
+    diff = _unified_diff(before, patched, action.target_file)
+    return BoundedRepoActionResult(
+        schema_version="pytest-function-insertion-candidate-after-v1",
+        status="materialized" if write else "candidate_after",
+        action_kind=action.kind,
+        target_file=action.target_file,
+        diff=diff,
+        diff_summary=_diff_summary(diff),
+        ast_delta=python_ast_delta_metadata(before, patched),
+        ast_parse_ok=True,
+        convention_evidence={
+            **convention_evidence,
+            **_prefixed_fixture_evidence(fixture_evidence),
+            "anchor_function_name": action.anchor_function_name,
+            "inserted_test_function_names": inserted_names,
+            "required_fixture_names": list(action.require_fixture_names),
+        },
+        sha256_before=_sha256_text(before),
+        sha256_after=_sha256_text(patched),
+        changed_line_count=added_line_count,
         patched_source=patched,
         wrote_file=write,
     )
@@ -1209,6 +1681,8 @@ def render_repo_convention_report(candidate: RepoConventionCandidate) -> str:
         f"`{comparison.get('normalized_diff_equal')}`",
         f"- Repo-convention scoped match: "
         f"`{comparison.get('scope_comparisons', {}).get('repo_convention', {}).get('normalized_diff_equal')}`",
+        f"- Source/test scoped match: "
+        f"`{comparison.get('scope_comparisons', {}).get('source_test', {}).get('normalized_diff_equal')}`",
         f"- Zero hosted LLM source judgment: "
         f"`{candidate.zero_hosted_llm_source_judgment}`",
         "",
@@ -1247,6 +1721,33 @@ def _requests_clean_proxy_fixture_source() -> str:
     )
 
 
+def _pytest_argument_repr_tests_source() -> str:
+    return "\n".join(
+        [
+            "def test_argument_repr_uninitialized() -> None:",
+            '    """Argument.__repr__ should not crash if _action is not set yet."""',
+            "    arg = parseopt.Argument.__new__(parseopt.Argument)",
+            '    assert repr(arg) == "Argument(<uninitialized>)"',
+            "",
+            "",
+            "def test_argument_repr_initialized(parser: parseopt.Parser) -> None:",
+            '    """Argument.__repr__ with properly initialized options."""',
+            "    # Without type",
+            '    parser.addoption("--myflag", dest="myflag", help="test flag")',
+            "    option = parser._anonymous.options[-1]",
+            '    assert repr(option) == "Argument(opts: [\'--myflag\'], dest: \'myflag\', default: None)"',
+            "",
+            "    # With type",
+            '    parser.addoption("--count", type=int, dest="count", help="count")',
+            "    option = parser._anonymous.options[-1]",
+            "    assert (",
+            "        repr(option)",
+            '        == "Argument(opts: [\'--count\'], dest: \'count\', type: <class \'int\'>, default: None)"',
+            "    )",
+        ]
+    )
+
+
 def _repo_file(repo: Path, relative_path: str) -> Path:
     _validate_relative_path(relative_path)
     path = repo / relative_path
@@ -1280,6 +1781,22 @@ def _find_function(tree: ast.Module, name: str) -> ast.FunctionDef | ast.AsyncFu
     for node in ast.walk(tree):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == name:
             return node
+    return None
+
+
+def _find_method_in_class(
+    tree: ast.Module,
+    class_name: str,
+    method_name: str,
+) -> ast.FunctionDef | ast.AsyncFunctionDef | None:
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ClassDef) and node.name == class_name:
+            for child in node.body:
+                if (
+                    isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef))
+                    and child.name == method_name
+                ):
+                    return child
     return None
 
 
@@ -1346,6 +1863,14 @@ def _pytest_fixture_convention_evidence(tree: ast.Module) -> dict[str, object]:
         "imports_pytest": _imports_pytest(tree),
         "existing_fixture_count": len(fixture_names),
         "existing_fixture_names": fixture_names,
+    }
+
+
+def _prefixed_fixture_evidence(evidence: dict[str, object]) -> dict[str, object]:
+    return {
+        "imports_pytest": evidence["imports_pytest"],
+        "existing_fixture_count": evidence["existing_fixture_count"],
+        "existing_fixture_names": evidence["existing_fixture_names"],
     }
 
 
@@ -1416,7 +1941,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     parser.add_argument(
         "--candidate",
-        choices=("requests-7423", "requests-7315"),
+        choices=("requests-7423", "requests-7315", "pytest-14429"),
         default="requests-7423",
     )
     parser.add_argument("--repo-path", type=Path, required=True)
@@ -1431,8 +1956,10 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.candidate == "requests-7423":
         spec = build_requests_clean_proxy_conftest_spec(args.repo_path)
-    else:
+    elif args.candidate == "requests-7315":
         spec = build_requests_leading_slash_adapter_spec(args.repo_path)
+    else:
+        spec = build_pytest_argument_repr_parser_fixture_spec(args.repo_path)
     candidate = materialize_repo_convention_candidate(
         args.repo_path,
         spec,

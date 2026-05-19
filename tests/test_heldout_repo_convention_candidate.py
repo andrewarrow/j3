@@ -5,6 +5,7 @@ from pathlib import Path
 from textwrap import dedent
 
 from j3.heldout_repo_convention_candidate import (
+    build_pytest_argument_repr_parser_fixture_spec,
     build_requests_clean_proxy_conftest_spec,
     build_requests_leading_slash_adapter_spec,
     materialize_repo_convention_candidate,
@@ -241,6 +242,146 @@ def test_blocks_when_adapter_test_import_convention_is_missing(
     ]
 
 
+def test_pytest_argument_repr_spec_uses_reusable_action_kinds(
+    tmp_path: Path,
+) -> None:
+    repo = _write_pytest_parseopt_fixture_repo(tmp_path / "pytest")
+
+    spec = build_pytest_argument_repr_parser_fixture_spec(repo)
+
+    assert [action.kind for action in spec.actions] == [
+        "replace_exact_source_lines_after_anchor",
+        "insert_pytest_function_after_anchor",
+    ]
+    assert all("14429" not in action.kind for action in spec.actions)
+    assert spec.base_ref == "8f81c76744daf72d4f77cfc8423f4bdc60733d78"
+    assert spec.accepted_head_ref == "641a97b7695430f9fc4e9113b31d797447dc9654"
+    assert "PYTHONPATH=src python -m pytest " in spec.validation_command
+    assert "src/_pytest/_version.py" in spec.validation_command
+    assert spec.allowed_write_paths == (
+        "src/_pytest/config/argparsing.py",
+        "testing/test_parseopt.py",
+    )
+    assert spec.source_test_scope_paths == spec.allowed_write_paths
+
+
+def test_materializes_pytest_argument_repr_with_source_test_scoped_parity(
+    tmp_path: Path,
+) -> None:
+    accepted_repo = _write_pytest_parseopt_fixture_repo(tmp_path / "accepted")
+    accepted_candidate = materialize_repo_convention_candidate(
+        accepted_repo,
+        build_pytest_argument_repr_parser_fixture_spec(
+            accepted_repo,
+            base_ref=_repo_head(accepted_repo),
+        ),
+        write=True,
+        validate=False,
+    )
+    accepted_diff = tmp_path / "accepted.diff"
+    accepted_diff.write_text(
+        _changelog_diff() + str(accepted_candidate.candidate_after["candidate_diff"]),
+        encoding="utf-8",
+    )
+
+    repo = _write_pytest_parseopt_fixture_repo(tmp_path / "candidate")
+    candidate = materialize_repo_convention_candidate(
+        repo,
+        build_pytest_argument_repr_parser_fixture_spec(
+            repo,
+            base_ref=_repo_head(repo),
+        ),
+        write=True,
+        validate=False,
+        accepted_diff_path=accepted_diff,
+    )
+    record = candidate.to_record()
+
+    assert record["status"] == "materialized"
+    assert record["accepted_head_ref"] == "641a97b7695430f9fc4e9113b31d797447dc9654"
+    assert record["residual_labels"] == ["candidate_validation_deferred"]
+    assert record["mutation_scope"]["actual_changed_files"] == [
+        "src/_pytest/config/argparsing.py",
+        "testing/test_parseopt.py",
+    ]
+    assert record["mutation_scope"]["writes_outside_allowlist"] == []
+    assert record["accepted_diff_comparison"]["accepted_changed_files"] == [
+        "changelog/13817.bugfix.rst",
+        "src/_pytest/config/argparsing.py",
+        "testing/test_parseopt.py",
+    ]
+    assert record["accepted_diff_comparison"]["normalized_diff_equal"] is False
+    assert (
+        record["accepted_diff_comparison"]["scope_comparisons"]["source_test"][
+            "normalized_diff_equal"
+        ]
+        is True
+    )
+    assert (
+        record["accepted_diff_comparison"]["scope_comparisons"]["repo_convention"][
+            "normalized_diff_equal"
+        ]
+        is True
+    )
+    assert [action["kind"] for action in record["action_records"]] == [
+        "replace_exact_source_lines_after_anchor",
+        "insert_pytest_function_after_anchor",
+    ]
+
+    action_results = record["candidate_after"]["action_results"]
+    assert [result["action_kind"] for result in action_results] == [
+        "replace_exact_source_lines_after_anchor",
+        "insert_pytest_function_after_anchor",
+    ]
+    source_result = action_results[0]
+    assert source_result["candidate_after"]["ast_parse_ok"] is True
+    assert source_result["convention_evidence"]["anchor_class_name"] == "Argument"
+    assert source_result["convention_evidence"]["old_line_count"] == 4
+    assert source_result["convention_evidence"]["new_line_count"] == 7
+    test_result = action_results[1]
+    assert test_result["candidate_after"]["ast_parse_ok"] is True
+    assert test_result["convention_evidence"]["existing_fixture_names"] == ["parser"]
+    assert test_result["convention_evidence"]["inserted_test_function_names"] == [
+        "test_argument_repr_uninitialized",
+        "test_argument_repr_initialized",
+    ]
+    assert (
+        repo / "testing" / "test_parseopt.py"
+    ).read_text() == _pytest_parseopt_test_after_source()
+
+
+def test_blocks_when_pytest_parser_fixture_convention_is_missing(
+    tmp_path: Path,
+) -> None:
+    repo = _write_pytest_parseopt_fixture_repo(
+        tmp_path / "pytest",
+        test_source=dedent(
+            '''
+            from _pytest.config import argparsing as parseopt
+
+
+            def test_argcomplete() -> None:
+                pass
+            '''
+        ).lstrip(),
+    )
+
+    candidate = materialize_repo_convention_candidate(
+        repo,
+        build_pytest_argument_repr_parser_fixture_spec(repo, base_ref=_repo_head(repo)),
+        write=True,
+        validate=False,
+        accepted_diff_path=tmp_path / "missing.diff",
+    )
+    record = candidate.to_record()
+
+    assert record["status"] == "blocked"
+    assert record["blockers"][0]["reason"] == "repo_convention_test_insertion_blocked"
+    assert record["mutation_scope"]["actual_changed_files"] == [
+        "src/_pytest/config/argparsing.py"
+    ]
+
+
 def _write_requests_conftest_fixture_repo(
     repo: Path,
     *,
@@ -328,6 +469,42 @@ def _write_requests_adapter_fixture_repo(
     return repo
 
 
+def _write_pytest_parseopt_fixture_repo(
+    repo: Path,
+    *,
+    source: str | None = None,
+    test_source: str | None = None,
+) -> Path:
+    (repo / "src" / "_pytest" / "config").mkdir(parents=True)
+    (repo / "testing").mkdir(parents=True)
+    (repo / "src" / "_pytest" / "config" / "argparsing.py").write_text(
+        source or _pytest_argparsing_before_source(),
+        encoding="utf-8",
+    )
+    (repo / "testing" / "test_parseopt.py").write_text(
+        test_source or _pytest_parseopt_test_before_source(),
+        encoding="utf-8",
+    )
+    subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+    subprocess.run(["git", "add", "."], cwd=repo, check=True)
+    subprocess.run(
+        [
+            "git",
+            "-c",
+            "user.name=j3-test",
+            "-c",
+            "user.email=j3-test@example.invalid",
+            "commit",
+            "-q",
+            "-m",
+            "base",
+        ],
+        cwd=repo,
+        check=True,
+    )
+    return repo
+
+
 def _requests_adapter_before_source() -> str:
     return dedent(
         '''
@@ -380,6 +557,119 @@ def _requests_adapter_test_after_source() -> str:
             a = requests.adapters.HTTPAdapter()
             p = requests.Request(method="GET", url="http://127.0.0.1:10000//v:h").prepare()
             assert "//v:h" == a.request_url(p, {})
+        '''
+    ).lstrip()
+
+
+def _pytest_argparsing_before_source() -> str:
+    return dedent(
+        '''
+        from typing import Any, Sequence
+
+
+        class Argument:
+            def __init__(self, action):
+                self._action = action
+
+            def names(self) -> Sequence[str]:
+                return self._action.option_strings
+
+            @property
+            def dest(self) -> str:
+                return self._action.dest
+
+            @property
+            def default(self) -> Any:
+                return self._action.default
+
+            @property
+            def type(self) -> Any | None:
+                return self._action.type
+
+            def __repr__(self) -> str:
+                args: list[str] = []
+                args += ["opts: " + repr(self.names())]
+                args += ["dest: " + repr(self.dest)]
+                if self._action.type:
+                    args += ["type: " + repr(self.type)]
+                args += ["default: " + repr(self.default)]
+                return "Argument({})".format(", ".join(args))
+        '''
+    ).lstrip()
+
+
+def _pytest_parseopt_test_before_source() -> str:
+    return dedent(
+        '''
+        from _pytest.config import argparsing as parseopt
+        import pytest
+
+
+        @pytest.fixture
+        def parser() -> parseopt.Parser:
+            return parseopt.Parser(_ispytest=True)
+
+
+        def test_argcomplete(pytester, monkeypatch) -> None:
+            monkeypatch.setenv("COMP_LINE", "pytest test_argc")
+            result = pytester.run("bash", "pytest")
+            result.stdout.fnmatch_lines(["test_argcomplete", "test_argcomplete.d/"])
+        '''
+    ).lstrip()
+
+
+def _pytest_parseopt_test_after_source() -> str:
+    return dedent(
+        '''
+        from _pytest.config import argparsing as parseopt
+        import pytest
+
+
+        @pytest.fixture
+        def parser() -> parseopt.Parser:
+            return parseopt.Parser(_ispytest=True)
+
+
+        def test_argcomplete(pytester, monkeypatch) -> None:
+            monkeypatch.setenv("COMP_LINE", "pytest test_argc")
+            result = pytester.run("bash", "pytest")
+            result.stdout.fnmatch_lines(["test_argcomplete", "test_argcomplete.d/"])
+
+
+        def test_argument_repr_uninitialized() -> None:
+            """Argument.__repr__ should not crash if _action is not set yet."""
+            arg = parseopt.Argument.__new__(parseopt.Argument)
+            assert repr(arg) == "Argument(<uninitialized>)"
+
+
+        def test_argument_repr_initialized(parser: parseopt.Parser) -> None:
+            """Argument.__repr__ with properly initialized options."""
+            # Without type
+            parser.addoption("--myflag", dest="myflag", help="test flag")
+            option = parser._anonymous.options[-1]
+            assert repr(option) == "Argument(opts: ['--myflag'], dest: 'myflag', default: None)"
+
+            # With type
+            parser.addoption("--count", type=int, dest="count", help="count")
+            option = parser._anonymous.options[-1]
+            assert (
+                repr(option)
+                == "Argument(opts: ['--count'], dest: 'count', type: <class 'int'>, default: None)"
+            )
+        '''
+    ).lstrip()
+
+
+def _changelog_diff() -> str:
+    return dedent(
+        '''
+        diff --git a/changelog/13817.bugfix.rst b/changelog/13817.bugfix.rst
+        new file mode 100644
+        index 000000000..08c9a6a53
+        --- /dev/null
+        +++ b/changelog/13817.bugfix.rst
+        @@ -0,0 +1 @@
+        +Fixed a secondary `AttributeError` masking the original error when an option argument fails to initialize.
         '''
     ).lstrip()
 

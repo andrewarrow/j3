@@ -3580,7 +3580,7 @@ Long-term target:
 
 ### MAT-029: Held-out pytest parser fixture convention candidate
 
-- Status: active
+- Status: done
 - Why: after `MAT-028`, the remaining repo-convention rows are
   `pytest-14429` and `click-3405`. `pytest-14429` is smaller (`+27/-1`, three
   files) and broadens the convention proof from Requests to pytest parser
@@ -3604,12 +3604,26 @@ Long-term target:
   JSON/report checks if artifacts are written,
   `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and live
   focused validation when materialized.
+- Completion note: materialized `pytest-dev/pytest#14429` from base
+  `8f81c76744daf72d4f77cfc8423f4bdc60733d78` to accepted head
+  `641a97b7695430f9fc4e9113b31d797447dc9654` with reusable
+  `replace_exact_source_lines_after_anchor` and
+  `insert_pytest_function_after_anchor` action records. The candidate changed
+  only `src/_pytest/config/argparsing.py` and `testing/test_parseopt.py`;
+  full accepted-diff parity is false because the accepted PR also adds
+  `changelog/13817.bugfix.rst`, while repo-convention and source/test scoped
+  parity are true. Focused live validation passed with `2 passed in 0.02s`
+  after adding and removing a temporary setuptools-scm `_pytest._version`
+  validation-harness shim. Remaining non-materialized MAT-007 counts are
+  `current_structured_action = 4`, `general_typed_builder = 0`,
+  `repo_convention_builder = 1`, `constrained_local_generator = 0`, and
+  `not_currently_expressible = 2`.
 
 ## Next Recommended Queue
 
 Start with these unless fresh evidence changes the order:
 
-1. Complete active `MAT-029` for `pytest-dev/pytest#14429`; the remaining
-   repo-convention row after that is `click-3405`.
+1. After coordinator review, dispatch the remaining repo-convention row,
+   `click-3405`.
 2. Separately decide whether to pursue the `TRANS-012` shadow-advice-only
    residual examples; product transition routing remains shadow-only.

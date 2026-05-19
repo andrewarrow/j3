@@ -6148,3 +6148,47 @@ meaningful work. Do not replace this file with a daily reset.
 - Next: dispatch a worker for `MAT-029` to attempt `pytest-dev/pytest#14429`
   with reusable repo-convention and bounded source/test update action records.
 - Blockers: none.
+
+### 2026-05-19 - MAT-029 - Pytest #14429 parser-fixture convention materialization
+
+- Owner: worker MAT-029.
+- Files changed: `j3/heldout_repo_convention_candidate.py`,
+  `tests/test_heldout_repo_convention_candidate.py`,
+  `docs/MAT_029_PYTEST_14429_PARSER_FIXTURE_CONVENTION_CANDIDATE_2026-05-19.md`,
+  `plans/active.md`, `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `python -m py_compile j3/heldout_repo_convention_candidate.py
+  tests/test_heldout_repo_convention_candidate.py` -> passed; `pytest
+  tests/test_heldout_repo_convention_candidate.py -q` -> 9 passed; live fresh
+  checkout run `PYTHONPATH=/Users/aa/os/j3 python -m
+  j3.heldout_repo_convention_candidate --candidate pytest-14429 --repo-path
+  /tmp/j3-mat-029-pytest-14429/repo --accepted-diff
+  /tmp/j3-mat-029-pytest-14429/accepted.diff --out
+  /tmp/j3-mat-029-pytest-14429/final/candidate.json --report
+  /tmp/j3-mat-029-pytest-14429/final/report.md --diff-out
+  /tmp/j3-mat-029-pytest-14429/final/candidate.diff --validate
+  --validation-timeout-seconds 180` -> validated; validation command
+  `trap 'rm -f src/_pytest/_version.py' EXIT; printf '%s\n'
+  'version = "99.0.0"' 'version_tuple = (99, 0, 0)' >
+  src/_pytest/_version.py; PYTHONPATH=src python -m pytest
+  testing/test_parseopt.py::test_argument_repr_uninitialized
+  testing/test_parseopt.py::test_argument_repr_initialized -q` -> `2 passed
+  in 0.02s`; `python -m json.tool
+  /tmp/j3-mat-029-pytest-14429/final/candidate.json` -> passed.
+- Result: materialized `pytest-dev/pytest#14429` from base
+  `8f81c76744daf72d4f77cfc8423f4bdc60733d78` to accepted head
+  `641a97b7695430f9fc4e9113b31d797447dc9654`. The candidate changed only
+  `src/_pytest/config/argparsing.py` and `testing/test_parseopt.py`, recorded
+  candidate-after diff/AST/hash/convention metadata plus mutation scope, and
+  used reusable `replace_exact_source_lines_after_anchor` and
+  `insert_pytest_function_after_anchor` action records. Full accepted-diff
+  parity is false because the accepted PR also adds
+  `changelog/13817.bugfix.rst`; repo-convention scoped parity and source/test
+  scoped parity are true. Remaining non-materialized MAT-007 counts are now
+  `current_structured_action = 4`, `general_typed_builder = 0`,
+  `repo_convention_builder = 1`, `constrained_local_generator = 0`, and
+  `not_currently_expressible = 2`.
+- Commit: pending.
+- Push: pending.
+- Next: coordinator should review `MAT-029` and assign the final remaining
+  repo-convention row, `click-3405`, if still desired.
+- Blockers: none.

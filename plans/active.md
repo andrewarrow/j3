@@ -179,44 +179,23 @@ This is the live coordinator board. Keep it current and compact.
   `not_currently_expressible = 2`. `MAT-028` now materializes and
   live-validates `psf/requests#7315` with exact accepted-diff parity using
   reusable bounded source deletion, pytest function rename, and pytest
-  assertion expectation update records. Remaining non-materialized MAT-007
-  counts are now `current_structured_action = 4`,
-  `general_typed_builder = 0`, `repo_convention_builder = 2`,
+  assertion expectation update records. `MAT-029` now materializes and
+  live-validates `pytest-dev/pytest#14429` with source/test scoped parity
+  using reusable bounded source replacement and pytest parser-fixture test
+  insertion records; full accepted-diff parity is false because the accepted
+  PR also adds `changelog/13817.bugfix.rst`. Remaining non-materialized
+  MAT-007 counts are now `current_structured_action = 4`,
+  `general_typed_builder = 0`, `repo_convention_builder = 1`,
   `constrained_local_generator = 0`, and `not_currently_expressible = 2`.
-  `MAT-029` is now assigned to `pytest-dev/pytest#14429`, the smaller
-  remaining repo-convention row with pytest parser-fixture conventions.
 
 ## Active Tasks
 
-### `MAT-029`: Held-out pytest parser fixture convention candidate
-
-- Status: active
-- Owner: worker.
-- Scope: attempt `pytest-dev/pytest#14429` with reusable repo-convention and
-  bounded source/test update action records. Allowed writes are focused
-  repo-convention materializer/planner extensions and tests as needed, focused
-  `docs/MAT_029_*`, generated artifacts under `/tmp`, and plan updates. Avoid
-  transition scoring, issue/PR ranking, validation-policy changes,
-  local-knowledge records, matrix manifests, and unrelated materializer
-  families.
-- Acceptance: determine pinned base/head refs, accepted changed files,
-  validation command, mutation scope, candidate-after diff/hash metadata,
-  accepted-diff comparison, and live validation result for `pytest-14429`.
-  Use reusable convention/source/test action kinds rather than a PR-named
-  action. If the accepted PR spans changelog or docs, separate full parity from
-  source/test scoped parity explicitly. If target selection, defensive source
-  guard insertion, pytest parser-fixture test construction, parity, or
-  validation blocks, record the exact blocker without broadening scope
-  silently.
-- Tests: focused repo-convention/materializer tests if code changes are made,
-  JSON/report checks if artifacts are written,
-  `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and live
-  focused validation when materialized.
+No active worker task is assigned after `MAT-029` completion.
 
 ## Ready Queue
 
-No separate ready worker task is queued while `MAT-029` is active. Remaining
-repo-convention row after this is `click-3405`.
+Next recommended bounded worker task: materialize the remaining
+repo-convention row, `click-3405`, after coordinator review and assignment.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
@@ -241,6 +220,25 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `MAT-029`: materialized `pytest-dev/pytest#14429` from base
+  `8f81c76744daf72d4f77cfc8423f4bdc60733d78` to accepted head
+  `641a97b7695430f9fc4e9113b31d797447dc9654`. The candidate changed only
+  `src/_pytest/config/argparsing.py` and `testing/test_parseopt.py`,
+  recorded candidate-after diff/AST/hash/convention metadata plus mutation
+  scope, and used reusable `replace_exact_source_lines_after_anchor` and
+  `insert_pytest_function_after_anchor` action records. Full accepted-diff
+  parity is false because the accepted PR also adds
+  `changelog/13817.bugfix.rst`; repo-convention and source/test scoped parity
+  are true. Live focused validation passed with a temporary
+  setuptools-scm `_pytest._version` shim removed by the validation command:
+  `2 passed in 0.02s`. Remaining non-materialized MAT-007 counts are
+  `current_structured_action = 4`, `general_typed_builder = 0`,
+  `repo_convention_builder = 1`, `constrained_local_generator = 0`, and
+  `not_currently_expressible = 2`. Artifacts:
+  `docs/MAT_029_PYTEST_14429_PARSER_FIXTURE_CONVENTION_CANDIDATE_2026-05-19.md`,
+  `/tmp/j3-mat-029-pytest-14429/final/candidate.json`,
+  `/tmp/j3-mat-029-pytest-14429/final/report.md`, and
+  `/tmp/j3-mat-029-pytest-14429/final/candidate.diff`.
 - `MAT-028`: materialized `psf/requests#7315` from base
   `e8d2c015eecda8273612dd4562425e00cd164ba5` to accepted head
   `fd628095d7b9ddbf3e987d8a4bf0e6062768916f`. The candidate changed only

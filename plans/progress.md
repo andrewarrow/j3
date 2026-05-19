@@ -6560,3 +6560,24 @@ meaningful work. Do not replace this file with a daily reset.
   materializable-panel closure or move to the separate shadow-advice-only
   residual workstream.
 - Blockers: none.
+
+### 2026-05-19 - Coordinator Review And Dispatch - MAT-036
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, and
+  `plans/progress.md`.
+- Tests: `python -m py_compile j3/heldout_source_region_candidate.py
+  tests/test_heldout_source_region_candidate.py` plus `pytest
+  tests/test_heldout_source_region_candidate.py -q` -> 23 passed; `pytest
+  tests/test_plan_consistency.py -q` -> 6 passed; `python -m json.tool
+  /tmp/j3-mat-035-flask-5898-live/final/candidate.json` -> passed; `git diff
+  --check` -> passed.
+- Result: reviewed `MAT-035`; exact full accepted-diff parity, source-only and
+  source/docs scoped parity, mutation scope, reusable source/text action
+  evidence, and live Flask validation are consistent. The four original
+  `current_structured_action` rows are now all materialized and
+  live-validated, pending a compact closure refresh.
+- Next: dispatch a worker for `MAT-036` to record current-action closure
+  coverage, keep reference rows separate, update remaining counts, and
+  recommend the next bounded workstream or blocker.
+- Blockers: none.

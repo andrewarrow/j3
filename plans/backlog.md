@@ -3868,11 +3868,37 @@ Long-term target:
   `/tmp/j3-mat-035-flask-5898-live/final/report.md`, and
   `/tmp/j3-mat-035-flask-5898-live/final/candidate.diff`.
 
+### MAT-036: Current-action closure coverage refresh
+
+- Status: active
+- Why: `MAT-032` through `MAT-035` now account for all four original
+  `current_structured_action` rows from the MAT-007 panel. A compact closure
+  record should make the final counts, parity scopes, validation evidence,
+  and next workstream recommendation explicit before the coordinator moves to
+  residual or parked-row work.
+- Write scope: focused current-action closure evidence docs, generated
+  artifacts under `/tmp`, and plan updates. Avoid materializer code,
+  transition scoring, issue/PR ranking, validation-policy changes,
+  local-knowledge records, matrix manifests, and `plans/strategy.md`.
+- Acceptance: reconcile the MAT-007 held-out coverage after `MAT-032` through
+  `MAT-035`; record all four original `current_structured_action` rows as
+  materialized/live-validated with their evidence tasks, parity scopes,
+  validation status, changed files, and reusable action kinds; keep DATA
+  reference rows separate; update remaining non-materialized MAT-007 counts;
+  and recommend the next bounded workstream now that only the two
+  `not_currently_expressible` rows remain parked. If any current-action
+  artifact is missing or contradictory, record the exact blocker instead of
+  closing the bucket.
+- Tests: parse any JSONL/JSON artifact written,
+  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+
 ## Next Recommended Queue
 
 Start with these unless fresh evidence changes the order:
 
-1. Review `MAT-035`, then reconcile current-structured-action closure coverage
-   if the final row is materialized cleanly.
-2. Separately decide whether to pursue the `TRANS-012` shadow-advice-only
-   residual examples; product transition routing remains shadow-only.
+1. Review `MAT-036`, then decide whether to pursue the `TRANS-012`
+   shadow-advice-only residual examples or explicitly park the two
+   `not_currently_expressible` MAT-007 rows behind a multi-step migration
+   planner.
+2. Product transition routing remains shadow-only unless a separate guarded
+   opt-in task explicitly changes that policy with fresh evidence.

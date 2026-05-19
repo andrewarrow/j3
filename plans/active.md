@@ -222,16 +222,33 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-No active worker task is currently assigned. The coordinator should review
-`MAT-035` and then decide whether to record MAT-007 closure coverage or move to
-the separate shadow-advice-only residual workstream.
+### `MAT-036`: Current-action closure coverage refresh
+
+- Status: active
+- Owner: worker MAT-036.
+- Started: 2026-05-19.
+- Write scope: focused current-action closure evidence docs, generated
+  artifacts under `/tmp`, and plan updates. Avoid materializer code,
+  transition scoring, issue/PR ranking, validation-policy changes,
+  local-knowledge records, matrix manifests, and `plans/strategy.md`.
+- Acceptance: reconcile the MAT-007 held-out coverage after `MAT-032` through
+  `MAT-035`; record all four original `current_structured_action` rows as
+  materialized/live-validated with their evidence tasks, parity scopes,
+  validation status, changed files, and reusable action kinds; keep DATA
+  reference rows separate; update remaining non-materialized MAT-007 counts;
+  and recommend the next bounded workstream now that only the two
+  `not_currently_expressible` rows remain parked. If any current-action
+  artifact is missing or contradictory, record the exact blocker instead of
+  closing the bucket.
+- Expected tests: parse any JSONL/JSON artifact written, `pytest
+  tests/test_plan_consistency.py -q`, and `git diff --check`.
 
 ## Ready Queue
 
-No queued worker task remains. The original MAT-007 materializable panel is
-closed; only the two `not_currently_expressible` rows remain parked. The
-shadow-advice-only residual examples remain a separate workstream and should
-not be mixed into MAT-007 held-out materialization counts.
+No queued worker task remains while `MAT-036` is active. After it completes,
+review whether to move to the separate `TRANS-012` shadow-advice-only residual
+workstream or record the concrete blocker for the two parked
+`not_currently_expressible` MAT-007 rows.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 

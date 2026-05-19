@@ -16,7 +16,10 @@ This is the live coordinator board. Keep it current and compact.
   `remain_shadow_only`. `TRANS-005` reran the standard matrix after
   `MODEL-003` through `MODEL-005`: 56 tasks, 55 ranked solved, 8 matrix
   residuals, 17 residual-report examples, one `candidate_generation_gap`, 16
-  `scorer_ranking_gap` examples, and zero hosted usage. Tests-only wedge guarded opt-in also remains
+  `scorer_ranking_gap` examples, and zero hosted usage. `TRANS-006` made
+  existing diff/AST metadata visible as candidate-after evidence in residual
+  reporting without changing those residual counts or the shadow-only gate.
+  Tests-only wedge guarded opt-in also remains
   blocked after `REAL-003` scored `pass@3 = 0/4`; `GS7-008` now materializes
   and live-validates the `iniconfig` calibration candidate. `REAL-005` extends
   live baseline preflight to `h11` and `humanize`, so Gate A now has three
@@ -61,17 +64,6 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-- `TRANS-006`: surface candidate-after evidence from transition outcome
-  metadata.
-  - Owner: worker Parfit (`019e3e2c-0c10-7ee1-b753-752bccc3e617`).
-  - Scope: transition action-choice/residual evidence plumbing and focused
-    tests only.
-  - Acceptance: candidate outcome rows that already carry diff or AST-delta
-    metadata produce available candidate-after evidence in action-choice
-    groups, and residual missing-feature reports no longer label those rows as
-    lacking candidate-after evidence.
-  - Expected tests: focused transition action-choice/residual/scorer tests,
-    `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
 - `ACT-003`: reduce the `dynamic_field_error_message` search-budget gap.
   - Owner: worker Anscombe (`019e3e2c-4810-7811-979d-70f54413a6b5`).
   - Scope: repair candidate ranking/generation around exception-message
@@ -85,8 +77,9 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Ready Queue
 
-`TRANS-006` and `ACT-003` are being dispatched from the `TRANS-005` residual
-clusters. Avoid broader matrix-manifest expansion until both return.
+`ACT-003` is still running from the `TRANS-005` residual clusters. Avoid broader
+matrix-manifest expansion until it returns and the coordinator reviews the
+combined `TRANS-006` / `ACT-003` results.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
@@ -110,6 +103,15 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `TRANS-006`: surfaced candidate-after metadata from transition outcome rows.
+  Action-choice candidate records now treat root diff summaries, flattened
+  diff counts, root AST deltas, and flattened AST-delta metadata as available
+  candidate-after evidence without inventing embeddings. Nested
+  `candidate_after` records, repo-after records, patched source, and actual
+  after embeddings remain preferred when present. Rerunning the residual
+  reporter against the `TRANS-005` matrix kept 17 failures and the same gap
+  classifications, but removed `candidate_after_unavailable` from missing
+  feature evidence; `candidate_after_embedding_unavailable` remains.
 - `TRANS-005`: reran the standard transition shadow matrix after `MODEL-003`
   through `MODEL-005`. The run covered 5 suites, 56 tasks, 55 ranked solved
   tasks, 12,413 candidates, 19 held-out groups, 8 matrix residuals, and zero

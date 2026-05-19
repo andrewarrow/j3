@@ -4620,3 +4620,38 @@ meaningful work. Do not replace this file with a daily reset.
   `TRANS-006`; worker Anscombe (`019e3e2c-4810-7811-979d-70f54413a6b5`) is
   running `ACT-003`.
 - Blockers: none.
+
+### 2026-05-19 - TRANS-006 - Candidate-after metadata evidence
+
+- Owner: worker Parfit (`019e3e2c-0c10-7ee1-b753-752bccc3e617`).
+- Files changed: `j3/transition_action_choice.py`,
+  `tests/test_transition_action_choice.py`,
+  `tests/test_transition_residuals.py`, `plans/active.md`,
+  `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `python -m py_compile j3/transition_action_choice.py
+  j3/transition_residuals.py tests/test_transition_action_choice.py
+  tests/test_transition_residuals.py tests/test_transition_action_scoring.py`
+  -> passed; `pytest tests/test_transition_action_choice.py
+  tests/test_transition_residuals.py tests/test_transition_action_scoring.py -q`
+  -> 33 passed; `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check` -> passed; `python cli.py report-transition-residuals --matrix
+  /tmp/j3-trans-005-post-scorer-matrix --out
+  /tmp/j3-trans-006-residual-report.json --embedding-dim 8 --example-limit 20
+  --json` -> passed.
+- Result: action-choice candidate records now expose root diff summaries,
+  flattened diff counts, root AST deltas, and flattened AST-delta metadata as
+  available `candidate_after_metadata` evidence while keeping after embeddings
+  unavailable unless an actual after embedding/source/repo-after record exists.
+  Existing nested `candidate_after` behavior remains intact. The residual
+  reporter no longer labels those rows `candidate_after_unavailable`; rerunning
+  the report against the `TRANS-005` matrix kept 17 failures with the same
+  `candidate_generation_gap` / `scorer_ranking_gap` counts and reported only
+  `source_embedding_unavailable` and
+  `candidate_after_embedding_unavailable` as missing feature evidence.
+  Production transition ranking remains unchanged and shadow-only.
+- Commit: pending.
+- Push: pending.
+- Next: coordinator should review `TRANS-006` together with the active
+  `ACT-003` search-budget result before assigning more transition residual
+  work.
+- Blockers: none.

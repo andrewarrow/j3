@@ -562,6 +562,10 @@ def _candidate_after(
             "embedding": embedding,
         }
 
+    metadata = _candidate_after_metadata(row, observation=observation)
+    if metadata is not None:
+        return metadata
+
     return {
         "available": False,
         "kind": "unavailable",
@@ -572,6 +576,76 @@ def _candidate_after(
         "embedding_dim": None,
         "embedding": None,
         "reason": "candidate outcome row has no patched source or repo-after embedding",
+    }
+
+
+def _candidate_after_metadata(
+    row: Mapping[str, object],
+    *,
+    observation: Mapping[str, object],
+) -> dict[str, object] | None:
+    numeric_fields = (
+        "diff_added_lines",
+        "diff_removed_lines",
+        "diff_changed_lines",
+        "ast_delta_added_count",
+        "ast_delta_removed_count",
+        "ast_delta_net_count",
+    )
+    boolean_fields = ("ast_parse_ok",)
+    numeric = {
+        field: observation.get(field, row.get(field))
+        for field in numeric_fields
+        if _number_or_none(observation.get(field, row.get(field))) is not None
+    }
+    boolean = {
+        field: observation.get(field, row.get(field))
+        for field in boolean_fields
+        if isinstance(observation.get(field, row.get(field)), bool)
+    }
+    ast_features = {
+        "added": _numeric_mapping(
+            observation.get(
+                "ast_delta_added_features",
+                row.get("ast_delta_added_features"),
+            )
+        ),
+        "removed": _numeric_mapping(
+            observation.get(
+                "ast_delta_removed_features",
+                row.get("ast_delta_removed_features"),
+            )
+        ),
+    }
+    metadata_fields = {
+        field: _json_copy(row.get(field))
+        for field in ("diff_summary", "ast_delta", "candidate_diff")
+        if isinstance(row.get(field), Mapping)
+    }
+    if not (
+        numeric
+        or boolean
+        or ast_features["added"]
+        or ast_features["removed"]
+        or metadata_fields
+    ):
+        return None
+    return {
+        "available": True,
+        "kind": "candidate_after_metadata",
+        "field": None,
+        "record": {
+            "numeric": _json_copy(numeric),
+            "boolean": _json_copy(boolean),
+            "ast_features": _json_copy(ast_features),
+            "metadata_fields": metadata_fields,
+        },
+        "source": None,
+        "source_sha256": None,
+        "embedding_available": False,
+        "embedding_kind": None,
+        "embedding_dim": None,
+        "embedding": None,
     }
 
 

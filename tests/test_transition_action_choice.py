@@ -50,16 +50,14 @@ def test_builds_action_choice_group_from_candidate_outcomes_fixture() -> None:
     assert failed["validation"]["passed"] is False
     assert failed["source_context"]["kind"] == "candidate_context"
     assert failed["source_context"]["embedding"] is None
-    assert failed["candidate_after"] == {
-        "available": False,
-        "kind": "unavailable",
-        "source": None,
-        "source_sha256": None,
-        "embedding_available": False,
-        "embedding_kind": None,
-        "embedding_dim": None,
-        "embedding": None,
-        "reason": "candidate outcome row has no patched source or repo-after embedding",
+    assert failed["candidate_after"]["available"] is True
+    assert failed["candidate_after"]["kind"] == "candidate_after_metadata"
+    assert failed["candidate_after"]["embedding_available"] is False
+    assert failed["candidate_after"]["embedding"] is None
+    assert failed["candidate_after"]["record"]["numeric"] == {
+        "diff_added_lines": 1,
+        "diff_removed_lines": 1,
+        "diff_changed_lines": 1,
     }
     assert passed["validation"]["passed"] is True
     assert passed["is_first_pass"] is True
@@ -150,6 +148,74 @@ def test_nested_candidate_after_feeds_change_context_without_source_embedding() 
             },
             "removed": {"node:Pass": 1},
         },
+    }
+
+
+def test_root_candidate_after_metadata_is_available_without_embedding() -> None:
+    row = {
+        **_candidate_row(rank_index=1, passed=True),
+        "repair_plan_id": "plan-root-metadata",
+        "diff_summary": {
+            "added_line_count": 3,
+            "removed_line_count": 1,
+            "changed_line_count": 4,
+        },
+        "ast_delta": {
+            "ast_parse_ok": True,
+            "ast_delta_added_count": 2,
+            "ast_delta_removed_count": 1,
+            "ast_delta_net_count": 1,
+            "ast_delta_added_features": {"node:If": 1},
+            "ast_delta_removed_features": {"node:Pass": 1},
+        },
+    }
+
+    group = build_transition_action_choice_groups([row], embedding_dim=8)[0]
+    candidate_after = group["candidates"][0]["candidate_after"]
+
+    assert candidate_after["available"] is True
+    assert candidate_after["kind"] == "candidate_after_metadata"
+    assert candidate_after["embedding_available"] is False
+    assert candidate_after["embedding"] is None
+    assert candidate_after["record"]["numeric"] == {
+        "diff_added_lines": 3,
+        "diff_removed_lines": 1,
+        "diff_changed_lines": 4,
+        "ast_delta_added_count": 2,
+        "ast_delta_removed_count": 1,
+        "ast_delta_net_count": 1,
+    }
+    assert candidate_after["record"]["boolean"] == {"ast_parse_ok": True}
+    assert candidate_after["record"]["ast_features"] == {
+        "added": {"node:If": 1},
+        "removed": {"node:Pass": 1},
+    }
+
+
+def test_flat_candidate_after_metadata_is_available_without_embedding() -> None:
+    row = {
+        **_candidate_row(rank_index=1, passed=True),
+        "repair_plan_id": "plan-flat-metadata",
+        "diff_added_lines": 1,
+        "diff_removed_lines": 1,
+        "diff_changed_lines": 2,
+        "ast_parse_ok": True,
+        "ast_delta_added_count": 1,
+        "ast_delta_removed_count": 1,
+        "ast_delta_net_count": 0,
+        "ast_delta_added_features": {"literal:str:new": 1},
+        "ast_delta_removed_features": {"literal:str:old": 1},
+    }
+
+    group = build_transition_action_choice_groups([row], embedding_dim=8)[0]
+    candidate_after = group["candidates"][0]["candidate_after"]
+
+    assert candidate_after["available"] is True
+    assert candidate_after["kind"] == "candidate_after_metadata"
+    assert candidate_after["embedding_available"] is False
+    assert candidate_after["record"]["numeric"]["diff_changed_lines"] == 2
+    assert candidate_after["record"]["ast_features"]["added"] == {
+        "literal:str:new": 1
     }
 
 

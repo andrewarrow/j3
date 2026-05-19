@@ -46,8 +46,17 @@ def test_transition_residual_report_groups_ranking_and_generation_gaps(tmp_path)
         item["value"] == "candidate_after_embedding_unavailable"
         for item in report["groups"]["missing_feature_evidence"]
     )
+    assert all(
+        item["value"] != "candidate_after_unavailable"
+        for item in report["groups"]["missing_feature_evidence"]
+    )
     examples = report["examples"]
     assert examples
+    assert "candidate_after_unavailable" not in examples[0]["missing_feature_evidence"]
+    assert (
+        "candidate_after_embedding_unavailable"
+        in examples[0]["missing_feature_evidence"]
+    )
     assert examples[0]["exact_candidate_summaries"][0]["params"] == {"to": "*"}
     assert examples[0]["production_candidate"]["rank_index"] == 1
     assert report["usage"]["hosted_llm_api_calls"] == 0
@@ -309,6 +318,17 @@ def _candidate_row(
         "ranker_score": 0.9 if rank_index == 1 else 0.1,
         "target_context": {"function_name": "add", "line_span": [2, 2]},
         "before_source": "def add(left, right):\n    return left - right\n",
+        "diff_added_lines": 1,
+        "diff_removed_lines": 1,
+        "diff_changed_lines": 2,
+        "ast_parse_ok": True,
+        "ast_delta_added_count": 1,
+        "ast_delta_removed_count": 1,
+        "ast_delta_net_count": 0,
+        "ast_delta_added_features": {
+            "binop:Add" if operator == "+" else "binop:Mult": 1
+        },
+        "ast_delta_removed_features": {"binop:Sub": 1},
         "passed": passed,
         "preferred": passed,
         "rank_index": rank_index,

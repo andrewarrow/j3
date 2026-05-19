@@ -397,7 +397,7 @@ Long-term target:
 
 ### TRANS-006: Surface candidate-after metadata in transition evidence
 
-- Status: active
+- Status: done
 - Why: every `TRANS-005` residual still reports missing candidate-after/source
   evidence even though candidate outcome rows carry diff and AST-delta
   metadata that should be visible to action-choice and residual reports.
@@ -409,6 +409,16 @@ Long-term target:
   `candidate_after_unavailable`, while embedding availability remains honest.
 - Tests: focused transition action-choice/residual/scorer tests,
   `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+- Completion note: added `candidate_after_metadata` evidence records to
+  transition action-choice candidates when outcome rows carry root diff
+  summaries, flattened diff counts, root AST deltas, or flattened AST-delta
+  metadata. The records set `candidate_after.available = true` while keeping
+  `embedding_available = false` unless a real after embedding/source/repo-after
+  record exists. Focused residual tests now assert
+  `candidate_after_unavailable` is not reported for those rows, and rerunning
+  the residual reporter against the `TRANS-005` matrix removed that label while
+  preserving `candidate_after_embedding_unavailable` and the existing
+  shadow-only ranking decision.
 
 ## Workstream E: Repo State, Actions, And Models
 

@@ -3970,8 +3970,8 @@ meaningful work. Do not replace this file with a daily reset.
   src/requests/_types.py src/requests/models.py` in `0.024s`. MAT-010's
   annotation family generalized, but this row required general parameterized
   expansions for `type_alias_update` and `import_member_remove`.
-- Commit: pending.
-- Push: pending.
+- Commit: worker completion commit; final hash reported in worker handoff.
+- Push: succeeded.
 - Next: integrate VAL-002, then dispatch the next validation or typed-builder
   probe based on residuals.
 - Blockers: none for MAT-011; typed-builder coverage still needs more rows.
@@ -4462,4 +4462,25 @@ meaningful work. Do not replace this file with a daily reset.
 - Next: worker Socrates (`019e3e16-acdb-7df3-a07e-1f740aa4537e`) is running
   `MODEL-005`; worker Planck (`019e3e16-dbaf-7400-9ff1-824e8753e4ef`) is
   running `SCALE-002`.
+- Blockers: none.
+
+### 2026-05-19 - SCALE-002 - Data provenance and release policy
+
+- Owner: worker Planck (`019e3e16-dbaf-7400-9ff1-824e8753e4ef`).
+- Files changed: `docs/TRAINING_DATA_POLICY.md`, `docs/TRAINING.md`,
+  `plans/active.md`, `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `git diff --check` -> passed;
+  `pytest tests/test_plan_consistency.py -q` -> 6 passed.
+- Result: drafted a focused training data policy that builds on `SCALE-001`.
+  It defines artifact classes for local scratch corpora, checked-in examples,
+  release archives, synthetic rows, issue/PR mining, generated artifacts, and
+  external repo snapshots; mandatory provenance fields for raw code, docs,
+  issues/PRs, generated candidates, synthetic prompts, validations, and
+  teacher-assisted labels; checksum and split/leakage discipline; retention
+  and redistribution classes; release exclusions; and a concrete checklist for
+  a future durable training manifest task.
+- Commit: pending.
+- Push: pending.
+- Next: use the policy as the contract for the next durable training manifest
+  task.
 - Blockers: none.

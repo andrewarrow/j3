@@ -65,20 +65,11 @@ This is the live coordinator board. Keep it current and compact.
     boundary/literal examples without adding new repair action kinds.
   - Expected tests: focused transition action scoring/ranking tests,
     `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
-- `SCALE-002`: define data provenance and release policy.
-  - Owner: worker Planck (`019e3e16-dbaf-7400-9ff1-824e8753e4ef`).
-  - Scope: focused docs policy under `docs/` plus required plan updates.
-  - Acceptance: policy covers local scratch corpora, checked-in examples,
-    release archives, synthetic rows, issue/PR mining, generated artifacts,
-    licenses/terms, checksums, and split discipline.
-  - Expected tests: `git diff --check` and
-    `pytest tests/test_plan_consistency.py -q`.
 
 ## Ready Queue
 
-`MODEL-005` and `SCALE-002` are being dispatched. Keep additional scorer work
-queued until `MODEL-005` returns, and avoid broad data/training policy edits
-until `SCALE-002` returns.
+`MODEL-005` is running. Keep additional scorer work queued until `MODEL-005`
+returns.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
@@ -102,6 +93,15 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `SCALE-002`: added `docs/TRAINING_DATA_POLICY.md` and linked it from
+  `docs/TRAINING.md`. The policy builds on `SCALE-001` and defines artifact
+  classes for scratch corpora, checked-in examples, release archives,
+  synthetic rows, issue/PR mining, generated artifacts, and external repo
+  snapshots; mandatory provenance fields for raw code, docs, issues/PRs,
+  generated candidates, synthetic prompts, validations, and teacher-assisted
+  labels; checksum and split/leakage controls; retention and redistribution
+  classes; release exclusions; and a manifest readiness checklist for a future
+  durable training manifest task.
 - `MODEL-004`: added mapping target evidence to the shadow transition scorer
   for `change_dict_key`, `change_dict_value`, `add_dict_key`, and
   `change_subscript_key`. The V1/V2/V3 feature surfaces now expose mapping

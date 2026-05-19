@@ -3,6 +3,10 @@
 This document describes the external Python corpus used for `j3` repair
 training and how another developer can reproduce it.
 
+For provenance, license/terms, split, checksum, retention, redistribution, and
+release rules that apply to this corpus and future larger local corpora, see
+`docs/TRAINING_DATA_POLICY.md`.
+
 The current corpus lives outside this repository at:
 
 ```text

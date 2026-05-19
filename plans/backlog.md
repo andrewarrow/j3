@@ -512,12 +512,17 @@ Long-term target:
 
 ### SCALE-002: Define data provenance and release policy
 
-- Status: active
+- Status: done
 - Why: larger corpora need license, terms, split, and checksum discipline.
 - Write scope: `docs/TRAINING.md` or a focused companion doc.
 - Acceptance: policy covers local scratch corpora, checked-in examples, release
   archives, synthetic rows, issue/PR mining, and generated artifacts.
 - Tests: `git diff --check`.
+- Completion note: added `docs/TRAINING_DATA_POLICY.md` and linked it from
+  `docs/TRAINING.md`. The policy defines artifact classes, mandatory
+  provenance fields, checksum discipline, split/leakage controls,
+  redistribution boundaries, release exclusions, retention classes, and
+  manifest readiness checks for larger local training corpora.
 
 ## Workstream G: Hard Feasibility Proofs
 

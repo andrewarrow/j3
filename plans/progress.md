@@ -4591,8 +4591,8 @@ meaningful work. Do not replace this file with a daily reset.
   `scorer_ranking_gap` and 1 `candidate_generation_gap`; all examples still
   report missing source/candidate-after evidence. Guarded-trial decision:
   `remain_shadow_only`. `TRANS-003` remains blocked.
-- Commit: pending.
-- Push: pending.
+- Commit: 25c60c2; completion metadata: 6ba7dde.
+- Push: succeeded.
 - Next: coordinator should review remaining residual clusters before assigning
   more transition scorer or matrix-manifest expansion work. Production
   transition ranking remains shadow-only.

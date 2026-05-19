@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import hashlib
 import json
 import time
@@ -72,6 +73,8 @@ def score_transition_action_candidate(
         - 1.05 * features[
             "mapping_add_key_placeholder_competes_with_existing_key_rename"
         ]
+        + 2.35 * features["tail_index_replace_expr_matches_tail_intent"]
+        - 0.65 * features["tail_index_literal_decoy_competes_with_tail_expr"]
         + 1.20 * features["failure_hint_file_match"]
         - 0.75 * features["failure_hint_file_mismatch"]
         + 1.00 * features["failure_hint_symbol_match"]
@@ -1042,9 +1045,16 @@ _BOUNDARY_LITERAL_FEATURE_NAMES = (
     "same_file_symbol_competitor_count",
 )
 
+_TAIL_INDEX_FEATURE_NAMES = (
+    "tail_index_intent_available",
+    "tail_index_replace_expr_matches_tail_intent",
+    "tail_index_literal_decoy_competes_with_tail_expr",
+)
+
 _BOUNDARY_OPERATOR_ACTION_KINDS = {"change_operator", "modify_condition"}
 _LITERAL_ACTION_KINDS = {"change_literal", "change_return_value"}
 _MODULE_CONSTANT_ACTION_KIND = "change_module_constant"
+_TAIL_INTENT_WORDS = frozenset({"last", "tail", "newest", "final"})
 
 
 def _mapping_target_features(
@@ -1428,6 +1438,125 @@ def _boundary_literal_features(
     return features
 
 
+def _tail_index_features(
+    candidate: Mapping[str, object],
+    *,
+    action_kind: str,
+    params: Mapping[str, object],
+    failure_hints: Sequence[object],
+    group: Mapping[str, object] | None,
+) -> dict[str, float]:
+    features = {name: 0.0 for name in _TAIL_INDEX_FEATURE_NAMES}
+    if not _tail_index_intent_available(candidate, failure_hints, group=group):
+        return features
+
+    features["tail_index_intent_available"] = 1.0
+    if action_kind == "replace_expr" and _replacement_is_tail_index(params):
+        features["tail_index_replace_expr_matches_tail_intent"] = 1.0
+    elif (
+        action_kind == "change_literal"
+        and params.get("from") == 0
+        and _negative_int(params.get("to"))
+        and _same_target_has_tail_replace_expr(candidate, group=group)
+    ):
+        features["tail_index_literal_decoy_competes_with_tail_expr"] = 1.0
+    return features
+
+
+def _tail_index_intent_available(
+    candidate: Mapping[str, object],
+    failure_hints: Sequence[object],
+    *,
+    group: Mapping[str, object] | None,
+) -> bool:
+    text_parts: list[str] = []
+    action = _mapping(candidate.get("action"))
+    for value in (
+        action.get("symbol"),
+        action.get("reason"),
+        action.get("file_path"),
+    ):
+        if isinstance(value, str):
+            text_parts.append(value)
+    grouping = _mapping(group.get("grouping")) if group is not None else {}
+    for field in ("task", "task_family"):
+        value = grouping.get(field)
+        if isinstance(value, str):
+            text_parts.append(value)
+    for raw_hint in failure_hints:
+        hint = _mapping(raw_hint)
+        for field in ("nodeid", "summary"):
+            value = hint.get(field)
+            if isinstance(value, str):
+                text_parts.append(value)
+        text_parts.extend(
+            str(name)
+            for name in _list(hint.get("function_names"))
+            if isinstance(name, str)
+        )
+    tokens = set()
+    for text in text_parts:
+        tokens.update(_word_tokens(text))
+    return bool(tokens & _TAIL_INTENT_WORDS)
+
+
+def _replacement_is_tail_index(params: Mapping[str, object]) -> bool:
+    replacement = params.get("replacement")
+    if not isinstance(replacement, str) or not replacement.strip():
+        return False
+    try:
+        parsed = ast.parse(replacement, mode="eval")
+    except SyntaxError:
+        return False
+    subscript = parsed.body
+    if not isinstance(subscript, ast.Subscript):
+        return False
+    return _ast_node_is_negative_one(subscript.slice)
+
+
+def _ast_node_is_negative_one(node: ast.AST) -> bool:
+    if isinstance(node, ast.Constant):
+        return node.value == -1 and type(node.value) is int
+    return (
+        isinstance(node, ast.UnaryOp)
+        and isinstance(node.op, ast.USub)
+        and isinstance(node.operand, ast.Constant)
+        and node.operand.value == 1
+        and type(node.operand.value) is int
+    )
+
+
+def _negative_int(value: object) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool) and value < 0
+
+
+def _same_target_has_tail_replace_expr(
+    candidate: Mapping[str, object],
+    *,
+    group: Mapping[str, object] | None,
+) -> bool:
+    if group is None:
+        return False
+    signature = _file_symbol_signature(candidate)
+    if signature is None:
+        return False
+    for other in _list(group.get("candidates")):
+        other_record = _mapping(other)
+        if _file_symbol_signature(other_record) != signature:
+            continue
+        other_action = _mapping(other_record.get("action"))
+        if other_action.get("kind") != "replace_expr":
+            continue
+        if _replacement_is_tail_index(_mapping(other_action.get("params"))):
+            return True
+    return False
+
+
+def _word_tokens(text: str) -> set[str]:
+    normalized = "".join(char.lower() if char.isalnum() else " " for char in text)
+    return {token for token in normalized.split() if token}
+
+
 def _boundary_literal_hint_sets(
     failure_hints: Sequence[object],
 ) -> tuple[set[str], set[str], set[str]]:
@@ -1517,6 +1646,13 @@ def _candidate_score_features(
         failure_hints=failure_hints,
         group=group,
     )
+    tail_index_features = _tail_index_features(
+        candidate,
+        action_kind=action_kind,
+        params=params,
+        failure_hints=failure_hints,
+        group=group,
+    )
     ranker_score = _score_value(scores.get("ranker_score"))
     model_score = _score_value(scores.get("model_score"))
     failure_hint_score = _score_value(scores.get("failure_hint_score"))
@@ -1555,6 +1691,7 @@ def _candidate_score_features(
         ),
         **mapping_features,
         **boundary_literal_features,
+        **tail_index_features,
     }
 
 
@@ -1606,6 +1743,8 @@ def _candidate_v2_features(
     for name in _MAPPING_TARGET_FEATURE_NAMES:
         features[name] = float(base[name])
     for name in _BOUNDARY_LITERAL_FEATURE_NAMES:
+        features[name] = float(base[name])
+    for name in _TAIL_INDEX_FEATURE_NAMES:
         features[name] = float(base[name])
     _add_feature(features, f"action:{action_kind}", 1.0)
 

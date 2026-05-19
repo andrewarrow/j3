@@ -6677,3 +6677,29 @@ meaningful work. Do not replace this file with a daily reset.
 - Next: dispatch worker `MODEL-011` with write scope limited to scorer logic,
   focused scorer tests, optional evidence doc, and plan updates.
 - Blockers: none.
+
+### 2026-05-19 - MODEL-011 - Shadow-advice tail-index decoy scoring evidence
+
+- Owner: worker MODEL-011.
+- Files changed: `j3/transition_action_scoring.py`,
+  `tests/test_transition_action_scoring.py`, `plans/active.md`,
+  `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `pytest tests/test_transition_action_scoring.py -q` -> 27 passed;
+  direct replay over
+  `/tmp/j3-trans-012-expanded-standard/suite/{greenshot_bugs,greenshot_4}/candidate-outcomes.jsonl`
+  -> `last_item`, `final_score_tail`, `last_order_id_tail`, and
+  `newest_event_tail` all top-rank the passing `replace_expr`;
+  `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check`
+  -> passed.
+- Result: added narrow V1/advice scorer evidence for tail-intent
+  `replace_expr` candidates whose replacement parses as `seq[-1]`, plus a
+  same-target penalty only for competing `change_literal` candidates shaped
+  like `0 -> negative`. The focused tests cover the four `TRANS-012`
+  tail-index residuals and a no-tail-intent guard case. Product routing remains
+  shadow-only.
+- Commit: pending; final hash will be recorded after commit.
+- Push: pending.
+- Next: coordinator should review `MODEL-011`, then consider `MODEL-012` for
+  the remaining narrow `greenshot_bugs/missing_guard` shadow-advice residual
+  before the harder GreenShot-5 semantic API residuals.
+- Blockers: none.

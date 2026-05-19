@@ -703,6 +703,126 @@ def test_future_scorer_prefers_literal_delta_in_hinted_file_and_symbol() -> None
     assert literal_score["features"]["literal_or_constant_matches_assertion_delta"] == 1.0
 
 
+def test_future_scorer_replays_tail_index_literal_decoy_residuals() -> None:
+    cases = [
+        ("last_item", "last_item", "items[-1]", 1, 3),
+        ("final_score_tail", "final_score", "scores[-1]", 4, 15),
+        ("last_order_id_tail", "last_order_id", "order_ids[-1]", 101, 303),
+        ("newest_event_tail", "newest_event", "events[-1]", "created", "sent"),
+    ]
+
+    for task, symbol, replacement, actual, expected in cases:
+        groups = build_transition_action_choice_groups(
+            [
+                _tail_index_candidate_row(
+                    task=task,
+                    symbol=symbol,
+                    rank_index=1,
+                    action="replace_expr",
+                    params={"replacement": replacement},
+                    node_kind="Subscript",
+                    passed=True,
+                    model_score=0.3018494539923293,
+                    failure_hint_score=45.0,
+                    actual=actual,
+                    expected=expected,
+                ),
+                _tail_index_candidate_row(
+                    task=task,
+                    symbol=symbol,
+                    rank_index=2,
+                    action="change_literal",
+                    params={"from": 0, "to": -2},
+                    node_kind="Constant",
+                    passed=False,
+                    model_score=0.10970811259610694,
+                    failure_hint_score=40.0,
+                    actual=actual,
+                    expected=expected,
+                ),
+            ],
+            embedding_dim=8,
+        )
+
+        ranked = rank_transition_action_candidates(groups[0])
+        replace_score = score_transition_action_candidate(
+            groups[0]["candidates"][0],
+            group=groups[0],
+        )
+        literal_score = score_transition_action_candidate(
+            groups[0]["candidates"][1],
+            group=groups[0],
+        )
+
+        assert [candidate["rank_index"] for candidate in ranked] == [1, 2], task
+        assert (
+            replace_score["features"]["tail_index_replace_expr_matches_tail_intent"]
+            == 1.0
+        )
+        assert (
+            literal_score["features"][
+                "tail_index_literal_decoy_competes_with_tail_expr"
+            ]
+            == 1.0
+        )
+        assert replace_score["score"] > literal_score["score"]
+
+
+def test_future_scorer_does_not_reward_tail_access_without_tail_intent() -> None:
+    groups = build_transition_action_choice_groups(
+        [
+            _tail_index_candidate_row(
+                task="first_item",
+                symbol="first_item",
+                rank_index=1,
+                action="replace_expr",
+                params={"replacement": "items[-1]"},
+                node_kind="Subscript",
+                passed=False,
+                model_score=0.3018494539923293,
+                failure_hint_score=45.0,
+                actual=3,
+                expected=1,
+                tail_intent_hint=False,
+            ),
+            _tail_index_candidate_row(
+                task="first_item",
+                symbol="first_item",
+                rank_index=2,
+                action="change_literal",
+                params={"from": 0, "to": -2},
+                node_kind="Constant",
+                passed=False,
+                model_score=0.10970811259610694,
+                failure_hint_score=40.0,
+                actual=3,
+                expected=1,
+                tail_intent_hint=False,
+            ),
+        ],
+        embedding_dim=8,
+    )
+
+    replace_score = score_transition_action_candidate(
+        groups[0]["candidates"][0],
+        group=groups[0],
+    )
+    literal_score = score_transition_action_candidate(
+        groups[0]["candidates"][1],
+        group=groups[0],
+    )
+
+    assert replace_score["features"]["tail_index_intent_available"] == 0.0
+    assert (
+        replace_score["features"]["tail_index_replace_expr_matches_tail_intent"]
+        == 0.0
+    )
+    assert (
+        literal_score["features"]["tail_index_literal_decoy_competes_with_tail_expr"]
+        == 0.0
+    )
+
+
 def test_baseline_orders_are_stable_and_distinct() -> None:
     group = build_transition_action_choice_groups(
         _fixture_candidate_rows(),
@@ -1453,6 +1573,86 @@ def _boundary_literal_candidate_row(
         ],
         "equivalent_candidate_ranks": [1, 2],
         "overlapping_candidate_ranks": [1, 2],
+        "equivalent_passing_candidate_ranks": [],
+        "overlapping_passing_candidate_ranks": [],
+    }
+
+
+def _tail_index_candidate_row(
+    *,
+    task: str,
+    symbol: str,
+    rank_index: int,
+    action: str,
+    params: dict[str, object],
+    node_kind: str,
+    passed: bool,
+    model_score: float,
+    failure_hint_score: float,
+    actual: object,
+    expected: object,
+    tail_intent_hint: bool = True,
+) -> dict[str, object]:
+    return {
+        "task": task,
+        "task_family": "unclassified",
+        "source_type": "handcrafted",
+        "split": "validation",
+        "language": "python",
+        "phase": "ranked",
+        "repair_plan_id": f"plan-{task}",
+        "file_path": "bugs.py",
+        "action": action,
+        "symbol": symbol,
+        "start_line": 2,
+        "end_line": 2,
+        "node_kind": node_kind,
+        "params": params,
+        "reason": (
+            "replace first item access with last item access"
+            if action == "replace_expr" and tail_intent_hint
+            else "replace indexed item access"
+            if action == "replace_expr"
+            else "try nearby literal -2"
+        ),
+        "model_score": model_score,
+        "failure_hint_score": failure_hint_score,
+        "ranker_score": None,
+        "target_context": {
+            "callee_count": 0,
+            "caller_count": 0,
+            "qualified_symbol": f"bugs.{symbol}",
+            "role": "helper",
+        },
+        "before_source": "def target(items):\n    return items[0]\n",
+        "patched_source": "def target(items):\n    return items[-1]\n",
+        "passed": passed,
+        "preferred": passed,
+        "rank_index": rank_index,
+        "first_passing_index": 1,
+        "is_first_pass": passed and rank_index == 1,
+        "passing_candidates": 1,
+        "failure_hints": [
+            {
+                "assertions": [
+                    {
+                        "actual": actual,
+                        "expected": expected,
+                        "operator": "==",
+                    }
+                ],
+                "exception_type": "AssertionError",
+                "function_names": [symbol],
+                "nodeid": (
+                    f"tests/test_bugs.py::test_{symbol}_returns_tail"
+                    if tail_intent_hint
+                    else f"tests/test_bugs.py::test_{symbol}_returns_first"
+                ),
+                "summary": f"assert {actual!r} == {expected!r}",
+            }
+        ],
+        "equivalent_candidate_ranks": [],
+        "overlapping_candidate_ranks": [],
         "equivalent_passing_candidate_ranks": [],
         "overlapping_passing_candidate_ranks": [],
     }

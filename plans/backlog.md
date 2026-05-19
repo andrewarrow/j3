@@ -632,7 +632,7 @@ Long-term target:
 
 ### MODEL-011: Add shadow-advice tail-index decoy scoring evidence
 
-- Status: active
+- Status: done
 - Owner: worker MODEL-011, assigned on 2026-05-19.
 - Why: `MODEL-010` found the largest coherent `TRANS-012` shadow-advice
   residual cluster: four tail-index examples where the advisory scorer prefers
@@ -654,6 +654,35 @@ Long-term target:
   residual/advice replay for the four tail-index examples if available or
   locally added, `pytest tests/test_plan_consistency.py -q`, and
   `git diff --check`.
+- Completion note: added narrow V1/advice scorer features for tail-intent
+  `replace_expr` candidates whose replacement parses as `seq[-1]`, plus a
+  same-target penalty only for competing `change_literal` candidates shaped as
+  `0 -> negative`. Focused tests replay the four residual examples and a
+  direct `TRANS-012` candidate-outcome replay ranked the passing `replace_expr`
+  first for `last_item`, `final_score_tail`, `last_order_id_tail`, and
+  `newest_event_tail`. Product routing remains shadow-only.
+
+### MODEL-012: Add guard-insertion advice over unrelated operator decoy evidence
+
+- Status: ready
+- Why: after `MODEL-011`, the remaining narrow non-GreenShot-5
+  shadow-advice residual is `greenshot_bugs/missing_guard`: the passing
+  candidate inserts an empty-sequence guard in `average`, while the advisory
+  scorer prefers an unrelated comparison-operator change in `apply_discount`.
+- Write scope: likely `j3/transition_action_scoring.py` and focused tests in
+  `tests/test_transition_action_scoring.py`; optional concise evidence doc
+  under `docs/MODEL_012_*`; plan updates. Do not edit product routing, matrix
+  manifests, candidate generation, ranker routing, guarded-trial policy,
+  local-knowledge records, materializer code, or `plans/strategy.md`.
+- Acceptance: add local shadow-advice/V1 evidence that promotes an
+  `insert_guard` candidate only when failure/test context and target symbol
+  indicate the guarded function, prove the advisory scorer no longer selects
+  the unrelated operator decoy for `greenshot_bugs/missing_guard`, preserve
+  existing scorer behavior outside that slice, and keep product routing
+  shadow-only.
+- Tests: `pytest tests/test_transition_action_scoring.py -q`, focused
+  residual/advice replay or locally added test for `missing_guard`,
+  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
 
 ### TRANS-011: Rerun standard matrix after MODEL-009
 

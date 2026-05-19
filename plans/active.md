@@ -230,38 +230,36 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-### `MODEL-011`: Add shadow-advice tail-index decoy scoring evidence
-
-- Status: active
-- Owner: worker MODEL-011, assigned on 2026-05-19.
-- Scope: `j3/transition_action_scoring.py`, focused scorer tests in
-  `tests/test_transition_action_scoring.py`, optional saved-artifact replay or
-  evidence doc under `docs/MODEL_011_*`, and plan updates.
-- Acceptance: add a shadow-advice/V1 scoring feature or prior that promotes
-  passing tail-index `replace_expr` candidates over nearby negative literal
-  decoys for `last_item`, `final_score_tail`, `last_order_id_tail`, and
-  `newest_event_tail`; prove with focused tests or saved-artifact replay that
-  the advisory scorer no longer selects the failing literal candidate for
-  those four examples; keep product routing shadow-only.
-- Guardrails: do not edit product routing, matrix manifests, candidate
-  generation, ranker routing, guarded-trial policy, or local-knowledge records.
-- Expected tests: `pytest tests/test_transition_action_scoring.py -q`,
-  focused residual/advice replay for the four tail-index examples if available
-  or locally added, `pytest tests/test_plan_consistency.py -q`, and
-  `git diff --check`.
+No active worker tasks are currently recorded. The coordinator should review
+`MODEL-011`, then dispatch the next bounded shadow-advice residual slice or
+record why the remaining residuals should stay paused.
 
 ## Ready Queue
 
-No ready worker tasks are currently recorded while `MODEL-011` is active.
+### `MODEL-012`: Add guard-insertion advice over unrelated operator decoy evidence
+
+- Status: ready
+- Why: after `MODEL-011` resolves the four tail-index literal-decoy examples,
+  the remaining narrow non-GreenShot-5 shadow-advice residual is
+  `greenshot_bugs/missing_guard`, where the advisory scorer prefers an
+  unrelated comparison-operator change in `apply_discount` over the passing
+  empty-sequence guard in `average`.
+- Write scope: focused scorer logic/tests only if the coordinator accepts this
+  slice. Product routing, matrix manifests, candidate generation, ranker
+  routing, guarded-trial policy, and local-knowledge records remain out of
+  scope.
+- Acceptance: add local advice evidence that promotes the passing
+  `insert_guard` candidate only when failure/test context indicates the target
+  guarded function, and prove the `missing_guard` residual no longer selects
+  the unrelated operator decoy without changing product routing.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
 ## Paused Or Blocked
 
-- Shadow-advice-only residual-report examples from `greenshot_bugs`,
-  `greenshot_4`, and three `greenshot_5_subset` tasks remain visible for a
-  separate scorer/advice follow-up, but they are not matrix residuals in
-  `TRANS-012`.
+- Shadow-advice-only residual-report examples from `greenshot_bugs/missing_guard`
+  and three `greenshot_5_subset` tasks remain visible for separate
+  scorer/advice follow-ups, but they are not matrix residuals in `TRANS-012`.
 - `MODEL-002`: superseded by bounded scorer subtasks in the backlog, beginning
   with `MODEL-003` through `MODEL-009`.
 
@@ -276,6 +274,29 @@ Review before assigning more work if:
 - the next useful task is unclear
 
 ## Recently Completed
+
+### `MODEL-011`: Add shadow-advice tail-index decoy scoring evidence
+
+- Status: completed by worker MODEL-011 on 2026-05-19.
+- Result: added narrow V1/advice scorer evidence for tail-intent
+  `replace_expr` candidates whose replacement parses as `seq[-1]`, plus a
+  same-target penalty only for competing `change_literal` candidates shaped
+  like `0 -> negative`. The focused tests replay `last_item`,
+  `final_score_tail`, `last_order_id_tail`, and `newest_event_tail`, and a
+  direct replay against the `TRANS-012` candidate outcome artifacts now ranks
+  the passing `replace_expr` first for all four examples. Product routing
+  remains shadow-only.
+- Commit: pending; final hash will be recorded after commit.
+- Push: pending.
+- Tests: `pytest tests/test_transition_action_scoring.py -q` -> 27 passed;
+  direct `/tmp/j3-trans-012-expanded-standard` replay -> all four target
+  examples top-rank the passing `replace_expr`;
+  `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check` -> passed.
+- Recommended next: coordinator should review `MODEL-011`, then consider
+  `MODEL-012` for the remaining narrow `missing_guard` shadow-advice residual
+  before the harder GreenShot-5 semantic API residuals.
+- Blockers: none.
 
 ### `MODEL-010`: Triage TRANS-012 shadow-advice residuals
 

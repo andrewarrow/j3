@@ -218,36 +218,26 @@ This is the live coordinator board. Keep it current and compact.
   replacement records. Remaining non-materialized MAT-007 counts are now
   `current_structured_action = 0`, `general_typed_builder = 0`,
   `repo_convention_builder = 0`, `constrained_local_generator = 0`, and
-  `not_currently_expressible = 2`.
+  `not_currently_expressible = 2`. `MAT-036` refreshed the current-action
+  closure accounting: all four original MAT-007 `current_structured_action`
+  rows are materialized/live-validated, DATA reference rows remain outside the
+  held-out count, and the final remaining non-materialized counts are
+  `current_structured_action = 0`, `general_typed_builder = 0`,
+  `repo_convention_builder = 0`, `constrained_local_generator = 0`, and
+  `not_currently_expressible = 2`. The only remaining MAT-007 rows are
+  `flask-5812` and `flask-5727`, both parked behind migration-planner
+  capability rather than ordinary one-slice materialization.
 
 ## Active Tasks
 
-### `MAT-036`: Current-action closure coverage refresh
-
-- Status: active
-- Owner: worker MAT-036.
-- Started: 2026-05-19.
-- Write scope: focused current-action closure evidence docs, generated
-  artifacts under `/tmp`, and plan updates. Avoid materializer code,
-  transition scoring, issue/PR ranking, validation-policy changes,
-  local-knowledge records, matrix manifests, and `plans/strategy.md`.
-- Acceptance: reconcile the MAT-007 held-out coverage after `MAT-032` through
-  `MAT-035`; record all four original `current_structured_action` rows as
-  materialized/live-validated with their evidence tasks, parity scopes,
-  validation status, changed files, and reusable action kinds; keep DATA
-  reference rows separate; update remaining non-materialized MAT-007 counts;
-  and recommend the next bounded workstream now that only the two
-  `not_currently_expressible` rows remain parked. If any current-action
-  artifact is missing or contradictory, record the exact blocker instead of
-  closing the bucket.
-- Expected tests: parse any JSONL/JSON artifact written, `pytest
-  tests/test_plan_consistency.py -q`, and `git diff --check`.
+No active worker task is currently recorded. The coordinator should choose the
+next bounded task after reviewing `MAT-036`.
 
 ## Ready Queue
 
-No queued worker task remains while `MAT-036` is active. After it completes,
-review whether to move to the separate `TRANS-012` shadow-advice-only residual
-workstream or record the concrete blocker for the two parked
+No queued worker task remains after `MAT-036`. Review whether to move to the
+separate `TRANS-012` shadow-advice-only residual workstream or record the
+concrete migration-planner blocker for the two parked
 `not_currently_expressible` MAT-007 rows.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
@@ -272,6 +262,27 @@ Review before assigning more work if:
 - the next useful task is unclear
 
 ## Recently Completed
+
+### `MAT-036`: Current-action closure coverage refresh
+
+- Status: completed by worker MAT-036 on 2026-05-19.
+- Result: reconciled the four original MAT-007 `current_structured_action`
+  rows after `MAT-032` through `MAT-035`: `click-3423`, `flask-6013`,
+  `pytest-14472`, and `flask-5898` are all materialized and live-validated.
+  DATA-029 `pytest-14466` and DATA-035 `scrapy-7351` remain validated
+  reference rows outside the held-out count. Remaining non-materialized
+  MAT-007 counts are `current_structured_action = 0`,
+  `general_typed_builder = 0`, `repo_convention_builder = 0`,
+  `constrained_local_generator = 0`, and `not_currently_expressible = 2`.
+  Recommended next: move to the separate `TRANS-012` shadow-advice-only
+  residual workstream or record the migration-planner blocker for
+  `flask-5812` and `flask-5727`.
+- Commit: pending at worker handoff.
+- Push: pending at worker handoff.
+- Artifacts:
+  `docs/MAT_036_CURRENT_ACTION_CLOSURE_COVERAGE_2026-05-19.md`,
+  `docs/MAT_036_CURRENT_ACTION_CLOSURE_COVERAGE_2026-05-19.jsonl`, and
+  `/tmp/j3-mat-036-current-action-closure/MAT_036_CURRENT_ACTION_CLOSURE_COVERAGE_2026-05-19.jsonl`.
 
 ### `MAT-035`: Held-out Flask redirect-default current action candidate
 

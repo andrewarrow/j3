@@ -6581,3 +6581,31 @@ meaningful work. Do not replace this file with a daily reset.
   coverage, keep reference rows separate, update remaining counts, and
   recommend the next bounded workstream or blocker.
 - Blockers: none.
+
+### 2026-05-19 - MAT-036 - Current-action closure coverage refresh
+
+- Owner: worker MAT-036.
+- Files changed: `docs/MAT_036_CURRENT_ACTION_CLOSURE_COVERAGE_2026-05-19.md`,
+  `docs/MAT_036_CURRENT_ACTION_CLOSURE_COVERAGE_2026-05-19.jsonl`,
+  `plans/active.md`, `plans/backlog.md`, and `plans/progress.md`.
+- Tests: parsed all four source candidate JSON artifacts plus both MAT-036
+  JSONL copies -> 9 rows each; `pytest tests/test_plan_consistency.py -q` ->
+  6 passed; `git diff --check` -> passed.
+- Result: reconciled the original MAT-007 `current_structured_action` panel
+  after `MAT-032` through `MAT-035`. `click-3423`, `flask-6013`,
+  `pytest-14472`, and `flask-5898` are all recorded as materialized and
+  live-validated with evidence task, repo/PR, candidate status, parity scopes,
+  validation status, changed files, and reusable action kinds. DATA-029
+  `pytest-14466` and DATA-035 `scrapy-7351` remain separate reference rows
+  outside the held-out count. Final remaining non-materialized MAT-007 counts
+  are `current_structured_action = 0`, `general_typed_builder = 0`,
+  `repo_convention_builder = 0`, `constrained_local_generator = 0`, and
+  `not_currently_expressible = 2`.
+- Commit: pending at worker handoff.
+- Push: pending at worker handoff.
+- Next: coordinator should review `MAT-036`, then move to the separate
+  `TRANS-012` shadow-advice-only residual workstream or record the concrete
+  migration-planner blocker for `flask-5812` and `flask-5727`.
+- Blockers: none for current-action closure; `flask-5812` and `flask-5727`
+  remain parked until multi-step architecture or tooling/lockfile migration
+  planner capability exists.

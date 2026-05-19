@@ -3870,7 +3870,7 @@ Long-term target:
 
 ### MAT-036: Current-action closure coverage refresh
 
-- Status: active
+- Status: done
 - Why: `MAT-032` through `MAT-035` now account for all four original
   `current_structured_action` rows from the MAT-007 panel. A compact closure
   record should make the final counts, parity scopes, validation evidence,
@@ -3891,6 +3891,21 @@ Long-term target:
   closing the bucket.
 - Tests: parse any JSONL/JSON artifact written,
   `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+- Completion note: reconciled the four original MAT-007
+  `current_structured_action` rows after `MAT-032` through `MAT-035`.
+  `click-3423`, `flask-6013`, `pytest-14472`, and `flask-5898` are all
+  materialized and live-validated. DATA-029 `pytest-14466` and DATA-035
+  `scrapy-7351` remain separate validated reference rows outside the
+  held-out count. Remaining non-materialized MAT-007 counts are
+  `current_structured_action = 0`, `general_typed_builder = 0`,
+  `repo_convention_builder = 0`, `constrained_local_generator = 0`, and
+  `not_currently_expressible = 2`. Recommended next bounded workstream:
+  move to the separate `TRANS-012` shadow-advice-only residual examples, or
+  explicitly record a migration-planner blocker for `flask-5812` and
+  `flask-5727`. Artifacts:
+  `docs/MAT_036_CURRENT_ACTION_CLOSURE_COVERAGE_2026-05-19.md`,
+  `docs/MAT_036_CURRENT_ACTION_CLOSURE_COVERAGE_2026-05-19.jsonl`, and
+  `/tmp/j3-mat-036-current-action-closure/MAT_036_CURRENT_ACTION_CLOSURE_COVERAGE_2026-05-19.jsonl`.
 
 ## Next Recommended Queue
 

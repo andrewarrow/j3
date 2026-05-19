@@ -6820,3 +6820,29 @@ meaningful work. Do not replace this file with a daily reset.
   semantic evidence emerges.
 - Blockers: none for evidence replay; a broad GreenShot-5 semantic API scorer
   tweak is under-specified without candidate-after/source semantic evidence.
+
+### 2026-05-19 - Coordinator Review And Dispatch - MODEL-013
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, and
+  `plans/progress.md`.
+- Tests: parsed
+  `/tmp/j3-trans-013-expanded-standard-after-model012/matrix-summary.json`,
+  `/tmp/j3-trans-013-expanded-standard-after-model012-residual-report.json`,
+  and
+  `/tmp/j3-trans-013-expanded-standard-after-model012-guarded-decision.json`;
+  checksum verification passed for
+  `/tmp/j3-trans-013-expanded-standard-after-model012/evidence/checksums.sha256`;
+  `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check`
+  -> passed.
+- Result: reviewed and closed `TRANS-013`. Matrix totals are unchanged from
+  `TRANS-012`, the residual report narrowed from 8 to 3 shadow-advice-only
+  GreenShot-5 examples, the five `MODEL-011`/`MODEL-012` targeted residuals
+  are gone in full replay, and guarded decision remains `remain_shadow_only`.
+- Next: dispatch `MODEL-013` for the most concrete remaining residual,
+  `greenshot_5_subset/receipt_label_nested_module_import_decoy`, to add
+  narrow nested-package missing-import advice evidence while keeping
+  signature-propagation and attribute-repair as separate tasks unless shared
+  source/candidate-after evidence emerges.
+- Blockers: none for `MODEL-013`; broad GreenShot-5 semantic API scoring
+  remains under-specified.

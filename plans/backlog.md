@@ -788,7 +788,8 @@ Long-term target:
 
 ### MODEL-013: Add nested-package missing-import shadow-advice evidence
 
-- Status: ready
+- Status: active
+- Owner: worker MODEL-013, assigned on 2026-05-19.
 - Why: after `TRANS-013`, the remaining residual report has three
   GreenShot-5 shadow-advice-only examples. The most concrete bounded shape is
   `receipt_label_nested_module_import_decoy`, where V3 selects the passing

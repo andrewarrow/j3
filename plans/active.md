@@ -235,15 +235,32 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-No active worker tasks are currently recorded.
+### `MODEL-013`: Add nested-package missing-import shadow-advice evidence
+
+- Status: active
+- Owner: worker MODEL-013, assigned on 2026-05-19.
+- Scope: `j3/transition_action_scoring.py`, focused tests in
+  `tests/test_transition_action_scoring.py`, optional saved-artifact replay or
+  evidence doc under `docs/MODEL_013_*`, and plan updates.
+- Acceptance: add narrow shadow-advice evidence that promotes the passing
+  `add_import` candidate for
+  `greenshot_5_subset/receipt_label_nested_module_import_decoy` whose module
+  path points to the existing nested package file
+  `shop/reports/money.py`, ahead of the wrong top-level `shop.money` import
+  and nearby literal decoy; prove with focused tests or saved-artifact replay
+  that advisory scoring no longer selects the failing candidate for that
+  example; keep product routing shadow-only.
+- Guardrails: do not edit product routing, matrix manifests, candidate
+  generation, ranker routing, guarded-trial policy, local-knowledge records,
+  materializer code, or `plans/strategy.md`.
+- Expected tests: `pytest tests/test_transition_action_scoring.py -q`,
+  focused residual/advice replay for
+  `receipt_label_nested_module_import_decoy`,
+  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
 
 ## Ready Queue
 
-- `MODEL-013`: Add nested-package missing-import shadow-advice evidence for
-  `greenshot_5_subset/receipt_label_nested_module_import_decoy`. Scope should
-  stay limited to scorer/advice logic, focused scorer tests, optional
-  saved-artifact replay, and plan updates; product routing remains
-  shadow-only.
+No ready worker tasks are currently recorded while `MODEL-013` is active.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 

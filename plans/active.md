@@ -299,8 +299,8 @@ Review before assigning more work if:
   `visible_balance_attribute_decoys` remains. Guarded decision remains
   `remain_shadow_only` because not all suite gates are
   `ready_for_guarded_opt_in`; product routing remains shadow-only.
-- Commit: pending.
-- Push: pending.
+- Commit: `b19fe75` documentation/evidence.
+- Push: documentation/evidence commit pushed successfully to `origin/main`.
 - Tests: `python cli.py run-transition-shadow-matrix --matrix
   examples/transition_shadow_matrix.json --out
   /tmp/j3-trans-015-expanded-standard-after-model014 --json` -> passed;

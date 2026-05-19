@@ -71,9 +71,11 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-- `MODEL-007` -> worker pending: fix the GreenShot-6 mapping-key advice
-  residual from `TRANS-007`. Scope is deterministic transition scorer/advice
-  ranking only, focused on the `project_urls_header_dict_key` shape where
+- `MODEL-007` -> worker Tesla
+  (`019e3e43-fb3e-7691-a4b4-65313cdebc39`): fix the GreenShot-6 mapping-key
+  advice residual from `TRANS-007`. Scope is deterministic transition
+  scorer/advice ranking only, focused on the `project_urls_header_dict_key`
+  shape where
   `change_dict_key Project_URL -> Project-URL` should outrank the
   `add_dict_key Project-URL = None` decoy when public missing-key and
   same-mapping evidence support a rename. Do not change production routing or

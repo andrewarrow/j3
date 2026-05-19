@@ -11,8 +11,12 @@ This is the live coordinator board. Keep it current and compact.
   while the coordinator is recording the next assignments; ready work should be
   dispatched rather than leaving the board idle.
 - Current product gate stance: transition ranking remains shadow-only; the
-  2026-05-18 `TRANS-001` full matrix and `TRANS-004` targeted subset decisions
-  were `remain_shadow_only`. Tests-only wedge guarded opt-in also remains
+  2026-05-18 `TRANS-001` full matrix, `TRANS-004` targeted subset, and
+  2026-05-19 `TRANS-005` post-scorer matrix decisions were
+  `remain_shadow_only`. `TRANS-005` reran the standard matrix after
+  `MODEL-003` through `MODEL-005`: 56 tasks, 55 ranked solved, 8 matrix
+  residuals, 17 residual-report examples, one `candidate_generation_gap`, 16
+  `scorer_ranking_gap` examples, and zero hosted usage. Tests-only wedge guarded opt-in also remains
   blocked after `REAL-003` scored `pass@3 = 0/4`; `GS7-008` now materializes
   and live-validates the `iniconfig` calibration candidate. `REAL-005` extends
   live baseline preflight to `h11` and `humanize`, so Gate A now has three
@@ -57,29 +61,22 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-- `TRANS-005`: rerun post-scorer transition matrix evidence.
-  - Owner: worker Hume (`019e3e20-4784-7571-b19e-7fadc432f4c1`).
-  - Scope: generated matrix artifacts under `/tmp`, concise evidence doc or
-    progress notes, and plan updates only unless a runner bug blocks the run.
-  - Acceptance: rerun the standard transition shadow matrix after
-    `MODEL-003` through `MODEL-005`, publish residual/gate counts, and record
-    whether `TRANS-003` can be unblocked or remains blocked.
-  - Expected tests: matrix command, residual report, guarded-trial decision,
-    checksum verification, `pytest tests/test_plan_consistency.py -q`, and
-    `git diff --check`.
+No active transition worker. The coordinator should review the `TRANS-005`
+post-scorer matrix evidence before assigning more transition scorer or
+matrix-manifest work.
 
 ## Ready Queue
 
-`TRANS-005` remains active. Avoid additional transition scorer work until the
-post-scorer matrix evidence returns.
+`TRANS-005` returned post-scorer matrix evidence; avoid additional transition
+scorer work until the coordinator reviews the remaining residual clusters.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
 ## Paused Or Blocked
 
-- `TRANS-003`: blocked until the `TRANS-002` generation and ranking residuals
-  have focused fixes or regression evidence; do not expand the full matrix
-  until targeted `TRANS-004` evidence is recorded.
+- `TRANS-003`: remains blocked after `TRANS-005`; do not expand the standard
+  matrix manifest while the post-scorer matrix still has 8 matrix residuals,
+  17 residual-report examples, and a guarded decision of `remain_shadow_only`.
 - `MODEL-002`: superseded by bounded scorer subtasks in the backlog, beginning
   with `MODEL-003` through `MODEL-006`.
 
@@ -95,6 +92,15 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `TRANS-005`: reran the standard transition shadow matrix after `MODEL-003`
+  through `MODEL-005`. The run covered 5 suites, 56 tasks, 55 ranked solved
+  tasks, 12,413 candidates, 19 held-out groups, 8 matrix residuals, and zero
+  hosted usage. The residual report has 17 examples: 16
+  `scorer_ranking_gap` and 1 `candidate_generation_gap`. Suite gates remain
+  `ready_for_shadow_mode` for `greenshot_bugs` and `greenshot_4`, and
+  `not_ready_underperforms_existing_rank_order` for `greenshot_3`,
+  `greenshot_5_subset`, and `greenshot_6_subset`. Guarded-trial decision:
+  `remain_shadow_only`; `TRANS-003` remains blocked.
 - `SCALE-003`: added `j3.training_manifest`, a small durable training/eval
   manifest row validator aligned with `docs/TRAINING_DATA_POLICY.md`. The
   schema skeleton defines artifact, source, split, redistribution, retention,

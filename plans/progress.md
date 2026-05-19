@@ -4560,3 +4560,41 @@ meaningful work. Do not replace this file with a daily reset.
   only after the coordinator chooses a concrete source set and cross-row
   overlap policy.
 - Blockers: none.
+
+### 2026-05-19 - TRANS-005 - Post-scorer transition matrix evidence
+
+- Owner: worker Hume (`019e3e20-4784-7571-b19e-7fadc432f4c1`).
+- Files changed:
+  `docs/TRANS_005_POST_SCORER_MATRIX_EVIDENCE_2026-05-19.md`,
+  `plans/active.md`, `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `python cli.py run-transition-shadow-matrix --matrix
+  examples/transition_shadow_matrix.json --out
+  /tmp/j3-trans-005-post-scorer-matrix --force --json` -> passed; `python -m
+  json.tool /tmp/j3-trans-005-post-scorer-matrix/matrix-summary.json
+  >/dev/null` -> passed; `shasum -a 256 -c
+  /tmp/j3-trans-005-post-scorer-matrix/evidence/checksums.sha256` -> passed;
+  `python cli.py report-transition-residuals --matrix
+  /tmp/j3-trans-005-post-scorer-matrix --out
+  /tmp/j3-trans-005-post-scorer-residual-report.json --json` -> passed;
+  `python -m json.tool /tmp/j3-trans-005-post-scorer-residual-report.json
+  >/dev/null` -> passed; `python cli.py decide-transition-guarded-trial
+  --matrix /tmp/j3-trans-005-post-scorer-matrix --out
+  /tmp/j3-trans-005-post-scorer-guarded-decision.json --json` -> passed;
+  `python -m json.tool
+  /tmp/j3-trans-005-post-scorer-guarded-decision.json >/dev/null` -> passed;
+  `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check`
+  -> passed.
+- Result: standard post-scorer matrix evidence did not unblock transition
+  ranking. The run covered 5 suites, 56 tasks, 55 ranked solved tasks, 12,413
+  candidates, 19 held-out groups, 8 matrix residuals, 5 baseline residuals,
+  and zero hosted usage. The residual report has 17 examples: 16
+  `scorer_ranking_gap` and 1 `candidate_generation_gap`; all examples still
+  report missing source/candidate-after evidence. Guarded-trial decision:
+  `remain_shadow_only`. `TRANS-003` remains blocked.
+- Commit: pending.
+- Push: pending.
+- Next: coordinator should review remaining residual clusters before assigning
+  more transition scorer or matrix-manifest expansion work. Production
+  transition ranking remains shadow-only.
+- Blockers: `TRANS-003` remains blocked by nonzero residuals and non-guarded
+  suite gates.

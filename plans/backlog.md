@@ -349,8 +349,10 @@ Long-term target:
 ### TRANS-003: Expand standard matrix manifest cautiously
 
 - Status: blocked
-- Blocker: depends on targeted post-`ACT-002` evidence and remaining ranking
-  residual fixes.
+- Blocker: `TRANS-005` post-scorer matrix evidence still reports 8 matrix
+  residuals, 17 residual-report examples, one `candidate_generation_gap`, 16
+  `scorer_ranking_gap` examples, and a guarded decision of
+  `remain_shadow_only`.
 - Why: product gates need broader held-out suites without making local runs
   impractical.
 - Write scope: `examples/transition_shadow_matrix.json`, tests, docs.
@@ -373,7 +375,7 @@ Long-term target:
 
 ### TRANS-005: Rerun post-scorer transition matrix evidence
 
-- Status: active
+- Status: done
 - Why: `MODEL-003`, `MODEL-004`, and `MODEL-005` added the scorer features
   that `ACTION_COVERAGE_MAP.md` identified as the remaining ranking blockers.
 - Write scope: generated outputs under `/tmp`, a concise evidence doc or
@@ -385,6 +387,13 @@ Long-term target:
 - Tests: `run-transition-shadow-matrix`, checksum verification,
   `report-transition-residuals --matrix`, `decide-transition-guarded-trial`,
   `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+- Completion note: reran the standard matrix under
+  `/tmp/j3-trans-005-post-scorer-matrix` after `MODEL-003` through
+  `MODEL-005`. Totals were 5 suites, 56 tasks, 55 ranked solved tasks,
+  12,413 candidates, 19 held-out groups, 8 matrix residuals, 5 baseline
+  residuals, and zero hosted usage. The residual report had 17 examples:
+  16 `scorer_ranking_gap` and 1 `candidate_generation_gap`. Guarded-trial
+  decision remained `remain_shadow_only`; `TRANS-003` remains blocked.
 
 ## Workstream E: Repo State, Actions, And Models
 

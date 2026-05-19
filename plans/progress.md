@@ -4209,3 +4209,22 @@ meaningful work. Do not replace this file with a daily reset.
 - Blockers: strict issue/PR ranking remains blocked by label-dependent
   coverage-gap product blocker classification; behavior-negative-only metrics
   remain shadow-only.
+
+### 2026-05-18 - Coordinator Review And Dispatch - MAT-014 / KNOW-006
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, and
+  `plans/progress.md`.
+- Tests: pending.
+- Result: reviewed the completed `VAL-004` and `MAT-013` batch. The strict
+  issue/PR ranking gate remains blocked by label-dependent coverage-gap
+  product blocker classification, while behavior-negative-only metrics remain
+  reusable but shadow-only. The next dispatch splits along disjoint hard
+  residuals: `MAT-014` tests whether `psf/requests#7437` can stay in the pure
+  typed-builder layer, and `KNOW-006` closes the held-out h11 import-style
+  knowledge attribution gap exposed by KNOW-003.
+- Commit: pending.
+- Push: pending.
+- Next: spawn one worker for `MAT-014` and one worker for `KNOW-006`, then
+  record their worker IDs.
+- Blockers: none.

@@ -955,6 +955,25 @@ Long-term target:
   changed/test patterns. Smoke artifact:
   `/tmp/j3-know-005-requests-records.jsonl`.
 
+### KNOW-006: Held-out h11 import-style knowledge gap
+
+- Status: active
+- Why: KNOW-003 made missing attribution machine-readable, and the h11
+  tests-only row now honestly reports `missing_knowledge` for `import_style`.
+  The next proof is whether local knowledge can represent held-out relative
+  import style without weakening attribution requirements.
+- Write scope: local knowledge and tests-only planning attribution, focused
+  tests, optional compact docs/artifacts, and plan updates. Avoid typed-builder
+  materialization and issue/PR ranking modules.
+- Acceptance: add or correct citeable local knowledge so
+  `h11-tests-bytesify-memoryview` records `import_style` attribution rather
+  than `missing_knowledge`, without weakening `REQUIRED_KNOWLEDGE_PURPOSES` or
+  hiding missing attribution for other rows. If the h11 relative-import style
+  cannot be represented honestly by current knowledge records, record the
+  exact schema/materialization blocker and focused next step.
+- Tests: focused real-repo tests-only/local-knowledge tests, plan consistency,
+  and `git diff --check`.
+
 ### WEDGE-001: Product wedge decision
 
 - Status: done
@@ -2562,13 +2581,29 @@ Long-term target:
   and
   `/tmp/j3-mat-013-real-pr-materialization-refresh/MAT_013_REAL_PR_MATERIALIZATION_COVERAGE_REFRESH_2026-05-18.jsonl`.
 
+### MAT-014: Requests #7437 pure typed-builder materialization probe
+
+- Status: active
+- Why: MAT-013 recommends `psf/requests#7437` as the next bounded row to test
+  whether assignment annotation/type-ignore placement stays in the pure
+  typed-builder layer rather than relying on broader `statement_block_replace`.
+- Write scope: `j3/heldout_typed_builder_candidate.py`,
+  `tests/test_heldout_typed_builder_candidate.py`, optional `docs/MAT_014_*`,
+  generated artifacts under `/tmp`, and plan updates. Avoid issue/PR ranking,
+  validation-policy, and local-knowledge modules.
+- Acceptance: attempt `psf/requests#7437` using reusable typed-builder action
+  records. Record base/head refs, accepted changed files, mutation scope,
+  candidate-after diff/AST metadata, accepted-diff comparison, validation
+  result or exact blocker, and whether the row stays in the pure typed-builder
+  layer. Do not use `statement_block_replace` unless the worker records a
+  precise blocker showing why pure typed-builder action records are
+  insufficient.
+- Tests: focused typed-builder materializer tests, plan consistency,
+  `git diff --check`, and live validation or a recorded validation blocker.
+
 ## Next Recommended Queue
 
 Start with these unless fresh evidence changes the order:
 
-1. `VAL-004`: reusable behavior-negative-only issue/PR shadow gate.
-2. Follow-up from `MAT-013`: materialize `psf/requests#7437` to test whether
-   assignment annotation/type-ignore placement stays in the pure typed-builder
-   layer without relying on `statement_block_replace`.
-3. Follow-up from `KNOW-003`: add or review local import-style knowledge
-   records for held-out tests-only rows that now report `missing_knowledge`.
+1. `MAT-014`: materialize `psf/requests#7437`.
+2. `KNOW-006`: close the h11 import-style knowledge attribution gap.

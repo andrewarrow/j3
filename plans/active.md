@@ -54,12 +54,44 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-No active worker tasks are recorded after `VAL-004` and `MAT-013` returned.
+### `MAT-014`: Requests #7437 pure typed-builder materialization probe
+
+- Status: active
+- Owner: pending worker spawn.
+- Write scope: `j3/heldout_typed_builder_candidate.py`,
+  `tests/test_heldout_typed_builder_candidate.py`, optional
+  `docs/MAT_014_*`, generated artifacts under `/tmp`, and task-specific
+  planning updates. Avoid issue/PR ranking, validation-policy, and local
+  knowledge modules.
+- Acceptance: attempt `psf/requests#7437` using reusable typed-builder action
+  records. Record base/head refs, accepted changed files, mutation scope,
+  candidate-after diff/AST metadata, accepted-diff comparison, validation
+  result or exact blocker, and whether the row stays in the pure typed-builder
+  layer. Do not use `statement_block_replace` unless the worker records a
+  precise blocker showing why pure typed-builder action records are
+  insufficient.
+
+### `KNOW-006`: Held-out h11 import-style knowledge gap
+
+- Status: active
+- Owner: pending worker spawn.
+- Write scope: local knowledge and tests-only planning attribution, especially
+  `j3/local_knowledge.py`, `j3/real_repo_tests_planner.py`,
+  `tests/test_local_knowledge.py`, `tests/test_real_repo_tests_planner.py`,
+  optional `docs/KNOW_006_*`, generated artifacts under `/tmp`, and
+  task-specific planning updates. Avoid typed-builder materialization and
+  issue/PR ranking modules.
+- Acceptance: add or correct citeable local knowledge so
+  `h11-tests-bytesify-memoryview` records `import_style` attribution rather
+  than `missing_knowledge`, without weakening `REQUIRED_KNOWLEDGE_PURPOSES` or
+  hiding missing attribution for other rows. If the h11 relative-import style
+  cannot be represented honestly by current knowledge records, record the
+  exact schema/materialization blocker and focused next step.
 
 ## Ready Queue
 
-Coordinator should reassess and dispatch the next bounded task from the
-backlog.
+The active set is at the default parallelism limit. Reassess after `MAT-014`
+or `KNOW-006` returns.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 

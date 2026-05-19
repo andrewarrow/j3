@@ -4059,8 +4059,8 @@ meaningful work. Do not replace this file with a daily reset.
   cited/missing purpose fields and are emitted even when no local knowledge is
   cited. Partial citation gaps produce `missing_knowledge`; no retrieved or
   cited knowledge produces `knowledge_not_used`.
-- Commit: pending.
-- Push: pending.
+- Commit: d05608d.
+- Push: succeeded.
 - Next: review whether held-out tests-only rows that now report
   `missing_knowledge` need additional local import-style records.
 - Blockers: none.

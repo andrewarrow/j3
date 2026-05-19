@@ -2142,6 +2142,37 @@ def test_patch_solves_http_no_store_subscript_key_with_matrix_cap(tmp_path) -> N
     )
 
 
+def test_patch_solves_dynamic_field_error_message_with_matrix_cap(tmp_path) -> None:
+    repo = tmp_path / "greenshot_6"
+    shutil.copytree("examples/greenshot_6", repo)
+
+    result = plan_and_maybe_apply_patch(
+        repo=repo,
+        test_command=(
+            "python -m pytest "
+            "tests/test_pkgmeta.py::test_dynamic_field_error_mentions_project_dynamic"
+        ),
+        dry_run=True,
+        timeout_seconds=10,
+        max_candidates=8,
+    )
+
+    assert result.selected is not None
+    assert result.candidates_tested <= 8
+    assert result.selected.file_path == "pkgmeta/metadata.py"
+    assert result.selected.action.kind.value == "change_literal"
+    assert result.selected.action.target.symbol == "validate_dynamic_field"
+    assert result.selected.action.params == {
+        "from": " declared as dynamic in but is defined",
+        "to": ' declared as dynamic in "project.dynamic" but is defined',
+    }
+    assert any(
+        candidate.action.kind.value == "change_literal"
+        and candidate.action.params == result.selected.action.params
+        for candidate in result.tested_candidates
+    )
+
+
 def test_patch_solves_cross_module_swapped_arguments(tmp_path) -> None:
     repo = tmp_path / "greenshot_5"
     shutil.copytree("examples/greenshot_5", repo)

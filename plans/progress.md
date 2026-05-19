@@ -4655,3 +4655,43 @@ meaningful work. Do not replace this file with a daily reset.
   `ACT-003` search-budget result before assigning more transition residual
   work.
 - Blockers: none.
+
+### 2026-05-19 - ACT-003 - Dynamic field message search budget
+
+- Owner: worker Anscombe (`019e3e2c-4810-7811-979d-70f54413a6b5`).
+- Files changed: `repair/patching/ranking.py`, `tests/test_patching.py`,
+  `plans/active.md`, `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `pytest
+  tests/test_patching.py::test_patch_solves_dynamic_field_error_message_with_matrix_cap
+  -q` -> 1 passed; `python -m py_compile repair/patching/ranking.py
+  tests/test_patching.py tests/test_evaluation.py tests/test_candidate_ranking.py`
+  -> passed; `pytest tests/test_candidate_ranking.py -q` -> 37 passed;
+  `pytest tests/test_evaluation.py -q` -> 16 passed; `pytest
+  tests/test_patching.py::test_patch_uses_key_error_hints_to_prioritize_subscript_key_fix
+  tests/test_patching.py::test_patch_solves_http_no_store_subscript_key_with_matrix_cap
+  tests/test_patching.py::test_patch_solves_dynamic_field_error_message_with_matrix_cap
+  -q` -> 3 passed; `python cli.py eval --tasks
+  /tmp/j3-act-003-dynamic-field-task.json --phase ranked --max-candidates 8
+  --timeout 60 --candidate-outcomes
+  /tmp/j3-act-003-dynamic-field-candidates.jsonl` -> passed after rerunning
+  with an absolute repo path in the one-row temporary manifest; `python -m
+  json.tool --json-lines /tmp/j3-act-003-dynamic-field-candidates.jsonl` ->
+  passed. Full `pytest tests/test_patching.py -q` was also attempted and has
+  one unrelated pre-existing failure:
+  `test_patch_solves_greenshot_6_dictionary_literal_value` now tests three
+  candidates instead of the test's expected one; the selected candidate still
+  passes and is outside this task's exception-message scope.
+- Result: added failure-hint-based expected exception-message scoring for
+  string literal candidates. The scorer rewards meaningful string replacements
+  or fragments that appear in pytest `match=` expected strings, so the
+  `dynamic_field_error_message` preferred f-string fragment edit moves from
+  rank 522 / score 0 to rank 1 / score 65 without using preferred labels. The
+  GreenShot-6 one-row smoke solved the task with one tested ranked candidate
+  and recorded the preferred `change_literal` outcome at rank 1. Production
+  transition ranking gates remain unchanged and shadow-only.
+- Commit: pending; final worker report will include the pushed commit hash.
+- Push: pending.
+- Next: coordinator should review the completed `TRANS-006` / `ACT-003`
+  residual batch before choosing the next transition residual task.
+- Blockers: none for `ACT-003`; unrelated existing full patching-suite
+  assertion noted above.

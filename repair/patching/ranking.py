@@ -289,6 +289,11 @@ def _literal_hint_score(candidate: CandidatePatch, hint: PytestFailureHint) -> f
                 score += 10.0
             if assertion.expected == replacement:
                 score += 35.0
+        score += _expected_string_literal_score(
+            original,
+            replacement,
+            hint.expected_strings,
+        )
         return score
 
     if not isinstance(original, (int, float)) or isinstance(original, bool):
@@ -304,3 +309,34 @@ def _literal_hint_score(candidate: CandidatePatch, hint: PytestFailureHint) -> f
         if replacement == assertion.expected:
             score += 10.0
     return score
+
+
+def _expected_string_literal_score(
+    original: str,
+    replacement: str,
+    expected_strings: set[str],
+) -> float:
+    score = 0.0
+    for expected in expected_strings:
+        if not _meaningful_expected_message(expected):
+            continue
+        if replacement == expected:
+            score = max(score, 45.0)
+        elif _meaningful_message_fragment(replacement) and replacement in expected:
+            if original not in expected:
+                score = max(score, 65.0)
+            else:
+                score = max(score, 35.0)
+    return score
+
+
+def _meaningful_expected_message(value: str) -> bool:
+    return len(value) >= 12 and any(character.isspace() for character in value)
+
+
+def _meaningful_message_fragment(value: str) -> bool:
+    return (
+        len(value) >= 12
+        and any(character.isspace() for character in value)
+        and any(character.isalpha() for character in value)
+    )

@@ -457,7 +457,7 @@ Long-term target:
 
 ### ACT-003: Reduce dynamic field exception-message search-budget gap
 
-- Status: active
+- Status: done
 - Why: `TRANS-005` still has one matrix `candidate_generation_gap`:
   `greenshot_6_subset/dynamic_field_error_message`. The preferred
   `change_literal` candidate exists deeper in the generated candidate list, but
@@ -469,6 +469,12 @@ Long-term target:
   generation from search-budget/ranking.
 - Tests: focused patching/evaluation tests plus the single GreenShot-6 task
   smoke, `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+- Completion note: added expected-exception-message literal scoring from pytest
+  failure hints, so meaningful string fragment replacements that move toward a
+  public `match=` expected message are prioritized. The preferred
+  `pkgmeta/metadata.py` `change_literal` candidate for
+  `dynamic_field_error_message` is generated, tested first, and passes within
+  the standard `max_candidates=8` cap.
 
 ### MODEL-001: Re-evaluate learned prompt intent baseline
 

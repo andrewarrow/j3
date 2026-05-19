@@ -64,22 +64,14 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-- `ACT-003`: reduce the `dynamic_field_error_message` search-budget gap.
-  - Owner: worker Anscombe (`019e3e2c-4810-7811-979d-70f54413a6b5`).
-  - Scope: repair candidate ranking/generation around exception-message
-    literal candidates and focused tests for the GreenShot-6 row.
-  - Acceptance: the `dynamic_field_error_message` preferred literal candidate
-    enters the tested evidence set within the configured cap, or a precise
-    generation/ranking blocker is recorded.
-  - Expected tests: focused patching/evaluation tests plus the single
-    GreenShot-6 task smoke, `pytest tests/test_plan_consistency.py -q`, and
-    `git diff --check`.
+No active worker tasks are recorded. Coordinator should review the completed
+`TRANS-006` / `ACT-003` batch before dispatching the next residual task.
 
 ## Ready Queue
 
-`ACT-003` is still running from the `TRANS-005` residual clusters. Avoid broader
-matrix-manifest expansion until it returns and the coordinator reviews the
-combined `TRANS-006` / `ACT-003` results.
+The `TRANS-006` / `ACT-003` residual batch has returned. Coordinator should
+review both results before broader matrix-manifest expansion or new transition
+residual work.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
@@ -103,6 +95,13 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `ACT-003`: promoted exception-message literal fragment candidates using
+  pytest failure-hint `match=` expected strings. The
+  `greenshot_6_subset/dynamic_field_error_message` preferred
+  `change_literal` candidate now ranks first and passes within
+  `max_candidates=8`; the one-row GreenShot-6 smoke solved it with one tested
+  ranked candidate. The change uses public failure-hint evidence, not preferred
+  labels, and leaves transition ranking gates unchanged and shadow-only.
 - `TRANS-006`: surfaced candidate-after metadata from transition outcome rows.
   Action-choice candidate records now treat root diff summaries, flattened
   diff counts, root AST deltas, and flattened AST-delta metadata as available

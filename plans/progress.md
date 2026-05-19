@@ -7304,3 +7304,26 @@ meaningful work. Do not replace this file with a daily reset.
   `greenshot_bugs`, `greenshot_3`, and `greenshot_4` are still only
   `ready_for_shadow_mode`.
 - Blockers: none for evidence generation; no product routing change was made.
+
+### 2026-05-19 - Coordinator Review - Loop Idle Blockers
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, and
+  `plans/progress.md`.
+- Tests: parsed `/tmp/j3-trans-017-expanded-standard-after-model016` matrix
+  summary, residual report, and guarded decision; checksum verification for
+  `/tmp/j3-trans-017-expanded-standard-after-model016/evidence/checksums.sha256`
+  -> passed; `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check` -> passed.
+- Result: reviewed and closed `TRANS-017`. The transition residual report is
+  empty and all matrix residual counts are zero. The remaining guarded routing
+  blocker is not another scorer residual: `greenshot_bugs`, `greenshot_3`, and
+  `greenshot_4` are neutral versus the existing rank order, so under the
+  current strict policy they remain `ready_for_shadow_mode` and the full
+  guarded decision remains `remain_shadow_only`.
+- Next: no ready worker task remains on the board. `GATE-001` is blocked on a
+  deliberate gate-policy or matrix-scope decision, and `MIG-001` is parked
+  behind migration-planner capability for `flask-5812` and `flask-5727`.
+- Blockers: continuing the loop would require a product-policy decision or a
+  new migration-planner capability direction rather than another bounded
+  ready task.

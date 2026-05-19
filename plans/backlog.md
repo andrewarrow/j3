@@ -1072,6 +1072,44 @@ Long-term target:
   `55e6e87` pushed successfully to `origin/main`; completion metadata recorded
   in follow-up planning commit.
 
+### GATE-001: Decide neutral-suite guarded gate policy
+
+- Status: blocked
+- Why: after `TRANS-017`, the expanded standard transition residual report is
+  empty and all matrix residual counts are zero, but the full guarded decision
+  still remains `remain_shadow_only`. The blocker is policy/coverage:
+  `greenshot_bugs`, `greenshot_3`, and `greenshot_4` are neutral against the
+  existing rank order and therefore stay `ready_for_shadow_mode`, while the
+  current full-matrix guarded policy requires every suite to be
+  `ready_for_guarded_opt_in`.
+- Write scope: no implementation until the coordinator or user chooses the
+  policy direction. Any future task should be scoped either to a documented gate
+  policy change, a new matrix composition, or additional held-out evidence that
+  makes the neutral suites strict positive-gain suites.
+- Acceptance: a future unblocking decision states whether neutral no-residual
+  suites can coexist with guarded opt-in, whether the standard matrix should
+  use only positive-gain eligible suites for product routing, or whether the
+  current all-suites-strict-gain rule remains. Product routing stays
+  shadow-only while this is blocked.
+- Tests: policy-only review should include `decide-transition-guarded-trial`
+  over the current matrix and `pytest tests/test_plan_consistency.py -q`; code
+  changes would require focused gate-policy tests.
+
+### MIG-001: Scope migration-planner capability for parked Flask rows
+
+- Status: parked
+- Why: the materializable MAT-007 held-out panel is closed after `MAT-036`.
+  The only remaining rows are `flask-5812` and `flask-5727`, both labeled
+  `not_currently_expressible` because they require multi-step architecture or
+  tooling/lockfile migration planning rather than a bounded materializer.
+- Write scope: none while parked. Do not assign either Flask row as an ordinary
+  one-slice materialization task.
+- Acceptance: unpark only when there is a bounded migration-planner capability
+  to test, with acceptance criteria independent of reproducing one giant
+  PR-shaped diff.
+- Tests: when unparked, define focused planner tests and validation evidence
+  before attempting either Flask row.
+
 ## Workstream E: Repo State, Actions, And Models
 
 ### REPO-001: Summarize repo-state encoder coverage

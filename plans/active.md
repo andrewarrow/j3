@@ -108,6 +108,8 @@ This is the live coordinator board. Keep it current and compact.
   outcomes now top-rank the passing `amount_cents -> balance_cents` candidate,
   and the guarded decision remains `remain_shadow_only` because not all suite
   gates are `ready_for_guarded_opt_in`. Product routing remains shadow-only.
+  This is now a gate-policy/coverage blocker rather than a residual or scorer
+  blocker.
   Tests-only wedge guarded opt-in also remains
   blocked after `REAL-003` scored `pass@3 = 0/4`; `GS7-008` now materializes
   and live-validates the `iniconfig` calibration candidate. `REAL-005` extends
@@ -282,6 +284,17 @@ Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
 - `MODEL-002`: superseded by bounded scorer subtasks in the backlog, beginning
   with `MODEL-003` through `MODEL-009`.
+- `GATE-001`: blocked. The expanded standard transition residual report is
+  empty after `TRANS-017`, but full guarded routing still requires every suite
+  V3 gate to be `ready_for_guarded_opt_in`. `greenshot_bugs`, `greenshot_3`,
+  and `greenshot_4` are neutral versus existing rank order and remain
+  `ready_for_shadow_mode`; continuing requires a deliberate gate-policy change,
+  a new evidence matrix with different suite composition, or more held-out
+  evidence that makes those suites strict positive-gain suites.
+- `MIG-001`: parked. The only remaining MAT-007 materialization rows are
+  `flask-5812` and `flask-5727`, both explicitly parked behind multi-step
+  architecture/tooling migration planner capability rather than ordinary
+  one-slice materialization.
 
 ## Coordinator Review Triggers
 

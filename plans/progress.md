@@ -4019,8 +4019,8 @@ meaningful work. Do not replace this file with a daily reset.
   accepted-label leakage. `MAT-012` attacks materialization generalization by
   attempting the harder held-out `pallets/click#3396` typed/general-AST row
   before falling back to another MAT-007 `general_typed_builder` row.
-- Commit: pending.
-- Push: pending.
+- Commit: 25c60c2.
+- Push: succeeded.
 - Next: spawn one worker for `VAL-003` and one worker for `MAT-012`, then
   record their worker IDs.
 - Blockers: none.

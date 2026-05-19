@@ -286,8 +286,9 @@ Review before assigning more work if:
   direct replay against the `TRANS-012` candidate outcome artifacts now ranks
   the passing `replace_expr` first for all four examples. Product routing
   remains shadow-only.
-- Commit: pending; final hash will be recorded after commit.
-- Push: pending.
+- Commit: `3279011` implementation/evidence; push-result metadata recorded in
+  follow-up planning update.
+- Push: implementation/evidence commit pushed successfully to `origin/main`.
 - Tests: `pytest tests/test_transition_action_scoring.py -q` -> 27 passed;
   direct `/tmp/j3-trans-012-expanded-standard` replay -> all four target
   examples top-rank the passing `replace_expr`;

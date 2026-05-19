@@ -78,7 +78,8 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-- `MODEL-008` -> worker pending: address the remaining
+- `MODEL-008` -> worker Jason
+  (`019e3e56-52e6-7582-a2fe-b4387235c40e`): address the remaining
   `apache_license_classifier_dict_value` V3 mapping-value residual from
   `TRANS-008`. Scope is transition scorer/advice failure-hint evidence only,
   focused on using public assertion diff lines to recognize mapping-value

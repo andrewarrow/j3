@@ -4481,7 +4481,7 @@ meaningful work. Do not replace this file with a daily reset.
   teacher-assisted labels; checksum and split/leakage discipline; retention
   and redistribution classes; release exclusions; and a concrete checklist for
   a future durable training manifest task.
-- Commit: implementation/evidence pending final hash.
+- Commit: 3903982 implementation/evidence.
 - Push: pending.
 - Next: use the policy as the contract for the next durable training manifest
   task.

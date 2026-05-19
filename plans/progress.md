@@ -6250,8 +6250,8 @@ meaningful work. Do not replace this file with a daily reset.
   `general_typed_builder = 0`, `repo_convention_builder = 0`,
   `constrained_local_generator = 0`, and `not_currently_expressible = 2`.
 - Commit: bdee055 implementation/evidence.
-- Push: implementation/evidence commit pushed successfully to `origin/main`;
-  push-result metadata commit pending.
+- Push: implementation/evidence and push-result metadata commits pushed
+  successfully to `origin/main`.
 - Next: coordinator should review repo-convention closure coverage and decide
   whether to dispatch a closure refresh or move to the shadow-advice-only
   residual examples.

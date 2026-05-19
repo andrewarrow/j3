@@ -4509,8 +4509,8 @@ meaningful work. Do not replace this file with a daily reset.
   above equivalent-looking decoys. Existing add-keyword and mapping-target
   scorer tests remain intact. Production ranking gates remain unchanged and
   shadow-only.
-- Commit: pending.
-- Push: pending.
+- Commit: d9930da.
+- Push: succeeded.
 - Next: coordinator should review `MODEL-005`, then decide whether to rerun
   targeted residual evidence or move to the next bounded scorer/data task.
 - Blockers: none.

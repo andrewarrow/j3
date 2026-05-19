@@ -4899,3 +4899,22 @@ meaningful work. Do not replace this file with a daily reset.
   broadening the standard transition matrix.
 - Blockers: nonzero subset residuals and a non-guarded suite gate keep
   transition ranking shadow-only.
+
+### 2026-05-19 - Coordinator Dispatch - MODEL-008
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, and
+  `plans/progress.md`.
+- Tests: `pytest tests/test_plan_consistency.py -q` -> 6 passed.
+- Result: reviewed the `TRANS-008` artifacts. The only remaining subset
+  residual is a V3 mapping-value miss on
+  `apache_license_classifier_dict_value`: the pytest failure hint has
+  truncated assertion actual/expected values, but full expected and actual
+  strings are visible in `assertion_diff_lines`. The next bounded slice is to
+  use that public diff evidence for mapping-value delta scoring without
+  changing routing, candidate generation, matrix runner behavior, or V3
+  product-gate policy.
+- Commit: pending.
+- Push: pending.
+- Next: dispatch `MODEL-008` after plan verification.
+- Blockers: none.

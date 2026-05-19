@@ -78,14 +78,19 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-No active worker task is currently recorded. Coordinator review should
-integrate `TRANS-008` before dispatching the next transition slice.
+- `MODEL-008` -> worker pending: address the remaining
+  `apache_license_classifier_dict_value` V3 mapping-value residual from
+  `TRANS-008`. Scope is transition scorer/advice failure-hint evidence only,
+  focused on using public assertion diff lines to recognize mapping-value
+  `from` -> `to` deltas when pytest truncates assertion actual/expected
+  strings. Do not change production routing, matrix runner behavior, or
+  candidate generation in this slice.
 
 ## Ready Queue
 
 No additional ready task is currently staged on this board. Do not broaden the
-standard matrix manifest until the remaining `apache_license_classifier_dict_value`
-V3 residual is reviewed.
+standard matrix manifest until `MODEL-008` is integrated and the targeted
+subset evidence is rerun.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
@@ -97,7 +102,7 @@ Run at most two tasks in parallel unless write scopes are plainly disjoint.
   `ready_for_shadow_mode` rather than `ready_for_guarded_opt_in`, and a
   guarded decision of `remain_shadow_only`.
 - `MODEL-002`: superseded by bounded scorer subtasks in the backlog, beginning
-  with `MODEL-003` through `MODEL-007`.
+  with `MODEL-003` through `MODEL-008`.
 
 ## Coordinator Review Triggers
 

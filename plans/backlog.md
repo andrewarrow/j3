@@ -682,6 +682,32 @@ Long-term target:
   `add_dict_key Project-URL = None` without changing production routing or
   V3 product-gate policy.
 
+### MODEL-008: Use assertion diff lines for mapping-value deltas
+
+- Status: active
+- Why: `TRANS-008` narrowed `greenshot_6_subset` to one V3 residual,
+  `apache_license_classifier_dict_value`. The passing candidate changes
+  `Apache-2.0` from `License :: OSI Approved :: Apache License` to
+  `License :: OSI Approved :: Apache Software License`, but the public pytest
+  assertion record stores truncated `actual`/`expected` values while
+  `assertion_diff_lines` carries the full strings. The scorer should use that
+  public diff evidence instead of relying on tie-breakers or labels.
+- Write scope: transition scorer/advice failure-hint evidence only:
+  `j3/transition_action_scoring.py`, `j3/transition_scorer_advice.py`,
+  focused transition scorer/advice tests, and plan updates. Avoid V3 product
+  gate policy, matrix runner behavior, repair candidate generation, and full
+  matrix evidence in this slice.
+- Acceptance: add a focused Apache-style mapping-value fixture with truncated
+  assertion fields plus full `assertion_diff_lines`; make the deterministic
+  scorer expose/reward a mapping-value assertion-diff match for the passing
+  `from` -> `to` candidate; preserve assertion-diff evidence in real advice
+  records if needed; and show the V3 validation replay or focused shadow
+  scorer test ranks the passing Apache candidate first. Production routing
+  remains unchanged and shadow-only.
+- Tests: focused transition scorer/advice tests,
+  `pytest tests/test_transition_shadow_scorer.py -q` if V3 behavior is
+  touched, `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+
 ## Workstream F: Long-Term Training Scale
 
 ### SCALE-001: Draft local pretraining feasibility inventory

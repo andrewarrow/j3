@@ -85,10 +85,14 @@ This is the live coordinator board. Keep it current and compact.
   `MODEL-015` added narrow AttributeError visible-balance attribute-repair
   advice evidence, and direct replay now top-ranks the passing
   `amount_cents -> balance_cents` candidate over the same-location
-  `available_cents` and `pending_cents` decoys. A follow-up transition rerun
-  should confirm whether the residual report is fully clear. The guarded
-  decision remains `remain_shadow_only`, and product routing remains
-  shadow-only.
+  `available_cents` and `pending_cents` decoys. `TRANS-016` reran the expanded
+  standard matrix after `MODEL-015`: matrix totals and suite gates stayed
+  unchanged, the residual report was not empty and still contained the
+  shadow-advice-only `visible_balance_attribute_decoys` example, and the
+  guarded decision remains `remain_shadow_only`. Product routing remains
+  shadow-only. The next coordinator decision point is to investigate the
+  direct-replay versus full-matrix residual-report discrepancy before assigning
+  broader attribute-repair scorer work.
   Tests-only wedge guarded opt-in also remains
   blocked after `REAL-003` scored `pass@3 = 0/4`; `GS7-008` now materializes
   and live-validates the `iniconfig` calibration candidate. `REAL-005` extends
@@ -251,28 +255,8 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-### `TRANS-016`: Rerun expanded standard residual evidence after MODEL-015
-
-- Status: active
-- Owner: worker TRANS-016, assigned on 2026-05-19.
-- Scope: generated outputs under `/tmp/j3-trans-016-expanded-standard-after-model015`,
-  a concise evidence doc under `docs/TRANS_016_*`, and plan updates.
-- Acceptance: rerun the expanded standard transition matrix after
-  `MODEL-015`, regenerate matrix residual, advice/residual, checksum, and
-  guarded-decision evidence, compare against `TRANS-015`, and record whether
-  residual-report examples are now empty while product routing remains
-  shadow-only.
-- Guardrails: do not edit scorer logic, candidate generation, product routing,
-  matrix manifests, guarded-trial policy, local-knowledge records,
-  materializer code, or `plans/strategy.md`.
-- Expected tests: `python cli.py run-transition-shadow-matrix --matrix
-  examples/transition_shadow_matrix.json --out
-  /tmp/j3-trans-016-expanded-standard-after-model015`, checksum verification,
-  `python cli.py report-transition-residuals --matrix
-  /tmp/j3-trans-016-expanded-standard-after-model015`, `python cli.py
-  decide-transition-guarded-trial --matrix
-  /tmp/j3-trans-016-expanded-standard-after-model015`,
-  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+No active worker tasks are currently recorded. The coordinator should review
+`TRANS-016` before dispatching the next bounded task.
 
 ## Ready Queue
 
@@ -296,6 +280,44 @@ Review before assigning more work if:
 - the next useful task is unclear
 
 ## Recently Completed
+
+### `TRANS-016`: Rerun expanded standard residual evidence after MODEL-015
+
+- Status: completed by worker TRANS-016 on 2026-05-19.
+- Result: reran the expanded standard transition matrix after `MODEL-015`.
+  Matrix totals and suite gates are unchanged from `TRANS-015`: 5 suites, 60
+  tasks, 60 ranked solved tasks, 12,753 candidates, 19 held-out groups, 0
+  matrix residuals, 4 baseline residuals, and zero hosted usage. The residual
+  report examples are not empty: `visible_balance_attribute_decoys` remains as
+  1 shadow-advice-only `scorer_ranking_gap`. In the residual report V3 selects
+  the passing `amount_cents -> balance_cents` candidate, but the shadow-scorer
+  top candidate remains the failing `amount_cents -> available_cents` decoy.
+  Guarded decision remains `remain_shadow_only`; product routing remains
+  shadow-only.
+- Commit: pending.
+- Push: pending.
+- Tests: `python cli.py run-transition-shadow-matrix --matrix
+  examples/transition_shadow_matrix.json --out
+  /tmp/j3-trans-016-expanded-standard-after-model015 --json` -> passed;
+  `shasum -a 256 -c
+  /tmp/j3-trans-016-expanded-standard-after-model015/evidence/checksums.sha256`
+  -> passed; `python cli.py report-transition-residuals --matrix
+  /tmp/j3-trans-016-expanded-standard-after-model015 --out
+  /tmp/j3-trans-016-expanded-standard-after-model015-residual-report.json
+  --json` -> 1 residual-report example; `python cli.py
+  decide-transition-guarded-trial --matrix
+  /tmp/j3-trans-016-expanded-standard-after-model015 --out
+  /tmp/j3-trans-016-expanded-standard-after-model015-guarded-decision.json
+  --json` -> `remain_shadow_only`; `pytest tests/test_plan_consistency.py -q`
+  -> 6 passed; `git diff --check` -> passed.
+- Recommended next: coordinator should review the direct-replay versus
+  full-matrix residual-report discrepancy before assigning broader
+  attribute-repair scorer work. The precise question is whether the standard
+  matrix/residual-report path is missing the `MODEL-015` advice feature inputs,
+  whether the direct replay uses a different scorer path, or whether the
+  residual report intentionally exposes an older shadow-scorer comparison.
+- Blockers: none for evidence generation; the full residual report did not
+  clear after `MODEL-015`, so product routing must remain shadow-only.
 
 ### `MODEL-015`: Add visible-balance attribute-repair shadow-advice evidence
 

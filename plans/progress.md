@@ -7144,3 +7144,44 @@ meaningful work. Do not replace this file with a daily reset.
   residual evidence after `MODEL-015`, confirm the final advisory residual is
   gone in full replay, and refresh the guarded decision.
 - Blockers: none.
+
+### 2026-05-19 - TRANS-016 - Expanded standard residual evidence after MODEL-015
+
+- Owner: worker TRANS-016.
+- Files changed:
+  `docs/TRANS_016_EXPANDED_STANDARD_AFTER_MODEL015_EVIDENCE_2026-05-19.md`,
+  `plans/active.md`, `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `python cli.py run-transition-shadow-matrix --matrix
+  examples/transition_shadow_matrix.json --out
+  /tmp/j3-trans-016-expanded-standard-after-model015 --json` -> passed;
+  `shasum -a 256 -c
+  /tmp/j3-trans-016-expanded-standard-after-model015/evidence/checksums.sha256`
+  -> passed; `python cli.py report-transition-residuals --matrix
+  /tmp/j3-trans-016-expanded-standard-after-model015 --out
+  /tmp/j3-trans-016-expanded-standard-after-model015-residual-report.json
+  --json` -> 1 residual-report example; `python cli.py
+  decide-transition-guarded-trial --matrix
+  /tmp/j3-trans-016-expanded-standard-after-model015 --out
+  /tmp/j3-trans-016-expanded-standard-after-model015-guarded-decision.json
+  --json` -> `remain_shadow_only`; `pytest tests/test_plan_consistency.py -q`
+  -> 6 passed; `git diff --check` -> passed.
+- Result: reran the expanded standard transition matrix after `MODEL-015`.
+  Matrix totals and suite gates are unchanged from `TRANS-015`: 5 suites, 60
+  tasks, 60 ranked solved tasks, 12,753 candidates, 19 held-out groups, 0
+  matrix residuals, 4 baseline residuals, and zero hosted usage. The residual
+  report did not become empty; `visible_balance_attribute_decoys` remains as
+  the only shadow-advice-only example. V3 selects the passing
+  `amount_cents -> balance_cents` candidate, but the residual report's
+  shadow-scorer top candidate remains the failing
+  `amount_cents -> available_cents` decoy. Guarded decision remains
+  `remain_shadow_only`, and product routing remains shadow-only.
+- Commit: pending.
+- Push: pending.
+- Next: coordinator should review why `MODEL-015` direct replay top-ranked the
+  passing candidate while the full matrix residual report still records the
+  failing `available_cents` decoy as shadow-scorer top. Decide whether this is
+  a matrix/residual-report integration gap, stale advice-feature input in the
+  standard matrix pipeline, or expected separation between direct replay and
+  full shadow-scorer reporting before assigning broader scorer work.
+- Blockers: none for evidence generation; the full residual report still has
+  one shadow-advice-only example.

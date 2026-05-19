@@ -963,7 +963,7 @@ Long-term target:
 
 ### TRANS-016: Rerun expanded standard residual evidence after MODEL-015
 
-- Status: active
+- Status: done
 - Owner: worker TRANS-016, assigned on 2026-05-19.
 - Why: `MODEL-015` directly replayed the final shadow-advice-only residual,
   but the standard evidence bundle should confirm whether
@@ -981,6 +981,19 @@ Long-term target:
 - Tests: `run-transition-shadow-matrix`, checksum verification,
   `report-transition-residuals --matrix`, `decide-transition-guarded-trial`,
   `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+- Completion note: reran the expanded standard transition matrix after
+  `MODEL-015` under `/tmp/j3-trans-016-expanded-standard-after-model015`.
+  Matrix totals and suite gates are unchanged from `TRANS-015`: 5 suites, 60
+  tasks, 60 ranked solved tasks, 12,753 candidates, 19 held-out groups, 0
+  matrix residuals, 4 baseline residuals, and zero hosted usage. The residual
+  report is not empty: it still has 1 shadow-advice-only example,
+  `visible_balance_attribute_decoys`. In the residual report V3 selects the
+  passing `amount_cents -> balance_cents` candidate, but the shadow-scorer top
+  candidate remains the failing `amount_cents -> available_cents` decoy.
+  Guarded decision remains `remain_shadow_only`, so product routing remains
+  shadow-only. Recommended next coordinator decision point: investigate the
+  direct-replay versus full-matrix residual-report discrepancy before assigning
+  broader attribute-repair scorer work.
 
 ## Workstream E: Repo State, Actions, And Models
 

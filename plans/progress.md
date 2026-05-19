@@ -4528,8 +4528,9 @@ meaningful work. Do not replace this file with a daily reset.
   evidence, not another scorer edit: rerun the transition shadow matrix and
   record whether `TRANS-003` remains blocked. In parallel, `SCALE-003` turns
   the new data policy into a small machine-checkable manifest contract.
-- Commit: pending.
-- Push: pending.
-- Next: dispatch workers for `TRANS-005` and `SCALE-003` after plan
-  consistency checks pass.
+- Commit: a4fcce4.
+- Push: succeeded.
+- Next: worker Hume (`019e3e20-4784-7571-b19e-7fadc432f4c1`) is running
+  `TRANS-005`; worker Chandrasekhar
+  (`019e3e20-7557-7593-924c-45fbdea6f3b4`) is running `SCALE-003`.
 - Blockers: none.

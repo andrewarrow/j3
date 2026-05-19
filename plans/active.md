@@ -58,7 +58,7 @@ This is the live coordinator board. Keep it current and compact.
 ## Active Tasks
 
 - `TRANS-005`: rerun post-scorer transition matrix evidence.
-  - Owner: coordinator dispatch in progress; worker pending.
+  - Owner: worker Hume (`019e3e20-4784-7571-b19e-7fadc432f4c1`).
   - Scope: generated matrix artifacts under `/tmp`, concise evidence doc or
     progress notes, and plan updates only unless a runner bug blocks the run.
   - Acceptance: rerun the standard transition shadow matrix after
@@ -68,7 +68,7 @@ This is the live coordinator board. Keep it current and compact.
     checksum verification, `pytest tests/test_plan_consistency.py -q`, and
     `git diff --check`.
 - `SCALE-003`: add durable training manifest schema skeleton.
-  - Owner: coordinator dispatch in progress; worker pending.
+  - Owner: worker Chandrasekhar (`019e3e20-7557-7593-924c-45fbdea6f3b4`).
   - Scope: small manifest schema/validator implementation, focused tests,
     optional compact example, and plan updates.
   - Acceptance: machine-readable manifest rows enforce the key `SCALE-002`

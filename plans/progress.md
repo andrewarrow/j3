@@ -4892,8 +4892,8 @@ meaningful work. Do not replace this file with a daily reset.
   missing-feature labels are `source_embedding_unavailable` and
   `candidate_after_embedding_unavailable`; `candidate_generation_gap` and
   `candidate_after_unavailable` remain absent.
-- Commit: pending in this worker commit.
-- Push: pending.
+- Commit: 5b71ddd.
+- Push: succeeded.
 - Next: review or address the remaining
   `apache_license_classifier_dict_value` V3 mapping-value residual before
   broadening the standard transition matrix.

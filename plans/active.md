@@ -97,13 +97,19 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-No active worker tasks are recorded after `TRANS-010`.
+- `MODEL-009` -> worker pending: address the four V3 top-candidate failures
+  that keep `TRANS-010` residual count nonzero: `greenshot_3/wrap_try_except`
+  and the `greenshot_5_subset` V3 residual cluster
+  (`express_shipping_boundary_preferred_helper`,
+  `free_shipping_threshold_module_constant`, and
+  `quote_total_helper_discount`). Scope is transition action scorer features
+  and focused tests only. Do not change production routing, matrix runner
+  behavior, candidate generation, or manifest contents in this slice.
 
 ## Ready Queue
 
 No additional ready task is currently staged on this board. `TRANS-003` should
-wait for the remaining standard-matrix residual work identified by `TRANS-010`
-before manifest expansion.
+wait for `MODEL-009` and a targeted evidence rerun before manifest expansion.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
@@ -112,8 +118,11 @@ Run at most two tasks in parallel unless write scopes are plainly disjoint.
 - `TRANS-003`: blocked again after `TRANS-010`; the current full standard
   matrix still has 4 matrix residuals, 11 residual-report examples, and guarded
   decision `remain_shadow_only`.
+- Shadow-advice-only residuals from `greenshot_bugs`, `greenshot_4`, and two
+  `greenshot_5_subset` tasks remain visible for follow-up after the V3 matrix
+  residuals are addressed.
 - `MODEL-002`: superseded by bounded scorer subtasks in the backlog, beginning
-  with `MODEL-003` through `MODEL-008`.
+  with `MODEL-003` through `MODEL-009`.
 
 ## Coordinator Review Triggers
 

@@ -5075,8 +5075,8 @@ meaningful work. Do not replace this file with a daily reset.
   `TRANS-009`, but `greenshot_3` and `greenshot_5_subset` still have
   `not_ready_underperforms_existing_rank_order` gates. Guarded decision
   remains `remain_shadow_only`.
-- Commit: pending worker commit.
-- Push: pending worker push.
+- Commit: d32840c.
+- Push: succeeded.
 - Next: `TRANS-003` should return to residual work before standard matrix
   manifest expansion. Prioritize the `greenshot_3/wrap_try_except` V3 failure
   and the `greenshot_5_subset` residual cluster, while keeping
@@ -5084,3 +5084,20 @@ meaningful work. Do not replace this file with a daily reset.
 - Blockers: full standard transition ranking remains shadow-only due to
   nonzero matrix residuals and non-guarded suite gates outside
   `greenshot_6_subset`.
+
+### 2026-05-19 - Coordinator Dispatch - MODEL-009
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, and
+  `plans/progress.md`.
+- Tests: pending.
+- Result: reviewed `TRANS-010` residuals and separated the four matrix
+  residuals from shadow-advice-only examples. The next bounded scorer slice is
+  the V3 structural-action residual cluster: `wrap_try_except`, the
+  GreenShot-5 boundary/helper swap-argument decoys, and the module-constant
+  miss. Shadow-advice-only examples remain queued for a separate pass after
+  the matrix residual count is reduced.
+- Commit: pending.
+- Push: pending.
+- Next: dispatch `MODEL-009` after plan verification.
+- Blockers: none.

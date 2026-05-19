@@ -552,6 +552,29 @@ Long-term target:
   remained `remain_shadow_only`; `TRANS-003` should return to residual work
   before manifest expansion.
 
+### MODEL-009: Fix V3 structural-action residual cluster
+
+- Status: active
+- Why: `TRANS-010` reduced the full standard matrix to 4 matrix residuals,
+  all `v3_top_candidate_failed`: `greenshot_3/wrap_try_except`,
+  `greenshot_5_subset/express_shipping_boundary_preferred_helper`,
+  `greenshot_5_subset/free_shipping_threshold_module_constant`, and
+  `greenshot_5_subset/quote_total_helper_discount`. These residuals block the
+  full standard gate; shadow-advice-only examples can be handled afterward.
+- Write scope: transition action scorer features and focused tests only:
+  `j3/transition_action_scoring.py`, relevant transition scorer tests, and
+  plan updates. Avoid production routing, V3 product-gate policy, matrix
+  runner behavior, candidate generation, and manifest edits.
+- Acceptance: add focused residual fixtures or artifact replays for the four
+  V3 failures and make V3 rank a known passing candidate first for each using
+  local action/failure-hint/change-context evidence rather than preferred
+  labels. Keep existing GreenShot-6 mapping, boundary/literal, module-constant,
+  and advice behavior green. If the whole cluster is too broad, land the
+  highest-confidence coherent subset and record the exact remaining blocker.
+- Tests: focused transition scorer tests,
+  `pytest tests/test_transition_shadow_scorer.py -q` if V3 shared behavior is
+  touched, `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+
 ## Workstream E: Repo State, Actions, And Models
 
 ### REPO-001: Summarize repo-state encoder coverage

@@ -19,6 +19,13 @@ This is the live coordinator board. Keep it current and compact.
   `scorer_ranking_gap` examples, and zero hosted usage. `TRANS-006` made
   existing diff/AST metadata visible as candidate-after evidence in residual
   reporting without changing those residual counts or the shadow-only gate.
+  `TRANS-007` reran only `greenshot_6_subset` after the candidate-after and
+  GreenShot-6 ranking fixes: 12 tasks, 12 ranked solved, 9,696 candidates, 7
+  held-out groups, 4 matrix residuals, 2 baseline residuals, 5 residual-report
+  examples, no `candidate_generation_gap`, and no
+  `candidate_after_unavailable` label. The subset gate is still
+  `not_ready_underperforms_existing_rank_order`, so the guarded decision
+  remains `remain_shadow_only` and `TRANS-003` remains blocked.
   Tests-only wedge guarded opt-in also remains
   blocked after `REAL-003` scored `pass@3 = 0/4`; `GS7-008` now materializes
   and live-validates the `iniconfig` calibration candidate. `REAL-005` extends
@@ -64,32 +71,24 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-- `TRANS-007`: rerun targeted post-fix `greenshot_6_subset` evidence.
-  - Owner: worker Schrodinger (`019e3e39-472c-7243-98bd-e000c594b9fb`).
-  - Scope: generated subset matrix artifacts under `/tmp`, one concise
-    evidence doc if useful, and plan updates only unless a runner bug blocks
-    evidence.
-  - Acceptance: rerun `greenshot_6_subset` after `TRANS-006`, `ACT-003`, and
-    the coordinator dictionary-value rank cleanup; record residual/gate counts,
-    missing feature labels, and whether the `dynamic_field_error_message`
-    generation gap is gone.
-  - Expected tests: targeted matrix command with `--only greenshot_6_subset`,
-    residual report, guarded-trial decision if applicable, checksum
-    verification, `pytest tests/test_plan_consistency.py -q`, and
-    `git diff --check`.
+No active worker tasks are recorded after `TRANS-007`; coordinator review
+should choose the next bounded scorer-ranking residual task before assigning
+more transition matrix evidence.
 
 ## Ready Queue
 
-`TRANS-007` is being dispatched as targeted evidence. Do not broaden the
-standard matrix manifest until this subset result is reviewed.
+No ready task is currently staged on this board. Do not broaden the standard
+matrix manifest until the `TRANS-007` subset result is reviewed.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
 ## Paused Or Blocked
 
-- `TRANS-003`: remains blocked after `TRANS-005`; do not expand the standard
-  matrix manifest while the post-scorer matrix still has 8 matrix residuals,
-  17 residual-report examples, and a guarded decision of `remain_shadow_only`.
+- `TRANS-003`: remains blocked after `TRANS-007`; do not expand the standard
+  matrix manifest while the targeted `greenshot_6_subset` rerun still has 4
+  matrix residuals, 5 residual-report examples, a suite gate of
+  `not_ready_underperforms_existing_rank_order`, and a guarded decision of
+  `remain_shadow_only`.
 - `MODEL-002`: superseded by bounded scorer subtasks in the backlog, beginning
   with `MODEL-003` through `MODEL-006`.
 
@@ -105,6 +104,17 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `TRANS-007`: reran targeted post-fix `greenshot_6_subset` transition matrix
+  evidence after `TRANS-006`, `ACT-003`, and `ACT-004`. The subset covered 12
+  tasks, 12 ranked solved tasks, 9,696 candidates, and 7 held-out groups, with
+  4 matrix residuals and 2 baseline residuals. The residual report has 5
+  examples, all `scorer_ranking_gap`; `dynamic_field_error_message` is no
+  longer a `candidate_generation_gap`, and `candidate_after_unavailable` is
+  absent from missing-feature evidence. Remaining labels are
+  `source_embedding_unavailable` and
+  `candidate_after_embedding_unavailable`. Suite gate:
+  `not_ready_underperforms_existing_rank_order`; guarded decision:
+  `remain_shadow_only`.
 - `ACT-003`: promoted exception-message literal fragment candidates using
   pytest failure-hint `match=` expected strings. The
   `greenshot_6_subset/dynamic_field_error_message` preferred

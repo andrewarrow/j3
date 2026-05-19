@@ -422,7 +422,7 @@ Long-term target:
 
 ### TRANS-007: Rerun targeted post-fix greenshot_6_subset evidence
 
-- Status: active
+- Status: done
 - Why: `TRANS-006` removed stale `candidate_after_unavailable` labels and
   `ACT-003` plus coordinator cleanup should remove the remaining
   `dynamic_field_error_message` generation gap and restore pass-at-1 for
@@ -437,6 +437,18 @@ Long-term target:
   verification, `report-transition-residuals --matrix`,
   `decide-transition-guarded-trial` if applicable,
   `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+- Completion note: reran `greenshot_6_subset` under
+  `/tmp/j3-trans-007-greenshot6-post-fix`. The subset covered 12 tasks, 12
+  ranked solved tasks, 9,696 candidates, 7 held-out groups, 4 matrix
+  residuals, and 2 baseline residuals. The residual report has 5 examples,
+  all `scorer_ranking_gap`; `dynamic_field_error_message` is no longer a
+  `candidate_generation_gap`, and `candidate_after_unavailable` is absent from
+  missing-feature evidence. Remaining labels are
+  `source_embedding_unavailable` and
+  `candidate_after_embedding_unavailable`. The suite gate remains
+  `not_ready_underperforms_existing_rank_order`, guarded decision is
+  `remain_shadow_only`, and `TRANS-003` remains blocked pending remaining
+  scorer-ranking residual work rather than a full matrix rerun.
 
 ## Workstream E: Repo State, Actions, And Models
 

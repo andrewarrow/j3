@@ -4737,3 +4737,48 @@ meaningful work. Do not replace this file with a daily reset.
 - Next: worker Schrodinger (`019e3e39-472c-7243-98bd-e000c594b9fb`) is
   running `TRANS-007`.
 - Blockers: none.
+
+### 2026-05-19 - TRANS-007 - GreenShot-6 post-fix subset evidence
+
+- Owner: worker Schrodinger (`019e3e39-472c-7243-98bd-e000c594b9fb`).
+- Files changed:
+  `docs/TRANS_007_GREENSHOT6_POST_FIX_EVIDENCE_2026-05-19.md`,
+  `plans/active.md`, `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `python cli.py run-transition-shadow-matrix --matrix
+  examples/transition_shadow_matrix.json --out
+  /tmp/j3-trans-007-greenshot6-post-fix --only greenshot_6_subset --force
+  --json` -> passed; `python -m json.tool
+  /tmp/j3-trans-007-greenshot6-post-fix/matrix-summary.json >/dev/null` ->
+  passed; `shasum -a 256 -c
+  /tmp/j3-trans-007-greenshot6-post-fix/evidence/checksums.sha256` -> passed;
+  `python cli.py report-transition-residuals --matrix
+  /tmp/j3-trans-007-greenshot6-post-fix --out
+  /tmp/j3-trans-007-greenshot6-post-fix-residual-report.json --json` ->
+  passed; `python -m json.tool
+  /tmp/j3-trans-007-greenshot6-post-fix-residual-report.json >/dev/null` ->
+  passed; `python cli.py decide-transition-guarded-trial --matrix
+  /tmp/j3-trans-007-greenshot6-post-fix --out
+  /tmp/j3-trans-007-greenshot6-post-fix-guarded-decision.json --json` ->
+  passed; `python -m json.tool
+  /tmp/j3-trans-007-greenshot6-post-fix-guarded-decision.json >/dev/null` ->
+  passed; `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check` -> passed.
+- Result: targeted post-fix `greenshot_6_subset` evidence improved but still
+  does not unblock transition ranking. The subset covered 12 tasks, 12 ranked
+  solved tasks, 9,696 candidates, 7 held-out groups, 4 matrix residuals, 2
+  baseline residuals, and zero hosted usage. The residual report has 5
+  examples, all `scorer_ranking_gap`: 4 `v3_top_candidate_failed` and 1
+  `shadow_scorer_top_candidate_failed`. `dynamic_field_error_message` is no
+  longer a `candidate_generation_gap`; its rank-1 `change_literal` candidate
+  passed. `candidate_after_unavailable` is absent from missing-feature
+  evidence; the remaining labels are `source_embedding_unavailable` and
+  `candidate_after_embedding_unavailable`. Suite gate:
+  `not_ready_underperforms_existing_rank_order`. Guarded-trial decision:
+  `remain_shadow_only`.
+- Commit: pending.
+- Push: pending.
+- Next: do not spend on a full standard matrix rerun as the next step from
+  this subset result alone; address the remaining scorer-ranking residuals
+  first. `TRANS-003` remains blocked.
+- Blockers: nonzero subset residuals and a non-guarded suite gate keep
+  transition ranking shadow-only.

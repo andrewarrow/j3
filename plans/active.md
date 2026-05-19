@@ -39,10 +39,19 @@ This is the live coordinator board. Keep it current and compact.
   examples. The Apache mapping-value residual is resolved, no missing-feature
   labels remain because no residual examples remain, the suite gate reaches
   `ready_for_guarded_opt_in`, and guarded decision is
-  `guarded_opt_in_trial`. `TRANS-003` can move back to ready for
-  coordinator-reviewed standard matrix expansion; transition advice rows
+  `guarded_opt_in_trial`. That targeted result temporarily unblocked
+  coordinator review for standard matrix expansion; transition advice rows
   remain shadow-only/not wired to production routing unless a guarded opt-in
-  follow-up explicitly scopes that integration.
+  follow-up explicitly scopes that integration. `TRANS-010` then refreshed the
+  full standard matrix before any manifest expansion: 5 suites, 56 tasks, 56
+  ranked solved tasks, 12,413 candidates, 19 held-out groups, 4 matrix
+  residuals, 4 baseline residuals, 11 residual-report examples, all
+  `scorer_ranking_gap`, and zero hosted usage. `greenshot_6_subset` remains
+  clean with suite gate `ready_for_guarded_opt_in`, but `greenshot_3` and
+  `greenshot_5_subset` still have
+  `not_ready_underperforms_existing_rank_order` gates. The full standard
+  guarded decision remains `remain_shadow_only`; `TRANS-003` should return to
+  residual work before any standard matrix manifest expansion.
   Tests-only wedge guarded opt-in also remains
   blocked after `REAL-003` scored `pass@3 = 0/4`; `GS7-008` now materializes
   and live-validates the `iniconfig` calibration candidate. `REAL-005` extends
@@ -88,23 +97,21 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-- `TRANS-010` -> worker Pascal
-  (`019e3e66-ea26-7493-98a8-5a64aca17a72`): rerun the full current standard
-  transition shadow matrix after `MODEL-007`, `MODEL-008`, and the clean
-  `TRANS-009` subset before broadening the manifest. Scope is evidence only:
-  generated outputs under `/tmp`, a concise evidence doc if useful, and plan
-  updates. Do not edit `examples/transition_shadow_matrix.json` in this slice.
+No active worker tasks are recorded after `TRANS-010`.
 
 ## Ready Queue
 
-No additional ready task is currently staged on this board. `TRANS-003` is
-unblocked by `TRANS-009`, but manifest expansion should wait for `TRANS-010`
-to refresh the current full standard matrix after the latest scorer fixes.
+No additional ready task is currently staged on this board. `TRANS-003` should
+wait for the remaining standard-matrix residual work identified by `TRANS-010`
+before manifest expansion.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
 ## Paused Or Blocked
 
+- `TRANS-003`: blocked again after `TRANS-010`; the current full standard
+  matrix still has 4 matrix residuals, 11 residual-report examples, and guarded
+  decision `remain_shadow_only`.
 - `MODEL-002`: superseded by bounded scorer subtasks in the backlog, beginning
   with `MODEL-003` through `MODEL-008`.
 
@@ -120,6 +127,18 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `TRANS-010`: reran the full current standard transition matrix after
+  `MODEL-007`, `MODEL-008`, and the clean `TRANS-009` subset. The run covered
+  5 suites, 56 tasks, 56 ranked solved tasks, 12,413 candidates, and 19
+  held-out groups, with 4 matrix residuals, 4 baseline residuals, 11
+  residual-report examples, and zero hosted usage. `greenshot_6_subset`
+  remains clean and `ready_for_guarded_opt_in`; `greenshot_3` has 1 matrix
+  residual and `greenshot_5_subset` has 3 matrix residuals, both with
+  `not_ready_underperforms_existing_rank_order` gates. The residual report has
+  11 `scorer_ranking_gap` examples: 7
+  `shadow_scorer_top_candidate_failed` and 4 `v3_top_candidate_failed`.
+  Guarded decision: `remain_shadow_only`; `TRANS-003` should return to
+  residual work before manifest expansion.
 - `TRANS-009`: reran targeted `greenshot_6_subset` transition evidence after
   `MODEL-008`. The subset covered 12 tasks, 12 ranked solved tasks, 9,696
   candidates, and 7 held-out groups, with 0 matrix residuals, 2 baseline

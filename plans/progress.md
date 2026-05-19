@@ -5037,3 +5037,50 @@ meaningful work. Do not replace this file with a daily reset.
 - Next: worker Pascal (`019e3e66-ea26-7493-98a8-5a64aca17a72`) is running
   `TRANS-010`.
 - Blockers: none.
+
+### 2026-05-19 - TRANS-010 - Standard matrix after MODEL-008 evidence
+
+- Owner: worker Pascal (`019e3e66-ea26-7493-98a8-5a64aca17a72`).
+- Files changed:
+  `docs/TRANS_010_STANDARD_AFTER_MODEL008_EVIDENCE_2026-05-19.md`,
+  `plans/active.md`, `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `python cli.py run-transition-shadow-matrix --matrix
+  examples/transition_shadow_matrix.json --out
+  /tmp/j3-trans-010-standard-after-model008 --force --json` -> passed;
+  `python -m json.tool
+  /tmp/j3-trans-010-standard-after-model008/matrix-summary.json >/dev/null`
+  -> passed; `shasum -a 256 -c
+  /tmp/j3-trans-010-standard-after-model008/evidence/checksums.sha256` ->
+  passed; `python cli.py report-transition-residuals --matrix
+  /tmp/j3-trans-010-standard-after-model008 --out
+  /tmp/j3-trans-010-standard-after-model008-residual-report.json --json` ->
+  passed; `python -m json.tool
+  /tmp/j3-trans-010-standard-after-model008-residual-report.json >/dev/null`
+  -> passed; `python cli.py decide-transition-guarded-trial --matrix
+  /tmp/j3-trans-010-standard-after-model008 --out
+  /tmp/j3-trans-010-standard-after-model008-guarded-decision.json --json` ->
+  passed; `python -m json.tool
+  /tmp/j3-trans-010-standard-after-model008-guarded-decision.json
+  >/dev/null` -> passed; `pytest tests/test_plan_consistency.py -q` ->
+  passed; `git diff --check` -> passed.
+- Result: refreshed the full current standard transition matrix before any
+  manifest expansion. The run covered 5 suites, 56 tasks, 56 ranked solved
+  tasks, 12,413 candidates, 19 held-out groups, 4 matrix residuals, 4 baseline
+  residuals, and zero hosted usage. Compared with `TRANS-005`, ranked solved
+  improved from 55 to 56, matrix residuals dropped from 8 to 4, baseline
+  residuals dropped from 5 to 4, and residual-report examples dropped from 17
+  to 11. The residual report now has 11 `scorer_ranking_gap` examples: 7
+  `shadow_scorer_top_candidate_failed` and 4 `v3_top_candidate_failed`.
+  `greenshot_6_subset` remains clean and `ready_for_guarded_opt_in`, matching
+  `TRANS-009`, but `greenshot_3` and `greenshot_5_subset` still have
+  `not_ready_underperforms_existing_rank_order` gates. Guarded decision
+  remains `remain_shadow_only`.
+- Commit: pending worker commit.
+- Push: pending worker push.
+- Next: `TRANS-003` should return to residual work before standard matrix
+  manifest expansion. Prioritize the `greenshot_3/wrap_try_except` V3 failure
+  and the `greenshot_5_subset` residual cluster, while keeping
+  `greenshot_bugs` and `greenshot_4` shadow-scorer advice gaps visible.
+- Blockers: full standard transition ranking remains shadow-only due to
+  nonzero matrix residuals and non-guarded suite gates outside
+  `greenshot_6_subset`.

@@ -348,11 +348,13 @@ Long-term target:
 
 ### TRANS-003: Expand standard matrix manifest cautiously
 
-- Status: ready
-- Blocker: none after `TRANS-009`; the targeted `greenshot_6_subset` rerun
-  has zero matrix residuals, no residual-report examples, suite gate
-  `ready_for_guarded_opt_in`, and guarded decision `guarded_opt_in_trial`.
-  Standard matrix expansion should still be cautious and coordinator-reviewed.
+- Status: blocked
+- Blocker: `TRANS-010` refreshed the full current standard matrix and found 4
+  matrix residuals, 11 residual-report examples, and guarded decision
+  `remain_shadow_only`. The targeted `greenshot_6_subset` remains clean and
+  `ready_for_guarded_opt_in`, but `greenshot_3` and `greenshot_5_subset` still
+  block the full standard gate. Standard matrix expansion should wait for
+  residual work on those suites.
 - Why: product gates need broader held-out suites without making local runs
   impractical.
 - Write scope: `examples/transition_shadow_matrix.json`, tests, docs.
@@ -521,7 +523,7 @@ Long-term target:
 
 ### TRANS-010: Refresh full standard matrix after MODEL-008
 
-- Status: active
+- Status: done
 - Why: `TRANS-009` proves the targeted GreenShot-6 blocker is gone, but the
   last full standard matrix evidence (`TRANS-005`) predates `TRANS-006`,
   `ACT-003`, `ACT-004`, `MODEL-007`, and `MODEL-008`. Before broadening the
@@ -538,6 +540,17 @@ Long-term target:
 - Tests: `run-transition-shadow-matrix`, checksum verification,
   `report-transition-residuals --matrix`, `decide-transition-guarded-trial`,
   `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+- Completion note: reran the full current standard matrix under
+  `/tmp/j3-trans-010-standard-after-model008`. Totals were 5 suites, 56 tasks,
+  56 ranked solved tasks, 12,413 candidates, 19 held-out groups, 4 matrix
+  residuals, 4 baseline residuals, and zero hosted usage. The residual report
+  had 11 examples, all `scorer_ranking_gap`: 7
+  `shadow_scorer_top_candidate_failed` and 4 `v3_top_candidate_failed`.
+  `greenshot_6_subset` remained clean with suite gate
+  `ready_for_guarded_opt_in`, but `greenshot_3` and `greenshot_5_subset` still
+  had `not_ready_underperforms_existing_rank_order` gates. Guarded decision
+  remained `remain_shadow_only`; `TRANS-003` should return to residual work
+  before manifest expansion.
 
 ## Workstream E: Repo State, Actions, And Models
 

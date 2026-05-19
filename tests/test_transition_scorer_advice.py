@@ -6,6 +6,7 @@ from j3.actions import PatchAction, PatchActionKind, PatchTarget
 from j3.failure_hints import AssertionComparison, PytestFailureHint, TracebackLocation
 from j3.synth import SourceEdit
 from j3.transition_scorer_advice import (
+    _failure_hint_record,
     build_transition_scorer_advice,
     format_transition_scorer_advice_summary,
     summarize_transition_scorer_advice,
@@ -394,6 +395,80 @@ def test_ranked_candidates_use_module_constant_file_and_name_alignment() -> None
     assert ranked == (module_constant, literal_neighbor)
 
 
+def test_advice_preserves_attribute_error_hints_for_visible_balance_ranking(
+    tmp_path,
+) -> None:
+    available_decoy = _visible_balance_attribute_candidate(
+        replacement="available_cents",
+    )
+    balance_candidate = _visible_balance_attribute_candidate(
+        replacement="balance_cents",
+    )
+    pending_decoy = _visible_balance_attribute_candidate(
+        replacement="pending_cents",
+    )
+    hints = (
+        PytestFailureHint(
+            nodeid="tests/test_shop.py::test_visible_balance_uses_balance_cents",
+            summary="AttributeError: Account has no attribute 'amount_cents'",
+            exception_type="AttributeError",
+            function_names={"Account", "account_balance", "visible_balance"},
+            missing_attributes={"amount_cents"},
+            traceback_locations=[
+                TracebackLocation(file_path="tests/test_shop.py", line=44),
+                TracebackLocation(file_path="shop/api.py", line=35),
+                TracebackLocation(
+                    file_path="shop/accounts.py",
+                    line=10,
+                    exception_type="AttributeError",
+                ),
+            ],
+        ),
+    )
+
+    advice = build_transition_scorer_advice(
+        repo=tmp_path,
+        test_command=(
+            "python -m pytest "
+            "tests/test_shop.py::test_visible_balance_uses_balance_cents"
+        ),
+        baseline_exit_code=1,
+        candidates=[available_decoy, balance_candidate, pending_decoy],
+        selected=available_decoy,
+        tested_candidates=[available_decoy, balance_candidate, pending_decoy],
+        passing_candidates=[balance_candidate],
+        candidate_hints=[hints, hints, hints],
+        first_passing_index=2,
+        context={
+            "task": "visible_balance_attribute_decoys",
+            "task_family": "attribute_repair",
+        },
+    )
+    top_candidate = advice["scorer_top_candidate"]
+    top_hints = advice["validation_comparison"]
+
+    assert advice["mode"] == "shadow"
+    assert advice["decision"] == "shadow_only_not_wired_to_routing"
+    assert advice["scorer_ranked_candidate_ranks"] == [2, 1, 3]
+    assert top_candidate["action"] == "change_attribute"
+    assert top_candidate["params"] == {"from": "amount_cents", "to": "balance_cents"}
+    assert top_candidate["passed"] is True
+    assert top_hints["would_have"] == "improved"
+
+    hint_record = _failure_hint_record(hints[0])
+    assert hint_record["missing_attributes"] == ["amount_cents"]
+    assert hint_record["source_files"] == ["shop/accounts.py", "shop/api.py"]
+    assert hint_record["traceback_locations"] == [
+        {"file_path": "tests/test_shop.py", "line": 44, "exception_type": None},
+        {"file_path": "shop/api.py", "line": 35, "exception_type": None},
+        {
+            "file_path": "shop/accounts.py",
+            "line": 10,
+            "exception_type": "AttributeError",
+        },
+    ]
+
+
 def test_advice_records_keyword_hint_fields_and_remains_shadow_only(tmp_path) -> None:
     add_keyword = _patch_candidate(
         kind=PatchActionKind.ADD_KEYWORD_ARG,
@@ -505,6 +580,59 @@ def _patch_candidate(
             if target_context is not None
             else {"function_name": symbol, "line_span": [2, 2]}
         ),
+    )
+
+
+def _visible_balance_attribute_candidate(*, replacement: str) -> CandidatePatch:
+    original_source = (
+        "from dataclasses import dataclass\n\n"
+        "@dataclass\n"
+        "class Account:\n"
+        "    available_cents: int\n"
+        "    balance_cents: int\n"
+        "    pending_cents: int\n\n"
+        "def account_balance(account: Account) -> int:\n"
+        "    return account.amount_cents\n\n"
+        "def visible_balance(account: Account) -> int:\n"
+        "    return account_balance(account)\n"
+    )
+    patched_source = original_source.replace(
+        "account.amount_cents",
+        f"account.{replacement}",
+    )
+    return CandidatePatch(
+        file_path="shop/accounts.py",
+        action=PatchAction(
+            kind=PatchActionKind.CHANGE_ATTRIBUTE,
+            target=PatchTarget(
+                file_path="shop/accounts.py",
+                start_line=10,
+                end_line=10,
+                symbol="account_balance",
+                node_kind="Attribute",
+            ),
+            params={"from": "amount_cents", "to": replacement},
+        ),
+        edit=SourceEdit(
+            start_line=10,
+            start_col=19,
+            end_line=10,
+            end_col=31,
+            replacement=replacement,
+        ),
+        original_source=original_source,
+        patched_source=patched_source,
+        reason=f"try Account.{replacement}",
+        model_score=0.0,
+        failure_hint_score=0.0,
+        ranker_score=0.0,
+        target_context={
+            "callee_count": 0,
+            "caller_count": 1,
+            "qualified_symbol": "shop.accounts.account_balance",
+            "role": "helper",
+            "upstream_callers": [{"distance": 1, "symbol": "visible_balance"}],
+        },
     )
 
 

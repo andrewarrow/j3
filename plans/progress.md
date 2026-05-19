@@ -7212,3 +7212,34 @@ meaningful work. Do not replace this file with a daily reset.
   advice-side hint serialization and add a focused advice-path regression.
 - Blockers: product routing remains shadow-only until a later evidence replay
   proves the full residual report and suite gates support changing it.
+
+### 2026-05-19 - MODEL-016 - AttributeError advice field parity
+
+- Owner: worker MODEL-016.
+- Files changed: `j3/transition_scorer_advice.py`,
+  `tests/test_transition_scorer_advice.py`, `plans/active.md`,
+  `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `python -m py_compile j3/transition_scorer_advice.py
+  tests/test_transition_scorer_advice.py` -> passed; `pytest
+  tests/test_transition_scorer_advice.py -q` -> 9 passed; direct advice-path
+  replay over
+  `/tmp/j3-trans-016-expanded-standard-after-model015/suite/greenshot_5_subset/candidate-outcomes.jsonl`
+  for `visible_balance_attribute_decoys` -> scorer ranks `[2, 1, 3]`, top
+  candidate `amount_cents -> balance_cents`, passed `True`, comparison
+  `improved`; `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check` -> passed.
+- Result: restored advice-side `PytestFailureHint` field parity for
+  AttributeError transition scoring by serializing `missing_attributes` and
+  `traceback_locations` alongside existing `source_files`. The change is
+  additive to transition advice failure-hint records and keeps existing summary
+  aggregation compatible. A focused `build_transition_scorer_advice` regression
+  with three real `CandidatePatch` `change_attribute` candidates now top-ranks
+  the passing `account.amount_cents -> account.balance_cents` edit over the
+  `available_cents` and `pending_cents` decoys. Product routing remains
+  shadow-only.
+- Commit: pending implementation/evidence commit.
+- Push: pending.
+- Next: run a focused `TRANS-017` expanded-standard matrix/residual replay
+  after `MODEL-016` to confirm whether `visible_balance_attribute_decoys`
+  leaves the full residual report and to refresh the guarded decision.
+- Blockers: none for advice input parity; product routing remains shadow-only.

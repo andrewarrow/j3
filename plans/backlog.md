@@ -997,7 +997,7 @@ Long-term target:
 
 ### MODEL-016: Restore AttributeError fields in transition advice scoring
 
-- Status: active
+- Status: done
 - Owner: worker MODEL-016, assigned on 2026-05-19.
 - Why: coordinator review of `TRANS-016` found the direct-replay versus
   full-matrix discrepancy is an advice input parity gap. The direct
@@ -1025,6 +1025,14 @@ Long-term target:
 - Notes: keep the slice to advice input parity. If preserving the fields
   clears the full residual report, verify that separately with a follow-up
   `TRANS-017` evidence replay.
+- Completion note: restored additive advice-side serialization for
+  AttributeError `missing_attributes` and `traceback_locations`, preserving
+  existing summary compatibility while allowing the `MODEL-015` visible-balance
+  features to activate in the full advice path. The focused advice-path
+  regression and saved-artifact smoke replay both top-rank
+  `amount_cents -> balance_cents` ahead of `available_cents` and
+  `pending_cents`. Product routing remains shadow-only pending a separate
+  matrix replay.
 
 ## Workstream E: Repo State, Actions, And Models
 

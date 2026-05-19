@@ -596,10 +596,19 @@ def _failure_hint_record(hint: PytestFailureHint) -> dict[str, object]:
         "source_files": sorted(hint.source_files),
         "function_names": sorted(hint.function_names),
         "missing_names": sorted(hint.missing_names),
+        "missing_attributes": sorted(hint.missing_attributes),
         "missing_keys": sorted(hint.missing_keys),
         "asserted_mapping_keys": sorted(hint.asserted_mapping_keys),
         "type_error_names": sorted(hint.type_error_names),
         "expected_strings": sorted(hint.expected_strings),
+        "traceback_locations": [
+            {
+                "file_path": location.file_path,
+                "line": location.line,
+                "exception_type": location.exception_type,
+            }
+            for location in hint.traceback_locations
+        ],
         "assertion_diff_lines": list(hint.assertion_diff_lines),
         "assertions": [
             {

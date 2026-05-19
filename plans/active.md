@@ -95,8 +95,12 @@ This is the live coordinator board. Keep it current and compact.
   `missing_attributes` and traceback locations, so direct replay over
   normalized candidate outcomes sees the `MODEL-015` visible-balance evidence
   while full shadow advice still ties the attribute candidates. `MODEL-016`
-  is assigned to close that advice input parity gap without changing product
-  routing.
+  restored that advice input parity by preserving AttributeError
+  `missing_attributes` and traceback locations in advice-side failure-hint
+  records. A focused advice-path replay now top-ranks
+  `amount_cents -> balance_cents` over the same-location `available_cents` and
+  `pending_cents` decoys. Product routing remains shadow-only until a later
+  matrix evidence replay changes the gate.
   Tests-only wedge guarded opt-in also remains
   blocked after `REAL-003` scored `pass@3 = 0/4`; `GS7-008` now materializes
   and live-validates the `iniconfig` calibration candidate. `REAL-005` extends
@@ -259,37 +263,13 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-### `MODEL-016`: Restore AttributeError fields in transition advice scoring
-
-- Status: active
-- Owner: worker MODEL-016, assigned on 2026-05-19.
-- Why: coordinator review of `TRANS-016` found that direct replay over
-  `candidate-outcomes.jsonl` now ranks the passing
-  `amount_cents -> balance_cents` candidate first, but the full matrix
-  `transition-advice.jsonl` still ranks the failing `available_cents` decoy
-  first because advice-side `PytestFailureHint` serialization omits
-  `missing_attributes` and traceback locations.
-- Write scope: `j3/transition_scorer_advice.py`,
-  `tests/test_transition_scorer_advice.py`, and plan updates. Do not edit
-  scorer weights, candidate generation, product routing, matrix manifests,
-  guarded-trial policy, local-knowledge records, materializer code, or
-  `plans/strategy.md`.
-- Acceptance: transition advice scoring preserves AttributeError
-  `missing_attributes` and enough traceback/source-file context for the
-  existing `MODEL-015` visible-balance features to run in the full advice path;
-  a focused regression proves `build_transition_scorer_advice` ranks
-  `amount_cents -> balance_cents` ahead of the `available_cents` and
-  `pending_cents` decoys using `CandidatePatch` inputs; product routing
-  remains shadow-only.
-- Tests: focused transition scorer advice tests, focused transition action
-  scoring regression if needed, direct advice-path replay for
-  `visible_balance_attribute_decoys`, `pytest tests/test_plan_consistency.py
-  -q`, and `git diff --check`.
+No active worker tasks are currently recorded after `MODEL-016` completion.
 
 ## Ready Queue
 
-No additional ready worker tasks are currently recorded while `MODEL-016` is
-active.
+No additional ready worker tasks are currently recorded. Coordinator review
+should decide whether to dispatch a focused `TRANS-017` replay for
+`visible_balance_attribute_decoys`.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
@@ -309,6 +289,34 @@ Review before assigning more work if:
 - the next useful task is unclear
 
 ## Recently Completed
+
+### `MODEL-016`: Restore AttributeError fields in transition advice scoring
+
+- Status: completed by worker MODEL-016 on 2026-05-19.
+- Result: restored advice-side `PytestFailureHint` field parity for
+  AttributeError scoring by serializing `missing_attributes` and
+  `traceback_locations` in addition to the existing `source_files` context.
+  The change is additive to existing transition advice rows and leaves summary
+  aggregation compatible. A focused advice-path regression builds three
+  `CandidatePatch` `change_attribute` candidates for
+  `account.amount_cents -> available_cents/balance_cents/pending_cents` and
+  top-ranks the passing `amount_cents -> balance_cents` candidate. Product
+  routing remains shadow-only.
+- Commit: pending implementation/evidence commit.
+- Push: pending.
+- Tests: `python -m py_compile j3/transition_scorer_advice.py
+  tests/test_transition_scorer_advice.py` -> passed; `pytest
+  tests/test_transition_scorer_advice.py -q` -> 9 passed; direct advice-path
+  replay over
+  `/tmp/j3-trans-016-expanded-standard-after-model015/suite/greenshot_5_subset/candidate-outcomes.jsonl`
+  for `visible_balance_attribute_decoys` -> scorer ranks `[2, 1, 3]`, top
+  candidate `amount_cents -> balance_cents`, passed `True`, comparison
+  `improved`; `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check` -> passed.
+- Recommended next: run a focused `TRANS-017` expanded-standard residual replay
+  after `MODEL-016` to confirm whether the full `transition-advice.jsonl`
+  residual report clears and to refresh the guarded decision.
+- Blockers: none for advice input parity; product routing remains shadow-only.
 
 ### `TRANS-016`: Rerun expanded standard residual evidence after MODEL-015
 

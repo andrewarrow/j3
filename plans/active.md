@@ -302,8 +302,9 @@ Review before assigning more work if:
   `account.amount_cents -> available_cents/balance_cents/pending_cents` and
   top-ranks the passing `amount_cents -> balance_cents` candidate. Product
   routing remains shadow-only.
-- Commit: pending implementation/evidence commit.
-- Push: pending.
+- Commit: `d4afc4b` implementation/evidence.
+- Push: implementation/evidence commit pushed successfully to `origin/main`;
+  completion metadata recorded in follow-up planning commit.
 - Tests: `python -m py_compile j3/transition_scorer_advice.py
   tests/test_transition_scorer_advice.py` -> passed; `pytest
   tests/test_transition_scorer_advice.py -q` -> 9 passed; direct advice-path

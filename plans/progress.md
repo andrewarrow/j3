@@ -7237,8 +7237,9 @@ meaningful work. Do not replace this file with a daily reset.
   the passing `account.amount_cents -> account.balance_cents` edit over the
   `available_cents` and `pending_cents` decoys. Product routing remains
   shadow-only.
-- Commit: pending implementation/evidence commit.
-- Push: pending.
+- Commit: `d4afc4b` implementation/evidence.
+- Push: implementation/evidence commit pushed successfully to `origin/main`;
+  completion metadata recorded in follow-up planning commit.
 - Next: run a focused `TRANS-017` expanded-standard matrix/residual replay
   after `MODEL-016` to confirm whether `visible_balance_attribute_decoys`
   leaves the full residual report and to refresh the guarded decision.

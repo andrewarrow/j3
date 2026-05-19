@@ -176,16 +176,41 @@ This is the live coordinator board. Keep it current and compact.
   records. Remaining non-materialized MAT-007 counts are now
   `current_structured_action = 4`, `general_typed_builder = 0`,
   `repo_convention_builder = 3`, `constrained_local_generator = 0`, and
-  `not_currently_expressible = 2`.
+  `not_currently_expressible = 2`. `MAT-028` is now assigned to
+  `psf/requests#7315`, the next same-repo convention row with a small source
+  deletion plus adapter expectation update.
 
 ## Active Tasks
 
-No active worker task is recorded after `MAT-027` completion.
+### `MAT-028`: Held-out Requests adapter convention candidate
+
+- Status: active
+- Owner: worker.
+- Scope: attempt `psf/requests#7315` with reusable repo-convention and bounded
+  source/test update action records. Allowed writes are focused
+  repo-convention materializer/planner extensions and tests as needed, focused
+  `docs/MAT_028_*`, generated artifacts under `/tmp`, and plan updates. Avoid
+  transition scoring, issue/PR ranking, validation-policy changes,
+  local-knowledge records, matrix manifests, and unrelated materializer
+  families.
+- Acceptance: determine pinned base/head refs, accepted changed files,
+  validation command, mutation scope, candidate-after diff/hash metadata,
+  accepted-diff comparison, and live validation result for `requests-7315`.
+  Use reusable convention/source/test action kinds rather than a PR-named
+  action. Requests validation must import checkout-local source with
+  `PYTHONPATH=src` or use the DATA-008 editable-venv recipe. If target
+  selection, source deletion, adapter test expectation update, local convention
+  detection, parity, or validation blocks, record the exact blocker without
+  broadening scope silently.
+- Tests: focused repo-convention/materializer tests if code changes are made,
+  JSON/report checks if artifacts are written,
+  `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and live
+  focused validation when materialized.
 
 ## Ready Queue
 
-No separate ready worker task is queued until coordinator review selects the
-next bounded repo-convention row.
+No separate ready worker task is queued while `MAT-028` is active. Remaining
+repo-convention rows after this are `click-3405` and `pytest-14429`.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 

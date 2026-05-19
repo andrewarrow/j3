@@ -6065,9 +6065,28 @@ meaningful work. Do not replace this file with a daily reset.
   `current_structured_action = 4`, `general_typed_builder = 0`,
   `repo_convention_builder = 3`, `constrained_local_generator = 0`, and
   `not_currently_expressible = 2`.
-- Commit: efabc9c implementation/evidence; push-result metadata in this
-  follow-up commit.
-- Push: implementation/evidence commit pushed successfully to `origin/main`.
+- Commit: efabc9c implementation/evidence; push-result metadata: f4d82b8.
+- Push: implementation/evidence and push-result commits pushed successfully to
+  `origin/main`.
 - Next: coordinator should review `MAT-027` and choose the next bounded
   repo-convention row from `click-3405`, `requests-7315`, or `pytest-14429`.
+- Blockers: none.
+
+### 2026-05-19 - Coordinator Review And Dispatch - MAT-028
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, and
+  `plans/progress.md`.
+- Tests: `python -m py_compile j3/heldout_repo_convention_candidate.py
+  tests/test_heldout_repo_convention_candidate.py` -> passed; `pytest
+  tests/test_heldout_repo_convention_candidate.py -q` -> 3 passed; `pytest
+  tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check` ->
+  passed.
+- Result: reviewed `MAT-027`; exact accepted-diff parity, repo-convention
+  scoped parity, mutation scope, convention evidence, JSON artifact, and
+  polluted-proxy live validation are consistent. The next bounded
+  repo-convention row is `requests-7315`, which keeps the same repo but adds a
+  source deletion and local adapter expectation update.
+- Next: dispatch a worker for `MAT-028` to attempt `psf/requests#7315` with
+  reusable repo-convention and bounded source/test update action records.
 - Blockers: none.

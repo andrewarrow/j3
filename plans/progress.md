@@ -5527,3 +5527,33 @@ meaningful work. Do not replace this file with a daily reset.
   updates. Do not edit materializer code, transition scoring, issue/PR
   ranking, validation policy, local knowledge, or matrix manifests.
 - Blockers: none.
+
+### 2026-05-19 - MAT-018 - Real PR materialization coverage refresh
+
+- Owner: worker Codex.
+- Files changed:
+  `docs/MAT_018_REAL_PR_MATERIALIZATION_COVERAGE_REFRESH_2026-05-19.md`,
+  `docs/MAT_018_REAL_PR_MATERIALIZATION_COVERAGE_REFRESH_2026-05-19.jsonl`,
+  `plans/active.md`, `plans/backlog.md`, and `plans/progress.md`.
+- Tests: JSONL parse check -> 9 records loaded;
+  `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check` -> passed.
+- Result: refreshed the MAT-007 held-out materialization coverage panel after
+  `MAT-014` through `MAT-017`. The original `general_typed_builder = 7`
+  bucket is now fully accounted for: four pure typed-builder rows
+  (`click-3422`, `requests-7441`, `requests-7437`, `flask-5808`), one broader
+  general-AST row (`click-3396` with bounded `statement_block_replace`), one
+  reusable filesystem-idiom row (`flask-5903`), and one reusable helper
+  extraction / call-replacement row (`click-3430`). Remaining
+  non-materialized MAT-007 counts are `current_structured_action = 4`,
+  `general_typed_builder = 0`, `repo_convention_builder = 4`,
+  `constrained_local_generator = 7`, and `not_currently_expressible = 2`.
+  `flask-5903` and `click-3430` are explicitly reusable materializer coverage,
+  not pure typed-builder coverage. Source-scoped and full-diff parity are
+  separated for rows with RST companion files.
+- Commit: pending.
+- Push: pending.
+- Next: assign `MAT-019` for `psf/requests#7427` constrained source/test
+  materialization, with `pytest-dev/pytest#14475` as the next alternate if
+  the first row exposes a source-synthesis blocker.
+- Blockers: none.

@@ -120,18 +120,24 @@ This is the live coordinator board. Keep it current and compact.
   extraction / duplicate call-site replacement builder layer using
   `helper_function_insert`, `local_assignment_replace`,
   `keyword_argument_value_replace`, and `text_block_insert_after`;
-  `statement_block_replace` was not needed.
+  `statement_block_replace` was not needed. `MAT-018` refreshed the coverage
+  panel: all seven original MAT-007 `general_typed_builder` rows are now
+  accounted for, with four pure typed-builder rows, one broader general-AST row,
+  one filesystem-idiom row, and one helper-extraction/call-replacement row.
+  Remaining non-materialized MAT-007 counts are
+  `current_structured_action = 4`, `general_typed_builder = 0`,
+  `repo_convention_builder = 4`, `constrained_local_generator = 7`, and
+  `not_currently_expressible = 2`.
 
 ## Active Tasks
 
-- `MAT-018`: assigned to refresh the real PR materialization coverage panel
-  after `MAT-014` through `MAT-017`. Update coverage counts, covered-row risk
-  classes, remaining gap counts, and next recommended materialization
-  workstream using docs/plan artifacts only.
+No active worker task is currently assigned.
 
 ## Ready Queue
 
-No ready worker task is currently queued while `MAT-018` is active.
+- `MAT-019`: materialize a bounded `psf/requests#7427` constrained source/test
+  replay row using reusable action records, or record the exact source
+  generation blocker without adding PR-specific materializer code.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
@@ -156,6 +162,23 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `MAT-018`: refreshed the real PR materialization coverage panel after
+  `MAT-014` through `MAT-017`. All seven original MAT-007
+  `general_typed_builder` rows are now accounted for: four pure typed-builder
+  rows (`click-3422`, `requests-7441`, `requests-7437`, `flask-5808`), one
+  broader general-AST row (`click-3396`), one filesystem-idiom row
+  (`flask-5903`), and one helper-extraction/call-replacement row
+  (`click-3430`). Remaining non-materialized MAT-007 counts are
+  `current_structured_action = 4`, `general_typed_builder = 0`,
+  `repo_convention_builder = 4`, `constrained_local_generator = 7`, and
+  `not_currently_expressible = 2`. The next recommended materialization
+  workstream is constrained source/test generation, starting with
+  `psf/requests#7427` and `pytest-dev/pytest#14475` as the alternate.
+  Artifacts:
+  `docs/MAT_018_REAL_PR_MATERIALIZATION_COVERAGE_REFRESH_2026-05-19.md`,
+  `docs/MAT_018_REAL_PR_MATERIALIZATION_COVERAGE_REFRESH_2026-05-19.jsonl`,
+  and
+  `/tmp/j3-mat-018-real-pr-materialization-refresh/MAT_018_REAL_PR_MATERIALIZATION_COVERAGE_REFRESH_2026-05-19.jsonl`.
 - `MAT-017`: materialized and live-validated `pallets/click#3430` from base
   `63daae27b124b717cffa8b458e1a0a43525f2b34` to accepted head
   `843879880e94023317699ac2e85e5f7a44fb1b68`. The candidate changed

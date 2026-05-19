@@ -5983,3 +5983,33 @@ meaningful work. Do not replace this file with a daily reset.
   coverage, keep DATA reference rows separate, update remaining counts, and
   recommend the next bounded workstream/row from the remaining MAT-007 panel.
 - Blockers: none.
+
+### 2026-05-19 - MAT-026 - Constrained source closure coverage
+
+- Owner: worker MAT-026.
+- Files changed:
+  `docs/MAT_026_CONSTRAINED_SOURCE_CLOSURE_COVERAGE_2026-05-19.md`,
+  `docs/MAT_026_CONSTRAINED_SOURCE_CLOSURE_COVERAGE_2026-05-19.jsonl`,
+  `plans/active.md`, `plans/backlog.md`, and `plans/progress.md`.
+- Tests: JSONL parse check for
+  `docs/MAT_026_CONSTRAINED_SOURCE_CLOSURE_COVERAGE_2026-05-19.jsonl` and
+  `/tmp/j3-mat-026-constrained-source-closure/MAT_026_CONSTRAINED_SOURCE_CLOSURE_COVERAGE_2026-05-19.jsonl`
+  -> 20 records parsed in each copy; `pytest tests/test_plan_consistency.py
+  -q` -> 6 passed; `git diff --check` -> passed.
+- Result: reconciled the constrained-source closure panel. All seven original
+  MAT-007/MAT-019 held-out `constrained_local_generator` rows are now
+  accounted for as materialized and live-validated: `requests-7427`
+  (`MAT-008`), `pytest-14475` (`MAT-009`), `requests-7433`
+  (`MAT-020`/`MAT-021`), `requests-7328` (`MAT-022`), `click-3434`
+  (`MAT-023`), `click-3364` (`MAT-024`), and `click-3420` (`MAT-025`).
+  DATA-029 `pytest-14466` and DATA-035 `scrapy-7351` remain validated
+  references outside the held-out count. Remaining non-materialized MAT-007
+  counts are `current_structured_action = 4`, `general_typed_builder = 0`,
+  `repo_convention_builder = 4`, `constrained_local_generator = 0`, and
+  `not_currently_expressible = 2`.
+- Commit: final MAT-026 worker commit.
+- Push: final MAT-026 worker push.
+- Next: dispatch `MAT-027` for `psf/requests#7423`, the smallest remaining
+  `repo_convention_builder` row, with reusable repo-local pytest
+  fixture/conftest convention evidence.
+- Blockers: none.

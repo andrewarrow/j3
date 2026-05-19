@@ -3465,7 +3465,7 @@ Long-term target:
 
 ### MAT-026: Refresh constrained-source closure coverage
 
-- Status: active
+- Status: done
 - Why: `MAT-020` through `MAT-025`, combined with earlier `MAT-008` and
   `MAT-009`, have now materialized and validated all seven held-out
   constrained rows from the MAT-007/MAT-019 panel. Before assigning the next
@@ -3484,12 +3484,55 @@ Long-term target:
   recommend the next bounded workstream/row with evidence.
 - Tests: JSONL parse check if a JSONL artifact is written,
   `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+- Completion note: refreshed the constrained-source closure panel after all
+  seven original MAT-007/MAT-019 held-out `constrained_local_generator` rows
+  were materialized and live-validated: `requests-7427` (`MAT-008`),
+  `pytest-14475` (`MAT-009`), `requests-7433` (`MAT-020`/`MAT-021`),
+  `requests-7328` (`MAT-022`), `click-3434` (`MAT-023`), `click-3364`
+  (`MAT-024`), and `click-3420` (`MAT-025`). DATA-029 `pytest-14466` and
+  DATA-035 `scrapy-7351` remain validated reference rows outside the held-out
+  count. Remaining non-materialized MAT-007 counts are
+  `current_structured_action = 4`, `general_typed_builder = 0`,
+  `repo_convention_builder = 4`, `constrained_local_generator = 0`, and
+  `not_currently_expressible = 2`. Recommended the `repo_convention_builder`
+  stream next, starting with `psf/requests#7423`. Artifacts:
+  `docs/MAT_026_CONSTRAINED_SOURCE_CLOSURE_COVERAGE_2026-05-19.md`,
+  `docs/MAT_026_CONSTRAINED_SOURCE_CLOSURE_COVERAGE_2026-05-19.jsonl`, and
+  `/tmp/j3-mat-026-constrained-source-closure/MAT_026_CONSTRAINED_SOURCE_CLOSURE_COVERAGE_2026-05-19.jsonl`.
+
+### MAT-027: Held-out Requests conftest convention candidate
+
+- Status: ready
+- Why: after `MAT-026`, the original constrained-source bucket is closed and
+  the remaining bounded capability gap is the 4-row
+  `repo_convention_builder` bucket. `psf/requests#7423` is the smallest
+  remaining convention-dependent row (`+9/-0`, one accepted file) and tests
+  local pytest conftest/autouse fixture handling rather than another source
+  predicate.
+- Write scope: focused repo-convention materializer/planner extensions and
+  tests as needed, optional `docs/MAT_027_*`, generated artifacts under
+  `/tmp`, and plan updates. Avoid transition scoring, issue/PR ranking,
+  validation-policy changes, local-knowledge records, matrix manifests, and
+  unrelated materializer families.
+- Acceptance: attempt `psf/requests#7423` using reusable repo-local pytest
+  fixture/conftest convention action records, not a PR-named action kind.
+  Determine and record pinned base/head refs, accepted changed files,
+  validation command, mutation scope, candidate-after diff/hash metadata,
+  accepted-diff comparison, and live validation result. Requests validation
+  must import checkout-local source with `PYTHONPATH=src` or use the DATA-008
+  editable-venv recipe. If target selection, conftest insertion, local fixture
+  convention detection, parity, or validation blocks, record the exact blocker
+  without broadening scope silently.
+- Tests: focused repo-convention/materializer tests if code changes are made,
+  JSON/report checks if artifacts are written,
+  `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and live
+  focused validation when materialized.
 
 ## Next Recommended Queue
 
 Start with these unless fresh evidence changes the order:
 
-1. Complete `MAT-026` to refresh constrained-source closure coverage and pick
-   the next bounded row from the remaining MAT-007 panel.
+1. Dispatch `MAT-027` to attempt `psf/requests#7423`, the smallest remaining
+   `repo_convention_builder` row from the MAT-007 panel.
 2. Separately decide whether to pursue the `TRANS-012` shadow-advice-only
    residual examples; product transition routing remains shadow-only.

@@ -166,32 +166,22 @@ This is the live coordinator board. Keep it current and compact.
   Remaining non-materialized MAT-007 counts are now
   `current_structured_action = 4`, `general_typed_builder = 0`,
   `repo_convention_builder = 4`, `constrained_local_generator = 0`, and
-  `not_currently_expressible = 2`. `MAT-026` is now assigned to refresh the
-  coverage panel and recommend the next workstream after the constrained
-  bucket closed.
+  `not_currently_expressible = 2`. `MAT-026` refreshed that closure coverage:
+  all seven original constrained held-out rows are accounted for, DATA-029
+  `pytest-14466` and DATA-035 `scrapy-7351` remain reference rows outside the
+  held-out count, and the next recommended bounded workstream is
+  `repo_convention_builder`, starting with `requests-7423`.
 
 ## Active Tasks
 
-### `MAT-026`: Refresh constrained-source closure coverage
-
-- Status: active
-- Owner: worker.
-- Scope: focused `docs/MAT_026_*`, optional copied JSONL artifact under
-  `/tmp`, and plan updates. Avoid materializer code, transition scoring,
-  issue/PR ranking, validation-policy changes, local-knowledge records, matrix
-  manifests, and unrelated tests.
-- Acceptance: account for all seven original held-out
-  `constrained_local_generator` rows from MAT-007/MAT-019, including the two
-  earlier wins (`requests-7427`, `pytest-14475`) and the five MAT-020 through
-  MAT-025 rows. Keep DATA-029 and DATA-035 as validated reference rows outside
-  the held-out count. Update remaining non-materialized counts and recommend
-  the next bounded workstream/row from the remaining MAT-007 panel.
-- Tests: JSONL parse check if a JSONL artifact is written,
-  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+No active worker task is recorded after `MAT-026`; the ready queue lists the
+next recommended bounded assignment.
 
 ## Ready Queue
 
-No separate ready worker task is queued while `MAT-026` is active.
+- `MAT-027`: attempt `psf/requests#7423`, the smallest remaining
+  `repo_convention_builder` row from the MAT-007 panel, with a reusable
+  repo-local pytest fixture/conftest convention record.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
@@ -216,6 +206,22 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `MAT-026`: refreshed constrained-source closure coverage after MAT-020
+  through MAT-025. All seven original MAT-007/MAT-019 held-out
+  `constrained_local_generator` rows are now materialized and live-validated:
+  `requests-7427` (`MAT-008`), `pytest-14475` (`MAT-009`),
+  `requests-7433` (`MAT-020`/`MAT-021`), `requests-7328` (`MAT-022`),
+  `click-3434` (`MAT-023`), `click-3364` (`MAT-024`), and `click-3420`
+  (`MAT-025`). DATA-029 `pytest-14466` and DATA-035 `scrapy-7351` remain
+  validated reference rows outside the held-out count. Remaining
+  non-materialized MAT-007 counts are `current_structured_action = 4`,
+  `general_typed_builder = 0`, `repo_convention_builder = 4`,
+  `constrained_local_generator = 0`, and `not_currently_expressible = 2`.
+  Recommended next workstream: `repo_convention_builder`, starting with
+  `requests-7423`. Artifacts:
+  `docs/MAT_026_CONSTRAINED_SOURCE_CLOSURE_COVERAGE_2026-05-19.md`,
+  `docs/MAT_026_CONSTRAINED_SOURCE_CLOSURE_COVERAGE_2026-05-19.jsonl`, and
+  `/tmp/j3-mat-026-constrained-source-closure/MAT_026_CONSTRAINED_SOURCE_CLOSURE_COVERAGE_2026-05-19.jsonl`.
 - `MAT-025`: materialized `pallets/click#3420` from base
   `d959898db264aaf07e70ad4eafa254286f9a5185` to accepted head
   `587e3cc7f4804a4fa62f3dab8839a6e1f8954d7c`. The candidate changed

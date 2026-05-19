@@ -6,6 +6,7 @@ from textwrap import dedent
 
 from j3.heldout_source_region_candidate import (
     _accepted_diff_comparison,
+    build_click_write_usage_spec,
     _mark_expression_scanner_source_replacement,
     build_pytest_mark_expression_scanner_spec,
     build_requests_no_proxy_domain_boundary_spec,
@@ -347,6 +348,85 @@ def test_materializes_requests_redirect_history_candidate_with_reusable_actions(
     assert "test_redirect_history_no_self_reference" in test_after["diff"]
 
 
+def test_click_write_usage_spec_uses_reusable_action_kinds(tmp_path: Path) -> None:
+    repo = _write_click_write_usage_fixture_repo(tmp_path / "click")
+
+    spec = build_click_write_usage_spec(repo)
+
+    assert spec.source_action.kind == SourceRegionActionKind.REPLACE_FUNCTION_REGION
+    assert spec.test_action.kind == "insert_pytest_function_after_anchor"
+    assert "click_3434" not in spec.source_action.kind.value
+    assert "click_3434" not in spec.test_action.kind
+    assert spec.base_ref == "7c99ebe23b931f27562d926814423cce85fd9766"
+    assert spec.accepted_head_ref == "0551bf53588ae87f462d336f24f853a156fefe3a"
+    assert spec.validation_command.startswith("PYTHONPATH=src ")
+    assert spec.allowed_write_paths == (
+        "src/click/formatting.py",
+        "tests/test_formatting.py",
+    )
+
+
+def test_materializes_click_write_usage_candidate_with_reusable_actions(
+    tmp_path: Path,
+) -> None:
+    accepted_repo = _write_click_write_usage_fixture_repo(tmp_path / "accepted")
+    accepted_candidate = materialize_heldout_source_region_candidate(
+        accepted_repo,
+        build_click_write_usage_spec(
+            accepted_repo,
+            base_ref=_repo_head(accepted_repo),
+        ),
+        write=True,
+        validate=False,
+    )
+    accepted_diff = tmp_path / "accepted.diff"
+    accepted_diff.write_text(
+        _click_changelog_diff() + str(accepted_candidate.candidate_after["candidate_diff"]),
+        encoding="utf-8",
+    )
+
+    repo = _write_click_write_usage_fixture_repo(tmp_path / "candidate")
+    candidate = materialize_heldout_source_region_candidate(
+        repo,
+        build_click_write_usage_spec(repo, base_ref=_repo_head(repo)),
+        write=True,
+        validate=False,
+        accepted_diff_path=accepted_diff,
+    )
+    record = candidate.to_record()
+
+    assert record["status"] == "materialized"
+    assert record["accepted_head_ref"] == "0551bf53588ae87f462d336f24f853a156fefe3a"
+    assert record["residual_labels"] == ["candidate_validation_deferred"]
+    assert record["mutation_scope"]["actual_changed_files"] == [
+        "src/click/formatting.py",
+        "tests/test_formatting.py",
+    ]
+    assert record["mutation_scope"]["writes_outside_allowlist"] == []
+    assert record["accepted_diff_comparison"]["accepted_changed_files"] == [
+        "CHANGES.rst",
+        "src/click/formatting.py",
+        "tests/test_formatting.py",
+    ]
+    assert record["accepted_diff_comparison"]["normalized_diff_equal"] is False
+    assert record["accepted_diff_comparison"]["scoped_normalized_diff_equal"] is True
+    assert record["zero_hosted_llm_source_judgment"] is True
+    action_kinds = [action["kind"] for action in record["action_records"]]
+    assert action_kinds == [
+        "replace_function_region",
+        "insert_pytest_function_after_anchor",
+    ]
+    source_after = record["candidate_after"]["source_file"]["candidate_after"]
+    assert source_after["ast_parse_ok"] is True
+    assert source_after["signature_preserved"] is True
+    assert "if not args:" in source_after["diff"]
+    assert 'usage_prefix.rstrip(" ")' in source_after["diff"]
+    test_after = record["candidate_after"]["test_file"]["candidate_after"]
+    assert test_after["ast_parse_ok"] is True
+    assert "test_help_formatter_write_usage" in test_after["diff"]
+    assert "test_command_write_usage_no_args" in test_after["diff"]
+
+
 def _write_requests_fixture_repo(repo: Path) -> Path:
     (repo / "src" / "requests").mkdir(parents=True)
     (repo / "tests").mkdir(parents=True)
@@ -398,6 +478,123 @@ def _write_requests_fixture_repo(repo: Path) -> Path:
             def test_should_bypass_proxies_no_proxy(url, expected, monkeypatch):
                 no_proxy = "localhost"
                 assert should_bypass_proxies(url, no_proxy=no_proxy) == expected
+            '''
+        ).lstrip(),
+        encoding="utf-8",
+    )
+    subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+    subprocess.run(["git", "add", "."], cwd=repo, check=True)
+    subprocess.run(
+        [
+            "git",
+            "-c",
+            "user.name=j3-test",
+            "-c",
+            "user.email=j3-test@example.invalid",
+            "commit",
+            "-q",
+            "-m",
+            "base",
+        ],
+        cwd=repo,
+        check=True,
+    )
+    return repo
+
+
+def _write_click_write_usage_fixture_repo(repo: Path) -> Path:
+    (repo / "src" / "click").mkdir(parents=True)
+    (repo / "tests").mkdir(parents=True)
+    (repo / "src" / "click" / "formatting.py").write_text(
+        dedent(
+            '''
+            from gettext import gettext as _
+
+
+            def term_len(x):
+                return len(x)
+
+
+            def wrap_text(text, width, initial_indent="", subsequent_indent=""):
+                if not text:
+                    return ""
+                return initial_indent + text
+
+
+            class HelpFormatter:
+                indent_increment = 2
+
+                def __init__(self, width=None, max_width=None):
+                    self.width = width or 80
+                    self.current_indent: int = 0
+                    self.buffer: list[str] = []
+
+                def write(self, string: str) -> None:
+                    """Writes a unicode string into the internal buffer."""
+                    self.buffer.append(string)
+
+                def write_usage(self, prog: str, args: str = "", prefix: str | None = None) -> None:
+                    """Writes a usage line into the buffer.
+
+                    :param prog: the program name.
+                    :param args: whitespace separated list of arguments.
+                    :param prefix: The prefix for the first line. Defaults to
+                        ``"Usage: "``.
+                    """
+                    if prefix is None:
+                        prefix = "{usage} ".format(usage=_("Usage:"))
+
+                    usage_prefix = f"{prefix:>{self.current_indent}}{prog} "
+                    text_width = self.width - self.current_indent
+
+                    if text_width >= (term_len(usage_prefix) + 20):
+                        # The arguments will fit to the right of the prefix.
+                        indent = " " * term_len(usage_prefix)
+                        self.write(
+                            wrap_text(
+                                args,
+                                text_width,
+                                initial_indent=usage_prefix,
+                                subsequent_indent=indent,
+                            )
+                        )
+                    else:
+                        # The prefix is too long, put the arguments on the next line.
+                        self.write(usage_prefix)
+                        self.write("\\n")
+                        indent = " " * (max(self.current_indent, term_len(prefix)) + 4)
+                        self.write(
+                            wrap_text(
+                                args, text_width, initial_indent=indent, subsequent_indent=indent
+                            )
+                        )
+
+                    self.write("\\n")
+            '''
+        ).lstrip(),
+        encoding="utf-8",
+    )
+    (repo / "tests" / "test_formatting.py").write_text(
+        dedent(
+            '''
+            import pytest
+
+            import click
+            from click._compat import strip_ansi
+
+
+            def test_write_usage_styled_prefix_keeps_options_on_one_line():
+                """End-to-end: a downstream-styled ``Usage:`` prefix should not split
+                ``[OPTIONS]`` across two lines.
+                """
+                styled_prefix = "\\x1b[38;2;38;139;210m\\x1b[1mUsage:\\x1b[0m "
+
+                formatter = click.HelpFormatter(width=40)
+                formatter.write_usage("cli", "[OPTIONS]", prefix=styled_prefix)
+                rendered = formatter.getvalue()
+
+                visible = strip_ansi(rendered)
+                assert visible == "Usage: cli [OPTIONS]\\n"
             '''
         ).lstrip(),
         encoding="utf-8",
@@ -724,6 +921,17 @@ def _changelog_diff() -> str:
         "+++ b/changelog/14474.bugfix.rst\n"
         "@@ -0,0 +1 @@\n"
         "+Fixed a scanner regression.\n"
+    )
+
+
+def _click_changelog_diff() -> str:
+    return (
+        "diff --git a/CHANGES.rst b/CHANGES.rst\n"
+        "index 2c0dc4f00f..f8c2df43e7 100644\n"
+        "--- a/CHANGES.rst\n"
+        "+++ b/CHANGES.rst\n"
+        "@@ -59,6 +59,11 @@ Unreleased\n"
+        "+-   Fix HelpFormatter.write_usage empty args.\n"
     )
 
 

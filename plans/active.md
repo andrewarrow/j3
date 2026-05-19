@@ -150,37 +150,25 @@ This is the live coordinator board. Keep it current and compact.
   MAT-007 counts are now `current_structured_action = 4`,
   `general_typed_builder = 0`, `repo_convention_builder = 4`,
   `constrained_local_generator = 3`, and `not_currently_expressible = 2`.
-  `MAT-023` is now assigned to the next formatter-family constrained row,
-  `pallets/click#3434`.
+  `MAT-023` now materializes and live-validates the next formatter-family
+  constrained row, `pallets/click#3434`. The candidate changes only
+  `src/click/formatting.py` and `tests/test_formatting.py`; full accepted-diff
+  parity is false because the accepted PR also changes `CHANGES.rst`, while
+  source/test scoped parity is true. Remaining non-materialized MAT-007 counts
+  are now `current_structured_action = 4`, `general_typed_builder = 0`,
+  `repo_convention_builder = 4`, `constrained_local_generator = 2`, and
+  `not_currently_expressible = 2`.
 
 ## Active Tasks
 
-### `MAT-023`: Held-out Click usage formatter source/test candidate
-
-- Status: active
-- Owner: worker.
-- Scope: attempt `pallets/click#3434` with reusable bounded source-region and
-  pytest insertion/refinement action records. Allowed writes are focused
-  extensions to `j3/heldout_source_region_candidate.py`,
-  `tests/test_heldout_source_region_candidate.py`, focused `docs/MAT_023_*`,
-  generated artifacts under `/tmp`, and plan updates. Avoid transition
-  scoring, issue/PR ranking, local-knowledge records, matrix manifests, and
-  unrelated materializer families.
-- Acceptance: determine pinned base/head refs, accepted changed files,
-  validation command, mutation scope, candidate-after diff/AST/hash metadata,
-  accepted-diff comparison, and live validation result for `click-3434`. Use
-  reusable action kinds rather than a PR-named action. If the accepted PR has
-  non-source/test companion files, separate full-diff parity from source/test
-  scoped parity explicitly. If target selection, source-region materialization,
-  pytest insertion/refinement, parity, or validation blocks, record the exact
-  blocker.
-- Tests: focused source-region candidate tests, JSON/report checks if added,
-  `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and live
-  focused validation when materialized.
+No active worker task is currently recorded. The coordinator should review
+`MAT-023` and dispatch the next bounded ready task or record a concrete
+blocker.
 
 ## Ready Queue
 
-No separate ready worker task is queued while `MAT-023` is active.
+No separate ready worker task is queued while `MAT-023` awaits coordinator
+review.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
@@ -205,6 +193,26 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `MAT-023`: materialized `pallets/click#3434` from base
+  `7c99ebe23b931f27562d926814423cce85fd9766` to PR head
+  `0551bf53588ae87f462d336f24f853a156fefe3a`. The candidate changed only
+  `src/click/formatting.py` and `tests/test_formatting.py`, recorded
+  candidate-after diff/AST/hash metadata plus mutation scope, and used
+  reusable `replace_function_region` plus
+  `insert_pytest_function_after_anchor` action records with a reusable
+  insertion-spacing refinement. Full accepted-diff parity is false because the
+  accepted PR also changes `CHANGES.rst`; source/test scoped parity is true.
+  Live focused validation used checkout-local source with `PYTHONPATH=src` and
+  passed eight formatter cases:
+  `tests/test_formatting.py::test_help_formatter_write_usage`,
+  `tests/test_formatting.py::test_help_formatter_write_usage_without_args_styled_prefix`,
+  and `tests/test_formatting.py::test_command_write_usage_no_args`.
+  Artifacts:
+  `docs/MAT_023_CLICK_3434_SOURCE_REGION_CANDIDATE_2026-05-19.md`,
+  `/tmp/j3-mat-023-click-3434/final/candidate.json`,
+  `/tmp/j3-mat-023-click-3434/final/report.md`,
+  `/tmp/j3-mat-023-click-3434/final/candidate.diff`, and
+  `/tmp/j3-mat-023-click-3434/final/accepted.diff`.
 - `MAT-022`: materialized `psf/requests#7328` from base
   `cbce031327be4f1b4b5fd041ff4dcaa8efa2ce53` to PR head
   `3ee28b806f8bc414b29f7b4561e53c161924fe66`. The candidate changed only

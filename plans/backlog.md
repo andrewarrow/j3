@@ -3342,7 +3342,7 @@ Long-term target:
 
 ### MAT-023: Held-out Click usage formatter source/test candidate
 
-- Status: active
+- Status: done
 - Why: `MAT-022` closes the compact remaining Requests constrained row, leaving
   the Click formatter-family rows as the next useful pressure test for the
   source-region/action surface. `pallets/click#3434` is the smallest of those
@@ -3365,13 +3365,26 @@ Long-term target:
 - Tests: focused source-region candidate tests, JSON/report checks if added,
   `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and live
   focused validation when materialized.
+- Completion note: materialized `pallets/click#3434` from base
+  `7c99ebe23b931f27562d926814423cce85fd9766` to PR head
+  `0551bf53588ae87f462d336f24f853a156fefe3a`. The candidate changed only
+  `src/click/formatting.py` and `tests/test_formatting.py`, used reusable
+  `replace_function_region` and `insert_pytest_function_after_anchor` action
+  records with a reusable insertion-spacing refinement, and live-validated
+  eight focused formatter cases with checkout-local `PYTHONPATH=src`. Full
+  accepted-diff parity is false because the accepted PR also changes
+  `CHANGES.rst`; source/test scoped parity is true. Artifacts:
+  `docs/MAT_023_CLICK_3434_SOURCE_REGION_CANDIDATE_2026-05-19.md`,
+  `/tmp/j3-mat-023-click-3434/final/candidate.json`,
+  `/tmp/j3-mat-023-click-3434/final/report.md`,
+  `/tmp/j3-mat-023-click-3434/final/candidate.diff`, and
+  `/tmp/j3-mat-023-click-3434/final/accepted.diff`.
 
 ## Next Recommended Queue
 
 Start with these unless fresh evidence changes the order:
 
-1. Continue constrained source/test materialization with `MAT-023`
-   `click-3434`, the next formatter-family row after the validated
-   `requests-7328` candidate.
+1. Continue constrained source/test materialization with coordinator review of
+   the remaining Click formatter rows, likely `click-3420` or `click-3364`.
 2. Separately decide whether to pursue the `TRANS-012` shadow-advice-only
    residual examples; product transition routing remains shadow-only.

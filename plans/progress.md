@@ -5797,3 +5797,44 @@ meaningful work. Do not replace this file with a daily reset.
   next formatter-family constrained row, with reusable source-region and
   pytest insertion/refinement actions.
 - Blockers: none.
+
+### 2026-05-19 - MAT-023 - Click #3434 write_usage materialization
+
+- Owner: worker MAT-023.
+- Files changed: `j3/heldout_source_region_candidate.py`,
+  `tests/test_heldout_source_region_candidate.py`,
+  `docs/MAT_023_CLICK_3434_SOURCE_REGION_CANDIDATE_2026-05-19.md`,
+  `plans/active.md`, `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `python -m py_compile j3/heldout_source_region_candidate.py
+  tests/test_heldout_source_region_candidate.py` -> passed; `pytest
+  tests/test_heldout_source_region_candidate.py -q` -> 11 passed; live fresh
+  checkout run `PYTHONPATH=/Users/aa/os/j3 python -m
+  j3.heldout_source_region_candidate --candidate click-3434 --repo-path
+  /tmp/j3-mat-023-click-3434/base --accepted-diff
+  /tmp/j3-mat-023-click-3434/final/accepted.diff --out
+  /tmp/j3-mat-023-click-3434/final/candidate.json --report
+  /tmp/j3-mat-023-click-3434/final/report.md --diff-out
+  /tmp/j3-mat-023-click-3434/final/candidate.diff --validate
+  --validation-timeout-seconds 60` -> validated; validation command
+  `PYTHONPATH=src python -m pytest
+  tests/test_formatting.py::test_help_formatter_write_usage
+  tests/test_formatting.py::test_help_formatter_write_usage_without_args_styled_prefix
+  tests/test_formatting.py::test_command_write_usage_no_args -q` -> `8 passed
+  in 0.02s`; `python -m json.tool
+  /tmp/j3-mat-023-click-3434/final/candidate.json` -> passed.
+- Result: materialized `pallets/click#3434` from base
+  `7c99ebe23b931f27562d926814423cce85fd9766` to PR head
+  `0551bf53588ae87f462d336f24f853a156fefe3a`. The candidate changed only
+  `src/click/formatting.py` and `tests/test_formatting.py`, recorded
+  source/test candidate-after diff/AST/hash metadata plus mutation scope, and
+  used reusable `replace_function_region` plus
+  `insert_pytest_function_after_anchor` action records. Added a reusable
+  `trailing_blank_lines` insertion-spacing parameter so EOF pytest insertions
+  can match local formatting without changing action kind. Full accepted-diff
+  parity is false because the accepted PR also changes `CHANGES.rst`;
+  source/test scoped parity is true after diff normalization.
+- Commit: pending.
+- Push: pending.
+- Next: coordinator should review the remaining constrained Click formatter
+  rows, likely `click-3420` or `click-3364`, before the next worker dispatch.
+- Blockers: none.

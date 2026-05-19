@@ -43,6 +43,12 @@ DEFAULT_REQUESTS_REDIRECT_HISTORY_BASE_REF = (
 DEFAULT_REQUESTS_REDIRECT_HISTORY_HEAD_REF = (
     "3ee28b806f8bc414b29f7b4561e53c161924fe66"
 )
+DEFAULT_CLICK_WRITE_USAGE_BASE_REF = (
+    "7c99ebe23b931f27562d926814423cce85fd9766"
+)
+DEFAULT_CLICK_WRITE_USAGE_HEAD_REF = (
+    "0551bf53588ae87f462d336f24f853a156fefe3a"
+)
 DEFAULT_PYTEST_SCANNER_BASE_REF = "7df5d80ff3a98714a1d3cdbe82941229e511f4b3"
 DEFAULT_VALIDATION_COMMAND = (
     "python -m pytest "
@@ -55,6 +61,12 @@ DEFAULT_REQUESTS_STREAM_WRAPPER_VALIDATION_COMMAND = (
 DEFAULT_REQUESTS_REDIRECT_HISTORY_VALIDATION_COMMAND = (
     "PYTHONPATH=src python -m pytest "
     "tests/test_requests.py::TestRequests::test_redirect_history_no_self_reference -q"
+)
+DEFAULT_CLICK_WRITE_USAGE_VALIDATION_COMMAND = (
+    "PYTHONPATH=src python -m pytest "
+    "tests/test_formatting.py::test_help_formatter_write_usage "
+    "tests/test_formatting.py::test_help_formatter_write_usage_without_args_styled_prefix "
+    "tests/test_formatting.py::test_command_write_usage_no_args -q"
 )
 DEFAULT_PYTEST_SCANNER_VALIDATION_COMMAND = (
     "PYTHONPATH=src python -c "
@@ -70,6 +82,8 @@ REQUESTS_TEST_UTILS_PATH = "tests/test_utils.py"
 REQUESTS_MODELS_PATH = "src/requests/models.py"
 REQUESTS_SESSIONS_PATH = "src/requests/sessions.py"
 REQUESTS_TEST_REQUESTS_PATH = "tests/test_requests.py"
+CLICK_FORMATTING_PATH = "src/click/formatting.py"
+CLICK_TEST_FORMATTING_PATH = "tests/test_formatting.py"
 PYTEST_EXPRESSION_PATH = "src/_pytest/mark/expression.py"
 PYTEST_MARK_EXPRESSION_TEST_PATH = "testing/test_mark_expression.py"
 
@@ -94,6 +108,7 @@ class PytestInsertionAction:
     schema_version: str = PYTEST_INSERTION_SCHEMA_VERSION
     max_added_lines: int = 40
     surrounding_blank_lines: int | None = None
+    trailing_blank_lines: int | None = None
     rationale: str | None = None
 
     def __post_init__(self) -> None:
@@ -105,6 +120,8 @@ class PytestInsertionAction:
             and self.surrounding_blank_lines < 0
         ):
             raise ValueError("surrounding_blank_lines must be >= 0")
+        if self.trailing_blank_lines is not None and self.trailing_blank_lines < 0:
+            raise ValueError("trailing_blank_lines must be >= 0")
         if not self.anchor_function_name:
             raise ValueError("anchor_function_name is required")
         if not self.function_name:
@@ -125,6 +142,7 @@ class PytestInsertionAction:
                 "must_parse_ast": True,
                 "preserve_existing_imports": True,
                 "surrounding_blank_lines": self.surrounding_blank_lines,
+                "trailing_blank_lines": self.trailing_blank_lines,
             },
             "insertion_source": self.insertion_source,
             "rationale": self.rationale,
@@ -506,6 +524,74 @@ def build_requests_redirect_history_spec(
     )
 
 
+def build_click_write_usage_spec(
+    repo_path: Path,
+    *,
+    base_ref: str = DEFAULT_CLICK_WRITE_USAGE_BASE_REF,
+    accepted_head_ref: str = DEFAULT_CLICK_WRITE_USAGE_HEAD_REF,
+    validation_command: str = DEFAULT_CLICK_WRITE_USAGE_VALIDATION_COMMAND,
+) -> HeldoutSourceRegionSpec:
+    """Build the held-out Click write_usage empty-args candidate spec."""
+
+    source_text = _repo_file(repo_path, CLICK_FORMATTING_PATH).read_text(
+        encoding="utf-8"
+    )
+    source_action = _click_write_usage_source_action(source_text)
+    test_action = PytestInsertionAction(
+        target_file=CLICK_TEST_FORMATTING_PATH,
+        anchor_function_name="test_write_usage_styled_prefix_keeps_options_on_one_line",
+        function_name="test_help_formatter_write_usage",
+        insertion_source=_click_write_usage_test_source(),
+        max_added_lines=120,
+        surrounding_blank_lines=2,
+        trailing_blank_lines=0,
+        rationale=(
+            "insert formatter usage regressions after the existing "
+            "write_usage styled-prefix coverage"
+        ),
+    )
+    return HeldoutSourceRegionSpec(
+        candidate_id="mat-023-click-write-usage-empty-args",
+        repo_id="pallets/click",
+        repo_url="https://github.com/pallets/click",
+        repo_split="held_out",
+        base_ref=base_ref,
+        accepted_head_ref=accepted_head_ref,
+        reference_pr_url="https://github.com/pallets/click/pull/3434",
+        prompt=(
+            "Fix HelpFormatter.write_usage so commands with no rendered args "
+            "still emit the usage prefix and program name without a trailing "
+            "separator space."
+        ),
+        source_file=CLICK_FORMATTING_PATH,
+        test_file=CLICK_TEST_FORMATTING_PATH,
+        validation_command=validation_command,
+        allowed_write_paths=(CLICK_FORMATTING_PATH, CLICK_TEST_FORMATTING_PATH),
+        source_action=source_action,
+        test_action=test_action,
+        action_family_reuse_evidence=(
+            {
+                "action_kind": SourceRegionActionKind.REPLACE_FUNCTION_REGION.value,
+                "reused_from": ["MAT-008", "MAT-009", "MAT-020", "MAT-022"],
+                "evidence": (
+                    "same bounded function-region action schema; target file, "
+                    "method, local branch insertion point, and replacement are "
+                    "parameters"
+                ),
+            },
+            {
+                "action_kind": "insert_pytest_function_after_anchor",
+                "reused_from": ["MAT-008", "MAT-009", "MAT-020", "MAT-022"],
+                "evidence": (
+                    "same repo-convention pytest insertion shape; target "
+                    "test file, anchor function, and inserted pytest block "
+                    "are parameters"
+                ),
+            },
+        ),
+    )
+
+
 def materialize_heldout_source_region_candidate(
     repo_path: Path,
     spec: HeldoutSourceRegionSpec,
@@ -725,13 +811,19 @@ def materialize_pytest_insertion(
     insert_index = anchor.end_lineno
     while insert_index < len(source_lines) and not source_lines[insert_index].strip():
         insert_index += 1
-    blank_lines = _surrounding_blank_lines(action)
-    separator = ["\n"] * blank_lines
+    leading_blank_lines = _surrounding_blank_lines(action)
+    trailing_blank_lines = (
+        action.trailing_blank_lines
+        if action.trailing_blank_lines is not None
+        else leading_blank_lines
+    )
+    leading_separator = ["\n"] * leading_blank_lines
+    trailing_separator = ["\n"] * trailing_blank_lines
     patched = "".join(
         source_lines[: anchor.end_lineno]
-        + separator
+        + leading_separator
         + insertion_lines
-        + separator
+        + trailing_separator
         + source_lines[insert_index:]
     )
     _parse_python(patched, filename=action.target_file, field="test_insertion")
@@ -743,7 +835,7 @@ def materialize_pytest_insertion(
         status="materialized" if write else "candidate_after",
         target_file=action.target_file,
         function_name=action.function_name,
-        insertion_line=anchor.end_lineno + blank_lines,
+        insertion_line=anchor.end_lineno + leading_blank_lines,
         added_line_count=sum(1 for line in insertion_lines if line.strip()),
         diff=diff,
         diff_summary=_diff_summary(diff),
@@ -1076,6 +1168,169 @@ def _requests_redirect_history_test_source() -> str:
     )
 
 
+def _click_write_usage_source_action(source: str) -> SourceRegionAction:
+    already_applied = "        if not args:"
+    insertion_anchor = "        text_width = self.width - self.current_indent"
+    if already_applied in source:
+        start_line = _line_number(source, insertion_anchor)
+        end_line = _first_line_after(source, start_line, "            return")
+    else:
+        start_line = _line_number(source, insertion_anchor)
+        end_line = start_line
+    return SourceRegionAction(
+        kind=SourceRegionActionKind.REPLACE_FUNCTION_REGION,
+        target=SourceRegionTarget(
+            file_path=CLICK_FORMATTING_PATH,
+            function_name="write_usage",
+            region_name="empty_args_usage_line_branch",
+            start_line=start_line,
+            end_line=end_line,
+        ),
+        replacement_source=_click_write_usage_source_replacement(),
+        constraints=SourceRegionConstraints(max_changed_source_lines=9),
+        rationale=(
+            "emit the prefix/program line directly when write_usage has no "
+            "arguments to wrap"
+        ),
+    )
+
+
+def _click_write_usage_source_replacement() -> str:
+    return "\n".join(
+        [
+            "        text_width = self.width - self.current_indent",
+            "",
+            "        if not args:",
+            "            # Without args, the prefix's trailing space and the wrap_text",
+            "            # call that would normally place args on the line are both",
+            "            # unnecessary. Emit just the prefix line.",
+            '            self.write(usage_prefix.rstrip(" "))',
+            '            self.write("\\n")',
+            "            return",
+        ]
+    )
+
+
+def _click_write_usage_test_source() -> str:
+    return "\n".join(
+        [
+            "@pytest.mark.parametrize(",
+            '    ("formatter_kwargs", "current_indent", "prog", "args", "prefix", "expected"),',
+            "    [",
+            "        # Issue #3360: the default prefix used to emit only",
+            "        # a blank line because ``wrap_text(\"\", initial_indent=usage_prefix)``",
+            "        # returned ``\"\"`` and discarded the prefix.",
+            "        pytest.param(",
+            "            {},",
+            "            0,",
+            '            "Program",',
+            '            "",',
+            "            None,",
+            '            "Usage: Program\\n",',
+            '            id="empty-args-default-prefix",',
+            "        ),",
+            "        # A caller-supplied prefix is preserved verbatim.",
+            "        pytest.param(",
+            "            {},",
+            "            0,",
+            '            "Program",',
+            '            "",',
+            '            "Run: ",',
+            '            "Run: Program\\n",',
+            '            id="empty-args-custom-prefix",',
+            "        ),",
+            "        # ``current_indent`` is preserved even with no args to render.",
+            "        pytest.param(",
+            "            {},",
+            "            4,",
+            '            "Program",',
+            '            "",',
+            "            None,",
+            '            "Usage: Program\\n",',
+            '            id="empty-args-indented",',
+            "        ),",
+            "        # Prog too long to share a line with args: the wrap branch must not",
+            "        # emit a second line.",
+            "        pytest.param(",
+            '            {"width": 20},',
+            "            0,",
+            '            "VeryLongProgramName",',
+            '            "",',
+            "            None,",
+            '            "Usage: VeryLongProgramName\\n",',
+            '            id="empty-args-long-prog",',
+            "        ),",
+            "        # With non-empty args, the separator space between prog and args is preserved.",
+            "        pytest.param(",
+            "            {},",
+            "            0,",
+            '            "Program",',
+            '            "[OPTIONS]",',
+            "            None,",
+            '            "Usage: Program [OPTIONS]\\n",',
+            '            id="with-args-default-prefix",',
+            "        ),",
+            "    ],",
+            ")",
+            "def test_help_formatter_write_usage(",
+            "    formatter_kwargs, current_indent, prog, args, prefix, expected",
+            "):",
+            "    \"\"\"``HelpFormatter.write_usage`` renders a single usage line whose",
+            "    trailing separator tracks whether ``args`` is non-empty.",
+            "    \"\"\"",
+            "    f = click.HelpFormatter(**formatter_kwargs)",
+            "    f.current_indent = current_indent",
+            "    if prefix is None:",
+            "        f.write_usage(prog, args)",
+            "    else:",
+            "        f.write_usage(prog, args, prefix=prefix)",
+            "    assert f.getvalue() == expected",
+            "",
+            "",
+            "def test_help_formatter_write_usage_without_args_styled_prefix():",
+            "    \"\"\"A downstream-styled prefix is preserved when ``args`` is empty:",
+            "    the ANSI escape sequences survive, only the trailing separator is",
+            "    removed.",
+            "    \"\"\"",
+            '    styled_prefix = "\\x1b[38;2;38;139;210m\\x1b[1mUsage:\\x1b[0m "',
+            "    f = click.HelpFormatter()",
+            '    f.write_usage("cli", prefix=styled_prefix)',
+            "    rendered = f.getvalue()",
+            '    assert strip_ansi(rendered) == "Usage: cli\\n"',
+            '    assert "\\x1b[" in rendered',
+            "",
+            "",
+            "@pytest.mark.parametrize(",
+            '    ("command_kwargs", "expected_usage_line"),',
+            "    [",
+            "        # End-to-end regression for #3360: an empty ``options_metavar`` with",
+            "        # no parameters used to render a blank usage line.",
+            "        pytest.param(",
+            '            {"options_metavar": ""},',
+            '            "Usage: cli",',
+            '            id="empty-options-metavar-no-params",',
+            "        ),",
+            "        # End-to-end regression: ``options_metavar=None`` is the documented",
+            "        # way to suppress the ``[OPTIONS]`` slot entirely.",
+            "        pytest.param(",
+            '            {"options_metavar": None},',
+            '            "Usage: cli",',
+            '            id="none-options-metavar-no-params",',
+            "        ),",
+            "    ],",
+            ")",
+            "def test_command_write_usage_no_args(runner, command_kwargs, expected_usage_line):",
+            "    \"\"\"End-to-end: a command with no parameters and an empty or absent",
+            "    ``options_metavar`` renders a usage line with just the program name,",
+            "    no trailing space.",
+            "    \"\"\"",
+            '    cli = click.Command("cli", **command_kwargs)',
+            '    result = runner.invoke(cli, ["--help"])',
+            "    assert result.output.splitlines()[0] == expected_usage_line",
+        ]
+    )
+
+
 def _line_number(source: str, needle: str) -> int:
     for index, line in enumerate(source.splitlines(), start=1):
         if line == needle:
@@ -1400,7 +1655,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     parser.add_argument(
         "--candidate",
-        choices=("requests-7427", "pytest-14475", "requests-7433", "requests-7328"),
+        choices=(
+            "requests-7427",
+            "pytest-14475",
+            "requests-7433",
+            "requests-7328",
+            "click-3434",
+        ),
         default="requests-7427",
     )
     parser.add_argument("--repo-path", type=Path, required=True)
@@ -1419,6 +1680,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         spec = build_requests_stream_wrapper_spec(args.repo_path)
     elif args.candidate == "requests-7328":
         spec = build_requests_redirect_history_spec(args.repo_path)
+    elif args.candidate == "click-3434":
+        spec = build_click_write_usage_spec(args.repo_path)
     else:
         spec = build_requests_no_proxy_domain_boundary_spec(args.repo_path)
     candidate = materialize_heldout_source_region_candidate(

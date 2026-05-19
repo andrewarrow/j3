@@ -10,10 +10,11 @@ This is the live coordinator board. Keep it current and compact.
 - Current review state: continuous loop mode. The active set may be empty only
   while the coordinator is recording the next assignments; ready work should be
   dispatched rather than leaving the board idle.
-- Current product gate stance: transition ranking remains shadow-only; the
-  2026-05-18 `TRANS-001` full matrix, `TRANS-004` targeted subset, and
-  2026-05-19 `TRANS-005` post-scorer matrix decisions were
-  `remain_shadow_only`. `TRANS-005` reran the standard matrix after
+- Current product gate stance: targeted `greenshot_6_subset` transition
+  evidence now supports a narrow guarded opt-in trial; the 2026-05-18
+  `TRANS-001` full matrix, `TRANS-004` targeted subset, and 2026-05-19
+  `TRANS-005` post-scorer matrix decisions were `remain_shadow_only`.
+  `TRANS-005` reran the standard matrix after
   `MODEL-003` through `MODEL-005`: 56 tasks, 55 ranked solved, 8 matrix
   residuals, 17 residual-report examples, one `candidate_generation_gap`, 16
   `scorer_ranking_gap` examples, and zero hosted usage. `TRANS-006` made
@@ -32,8 +33,16 @@ This is the live coordinator board. Keep it current and compact.
   in the report, and the suite gate improved to `ready_for_shadow_mode`.
   Guarded decision remains `remain_shadow_only`. `MODEL-008` now addresses
   the remaining `apache_license_classifier_dict_value` V3 residual's public
-  assertion-diff evidence, but `TRANS-003` remains blocked until a targeted
-  subset rerun confirms the residual count and gate result.
+  assertion-diff evidence, and `TRANS-009` recorded the targeted subset
+  rerun: 12 tasks, 12 ranked solved tasks, 9,696 candidates, 7 held-out
+  groups, 0 matrix residuals, 2 baseline residuals, and 0 residual-report
+  examples. The Apache mapping-value residual is resolved, no missing-feature
+  labels remain because no residual examples remain, the suite gate reaches
+  `ready_for_guarded_opt_in`, and guarded decision is
+  `guarded_opt_in_trial`. `TRANS-003` can move back to ready for
+  coordinator-reviewed standard matrix expansion; transition advice rows
+  remain shadow-only/not wired to production routing unless a guarded opt-in
+  follow-up explicitly scopes that integration.
   Tests-only wedge guarded opt-in also remains
   blocked after `REAL-003` scored `pass@3 = 0/4`; `GS7-008` now materializes
   and live-validates the `iniconfig` calibration candidate. `REAL-005` extends
@@ -79,27 +88,20 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-- `TRANS-009` -> worker Mencius
-  (`019e3e5f-5c6c-7572-973a-020665167f39`): rerun targeted
-  `greenshot_6_subset` transition evidence after `MODEL-008`. Scope is
-  evidence only: generated outputs under `/tmp`, optional concise evidence
-  doc, and plan updates unless a local runner bug blocks the run. Do not
-  broaden the standard matrix.
+None.
 
 ## Ready Queue
 
-No additional ready task is currently staged on this board. Do not broaden the
-standard matrix manifest until `TRANS-009` is integrated and the subset gate,
-residual count, and guarded decision are reviewed.
+- `TRANS-003`: ready for coordinator review. `TRANS-009` confirms the targeted
+  `greenshot_6_subset` gate reaches `ready_for_guarded_opt_in`, residual count
+  is zero, and guarded decision is `guarded_opt_in_trial`; the next transition
+  step is cautious standard matrix manifest expansion, not scorer or runner
+  changes.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
 ## Paused Or Blocked
 
-- `TRANS-003`: remains blocked after `MODEL-008`; do not expand the standard
-  matrix manifest until a fresh targeted `greenshot_6_subset` rerun verifies
-  whether the Apache mapping-value V3 residual is resolved and records the
-  suite gate and guarded decision.
 - `MODEL-002`: superseded by bounded scorer subtasks in the backlog, beginning
   with `MODEL-003` through `MODEL-008`.
 
@@ -115,6 +117,18 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `TRANS-009`: reran targeted `greenshot_6_subset` transition evidence after
+  `MODEL-008`. The subset covered 12 tasks, 12 ranked solved tasks, 9,696
+  candidates, and 7 held-out groups, with 0 matrix residuals, 2 baseline
+  residuals, and 0 residual-report examples. The previous
+  `apache_license_classifier_dict_value` V3 residual is resolved: the scorer
+  top candidate changes `Apache-2.0` from `Apache License` to
+  `Apache Software License`, validates as passing, and moves the first known
+  passing candidate to scorer position 1. No missing-feature labels remain
+  because no residual examples remain. Suite gate:
+  `ready_for_guarded_opt_in`; guarded decision: `guarded_opt_in_trial`;
+  trial scope: `narrow_opt_in_transition_ranking`. `TRANS-003` can move back
+  to ready for coordinator-reviewed standard matrix expansion.
 - `MODEL-008`: fixed the Apache mapping-value scorer/advice evidence gap. The
   scorer now treats public pytest assertion diff lines as mapping-value
   `actual` -> `expected` evidence when parsed assertion fields are truncated.

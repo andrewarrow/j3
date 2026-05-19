@@ -348,12 +348,11 @@ Long-term target:
 
 ### TRANS-003: Expand standard matrix manifest cautiously
 
-- Status: blocked
-- Blocker: `MODEL-008` addressed the public assertion-diff evidence gap behind
-  the `apache_license_classifier_dict_value` V3 residual, but the standard
-  matrix manifest should not broaden until a fresh targeted
-  `greenshot_6_subset` rerun verifies the residual count, suite gate, and
-  guarded decision after that scorer/advice change.
+- Status: ready
+- Blocker: none after `TRANS-009`; the targeted `greenshot_6_subset` rerun
+  has zero matrix residuals, no residual-report examples, suite gate
+  `ready_for_guarded_opt_in`, and guarded decision `guarded_opt_in_trial`.
+  Standard matrix expansion should still be cautious and coordinator-reviewed.
 - Why: product gates need broader held-out suites without making local runs
   impractical.
 - Write scope: `examples/transition_shadow_matrix.json`, tests, docs.
@@ -488,7 +487,7 @@ Long-term target:
 
 ### TRANS-009: Rerun targeted greenshot_6_subset after MODEL-008
 
-- Status: active
+- Status: done
 - Why: `MODEL-008` fixed the remaining Apache mapping-value V3 residual in a
   focused replay of the `TRANS-008` action-choice artifact. A targeted subset
   evidence rerun is needed before deciding whether `TRANS-003` can be
@@ -507,6 +506,18 @@ Long-term target:
   verification, `report-transition-residuals --matrix`,
   `decide-transition-guarded-trial`, `pytest tests/test_plan_consistency.py -q`,
   and `git diff --check`.
+- Completion note: reran `greenshot_6_subset` under
+  `/tmp/j3-trans-009-greenshot6-after-model008`. The subset covered 12 tasks,
+  12 ranked solved tasks, 9,696 candidates, 7 held-out groups, 0 matrix
+  residuals, and 2 baseline residuals. The residual report has 0 examples, no
+  gap types, no failure kinds, and no missing-feature labels. The previous
+  `apache_license_classifier_dict_value` V3 residual is resolved: the scorer
+  top candidate is the passing `change_dict_value` candidate for
+  `Apache-2.0: Apache License -> Apache Software License`, with scorer first
+  known passing position 1. The suite gate reaches
+  `ready_for_guarded_opt_in`, and the guarded-trial decision is
+  `guarded_opt_in_trial`; `TRANS-003` can move out of blocked status and is
+  ready for coordinator-reviewed standard matrix manifest expansion.
 
 ## Workstream E: Repo State, Actions, And Models
 

@@ -4975,3 +4975,47 @@ meaningful work. Do not replace this file with a daily reset.
 - Next: worker Mencius (`019e3e5f-5c6c-7572-973a-020665167f39`) is running
   `TRANS-009`.
 - Blockers: none.
+
+### 2026-05-19 - TRANS-009 - GreenShot-6 after MODEL-008 evidence
+
+- Owner: worker Mencius (`019e3e5f-5c6c-7572-973a-020665167f39`).
+- Files changed:
+  `docs/TRANS_009_GREENSHOT6_AFTER_MODEL008_EVIDENCE_2026-05-19.md`,
+  `plans/active.md`, `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `python cli.py run-transition-shadow-matrix --matrix
+  examples/transition_shadow_matrix.json --out
+  /tmp/j3-trans-009-greenshot6-after-model008 --only greenshot_6_subset
+  --force --json` -> passed; `python -m json.tool
+  /tmp/j3-trans-009-greenshot6-after-model008/matrix-summary.json
+  >/dev/null` -> passed; `shasum -a 256 -c
+  /tmp/j3-trans-009-greenshot6-after-model008/evidence/checksums.sha256` ->
+  passed; `python cli.py report-transition-residuals --matrix
+  /tmp/j3-trans-009-greenshot6-after-model008 --out
+  /tmp/j3-trans-009-greenshot6-after-model008-residual-report.json --json` ->
+  passed; `python -m json.tool
+  /tmp/j3-trans-009-greenshot6-after-model008-residual-report.json
+  >/dev/null` -> passed; `python cli.py decide-transition-guarded-trial
+  --matrix /tmp/j3-trans-009-greenshot6-after-model008 --out
+  /tmp/j3-trans-009-greenshot6-after-model008-guarded-decision.json --json`
+  -> passed; `python -m json.tool
+  /tmp/j3-trans-009-greenshot6-after-model008-guarded-decision.json
+  >/dev/null` -> passed.
+- Result: targeted `greenshot_6_subset` evidence after `MODEL-008` now has
+  zero matrix residuals and allows a narrow guarded transition-ranking trial.
+  The subset covered 12 tasks, 12 ranked solved tasks, 9,696 candidates, 7
+  held-out groups, 0 matrix residuals, 2 baseline residuals, and zero hosted
+  usage. The residual report has 0 examples, no gap types, no failure kinds,
+  and no missing-feature labels. The previous
+  `apache_license_classifier_dict_value` V3 residual is resolved: the scorer
+  top candidate is the passing `change_dict_value` candidate for
+  `Apache-2.0: Apache License -> Apache Software License`, with scorer first
+  known passing position 1 and comparison `would_have = improved`. Suite gate
+  is `ready_for_guarded_opt_in`; guarded decision is
+  `guarded_opt_in_trial`; trial scope is
+  `narrow_opt_in_transition_ranking`.
+- Commit: pending worker commit.
+- Push: pending worker push.
+- Next: coordinator can move `TRANS-003` out of blocked status and review
+  cautious standard matrix manifest expansion before broadening
+  `examples/transition_shadow_matrix.json`.
+- Blockers: none.

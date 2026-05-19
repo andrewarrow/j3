@@ -4944,9 +4944,33 @@ meaningful work. Do not replace this file with a daily reset.
   `Apache-2.0` `change_dict_value` candidate first over nearby `MIT` decoys,
   and a focused V3 scorer replay ranks the Apache candidate first via the
   diff-line feature.
-- Commit: pending.
-- Push: pending.
+- Commit: 5b3bc19.
+- Push: succeeded.
 - Next: coordinator should rerun targeted `greenshot_6_subset` evidence after
   integrating `MODEL-008`; do not broaden the standard matrix manifest before
   that rerun confirms the residual count and gate.
+- Blockers: none.
+
+### 2026-05-19 - Coordinator Integration And Dispatch - TRANS-009
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, and
+  `plans/progress.md`.
+- Tests: `pytest tests/test_transition_action_scoring.py
+  tests/test_transition_scorer_advice.py tests/test_transition_shadow_scorer.py
+  -q` -> 36 passed; `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check` -> passed; direct replay of the `TRANS-008`
+  `apache_license_classifier_dict_value` action-choice artifact with the saved
+  V3 model now ranks `[5, 1, 2, 3, 4, 6]`, with the passing
+  `Apache-2.0` mapping-value candidate first and
+  `mapping_value_matches_assertion_delta = 1.0`.
+- Result: reviewed `MODEL-008` in the coordinator workspace and confirmed the
+  remaining subset residual is addressed in the real artifact replay without
+  production routing, candidate generation, matrix runner, or V3 product-gate
+  changes. The next bounded step is an evidence-only rerun of
+  `greenshot_6_subset` to compare against `TRANS-008` before broadening the
+  standard matrix.
+- Commit: pending.
+- Push: pending.
+- Next: dispatch `TRANS-009` after plan verification.
 - Blockers: none.

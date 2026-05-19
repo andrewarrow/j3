@@ -79,14 +79,16 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-No active worker tasks are recorded after `MODEL-008`; the coordinator should
-review the commit and decide the next targeted evidence rerun.
+- `TRANS-009` -> worker pending: rerun targeted `greenshot_6_subset`
+  transition evidence after `MODEL-008`. Scope is evidence only: generated
+  outputs under `/tmp`, optional concise evidence doc, and plan updates unless
+  a local runner bug blocks the run. Do not broaden the standard matrix.
 
 ## Ready Queue
 
 No additional ready task is currently staged on this board. Do not broaden the
-standard matrix manifest until `MODEL-008` is integrated and the targeted
-subset evidence is rerun.
+standard matrix manifest until `TRANS-009` is integrated and the subset gate,
+residual count, and guarded decision are reviewed.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 

@@ -486,6 +486,28 @@ Long-term target:
   `ready_for_shadow_mode`, but the guarded-trial decision remains
   `remain_shadow_only`.
 
+### TRANS-009: Rerun targeted greenshot_6_subset after MODEL-008
+
+- Status: active
+- Why: `MODEL-008` fixed the remaining Apache mapping-value V3 residual in a
+  focused replay of the `TRANS-008` action-choice artifact. A targeted subset
+  evidence rerun is needed before deciding whether `TRANS-003` can be
+  unblocked or whether standard-matrix evidence should be refreshed.
+- Write scope: generated outputs under `/tmp`, a concise evidence doc if
+  useful, and plan updates only unless a local runner bug blocks evidence.
+  Avoid scorer implementation changes and do not broaden
+  `examples/transition_shadow_matrix.json`.
+- Acceptance: rerun `greenshot_6_subset`, aggregate matrix and residual
+  counts, compare against `TRANS-008`, make the guarded-trial decision
+  explicit, and record whether `apache_license_classifier_dict_value` is
+  resolved, whether residual examples remain, whether the suite gate reaches
+  `ready_for_guarded_opt_in`, and whether `TRANS-003` can move out of
+  blocked status.
+- Tests: `run-transition-shadow-matrix --only greenshot_6_subset`, checksum
+  verification, `report-transition-residuals --matrix`,
+  `decide-transition-guarded-trial`, `pytest tests/test_plan_consistency.py -q`,
+  and `git diff --check`.
+
 ## Workstream E: Repo State, Actions, And Models
 
 ### REPO-001: Summarize repo-state encoder coverage

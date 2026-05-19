@@ -8,6 +8,7 @@ from j3.heldout_source_region_candidate import (
     _accepted_diff_comparison,
     build_click_ansi_wrapping_spec,
     build_click_default_map_split_spec,
+    build_click_deprecated_help_spec,
     build_click_write_usage_spec,
     _mark_expression_scanner_source_replacement,
     build_pytest_mark_expression_scanner_spec,
@@ -660,6 +661,135 @@ def test_materializes_click_ansi_wrapping_candidate_with_reusable_actions(
     ]
     assert "from click._compat import strip_ansi" in text_files[0]["candidate_after"]["diff"]
     assert ":pr:`3420`" in text_files[1]["candidate_after"]["diff"]
+
+
+def test_click_deprecated_help_spec_uses_reusable_action_kinds(
+    tmp_path: Path,
+) -> None:
+    repo = _write_click_deprecated_help_fixture_repo(tmp_path / "click")
+
+    spec = build_click_deprecated_help_spec(repo)
+
+    assert spec.source_action.kind == SourceRegionActionKind.REPLACE_DELIMITED_REGION
+    assert spec.test_action is None
+    assert "click_3423" not in spec.source_action.kind.value
+    assert spec.base_ref == "fc6c7c47edd6110b6bd5a1a5297b2035214b0cd1"
+    assert spec.accepted_head_ref == "61acdcc4ce718f1f6e49e79625c0a6b088bc8189"
+    assert spec.validation_command.startswith("PYTHONPATH=src ")
+    assert spec.allowed_write_paths == ("src/click/core.py",)
+    assert spec.source_test_scope_paths == ("src/click/core.py",)
+
+
+def test_materializes_click_deprecated_help_candidate_with_reusable_action(
+    tmp_path: Path,
+) -> None:
+    accepted_repo = _write_click_deprecated_help_fixture_repo(tmp_path / "accepted")
+    accepted_candidate = materialize_heldout_source_region_candidate(
+        accepted_repo,
+        build_click_deprecated_help_spec(
+            accepted_repo,
+            base_ref=_repo_head(accepted_repo),
+        ),
+        write=True,
+        validate=False,
+    )
+    accepted_diff = tmp_path / "accepted.diff"
+    accepted_diff.write_text(
+        str(accepted_candidate.candidate_after["candidate_diff"]),
+        encoding="utf-8",
+    )
+
+    repo = _write_click_deprecated_help_fixture_repo(tmp_path / "candidate")
+    candidate = materialize_heldout_source_region_candidate(
+        repo,
+        build_click_deprecated_help_spec(repo, base_ref=_repo_head(repo)),
+        write=True,
+        validate=False,
+        accepted_diff_path=accepted_diff,
+    )
+    record = candidate.to_record()
+
+    assert record["status"] == "materialized"
+    assert record["accepted_head_ref"] == "61acdcc4ce718f1f6e49e79625c0a6b088bc8189"
+    assert record["residual_labels"] == ["candidate_validation_deferred"]
+    assert record["target_test_file"] is None
+    assert record["candidate_after"]["test_file"] == {
+        "available": False,
+        "target_file": None,
+    }
+    assert record["mutation_scope"]["mode"] == "heldout_source_region_source_only"
+    assert record["mutation_scope"]["actual_changed_files"] == ["src/click/core.py"]
+    assert record["mutation_scope"]["planned_write_files"] == ["src/click/core.py"]
+    assert record["mutation_scope"]["writes_outside_allowlist"] == []
+    assert record["accepted_diff_comparison"]["accepted_changed_files"] == [
+        "src/click/core.py",
+    ]
+    assert record["accepted_diff_comparison"]["normalized_diff_equal"] is True
+    assert (
+        record["accepted_diff_comparison"]["scope_comparisons"]["source_test"][
+            "normalized_diff_equal"
+        ]
+        is True
+    )
+    action_kinds = [action["kind"] for action in record["action_records"]]
+    assert action_kinds == ["replace_delimited_region"]
+    source_after = record["candidate_after"]["source_file"]["candidate_after"]
+    assert source_after["ast_parse_ok"] is True
+    assert source_after["signature_preserved"] is None
+    assert 'f"{help} {deprecated_message}"' in source_after["diff"]
+    assert "help + deprecated_message" in source_after["diff"]
+
+
+def _write_click_deprecated_help_fixture_repo(repo: Path) -> Path:
+    (repo / "src" / "click").mkdir(parents=True)
+    (repo / "src" / "click" / "core.py").write_text(
+        dedent(
+            '''
+            import typing as t
+
+
+            class Option:
+                def __init__(
+                    self,
+                    param_decls: t.Sequence[str] | None = None,
+                    help: str | None = None,
+                    deprecated: bool | str = False,
+                    prompt_text: str | None = None,
+                    confirmation_prompt: bool | str = False,
+                ) -> None:
+                    if deprecated:
+                        deprecated_message = (
+                            f"(DEPRECATED: {deprecated})"
+                            if isinstance(deprecated, str)
+                            else "(DEPRECATED)"
+                        )
+                        help = help + deprecated_message if help is not None else deprecated_message
+
+                    self.prompt = prompt_text
+                    self.confirmation_prompt = confirmation_prompt
+                    self.help = help
+            '''
+        ).lstrip(),
+        encoding="utf-8",
+    )
+    subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+    subprocess.run(["git", "add", "."], cwd=repo, check=True)
+    subprocess.run(
+        [
+            "git",
+            "-c",
+            "user.name=j3-test",
+            "-c",
+            "user.email=j3-test@example.invalid",
+            "commit",
+            "-q",
+            "-m",
+            "base",
+        ],
+        cwd=repo,
+        check=True,
+    )
+    return repo
 
 
 def _write_requests_fixture_repo(repo: Path) -> Path:

@@ -189,43 +189,25 @@ This is the live coordinator board. Keep it current and compact.
   records. Remaining non-materialized MAT-007 counts are now
   `current_structured_action = 4`, `general_typed_builder = 0`,
   `repo_convention_builder = 0`, `constrained_local_generator = 0`, and
+  `not_currently_expressible = 2`. `MAT-032` now materializes and
+  live-validates `pallets/click#3423` with exact accepted-diff parity using a
+  reusable `replace_delimited_region` source-only action for the deprecated
+  option-help separator expression. Remaining non-materialized MAT-007 counts
+  are now `current_structured_action = 3`, `general_typed_builder = 0`,
+  `repo_convention_builder = 0`, `constrained_local_generator = 0`, and
   `not_currently_expressible = 2`.
 
 ## Active Tasks
 
-### `MAT-032`: Held-out Click deprecated-help current action candidate
-
-- Status: active
-- Owner: worker MAT-032.
-- Started: 2026-05-19.
-- Write scope: focused current structured-action/source-region materializer
-  extensions and tests as needed, optional `docs/MAT_032_*`, generated
-  artifacts under `/tmp`, and plan updates. Likely code scope is
-  `j3/heldout_source_region_candidate.py` and
-  `tests/test_heldout_source_region_candidate.py`; do not edit
-  repo-convention materializer code unless the worker records a concrete
-  reason.
-- Acceptance: attempt `pallets/click#3423` using reusable current structured
-  action records for the targeted deprecated-help expression replacement, not
-  a PR-named action kind. Determine and record pinned base/head refs, accepted
-  changed files, validation command, mutation scope, candidate-after
-  diff/hash metadata, accepted-diff comparison, and live validation result.
-  The expected accepted scope is `src/click/core.py`; if the PR or validation
-  requires more than the one source file, record that explicitly. If target
-  selection, expression replacement, parity, or validation blocks, record the
-  exact blocker without broadening scope silently.
-- Expected tests: focused source-region/current-action materializer tests if
-  code changes are made, JSON/report checks if artifacts are written,
-  `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and live
-  focused Click validation when materialized.
+No active worker tasks are recorded after `MAT-032`; coordinator review should
+choose the next bounded `current_structured_action` row.
 
 ## Ready Queue
 
-No queued worker task remains while `MAT-032` is active. The remaining
-`current_structured_action` rows after `click-3423` are `flask-6013`,
-`flask-5898`, and `pytest-14472`; the shadow-advice-only residual examples
-remain a separate workstream and should not be mixed into MAT-007 held-out
-materialization counts.
+The remaining `current_structured_action` rows after `click-3423` are
+`flask-6013`, `flask-5898`, and `pytest-14472`; the shadow-advice-only
+residual examples remain a separate workstream and should not be mixed into
+MAT-007 held-out materialization counts.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
@@ -250,6 +232,28 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `MAT-032`: materialized `pallets/click#3423` from base
+  `fc6c7c47edd6110b6bd5a1a5297b2035214b0cd1` to accepted head
+  `61acdcc4ce718f1f6e49e79625c0a6b088bc8189`. The candidate changed only
+  `src/click/core.py`, recorded candidate-after diff/hash metadata plus
+  source-only mutation scope, and used a reusable
+  `replace_delimited_region` action record. Full accepted-diff parity,
+  source-only scoped parity, and allowed mutation scope are true. Live focused
+  validation passed with `PYTHONPATH=src python -c "import click; from
+  click.testing import CliRunner; cmd = click.Command('cli',
+  params=[click.Option(['--old'], help='Old option', deprecated=True)]);
+  result = CliRunner().invoke(cmd, ['--help']); assert result.exit_code == 0,
+  result.output; assert 'Old option (DEPRECATED)' in result.output,
+  result.output; assert 'Old option(DEPRECATED)' not in result.output,
+  result.output"`. Remaining non-materialized MAT-007 counts are
+  `current_structured_action = 3`, `general_typed_builder = 0`,
+  `repo_convention_builder = 0`, `constrained_local_generator = 0`, and
+  `not_currently_expressible = 2`. Artifacts:
+  `docs/MAT_032_CLICK_3423_DEPRECATED_HELP_CANDIDATE_2026-05-19.md`,
+  `/tmp/j3-mat-032-click-3423-live/final/candidate.json`,
+  `/tmp/j3-mat-032-click-3423-live/final/report.md`,
+  `/tmp/j3-mat-032-click-3423-live/final/candidate.diff`, and
+  `/tmp/j3-mat-032-click-3423-live/accepted.diff`.
 - `MAT-031`: reconciled repo-convention closure coverage after `MAT-027`
   through `MAT-030`. All four original MAT-007 `repo_convention_builder` rows
   are now accounted for as materialized and live-validated:

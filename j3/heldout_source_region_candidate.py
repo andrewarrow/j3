@@ -62,6 +62,12 @@ DEFAULT_CLICK_ANSI_WRAPPING_BASE_REF = (
 DEFAULT_CLICK_ANSI_WRAPPING_HEAD_REF = (
     "587e3cc7f4804a4fa62f3dab8839a6e1f8954d7c"
 )
+DEFAULT_CLICK_DEPRECATED_HELP_BASE_REF = (
+    "fc6c7c47edd6110b6bd5a1a5297b2035214b0cd1"
+)
+DEFAULT_CLICK_DEPRECATED_HELP_HEAD_REF = (
+    "61acdcc4ce718f1f6e49e79625c0a6b088bc8189"
+)
 DEFAULT_PYTEST_SCANNER_BASE_REF = "7df5d80ff3a98714a1d3cdbe82941229e511f4b3"
 DEFAULT_VALIDATION_COMMAND = (
     "python -m pytest "
@@ -90,6 +96,17 @@ DEFAULT_CLICK_ANSI_WRAPPING_VALIDATION_COMMAND = (
     "tests/test_formatting.py::test_wrap_text_visible_width "
     "tests/test_formatting.py::test_write_usage_styled_prefix_keeps_options_on_one_line "
     "-q"
+)
+DEFAULT_CLICK_DEPRECATED_HELP_VALIDATION_COMMAND = (
+    "PYTHONPATH=src python -c "
+    "\"import click; "
+    "from click.testing import CliRunner; "
+    "cmd = click.Command('cli', params=[click.Option(['--old'], "
+    "help='Old option', deprecated=True)]); "
+    "result = CliRunner().invoke(cmd, ['--help']); "
+    "assert result.exit_code == 0, result.output; "
+    "assert 'Old option (DEPRECATED)' in result.output, result.output; "
+    "assert 'Old option(DEPRECATED)' not in result.output, result.output\""
 )
 DEFAULT_PYTEST_SCANNER_VALIDATION_COMMAND = (
     "PYTHONPATH=src python -c "
@@ -233,11 +250,11 @@ class HeldoutSourceRegionSpec:
     reference_pr_url: str
     prompt: str
     source_file: str
-    test_file: str
     validation_command: str
     allowed_write_paths: tuple[str, ...]
     source_action: SourceRegionAction
-    test_action: PytestInsertionAction
+    test_file: str | None = None
+    test_action: PytestInsertionAction | None = None
     extra_source_actions: tuple[SourceRegionAction, ...] = field(default_factory=tuple)
     text_actions: tuple[TextInsertionAction, ...] = field(default_factory=tuple)
     action_family_reuse_evidence: tuple[dict[str, object], ...] = field(
@@ -249,7 +266,6 @@ class HeldoutSourceRegionSpec:
     def __post_init__(self) -> None:
         for path in (
             self.source_file,
-            self.test_file,
             *self.allowed_write_paths,
             *(
                 ()
@@ -258,8 +274,12 @@ class HeldoutSourceRegionSpec:
             ),
         ):
             _validate_relative_path(path)
+        if self.test_file is not None:
+            _validate_relative_path(self.test_file)
         for action in self.extra_source_actions:
             _validate_relative_path(action.target.file_path)
+        if self.test_action is not None:
+            _validate_relative_path(self.test_action.target_file)
         for action in self.text_actions:
             _validate_relative_path(action.target_file)
 
@@ -350,7 +370,7 @@ class HeldoutSourceRegionCandidate:
     action_records: list[dict[str, object]]
     action_family_reuse_evidence: list[dict[str, object]]
     target_source_file: str
-    target_test_file: str
+    target_test_file: str | None
     validation_command: str
     allowed_write_paths: list[str]
     candidate_after: dict[str, object]
@@ -962,6 +982,48 @@ def build_click_ansi_wrapping_spec(
     )
 
 
+def build_click_deprecated_help_spec(
+    repo_path: Path,
+    *,
+    base_ref: str = DEFAULT_CLICK_DEPRECATED_HELP_BASE_REF,
+    accepted_head_ref: str = DEFAULT_CLICK_DEPRECATED_HELP_HEAD_REF,
+    validation_command: str = DEFAULT_CLICK_DEPRECATED_HELP_VALIDATION_COMMAND,
+) -> HeldoutSourceRegionSpec:
+    """Build the held-out Click deprecated option-help separator candidate."""
+
+    source_text = _repo_file(repo_path, CLICK_CORE_PATH).read_text(encoding="utf-8")
+    source_action = _click_deprecated_help_source_action(source_text)
+    return HeldoutSourceRegionSpec(
+        candidate_id="mat-032-click-deprecated-help-separator",
+        repo_id="pallets/click",
+        repo_url="https://github.com/pallets/click",
+        repo_split="held_out",
+        base_ref=base_ref,
+        accepted_head_ref=accepted_head_ref,
+        reference_pr_url="https://github.com/pallets/click/pull/3423",
+        prompt=(
+            "Add a separator between option help text and the deprecated label "
+            "so documented deprecated options render as 'help (DEPRECATED)'."
+        ),
+        source_file=CLICK_CORE_PATH,
+        validation_command=validation_command,
+        allowed_write_paths=(CLICK_CORE_PATH,),
+        source_action=source_action,
+        source_test_scope_paths=(CLICK_CORE_PATH,),
+        action_family_reuse_evidence=(
+            {
+                "action_kind": SourceRegionActionKind.REPLACE_DELIMITED_REGION.value,
+                "reused_from": ["MAT-024", "MAT-025"],
+                "evidence": (
+                    "same bounded delimited source-region action schema; "
+                    "target file, local markers, and replacement expression "
+                    "are parameters"
+                ),
+            },
+        ),
+    )
+
+
 def materialize_heldout_source_region_candidate(
     repo_path: Path,
     spec: HeldoutSourceRegionSpec,
@@ -978,7 +1040,7 @@ def materialize_heldout_source_region_candidate(
     action_records = [
         spec.source_action.to_record(),
         *[action.to_record() for action in spec.extra_source_actions],
-        spec.test_action.to_record(),
+        *([] if spec.test_action is None else [spec.test_action.to_record()]),
         *[action.to_record() for action in spec.text_actions],
     ]
 
@@ -1017,7 +1079,7 @@ def materialize_heldout_source_region_candidate(
                 }
             )
 
-    if not blockers:
+    if not blockers and spec.test_action is not None:
         try:
             test_result = materialize_pytest_insertion(
                 repo,
@@ -1066,7 +1128,9 @@ def materialize_heldout_source_region_candidate(
         accepted_diff_path=accepted_diff_path,
         scope_path_sets={
             "source_test": spec.source_test_scope_paths
-            or (spec.source_file, spec.test_file),
+            or tuple(
+                path for path in (spec.source_file, spec.test_file) if path is not None
+            ),
             "source_docs_test": tuple(spec.allowed_write_paths),
         },
     )
@@ -1104,7 +1168,11 @@ def materialize_heldout_source_region_candidate(
         "file_hashes_after": hashes_after,
     }
     mutation_scope = {
-        "mode": "heldout_source_region_source_test",
+        "mode": (
+            "heldout_source_region_source_only"
+            if spec.test_file is None
+            else "heldout_source_region_source_test"
+        ),
         "allowed_write_paths": list(spec.allowed_write_paths),
         "planned_write_files": [
             *[
@@ -1114,7 +1182,7 @@ def materialize_heldout_source_region_candidate(
                     *spec.extra_source_actions,
                 )
             ],
-            spec.test_file,
+            *([] if spec.test_file is None else [spec.test_file]),
             *[action.target_file for action in spec.text_actions],
         ],
         "actual_changed_files": changed_files,
@@ -2277,6 +2345,49 @@ def _click_ansi_wrapping_changelog_source() -> str:
     ) + "\n"
 
 
+def _click_deprecated_help_source_action(source: str) -> SourceRegionAction:
+    original = "            help = help + deprecated_message if help is not None else deprecated_message"
+    already_applied = "                f\"{help} {deprecated_message}\""
+    if original not in source and already_applied not in source:
+        raise SourceRegionMaterializationError(
+            "deprecated option help expression not found",
+            residual="target_selection",
+        )
+    return SourceRegionAction(
+        kind=SourceRegionActionKind.REPLACE_DELIMITED_REGION,
+        target=SourceRegionTarget(
+            file_path=CLICK_CORE_PATH,
+            region_name="deprecated_option_help_separator",
+            start_marker='                else "(DEPRECATED)"',
+            end_marker="        self.prompt = prompt_text",
+        ),
+        replacement_source=_click_deprecated_help_source_replacement(),
+        constraints=SourceRegionConstraints(
+            max_changed_source_lines=7,
+            must_preserve_signature=False,
+        ),
+        rationale=(
+            "insert a separator between existing option help text and the "
+            "deprecated label expression"
+        ),
+    )
+
+
+def _click_deprecated_help_source_replacement() -> str:
+    return "\n".join(
+        [
+            "            )",
+            "            help = (",
+            "                f\"{help} {deprecated_message}\"",
+            "                if help is not None",
+            "                else deprecated_message",
+            "            )",
+            "",
+            "",
+        ]
+    )
+
+
 def _line_number(source: str, needle: str) -> int:
     for index, line in enumerate(source.splitlines(), start=1):
         if line == needle:
@@ -2647,6 +2758,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             "click-3434",
             "click-3364",
             "click-3420",
+            "click-3423",
         ),
         default="requests-7427",
     )
@@ -2672,6 +2784,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         spec = build_click_default_map_split_spec(args.repo_path)
     elif args.candidate == "click-3420":
         spec = build_click_ansi_wrapping_spec(args.repo_path)
+    elif args.candidate == "click-3423":
+        spec = build_click_deprecated_help_spec(args.repo_path)
     else:
         spec = build_requests_no_proxy_domain_boundary_spec(args.repo_path)
     candidate = materialize_heldout_source_region_candidate(

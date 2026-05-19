@@ -6322,3 +6322,46 @@ meaningful work. Do not replace this file with a daily reset.
 - Next: dispatch a worker for `MAT-032` to attempt `pallets/click#3423` with
   reusable targeted expression/source-region action records.
 - Blockers: none.
+
+### 2026-05-19 - MAT-032 - Click #3423 deprecated-help current action materialization
+
+- Owner: worker MAT-032.
+- Files changed: `j3/heldout_source_region_candidate.py`,
+  `tests/test_heldout_source_region_candidate.py`,
+  `docs/MAT_032_CLICK_3423_DEPRECATED_HELP_CANDIDATE_2026-05-19.md`,
+  `plans/active.md`, `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `python -m py_compile j3/heldout_source_region_candidate.py
+  tests/test_heldout_source_region_candidate.py` -> passed; `pytest
+  tests/test_heldout_source_region_candidate.py -q` -> 17 passed; live fresh
+  checkout run `PYTHONPATH=/Users/aa/os/j3 python -m
+  j3.heldout_source_region_candidate --candidate click-3423 --repo-path
+  /tmp/j3-mat-032-click-3423-live/repo --accepted-diff
+  /tmp/j3-mat-032-click-3423-live/accepted.diff --out
+  /tmp/j3-mat-032-click-3423-live/final/candidate.json --report
+  /tmp/j3-mat-032-click-3423-live/final/report.md --diff-out
+  /tmp/j3-mat-032-click-3423-live/final/candidate.diff --validate
+  --validation-timeout-seconds 90` -> validated; validation command
+  `PYTHONPATH=src python -c "import click; from click.testing import
+  CliRunner; cmd = click.Command('cli', params=[click.Option(['--old'],
+  help='Old option', deprecated=True)]); result = CliRunner().invoke(cmd,
+  ['--help']); assert result.exit_code == 0, result.output; assert 'Old option
+  (DEPRECATED)' in result.output, result.output; assert
+  'Old option(DEPRECATED)' not in result.output, result.output"` -> passed;
+  `python -m json.tool
+  /tmp/j3-mat-032-click-3423-live/final/candidate.json` -> passed.
+- Result: materialized `pallets/click#3423` from base
+  `fc6c7c47edd6110b6bd5a1a5297b2035214b0cd1` to accepted head
+  `61acdcc4ce718f1f6e49e79625c0a6b088bc8189`. The candidate changed only
+  `src/click/core.py`, recorded candidate-after diff/hash metadata plus
+  source-only mutation scope, and used a reusable `replace_delimited_region`
+  action record. Full accepted-diff parity, source-only scoped parity, and
+  changed-file parity are true. Remaining non-materialized MAT-007 counts are
+  now `current_structured_action = 3`, `general_typed_builder = 0`,
+  `repo_convention_builder = 0`, `constrained_local_generator = 0`, and
+  `not_currently_expressible = 2`.
+- Commit: pending.
+- Push: pending.
+- Next: coordinator should review `MAT-032`, then choose the next remaining
+  `current_structured_action` row from `flask-6013`, `flask-5898`, or
+  `pytest-14472`.
+- Blockers: none.

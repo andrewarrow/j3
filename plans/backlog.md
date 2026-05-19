@@ -3696,7 +3696,7 @@ Long-term target:
 
 ### MAT-032: Held-out Click deprecated-help current action candidate
 
-- Status: active
+- Status: done
 - Why: after `MAT-031`, the only remaining materializable MAT-007 rows are the
   four `current_structured_action` rows. `pallets/click#3423` is the smallest:
   one source file and a targeted deprecated-help expression replacement.
@@ -3719,6 +3719,21 @@ Long-term target:
   changes are made, JSON/report checks if artifacts are written,
   `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and live
   focused Click validation when materialized.
+- Completion note: materialized and live-validated `pallets/click#3423` from
+  base `fc6c7c47edd6110b6bd5a1a5297b2035214b0cd1` to accepted head
+  `61acdcc4ce718f1f6e49e79625c0a6b088bc8189`. The candidate changed only
+  `src/click/core.py`, used reusable `replace_delimited_region` source-region
+  action records, recorded candidate-after diff/hash metadata and source-only
+  mutation scope, reached exact accepted-diff parity, and passed live
+  checkout-local validation for deprecated option help rendering. Remaining
+  non-materialized MAT-007 counts are `current_structured_action = 3`,
+  `general_typed_builder = 0`, `repo_convention_builder = 0`,
+  `constrained_local_generator = 0`, and `not_currently_expressible = 2`.
+  Artifacts:
+  `docs/MAT_032_CLICK_3423_DEPRECATED_HELP_CANDIDATE_2026-05-19.md`,
+  `/tmp/j3-mat-032-click-3423-live/final/candidate.json`,
+  `/tmp/j3-mat-032-click-3423-live/final/report.md`, and
+  `/tmp/j3-mat-032-click-3423-live/final/candidate.diff`.
 
 ## Next Recommended Queue
 

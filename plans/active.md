@@ -67,13 +67,19 @@ This is the live coordinator board. Keep it current and compact.
     same mapping appears in competing candidates.
   - Expected tests: focused transition action scoring/ranking tests,
     `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+- `SCALE-001`: draft local pretraining feasibility inventory.
+  - Owner: coordinator dispatch in progress; worker pending.
+  - Scope: focused documentation under `docs/` plus required plan updates.
+  - Acceptance: separates near-term local encoders from frontier-scale
+    language/code pretraining and lists the local data that exists versus what
+    is still missing.
+  - Expected tests: `git diff --check` and
+    `pytest tests/test_plan_consistency.py -q`.
 
 ## Ready Queue
 
-`MODEL-004` is being dispatched as the next bounded scorer residual slice.
-After it completes, reassess the remaining scorer residuals and choose between
-`MODEL-005` boundary/literal ranking, targeted residual evidence, or another
-bounded ready task.
+`MODEL-004` and `SCALE-001` are active. Keep `MODEL-005` queued until
+`MODEL-004` returns because it would touch the same scorer files.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 

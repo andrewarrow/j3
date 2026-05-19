@@ -488,7 +488,7 @@ Long-term target:
 
 ### SCALE-001: Draft local pretraining feasibility inventory
 
-- Status: ready
+- Status: active
 - Why: the frontier target needs a sober estimate of data, compute, objectives,
   and model shapes.
 - Write scope: focused doc under `docs/`, with links to current local data
@@ -2627,3 +2627,6 @@ Start with these unless fresh evidence changes the order:
 1. Integrate `MODEL-004`, then choose between `MODEL-005` boundary/literal
    ranking, targeted residual evidence, or another bounded ready task based on
    the scorer residuals that remain.
+2. Integrate `SCALE-001`, then decide whether `SCALE-002` provenance policy is
+   the right follow-on or whether the evidence loop should return to
+   materialization/ranking work first.

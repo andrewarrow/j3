@@ -4364,3 +4364,20 @@ meaningful work. Do not replace this file with a daily reset.
 - Next: worker Bernoulli (`019e3e0d-7779-7831-9884-589e7f6fc9ac`) is running
   `MODEL-004`.
 - Blockers: none.
+
+### 2026-05-19 - Coordinator Dispatch - SCALE-001
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, and
+  `plans/progress.md`.
+- Tests: `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check -- plans/active.md plans/backlog.md plans/progress.md` ->
+  passed.
+- Result: selected `SCALE-001` as the second active worker because its primary
+  write scope is a focused training feasibility document under `docs/`, while
+  `MODEL-004` owns the transition scorer files. `MODEL-005` remains queued
+  until the scorer worker returns to avoid overlapping scorer edits.
+- Commit: pending.
+- Push: pending.
+- Next: dispatch a worker for `SCALE-001` after plan consistency checks pass.
+- Blockers: none.

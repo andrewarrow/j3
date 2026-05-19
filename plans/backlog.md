@@ -349,10 +349,13 @@ Long-term target:
 ### TRANS-003: Expand standard matrix manifest cautiously
 
 - Status: blocked
-- Blocker: `TRANS-005` post-scorer matrix evidence still reports 8 matrix
-  residuals, 17 residual-report examples, one `candidate_generation_gap`, 16
-  `scorer_ranking_gap` examples, and a guarded decision of
-  `remain_shadow_only`.
+- Blocker: `TRANS-008` targeted `greenshot_6_subset` evidence improved the
+  subset gate to `ready_for_shadow_mode` and resolved the
+  `project_urls_header_dict_key` V1/advice residual, but it still reports 1
+  matrix residual, 1 residual-report example, and a guarded decision of
+  `remain_shadow_only`. Review the remaining
+  `apache_license_classifier_dict_value` V3 residual before broadening the
+  standard matrix manifest.
 - Why: product gates need broader held-out suites without making local runs
   impractical.
 - Write scope: `examples/transition_shadow_matrix.json`, tests, docs.
@@ -452,7 +455,7 @@ Long-term target:
 
 ### TRANS-008: Rerun targeted greenshot_6_subset after MODEL-007
 
-- Status: active
+- Status: done
 - Why: `MODEL-007` fixed the deterministic V1/advice mapping-key residual
   from `project_urls_header_dict_key`. The affected subset needs a targeted
   evidence rerun before deciding whether any remaining failures justify
@@ -470,6 +473,20 @@ Long-term target:
   verification, `report-transition-residuals --matrix`,
   `decide-transition-guarded-trial`, `pytest tests/test_plan_consistency.py -q`,
   and `git diff --check`.
+- Completion note: reran `greenshot_6_subset` under
+  `/tmp/j3-trans-008-greenshot6-after-model007`. The subset covered 12 tasks,
+  12 ranked solved tasks, 9,696 candidates, 7 held-out groups, 1 matrix
+  residual, and 2 baseline residuals. The residual report has 1
+  `scorer_ranking_gap` example, `apache_license_classifier_dict_value`, with
+  failure kind `v3_top_candidate_failed`. `project_urls_header_dict_key` is
+  resolved: `change_dict_key Project_URL -> Project-URL` is rank 1 and
+  passes, while the `add_dict_key Project-URL = None` decoy is rank 2 and
+  fails. No V1/advice residuals remain in the report; `candidate_generation_gap`
+  and `candidate_after_unavailable` are absent. Remaining missing-feature
+  labels are `source_embedding_unavailable` and
+  `candidate_after_embedding_unavailable`. The suite gate improved to
+  `ready_for_shadow_mode`, but the guarded-trial decision remains
+  `remain_shadow_only`.
 
 ## Workstream E: Repo State, Actions, And Models
 

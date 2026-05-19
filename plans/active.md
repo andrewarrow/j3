@@ -23,13 +23,16 @@ This is the live coordinator board. Keep it current and compact.
   GreenShot-6 ranking fixes: 12 tasks, 12 ranked solved, 9,696 candidates, 7
   held-out groups, 4 matrix residuals, 2 baseline residuals, 5 residual-report
   examples, no `candidate_generation_gap`, and no
-  `candidate_after_unavailable` label. The subset gate is still
-  `not_ready_underperforms_existing_rank_order`, so the guarded decision
-  remains `remain_shadow_only` and `TRANS-003` remains blocked. `MODEL-007`
-  fixes the deterministic V1/advice ordering for the
-  `project_urls_header_dict_key` residual in focused tests and direct
-  two-candidate replay, but no matrix rerun has been recorded yet; transition
-  ranking remains shadow-only until follow-up evidence is collected.
+  `candidate_after_unavailable` label. `MODEL-007` fixed the deterministic
+  V1/advice ordering for the `project_urls_header_dict_key` residual, and
+  `TRANS-008` recorded the targeted matrix rerun: the subset still covers 12
+  tasks, 12 ranked solved tasks, 9,696 candidates, and 7 held-out groups, but
+  now has 1 matrix residual, 2 baseline residuals, and 1 residual-report
+  example. The mapping-key residual is resolved, no V1/advice residual remains
+  in the report, and the suite gate improved to `ready_for_shadow_mode`.
+  Guarded decision remains `remain_shadow_only`, so `TRANS-003` remains
+  blocked pending review of the remaining
+  `apache_license_classifier_dict_value` V3 residual.
   Tests-only wedge guarded opt-in also remains
   blocked after `REAL-003` scored `pass@3 = 0/4`; `GS7-008` now materializes
   and live-validates the `iniconfig` calibration candidate. `REAL-005` extends
@@ -75,28 +78,24 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-- `TRANS-008` -> worker Darwin
-  (`019e3e4c-03ab-7250-95ed-6fd817a88f05`): rerun targeted
-  `greenshot_6_subset` transition evidence after `MODEL-007`. Scope is
-  evidence only: generated outputs under `/tmp`, optional concise evidence
-  doc, and plan updates unless a local runner bug blocks the run. Do not
-  broaden the standard matrix.
+No active worker task is currently recorded. Coordinator review should
+integrate `TRANS-008` before dispatching the next transition slice.
 
 ## Ready Queue
 
 No additional ready task is currently staged on this board. Do not broaden the
-standard matrix manifest until `TRANS-008` is integrated and the remaining
-subset residuals are reviewed.
+standard matrix manifest until the remaining `apache_license_classifier_dict_value`
+V3 residual is reviewed.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
 ## Paused Or Blocked
 
-- `TRANS-003`: remains blocked after `TRANS-007`; do not expand the standard
-  matrix manifest while the targeted `greenshot_6_subset` rerun still has 4
-  matrix residuals, 5 residual-report examples, a suite gate of
-  `not_ready_underperforms_existing_rank_order`, and a guarded decision of
-  `remain_shadow_only`.
+- `TRANS-003`: remains blocked after `TRANS-008`; do not expand the standard
+  matrix manifest while the targeted `greenshot_6_subset` rerun still has 1
+  matrix residual, 1 residual-report example, a suite gate of
+  `ready_for_shadow_mode` rather than `ready_for_guarded_opt_in`, and a
+  guarded decision of `remain_shadow_only`.
 - `MODEL-002`: superseded by bounded scorer subtasks in the backlog, beginning
   with `MODEL-003` through `MODEL-007`.
 
@@ -112,6 +111,18 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `TRANS-008`: reran targeted `greenshot_6_subset` transition evidence after
+  `MODEL-007`. The subset covered 12 tasks, 12 ranked solved tasks, 9,696
+  candidates, and 7 held-out groups, with 1 matrix residual and 2 baseline
+  residuals. The residual report has 1 `scorer_ranking_gap` example,
+  `apache_license_classifier_dict_value`, with failure kind
+  `v3_top_candidate_failed`. `project_urls_header_dict_key` is resolved in the
+  rerun: `change_dict_key Project_URL -> Project-URL` is rank 1 and passes,
+  while `add_dict_key Project-URL = None` is rank 2 and fails. No V1/advice
+  residuals remain in the report. V3 no longer underperforms the existing rank
+  order on this subset, and the suite gate improved to `ready_for_shadow_mode`,
+  but the guarded-trial decision remains `remain_shadow_only` because the
+  suite is not `ready_for_guarded_opt_in` and the residual count is nonzero.
 - `MODEL-007`: fixed the GreenShot-6 `project_urls_header_dict_key`
   deterministic V1/advice residual. The scorer now recognizes a
   `change_dict_key` candidate that renames an existing same-mapping key to a

@@ -4851,3 +4851,51 @@ meaningful work. Do not replace this file with a daily reset.
 - Next: worker Darwin (`019e3e4c-03ab-7250-95ed-6fd817a88f05`) is running
   `TRANS-008`.
 - Blockers: none.
+
+### 2026-05-19 - TRANS-008 - GreenShot-6 after MODEL-007 evidence
+
+- Owner: worker Darwin (`019e3e4c-03ab-7250-95ed-6fd817a88f05`).
+- Files changed:
+  `docs/TRANS_008_GREENSHOT6_AFTER_MODEL007_EVIDENCE_2026-05-19.md`,
+  `plans/active.md`, `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `python cli.py run-transition-shadow-matrix --matrix
+  examples/transition_shadow_matrix.json --out
+  /tmp/j3-trans-008-greenshot6-after-model007 --only greenshot_6_subset --force
+  --json` -> passed; `python -m json.tool
+  /tmp/j3-trans-008-greenshot6-after-model007/matrix-summary.json >/dev/null`
+  -> passed; `shasum -a 256 -c
+  /tmp/j3-trans-008-greenshot6-after-model007/evidence/checksums.sha256` ->
+  passed; `python cli.py report-transition-residuals --matrix
+  /tmp/j3-trans-008-greenshot6-after-model007 --out
+  /tmp/j3-trans-008-greenshot6-after-model007-residual-report.json --json` ->
+  passed; `python -m json.tool
+  /tmp/j3-trans-008-greenshot6-after-model007-residual-report.json
+  >/dev/null` -> passed; `python cli.py decide-transition-guarded-trial
+  --matrix /tmp/j3-trans-008-greenshot6-after-model007 --out
+  /tmp/j3-trans-008-greenshot6-after-model007-guarded-decision.json --json`
+  -> passed; `python -m json.tool
+  /tmp/j3-trans-008-greenshot6-after-model007-guarded-decision.json
+  >/dev/null` -> passed.
+- Result: targeted `greenshot_6_subset` evidence improved after `MODEL-007`
+  but still does not allow guarded transition ranking. The subset covered 12
+  tasks, 12 ranked solved tasks, 9,696 candidates, 7 held-out groups, 1 matrix
+  residual, 2 baseline residuals, and zero hosted usage. The residual report
+  has 1 example, `apache_license_classifier_dict_value`, classified as
+  `scorer_ranking_gap` with failure kind `v3_top_candidate_failed`.
+  `project_urls_header_dict_key` is resolved: the passing
+  `change_dict_key Project_URL -> Project-URL` candidate is rank 1, and the
+  `add_dict_key Project-URL = None` decoy is rank 2 and fails. No V1/advice
+  residuals remain in the report. V3 no longer underperforms the existing rank
+  order on this subset; the suite gate improved to `ready_for_shadow_mode`.
+  Guarded-trial decision remains `remain_shadow_only` because the suite is not
+  `ready_for_guarded_opt_in` and residual count is nonzero. Remaining
+  missing-feature labels are `source_embedding_unavailable` and
+  `candidate_after_embedding_unavailable`; `candidate_generation_gap` and
+  `candidate_after_unavailable` remain absent.
+- Commit: pending in this worker commit.
+- Push: pending.
+- Next: review or address the remaining
+  `apache_license_classifier_dict_value` V3 mapping-value residual before
+  broadening the standard transition matrix.
+- Blockers: nonzero subset residuals and a non-guarded suite gate keep
+  transition ranking shadow-only.

@@ -277,8 +277,9 @@ Review before assigning more work if:
   Recommended next: move to the separate `TRANS-012` shadow-advice-only
   residual workstream or record the migration-planner blocker for
   `flask-5812` and `flask-5727`.
-- Commit: pending at worker handoff.
-- Push: pending at worker handoff.
+- Commit: `6ec8190` documentation/evidence; push-result metadata recorded in
+  follow-up planning update.
+- Push: documentation/evidence commit pushed successfully to `origin/main`.
 - Artifacts:
   `docs/MAT_036_CURRENT_ACTION_CLOSURE_COVERAGE_2026-05-19.md`,
   `docs/MAT_036_CURRENT_ACTION_CLOSURE_COVERAGE_2026-05-19.jsonl`, and

@@ -257,8 +257,9 @@ Review before assigning more work if:
   `changelog/14456.bugfix.rst`, and `src/_pytest/python_api.py`, matched the
   full accepted diff exactly, and passed the focused `_as_numpy_array`
   `__array_interface__` validation command.
-- Commit: pending.
-- Push: pending.
+- Commit: `8947557` implementation/evidence.
+- Push: implementation/evidence commit pushed successfully to `origin/main`;
+  push-result metadata recorded in follow-up commit.
 - Artifacts:
   `docs/MAT_034_PYTEST_14472_ARRAY_INTERFACE_CANDIDATE_2026-05-19.md`,
   `/tmp/j3-mat-034-pytest-14472-live/final/candidate.json`,

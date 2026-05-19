@@ -3262,7 +3262,7 @@ Long-term target:
 
 ### MAT-021: Requests #7433 validation timeout drilldown
 
-- Status: active
+- Status: done
 - Why: `MAT-020` proved exact source/test accepted-diff parity for
   `psf/requests#7433`, but the live focused validation timed out after
   reaching the local `pytest-httpbin` redirect endpoint. Before counting the
@@ -3284,17 +3284,26 @@ Long-term target:
   `candidate_validation_timeout`.
 - Tests: diagnostic validation commands, `pytest tests/test_plan_consistency.py
   -q`, and `git diff --check`.
+- Completion note: classified the `MAT-020` timeout as a local setup/import
+  path issue. Fresh `/tmp` candidate, accepted-head, base, and base-plus-test
+  checkouts showed the original ambient command imported site-packages
+  `requests` and timed out for both candidate and accepted head after reaching
+  the local `pytest-httpbin` redirect endpoint. The same candidate and accepted
+  head pass the focused node when the checkout source is imported with
+  `PYTHONPATH=src`, and both pass under the DATA-008 editable-venv recipe. Base
+  existing focused tests pass; base plus only the accepted test times out,
+  matching the expected pre-fix behavior. Count `requests-7433` as
+  live-validated by MAT-021 corrected-harness evidence, while preserving the
+  original MAT-020 artifact as the record of the invalid import-path timeout.
+  Artifacts:
+  `docs/MAT_021_REQUESTS_7433_VALIDATION_TIMEOUT_DRILLDOWN_2026-05-19.md` and
+  `/tmp/j3-mat-021-requests-7433-drilldown/diagnostics.json`.
 
 ## Next Recommended Queue
 
 Start with these unless fresh evidence changes the order:
 
-1. Coordinator review should decide whether to drill into the
-   `requests-7433` local validation timeout or accept the materialization
-   evidence as exact source/test parity with validation blocked by the local
-   `pytest-httpbin` redirect path. `MAT-021` is active for this drilldown.
-2. If continuing constrained source/test materialization, keep
-   `requests-7328` as the compact alternate and `click-3434` as the next
-   formatter-family row.
-3. Separately decide whether to pursue the `TRANS-012` shadow-advice-only
+1. Continue constrained source/test materialization with `requests-7328` as the
+   compact next row or `click-3434` as the next formatter-family row.
+2. Separately decide whether to pursue the `TRANS-012` shadow-advice-only
    residual examples; product transition routing remains shadow-only.

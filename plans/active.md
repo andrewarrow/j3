@@ -137,34 +137,24 @@ This is the live coordinator board. Keep it current and compact.
   `insert_pytest_function_after_anchor` records; live validation reached the
   local `pytest-httpbin` redirect endpoint but timed out under the bounded
   run, so the row is recorded with `candidate_validation_timeout` rather than
-  as a validation pass. `MAT-021` is now isolating that timeout before the
-  constrained-source queue moves to another row.
+  as a validation pass. `MAT-021` isolated that timeout as a local
+  validation setup issue: the original command imported the ambient
+  site-packages `requests`, while the same candidate and accepted head both
+  pass when the checkout source is imported via `PYTHONPATH=src` or the
+  DATA-008 editable-venv recipe. Count `requests-7433` as live-validated by
+  the MAT-021 corrected-harness evidence; the original MAT-020 artifact remains
+  an accurate record of the first invalid import-path timeout.
 
 ## Active Tasks
 
-### `MAT-021`: Requests #7433 validation timeout drilldown
-
-- Status: active
-- Owner: worker.
-- Scope: inspect only the `requests-7433` live-validation timeout and focused
-  evidence artifacts. Allowed writes are focused `docs/MAT_021_*`, optional
-  generated artifacts under `/tmp`, and plan updates unless a tiny reusable
-  validation-report field is required. Avoid new materializer action kinds,
-  transition scoring, issue/PR ranking, local-knowledge changes, matrix
-  manifests, and unrelated constrained rows.
-- Acceptance: distinguish candidate regression from accepted-head behavior and
-  local harness/setup timeout. Compare candidate, accepted head, and base when
-  useful; run bounded diagnostic validation with explicit timeouts; record
-  command, runtime, stdout/stderr tails, exact blocker or pass/fail conclusion,
-  and whether `MAT-020` can be counted as live-validated.
-- Tests: diagnostic validation commands, `pytest tests/test_plan_consistency.py
-  -q`, and `git diff --check`.
+No active worker task is recorded after `MAT-021`; the coordinator should
+dispatch the next bounded row from the ready queue.
 
 ## Ready Queue
 
-No separate ready worker task is queued while `MAT-021` is active. After the
-timeout is classified, the constrained-source queue can move to
-`requests-7328` or `click-3434` if the validation evidence is sufficient.
+The constrained-source queue can move to `requests-7328` as the compact next
+row, or `click-3434` as the next formatter-family row, now that `requests-7433`
+is counted as live-validated by MAT-021's corrected local-source diagnostics.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
@@ -189,6 +179,20 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `MAT-021`: classified the `MAT-020` `psf/requests#7433` validation timeout
+  as a local setup/import-path issue, not a candidate regression or
+  accepted-head behavior. Fresh `/tmp` checkouts showed the original ambient
+  command imported `/Users/aa/.pyenv/versions/3.11.15/lib/python3.11/site-packages/requests/__init__.py`
+  and timed out for both candidate and accepted head after reaching
+  `POST /redirect-to?url=/post&status_code=307`. The same candidate and
+  accepted head pass the focused node when the checkout source is imported
+  with `PYTHONPATH=src`, and both pass under the DATA-008 editable-venv recipe.
+  Base existing focused tests pass, while base plus only the accepted test
+  times out, matching the pre-fix failure mode. Count `requests-7433` as
+  live-validated by MAT-021 evidence; the original MAT-020 artifact remains a
+  record of the invalid import-path timeout. Artifacts:
+  `docs/MAT_021_REQUESTS_7433_VALIDATION_TIMEOUT_DRILLDOWN_2026-05-19.md` and
+  `/tmp/j3-mat-021-requests-7433-drilldown/diagnostics.json`.
 - `MAT-020`: materialized `psf/requests#7433` from base
   `0b401c76b6e80a4eecf3c690085b2553f6e261ca` to PR head
   `ea1c36c1b1a8364e234b6ad49ea05e3261636f8a`. The candidate changed only

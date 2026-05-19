@@ -5684,3 +5684,37 @@ meaningful work. Do not replace this file with a daily reset.
   record whether `MAT-020` remains validation-blocked or can be counted as
   live-validated.
 - Blockers: none.
+
+### 2026-05-19 - MAT-021 - Requests #7433 validation timeout drilldown
+
+- Owner: worker MAT-021.
+- Files changed:
+  `docs/MAT_021_REQUESTS_7433_VALIDATION_TIMEOUT_DRILLDOWN_2026-05-19.md`,
+  `plans/active.md`, `plans/backlog.md`, and `plans/progress.md`.
+- Tests: diagnostic fresh-checkout runs under
+  `/tmp/j3-mat-021-requests-7433-drilldown` -> candidate original import path
+  timed out after `12.010s`; candidate `PYTHONPATH=src` passed in `0.889s`;
+  accepted head original import path timed out after `12.011s`; accepted head
+  `PYTHONPATH=src` passed in `0.905s`; base focused selector passed in
+  `0.493s`; base plus accepted test only timed out after `12.013s`;
+  candidate DATA-008 venv setup passed in `5.610s`; candidate venv validation
+  passed in `1.497s`; accepted DATA-008 venv setup passed in `5.306s`;
+  accepted venv validation passed in `1.455s`;
+  `python -m json.tool /tmp/j3-mat-021-requests-7433-drilldown/diagnostics.json`
+  -> passed; `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check` -> passed.
+- Result: classified the `MAT-020` timeout as a local validation setup issue:
+  the original ambient command imported site-packages `requests`, not the
+  materialized checkout. Candidate and accepted head both pass the focused
+  redirect test when the checkout source is imported via `PYTHONPATH=src` and
+  both pass under the DATA-008 editable-venv recipe. Base existing focused
+  tests pass, while base plus only the accepted test times out, matching the
+  expected pre-fix behavior. `requests-7433` can be counted as live-validated by
+  MAT-021 corrected-harness evidence; the original MAT-020 artifact remains a
+  record of the invalid import-path timeout.
+- Commit: pending in MAT-021 completion commit.
+- Push: pending.
+- Next: coordinator can continue constrained source/test materialization with
+  `requests-7328` as the compact next row or `click-3434` as the next
+  formatter-family row.
+- Blockers: none.

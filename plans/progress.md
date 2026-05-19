@@ -7175,8 +7175,8 @@ meaningful work. Do not replace this file with a daily reset.
   shadow-scorer top candidate remains the failing
   `amount_cents -> available_cents` decoy. Guarded decision remains
   `remain_shadow_only`, and product routing remains shadow-only.
-- Commit: pending.
-- Push: pending.
+- Commit: `e89e1ef` documentation/evidence.
+- Push: documentation/evidence commit pushed successfully to `origin/main`.
 - Next: coordinator should review why `MODEL-015` direct replay top-ranked the
   passing candidate while the full matrix residual report still records the
   failing `available_cents` decoy as shadow-scorer top. Decide whether this is

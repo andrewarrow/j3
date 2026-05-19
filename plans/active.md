@@ -294,8 +294,8 @@ Review before assigning more work if:
   top candidate remains the failing `amount_cents -> available_cents` decoy.
   Guarded decision remains `remain_shadow_only`; product routing remains
   shadow-only.
-- Commit: pending.
-- Push: pending.
+- Commit: `e89e1ef` documentation/evidence.
+- Push: documentation/evidence commit pushed successfully to `origin/main`.
 - Tests: `python cli.py run-transition-shadow-matrix --matrix
   examples/transition_shadow_matrix.json --out
   /tmp/j3-trans-016-expanded-standard-after-model015 --json` -> passed;

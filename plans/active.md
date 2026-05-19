@@ -170,37 +170,22 @@ This is the live coordinator board. Keep it current and compact.
   all seven original constrained held-out rows are accounted for, DATA-029
   `pytest-14466` and DATA-035 `scrapy-7351` remain reference rows outside the
   held-out count, and the next recommended bounded workstream is
-  `repo_convention_builder`, starting with `requests-7423`.
+  `repo_convention_builder`, starting with `requests-7423`. `MAT-027` now
+  materializes and live-validates `psf/requests#7423` with exact accepted-diff
+  parity using reusable `insert_pytest_fixture_after_anchor` convention
+  records. Remaining non-materialized MAT-007 counts are now
+  `current_structured_action = 4`, `general_typed_builder = 0`,
+  `repo_convention_builder = 3`, `constrained_local_generator = 0`, and
+  `not_currently_expressible = 2`.
 
 ## Active Tasks
 
-### `MAT-027`: Held-out Requests conftest convention candidate
-
-- Status: active
-- Owner: worker.
-- Scope: attempt `psf/requests#7423` with reusable repo-local pytest
-  fixture/conftest convention action records. Allowed writes are focused
-  repo-convention materializer/planner extensions and tests as needed, focused
-  `docs/MAT_027_*`, generated artifacts under `/tmp`, and plan updates. Avoid
-  transition scoring, issue/PR ranking, validation-policy changes,
-  local-knowledge records, matrix manifests, and unrelated materializer
-  families.
-- Acceptance: determine pinned base/head refs, accepted changed files,
-  validation command, mutation scope, candidate-after diff/hash metadata,
-  accepted-diff comparison, and live validation result for `requests-7423`.
-  Use reusable convention action kinds rather than a PR-named action. Requests
-  validation must import checkout-local source with `PYTHONPATH=src` or use the
-  DATA-008 editable-venv recipe. If target selection, conftest insertion,
-  local fixture convention detection, parity, or validation blocks, record the
-  exact blocker without broadening scope silently.
-- Tests: focused repo-convention/materializer tests if code changes are made,
-  JSON/report checks if artifacts are written,
-  `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and live
-  focused validation when materialized.
+No active worker task is recorded after `MAT-027` completion.
 
 ## Ready Queue
 
-No separate ready worker task is queued while `MAT-027` is active.
+No separate ready worker task is queued until coordinator review selects the
+next bounded repo-convention row.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
@@ -225,6 +210,25 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `MAT-027`: materialized `psf/requests#7423` from base
+  `e8d2c015eecda8273612dd4562425e00cd164ba5` to accepted head
+  `da905d0eb1de1184d323d39dfc2ce2b423df7bee`. The candidate changed only
+  `tests/conftest.py`, recorded candidate-after diff/hash/convention metadata
+  plus mutation scope, and used reusable
+  `insert_pytest_fixture_after_anchor` action records. Full accepted-diff
+  parity and repo-convention scoped parity are true. Live focused validation
+  polluted `HTTP_PROXY`, `HTTPS_PROXY`, and `ALL_PROXY` while importing
+  checkout-local Requests with `PYTHONPATH=src`; the selected test
+  `tests/test_requests.py::TestRequests::test_HTTP_200_OK_GET_ALTERNATIVE`
+  passed. Remaining non-materialized MAT-007 counts are
+  `current_structured_action = 4`, `general_typed_builder = 0`,
+  `repo_convention_builder = 3`, `constrained_local_generator = 0`, and
+  `not_currently_expressible = 2`. Artifacts:
+  `docs/MAT_027_REQUESTS_7423_CONFTEST_CONVENTION_CANDIDATE_2026-05-19.md`,
+  `/tmp/j3-mat-027-requests-7423/final/candidate.json`,
+  `/tmp/j3-mat-027-requests-7423/final/report.md`,
+  `/tmp/j3-mat-027-requests-7423/final/candidate.diff`, and
+  `/tmp/j3-mat-027-requests-7423/accepted.diff`.
 - `MAT-026`: refreshed constrained-source closure coverage after MAT-020
   through MAT-025. All seven original MAT-007/MAT-019 held-out
   `constrained_local_generator` rows are now materialized and live-validated:

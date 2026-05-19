@@ -6029,3 +6029,44 @@ meaningful work. Do not replace this file with a daily reset.
 - Next: dispatch a worker for `MAT-027` to attempt `psf/requests#7423` with
   reusable repo-local pytest fixture/conftest convention action records.
 - Blockers: none.
+
+### 2026-05-19 - MAT-027 - Requests #7423 conftest convention materialization
+
+- Owner: worker MAT-027.
+- Files changed: `j3/heldout_repo_convention_candidate.py`,
+  `tests/test_heldout_repo_convention_candidate.py`,
+  `docs/MAT_027_REQUESTS_7423_CONFTEST_CONVENTION_CANDIDATE_2026-05-19.md`,
+  `plans/active.md`, `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `python -m py_compile j3/heldout_repo_convention_candidate.py
+  tests/test_heldout_repo_convention_candidate.py` -> passed; `pytest
+  tests/test_heldout_repo_convention_candidate.py -q` -> 3 passed; live fresh
+  checkout run `PYTHONPATH=/Users/aa/os/j3 python -m
+  j3.heldout_repo_convention_candidate --candidate requests-7423 --repo-path
+  /tmp/j3-mat-027-requests-7423/repo --accepted-diff
+  /tmp/j3-mat-027-requests-7423/accepted.diff --out
+  /tmp/j3-mat-027-requests-7423/final/candidate.json --report
+  /tmp/j3-mat-027-requests-7423/final/report.md --diff-out
+  /tmp/j3-mat-027-requests-7423/final/candidate.diff --validate
+  --validation-timeout-seconds 90` -> validated; validation command
+  `HTTP_PROXY=http://127.0.0.1:1 HTTPS_PROXY=http://127.0.0.1:1
+  ALL_PROXY=http://127.0.0.1:1 PYTHONPATH=src python -m pytest
+  tests/test_requests.py::TestRequests::test_HTTP_200_OK_GET_ALTERNATIVE -q`
+  -> `1 passed in 0.62s`; `python -m json.tool
+  /tmp/j3-mat-027-requests-7423/final/candidate.json` -> passed; `pytest
+  tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check` ->
+  passed.
+- Result: materialized `psf/requests#7423` from base
+  `e8d2c015eecda8273612dd4562425e00cd164ba5` to accepted head
+  `da905d0eb1de1184d323d39dfc2ce2b423df7bee`. The candidate changed only
+  `tests/conftest.py`, recorded candidate-after diff/hash/convention metadata
+  plus mutation scope, and used reusable `insert_pytest_fixture_after_anchor`
+  action records. Full accepted-diff parity and repo-convention scoped parity
+  are true. Remaining non-materialized MAT-007 counts are now
+  `current_structured_action = 4`, `general_typed_builder = 0`,
+  `repo_convention_builder = 3`, `constrained_local_generator = 0`, and
+  `not_currently_expressible = 2`.
+- Commit: pending worker commit.
+- Push: pending worker push.
+- Next: coordinator should review `MAT-027` and choose the next bounded
+  repo-convention row from `click-3405`, `requests-7315`, or `pytest-14429`.
+- Blockers: none.

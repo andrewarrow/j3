@@ -3502,7 +3502,7 @@ Long-term target:
 
 ### MAT-027: Held-out Requests conftest convention candidate
 
-- Status: active
+- Status: done
 - Why: after `MAT-026`, the original constrained-source bucket is closed and
   the remaining bounded capability gap is the 4-row
   `repo_convention_builder` bucket. `psf/requests#7423` is the smallest
@@ -3527,12 +3527,24 @@ Long-term target:
   JSON/report checks if artifacts are written,
   `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and live
   focused validation when materialized.
+- Completion note: materialized `psf/requests#7423` from base
+  `e8d2c015eecda8273612dd4562425e00cd164ba5` to accepted head
+  `da905d0eb1de1184d323d39dfc2ce2b423df7bee` with reusable
+  `insert_pytest_fixture_after_anchor`. The candidate changed only
+  `tests/conftest.py`, matched the accepted diff exactly, recorded
+  candidate-after diff/hash/convention metadata, and passed focused live
+  validation with invalid proxy environment variables while importing
+  checkout-local Requests via `PYTHONPATH=src`. Remaining non-materialized
+  MAT-007 counts are `current_structured_action = 4`,
+  `general_typed_builder = 0`, `repo_convention_builder = 3`,
+  `constrained_local_generator = 0`, and `not_currently_expressible = 2`.
 
 ## Next Recommended Queue
 
 Start with these unless fresh evidence changes the order:
 
-1. Complete active `MAT-027` for `psf/requests#7423`, the smallest remaining
-   `repo_convention_builder` row from the MAT-007 panel.
+1. Coordinator review of `MAT-027`, then choose the next bounded
+   `repo_convention_builder` row from `click-3405`, `requests-7315`, or
+   `pytest-14429`.
 2. Separately decide whether to pursue the `TRANS-012` shadow-advice-only
    residual examples; product transition routing remains shadow-only.

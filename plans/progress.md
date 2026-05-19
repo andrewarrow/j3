@@ -4404,3 +4404,37 @@ meaningful work. Do not replace this file with a daily reset.
 - Next: use the inventory as the link target for `SCALE-002` data provenance
   and release policy.
 - Blockers: none.
+
+### 2026-05-19 - MODEL-004 - Mapping key/value target evidence
+
+- Owner: worker Bernoulli (`019e3e0d-7779-7831-9884-589e7f6fc9ac`).
+- Files changed: `j3/transition_action_scoring.py`,
+  `j3/transition_scorer_advice.py`,
+  `tests/test_transition_action_scoring.py`,
+  `tests/test_transition_scorer_advice.py`, `plans/active.md`,
+  `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `python -m py_compile j3/transition_action_scoring.py
+  j3/transition_scorer_advice.py tests/test_transition_action_scoring.py
+  tests/test_transition_scorer_advice.py tests/test_transition_shadow_scorer.py`
+  -> passed; `pytest tests/test_transition_action_scoring.py -q` -> 18
+  passed; `pytest tests/test_transition_scorer_advice.py -q` -> 5 passed;
+  `pytest tests/test_transition_shadow_scorer.py -q` -> 4 passed; `pytest
+  tests/test_transition_action_scoring.py tests/test_transition_scorer_advice.py
+  tests/test_transition_shadow_scorer.py -q` -> 27 passed; `pytest
+  tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check` ->
+  passed.
+- Result: added mapping-target evidence to the shadow transition scorer for
+  `change_dict_key`, `change_dict_value`, `add_dict_key`, and
+  `change_subscript_key`. V1/V2/V3 features now expose mapping target role,
+  same-mapping competition, assertion-delta value matches, missing-key
+  add/subscript matches, returned-mapping subscript matches, and key-renaming
+  decoy signals. Advice scoring now includes the candidate records in the
+  scorer group, so real shadow advice can detect competitors touching the same
+  mapping. Existing `add_keyword_arg` scorer behavior remains intact.
+  Production ranking gates remain unchanged and shadow-only.
+- Commit: pending.
+- Push: pending.
+- Next: coordinator should review the remaining scorer residuals and choose
+  between `MODEL-005` boundary/literal ranking, targeted residual evidence, or
+  another bounded ready task.
+- Blockers: none.

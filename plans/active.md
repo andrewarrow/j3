@@ -57,21 +57,13 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-- `MODEL-004`: distinguish mapping key and value target evidence in the
-  transition scorer.
-  - Owner: worker Bernoulli (`019e3e0d-7779-7831-9884-589e7f6fc9ac`).
-  - Scope: transition scorer/advice/ranking fixtures, features, and focused
-    tests for mapping key/value target evidence only.
-  - Acceptance: scorer evidence distinguishes `change_dict_key`,
-    `change_dict_value`, `add_dict_key`, and `change_subscript_key` when the
-    same mapping appears in competing candidates.
-  - Expected tests: focused transition action scoring/ranking tests,
-    `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+No active worker tasks are recorded after `MODEL-004`; coordinator should
+choose the next bounded task from the ready queue.
 
 ## Ready Queue
 
-`MODEL-004` is active. Keep `MODEL-005` queued until `MODEL-004` returns
-because it would touch the same scorer files.
+`MODEL-005` is the next queued scorer residual slice unless coordinator review
+chooses targeted residual evidence or another bounded task first.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
@@ -95,6 +87,14 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `MODEL-004`: added mapping target evidence to the shadow transition scorer
+  for `change_dict_key`, `change_dict_value`, `add_dict_key`, and
+  `change_subscript_key`. The V1/V2/V3 feature surfaces now expose mapping
+  target role, same-mapping competition, assertion-delta value matches,
+  missing-key add/subscript matches, and key-renaming decoy signals. Advice
+  scoring now passes candidate records into the group so real shadow advice can
+  observe same-mapping competitors. Production ranking gates remain unchanged
+  and shadow-only.
 - `SCALE-001`: added
   `docs/SCALE_001_LOCAL_PRETRAINING_FEASIBILITY_INVENTORY_2026-05-19.md`,
   which separates near-term local encoder and small-model work from

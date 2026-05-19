@@ -444,7 +444,7 @@ Long-term target:
 
 ### MODEL-004: Distinguish mapping key and value targets
 
-- Status: active
+- Status: done
 - Why: remaining residuals confuse mapping key mutation with value mutation
   despite existing structured actions.
 - Write scope: transition scorer fixtures/features/tests for mapping
@@ -453,6 +453,12 @@ Long-term target:
   `change_dict_value`, `add_dict_key`, and `change_subscript_key` when the same
   mapping appears in competing candidates.
 - Tests: focused transition action scoring/ranking tests.
+- Completion note: added shadow scorer mapping-target features for target role,
+  same-mapping competition, asserted-key value deltas, missing-key add/subscript
+  evidence, and asserted-key rename decoys. Focused fixtures distinguish
+  `change_dict_key`, `change_dict_value`, `add_dict_key`, and
+  `change_subscript_key` candidates competing on the same mapping while keeping
+  production ranking gates unchanged and shadow-only.
 
 ### MODEL-005: Improve boundary and literal action ranking
 

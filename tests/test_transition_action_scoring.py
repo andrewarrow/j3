@@ -131,6 +131,208 @@ def test_future_scorer_keeps_add_keyword_when_failure_hint_names_keyword() -> No
     assert score["features"]["unvalidated_add_keyword_arg_without_hint"] == 0.0
 
 
+def test_future_scorer_prefers_dict_value_delta_over_same_mapping_key_decoy() -> None:
+    groups = build_transition_action_choice_groups(
+        [
+            _mapping_candidate_row(
+                rank_index=1,
+                action="change_dict_key",
+                params={"from": "secure", "to": "__Secure-"},
+                passed=False,
+                model_score=1.0,
+                ranker_score=1.0,
+                failure_hint_score=1.0,
+            ),
+            _mapping_candidate_row(
+                rank_index=2,
+                action="change_dict_value",
+                params={"key": "secure", "from": True, "to": False},
+                passed=True,
+                model_score=0.0,
+                ranker_score=0.0,
+                failure_hint_score=0.0,
+            ),
+        ],
+        embedding_dim=8,
+    )
+
+    ranked = rank_transition_action_candidates(groups[0])
+    key_score = score_transition_action_candidate(groups[0]["candidates"][0], group=groups[0])
+    value_score = score_transition_action_candidate(groups[0]["candidates"][1], group=groups[0])
+
+    assert [candidate["rank_index"] for candidate in ranked] == [2, 1]
+    assert value_score["features"]["mapping_target_value_mutation"] == 1.0
+    assert value_score["features"]["mapping_value_key_matches_asserted_key"] == 1.0
+    assert value_score["features"]["mapping_value_matches_assertion_delta"] == 1.0
+    assert value_score["features"]["mapping_same_mapping_competitor_count"] == 1.0
+    assert key_score["features"]["mapping_target_key_mutation"] == 1.0
+    assert (
+        key_score["features"]["mapping_key_renames_asserted_key_with_value_assertion"]
+        == 1.0
+    )
+    assert value_score["score"] > key_score["score"]
+
+
+def test_future_scorer_prefers_add_dict_key_for_missing_same_mapping_key() -> None:
+    groups = build_transition_action_choice_groups(
+        [
+            _mapping_candidate_row(
+                rank_index=1,
+                action="change_dict_value",
+                params={"key": "retries", "from": 1, "to": 0},
+                passed=False,
+                failure_hints=[{"missing_keys": ["timeout"]}],
+            ),
+            _mapping_candidate_row(
+                rank_index=2,
+                action="add_dict_key",
+                params={"key": "timeout", "value": 30},
+                passed=True,
+                failure_hints=[{"missing_keys": ["timeout"]}],
+            ),
+        ],
+        embedding_dim=8,
+    )
+
+    ranked = rank_transition_action_candidates(groups[0])
+    add_score = score_transition_action_candidate(groups[0]["candidates"][1], group=groups[0])
+
+    assert [candidate["rank_index"] for candidate in ranked] == [2, 1]
+    assert add_score["features"]["mapping_target_add_key"] == 1.0
+    assert add_score["features"]["mapping_add_key_matches_missing_key"] == 1.0
+    assert add_score["features"]["mapping_same_mapping_competes_with_key_and_value"] == 1.0
+
+
+def test_future_scorer_prefers_returned_mapping_subscript_key_over_add_key_decoy() -> None:
+    groups = build_transition_action_choice_groups(
+        [
+            _mapping_candidate_row(
+                rank_index=1,
+                action="add_dict_key",
+                params={"key": "customer_name", "value": None},
+                passed=False,
+                failure_hints=[{"asserted_mapping_keys": ["customer_name"]}],
+                target_context={
+                    "mapping_name": "row",
+                    "dict_literal_keys": ["id", "name"],
+                },
+            ),
+            _mapping_candidate_row(
+                rank_index=2,
+                action="change_subscript_key",
+                params={"from": "name", "to": "customer_name"},
+                passed=True,
+                failure_hints=[{"asserted_mapping_keys": ["customer_name"]}],
+                target_context={
+                    "mapping_name": "row",
+                    "subscript_write_to_returned_mapping": True,
+                    "subscript_to_matches_returned_mapping_key": True,
+                },
+            ),
+        ],
+        embedding_dim=8,
+    )
+
+    ranked = rank_transition_action_candidates(groups[0])
+    subscript_score = score_transition_action_candidate(
+        groups[0]["candidates"][1],
+        group=groups[0],
+    )
+
+    assert [candidate["rank_index"] for candidate in ranked] == [2, 1]
+    assert subscript_score["features"]["mapping_target_subscript_key"] == 1.0
+    assert subscript_score["features"]["mapping_subscript_to_matches_asserted_key"] == 1.0
+    assert (
+        subscript_score["features"][
+            "mapping_subscript_to_matches_returned_mapping_key"
+        ]
+        == 1.0
+    )
+    assert subscript_score["features"]["mapping_same_mapping_competitor_count"] == 1.0
+
+
+def test_future_scorer_exposes_distinct_mapping_target_roles_for_same_mapping() -> None:
+    group = {
+        "candidate_count": 4,
+        "candidates": [
+            _scoring_candidate(
+                action="change_dict_key",
+                params={"from": "secure", "to": "__Secure-"},
+                validated=True,
+                model_score=0.0,
+                ranker_score=0.0,
+                failure_hint_score=0.0,
+                failure_hints=[],
+                target_context={"mapping_name": "attrs"},
+            ),
+            _scoring_candidate(
+                action="change_dict_value",
+                params={"key": "secure", "from": True, "to": False},
+                validated=True,
+                model_score=0.0,
+                ranker_score=0.0,
+                failure_hint_score=0.0,
+                failure_hints=[],
+                target_context={"mapping_name": "attrs"},
+            ),
+            _scoring_candidate(
+                action="add_dict_key",
+                params={"key": "expires", "value": None},
+                validated=True,
+                model_score=0.0,
+                ranker_score=0.0,
+                failure_hint_score=0.0,
+                failure_hints=[],
+                target_context={"mapping_name": "attrs"},
+            ),
+            _scoring_candidate(
+                action="change_subscript_key",
+                params={"from": "name", "to": "customer_name"},
+                validated=True,
+                model_score=0.0,
+                ranker_score=0.0,
+                failure_hint_score=0.0,
+                failure_hints=[],
+                target_context={"mapping_name": "attrs"},
+            ),
+        ],
+    }
+
+    role_features = [
+        score_transition_action_candidate(candidate, group=group)["features"]
+        for candidate in group["candidates"]
+    ]
+
+    assert [features["mapping_target_key_mutation"] for features in role_features] == [
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+    ]
+    assert [features["mapping_target_value_mutation"] for features in role_features] == [
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+    ]
+    assert [features["mapping_target_add_key"] for features in role_features] == [
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+    ]
+    assert [features["mapping_target_subscript_key"] for features in role_features] == [
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+    ]
+    assert all(
+        features["mapping_same_mapping_competes_with_key_and_value"] == 1.0
+        for features in role_features
+    )
+
+
 def test_baseline_orders_are_stable_and_distinct() -> None:
     group = build_transition_action_choice_groups(
         _fixture_candidate_rows(),
@@ -605,6 +807,75 @@ def _candidate_row(
     }
 
 
+def _mapping_candidate_row(
+    *,
+    rank_index: int,
+    action: str,
+    params: dict[str, object],
+    passed: bool,
+    model_score: float = 0.0,
+    ranker_score: float = 0.0,
+    failure_hint_score: float = 0.0,
+    failure_hints: list[dict[str, object]] | None = None,
+    target_context: dict[str, object] | None = None,
+) -> dict[str, object]:
+    context = (
+        dict(target_context)
+        if target_context is not None
+        else {
+            "mapping_name": "attrs",
+            "dict_literal_key_count": 3,
+            "dict_literal_keys": ["http_only", "same_site", "secure"],
+        }
+    )
+    hints = (
+        failure_hints
+        if failure_hints is not None
+        else [
+            {
+                "asserted_mapping_keys": ["secure"],
+                "assertions": [
+                    {"actual": True, "operator": "is", "expected": False},
+                ],
+            }
+        ]
+    )
+    return {
+        "task": "mapping_target",
+        "task_family": "mapping_key_value_target",
+        "source_type": "handcrafted",
+        "split": "validation",
+        "language": "python",
+        "phase": "ranked",
+        "repair_plan_id": "plan-mapping-target",
+        "file_path": "policy.py",
+        "action": action,
+        "symbol": "default_cookie_attributes",
+        "start_line": 3,
+        "end_line": 3,
+        "node_kind": "Dict" if action != "change_subscript_key" else "Subscript",
+        "params": params,
+        "reason": f"try {action}",
+        "model_score": model_score,
+        "failure_hint_score": failure_hint_score,
+        "ranker_score": ranker_score,
+        "target_context": context,
+        "before_source": "def attrs():\n    return {'secure': True}\n",
+        "patched_source": "def attrs():\n    return {'secure': False}\n",
+        "passed": passed,
+        "preferred": passed,
+        "rank_index": rank_index,
+        "first_passing_index": 2,
+        "is_first_pass": passed and rank_index == 2,
+        "passing_candidates": 1,
+        "failure_hints": hints,
+        "equivalent_candidate_ranks": [],
+        "overlapping_candidate_ranks": [],
+        "equivalent_passing_candidate_ranks": [],
+        "overlapping_passing_candidate_ranks": [],
+    }
+
+
 def _scoring_candidate(
     *,
     action: str,
@@ -615,6 +886,7 @@ def _scoring_candidate(
     failure_hint_score: float,
     failure_hints: list[dict[str, object]],
     passed: bool | None = None,
+    target_context: dict[str, object] | None = None,
 ) -> dict[str, object]:
     return {
         "rank_index": 1,
@@ -627,7 +899,11 @@ def _scoring_candidate(
             "node_kind": "Call",
             "params": params,
         },
-        "target_context": {"function_name": "load", "line_span": [2, 2]},
+        "target_context": (
+            dict(target_context)
+            if target_context is not None
+            else {"function_name": "load", "line_span": [2, 2]}
+        ),
         "source_context": {
             "available": True,
             "kind": "candidate_original_source",

@@ -121,6 +121,7 @@ def build_transition_scorer_advice(
             "phase": "real-patch-planning",
             **(dict(context) if context is not None else {}),
         },
+        "candidates": candidate_records,
     }
     scored_records = [
         {
@@ -232,6 +233,7 @@ def transition_scorer_ranked_candidates(
             "phase": "real-patch-planning",
             **(dict(context) if context is not None else {}),
         },
+        "candidates": candidate_records,
     }
     ranked_records = sorted(
         (

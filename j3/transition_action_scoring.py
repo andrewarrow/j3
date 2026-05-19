@@ -59,6 +59,15 @@ def score_transition_action_candidate(
         + 0.04 * min(features["failure_hint_count"], 3.0)
         + 0.02 * min(features["failure_hint_assertion_count"], 5.0)
         - 3.25 * features["unvalidated_add_keyword_arg_without_hint"]
+        + 2.25 * features["mapping_value_matches_assertion_delta"]
+        + 0.90 * features["mapping_value_key_matches_asserted_key"]
+        - 1.35 * features["mapping_key_renames_asserted_key_with_value_assertion"]
+        + 1.85 * features["mapping_add_key_matches_missing_key"]
+        + 0.55 * features["mapping_add_key_matches_asserted_key"]
+        + 1.65 * features["mapping_subscript_to_matches_asserted_key"]
+        + 0.85 * features["mapping_subscript_from_matches_missing_key"]
+        + 0.65 * features["mapping_subscript_to_matches_returned_mapping_key"]
+        + 0.75 * features["mapping_dict_key_to_matches_missing_key"]
         + _action_prior(str(features["action_kind"]))
         + _param_prior(str(features["action_kind"]), features["param_signature"])
     )
@@ -963,6 +972,205 @@ def _residual_examples(
     return residuals
 
 
+_MAPPING_ACTION_KINDS = {
+    "change_dict_key",
+    "change_dict_value",
+    "add_dict_key",
+    "change_subscript_key",
+}
+
+_MAPPING_TARGET_FEATURE_NAMES = (
+    "mapping_target_evidence_available",
+    "mapping_target_key_mutation",
+    "mapping_target_value_mutation",
+    "mapping_target_add_key",
+    "mapping_target_subscript_key",
+    "mapping_same_mapping_competitor_count",
+    "mapping_same_mapping_competes_with_key_and_value",
+    "mapping_value_key_matches_asserted_key",
+    "mapping_value_matches_assertion_delta",
+    "mapping_key_renames_asserted_key_with_value_assertion",
+    "mapping_add_key_matches_missing_key",
+    "mapping_add_key_matches_asserted_key",
+    "mapping_subscript_to_matches_asserted_key",
+    "mapping_subscript_from_matches_missing_key",
+    "mapping_subscript_to_matches_returned_mapping_key",
+    "mapping_dict_key_to_matches_missing_key",
+)
+
+
+def _mapping_target_features(
+    candidate: Mapping[str, object],
+    *,
+    action_kind: str,
+    params: Mapping[str, object],
+    target_context: Mapping[str, object],
+    failure_hints: Sequence[object],
+    group: Mapping[str, object] | None,
+) -> dict[str, float]:
+    features = {name: 0.0 for name in _MAPPING_TARGET_FEATURE_NAMES}
+    if action_kind not in _MAPPING_ACTION_KINDS:
+        return features
+
+    features["mapping_target_evidence_available"] = 1.0
+    role = _mapping_target_role(action_kind)
+    if role == "key":
+        features["mapping_target_key_mutation"] = 1.0
+    elif role == "value":
+        features["mapping_target_value_mutation"] = 1.0
+    elif role == "add_key":
+        features["mapping_target_add_key"] = 1.0
+    elif role == "subscript_key":
+        features["mapping_target_subscript_key"] = 1.0
+
+    asserted_keys, missing_keys = _mapping_hint_key_sets(failure_hints)
+    assertions = [
+        _mapping(assertion)
+        for hint in failure_hints
+        for assertion in _list(_mapping(hint).get("assertions"))
+    ]
+
+    if action_kind == "change_dict_value":
+        key = params.get("key", target_context.get("dict_value_key"))
+        if isinstance(key, str) and key in asserted_keys:
+            features["mapping_value_key_matches_asserted_key"] = 1.0
+        if _mapping_value_matches_assertion_delta(params, assertions):
+            features["mapping_value_matches_assertion_delta"] = 1.0
+
+    if action_kind == "change_dict_key":
+        original = params.get("from", target_context.get("dict_key_from"))
+        replacement = params.get("to", target_context.get("dict_key_to"))
+        if isinstance(original, str) and original in asserted_keys and assertions:
+            features["mapping_key_renames_asserted_key_with_value_assertion"] = 1.0
+        if isinstance(replacement, str) and replacement in missing_keys:
+            features["mapping_dict_key_to_matches_missing_key"] = 1.0
+
+    if action_kind == "add_dict_key":
+        key = params.get("key")
+        if isinstance(key, str) and key in missing_keys:
+            features["mapping_add_key_matches_missing_key"] = 1.0
+        if isinstance(key, str) and key in asserted_keys:
+            features["mapping_add_key_matches_asserted_key"] = 1.0
+
+    if action_kind == "change_subscript_key":
+        original = params.get("from")
+        replacement = params.get("to")
+        if isinstance(original, str) and original in missing_keys:
+            features["mapping_subscript_from_matches_missing_key"] = 1.0
+        if isinstance(replacement, str) and replacement in asserted_keys:
+            features["mapping_subscript_to_matches_asserted_key"] = 1.0
+        if target_context.get("subscript_to_matches_returned_mapping_key") is True:
+            features["mapping_subscript_to_matches_returned_mapping_key"] = 1.0
+
+    same_mapping_count, same_mapping_roles = _same_mapping_competition(
+        candidate,
+        group=group,
+    )
+    features["mapping_same_mapping_competitor_count"] = float(
+        max(same_mapping_count - 1, 0)
+    )
+    if "value" in same_mapping_roles and same_mapping_roles & {
+        "key",
+        "add_key",
+        "subscript_key",
+    }:
+        features["mapping_same_mapping_competes_with_key_and_value"] = 1.0
+    return features
+
+
+def _mapping_target_role(action_kind: str) -> str:
+    if action_kind == "change_dict_value":
+        return "value"
+    if action_kind == "add_dict_key":
+        return "add_key"
+    if action_kind == "change_subscript_key":
+        return "subscript_key"
+    if action_kind == "change_dict_key":
+        return "key"
+    return ""
+
+
+def _mapping_hint_key_sets(failure_hints: Sequence[object]) -> tuple[set[str], set[str]]:
+    asserted_keys: set[str] = set()
+    missing_keys: set[str] = set()
+    for hint in failure_hints:
+        record = _mapping(hint)
+        asserted_keys.update(
+            str(key) for key in _list(record.get("asserted_mapping_keys")) if key
+        )
+        missing_keys.update(str(key) for key in _list(record.get("missing_keys")) if key)
+    return asserted_keys, missing_keys
+
+
+def _mapping_value_matches_assertion_delta(
+    params: Mapping[str, object],
+    assertions: Sequence[Mapping[str, object]],
+) -> bool:
+    original = params.get("from")
+    replacement = params.get("to")
+    for assertion in assertions:
+        if _same_json_scalar(original, assertion.get("actual")) and _same_json_scalar(
+            replacement,
+            assertion.get("expected"),
+        ):
+            return True
+    return False
+
+
+def _same_json_scalar(left: object, right: object) -> bool:
+    return left == right and type(left) is type(right)
+
+
+def _same_mapping_competition(
+    candidate: Mapping[str, object],
+    *,
+    group: Mapping[str, object] | None,
+) -> tuple[int, set[str]]:
+    signature = _mapping_target_signature(candidate)
+    if group is None or signature is None:
+        return 0, set()
+    roles: set[str] = set()
+    count = 0
+    for other in _list(group.get("candidates")):
+        other_record = _mapping(other)
+        other_action = _mapping(other_record.get("action"))
+        other_kind = str(other_action.get("kind", ""))
+        if other_kind not in _MAPPING_ACTION_KINDS:
+            continue
+        if _mapping_target_signature(other_record) == signature:
+            count += 1
+            roles.add(_mapping_target_role(other_kind))
+    return count, roles
+
+
+def _mapping_target_signature(candidate: Mapping[str, object]) -> tuple[object, ...] | None:
+    action = _mapping(candidate.get("action"))
+    action_kind = str(action.get("kind", ""))
+    if action_kind not in _MAPPING_ACTION_KINDS:
+        return None
+    target_context = _mapping(candidate.get("target_context"))
+    file_path = action.get("file_path")
+    symbol = action.get("symbol")
+    mapping_name = target_context.get("mapping_name")
+    if isinstance(mapping_name, str) and mapping_name:
+        return ("mapping_name", file_path, symbol, mapping_name)
+    dict_keys = tuple(
+        sorted(str(key) for key in _list(target_context.get("dict_literal_keys")))
+    )
+    if dict_keys:
+        return ("dict_literal", file_path, symbol, dict_keys)
+    if target_context.get("subscript_write_to_returned_mapping") is True:
+        return ("returned_mapping", file_path, symbol)
+    return (
+        "target",
+        file_path,
+        symbol,
+        action.get("node_kind"),
+        action.get("start_line"),
+        action.get("end_line"),
+    )
+
+
 def _candidate_score_features(
     candidate: Mapping[str, object],
     *,
@@ -980,6 +1188,14 @@ def _candidate_score_features(
     action_kind = str(action.get("kind", ""))
     validated = validation.get("validated") is True
     keyword_hint_match = _failure_hints_name_keyword_path(params, failure_hints)
+    mapping_features = _mapping_target_features(
+        candidate,
+        action_kind=action_kind,
+        params=params,
+        target_context=target_context,
+        failure_hints=failure_hints,
+        group=group,
+    )
     ranker_score = _score_value(scores.get("ranker_score"))
     model_score = _score_value(scores.get("model_score"))
     failure_hint_score = _score_value(scores.get("failure_hint_score"))
@@ -1016,6 +1232,7 @@ def _candidate_score_features(
         "failure_hint_assertion_count": float(
             sum(len(_list(_mapping(hint).get("assertions"))) for hint in failure_hints)
         ),
+        **mapping_features,
     }
 
 
@@ -1064,6 +1281,8 @@ def _candidate_v2_features(
         "rank_index_first": 1.0 if rank_index == 1.0 else 0.0,
         "rank_index_second": 1.0 if rank_index == 2.0 else 0.0,
     }
+    for name in _MAPPING_TARGET_FEATURE_NAMES:
+        features[name] = float(base[name])
     _add_feature(features, f"action:{action_kind}", 1.0)
 
     for field in ("file_path", "symbol", "node_kind", "source_type"):

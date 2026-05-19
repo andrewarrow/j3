@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 
 from j3.actions import PatchAction, PatchActionKind, PatchTarget
-from j3.failure_hints import PytestFailureHint
+from j3.failure_hints import AssertionComparison, PytestFailureHint
 from j3.synth import SourceEdit
 from j3.transition_scorer_advice import (
     build_transition_scorer_advice,
@@ -163,6 +163,51 @@ def test_ranked_candidates_keep_add_keyword_when_hint_names_missing_keyword() ->
     assert ranked == (add_keyword, literal)
 
 
+def test_ranked_candidates_use_same_mapping_key_value_target_evidence() -> None:
+    key_decoy = _patch_candidate(
+        kind=PatchActionKind.CHANGE_DICT_KEY,
+        params={"from": "secure", "to": "__Secure-"},
+        patched_source="def load():\n    return {'__Secure-': True}\n",
+        model_score=1.0,
+        ranker_score=1.0,
+        failure_hint_score=1.0,
+        target_context={
+            "mapping_name": "attrs",
+            "dict_key_from": "secure",
+            "dict_key_from_in_same_mapping": True,
+            "dict_key_to": "__Secure-",
+        },
+    )
+    value_candidate = _patch_candidate(
+        kind=PatchActionKind.CHANGE_DICT_VALUE,
+        params={"key": "secure", "from": True, "to": False},
+        patched_source="def load():\n    return {'secure': False}\n",
+        model_score=0.0,
+        ranker_score=0.0,
+        failure_hint_score=0.0,
+        target_context={
+            "mapping_name": "attrs",
+            "dict_value_key": "secure",
+            "dict_value_key_in_same_mapping": True,
+        },
+    )
+    hints = (
+        PytestFailureHint(
+            asserted_mapping_keys={"secure"},
+            assertions=[
+                AssertionComparison(actual=True, operator="is", expected=False)
+            ],
+        ),
+    )
+
+    ranked = transition_scorer_ranked_candidates(
+        [key_decoy, value_candidate],
+        candidate_hints=[hints, hints],
+    )
+
+    assert ranked == (value_candidate, key_decoy)
+
+
 def test_advice_records_keyword_hint_fields_and_remains_shadow_only(tmp_path) -> None:
     add_keyword = _patch_candidate(
         kind=PatchActionKind.ADD_KEYWORD_ARG,
@@ -237,6 +282,7 @@ def _patch_candidate(
     model_score: float,
     ranker_score: float,
     failure_hint_score: float,
+    target_context: dict[str, object] | None = None,
 ) -> CandidatePatch:
     original_source = "def load():\n    return fetch()\n"
     return CandidatePatch(
@@ -265,5 +311,9 @@ def _patch_candidate(
         model_score=model_score,
         failure_hint_score=failure_hint_score,
         ranker_score=ranker_score,
-        target_context={"function_name": "load", "line_span": [2, 2]},
+        target_context=(
+            dict(target_context)
+            if target_context is not None
+            else {"function_name": "load", "line_span": [2, 2]}
+        ),
     )

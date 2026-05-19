@@ -6,6 +6,7 @@ from textwrap import dedent
 
 from j3.heldout_source_region_candidate import (
     _accepted_diff_comparison,
+    build_click_default_map_split_spec,
     build_click_write_usage_spec,
     _mark_expression_scanner_source_replacement,
     build_pytest_mark_expression_scanner_spec,
@@ -427,6 +428,114 @@ def test_materializes_click_write_usage_candidate_with_reusable_actions(
     assert "test_command_write_usage_no_args" in test_after["diff"]
 
 
+def test_click_default_map_split_spec_uses_reusable_action_kinds(
+    tmp_path: Path,
+) -> None:
+    repo = _write_click_default_map_split_fixture_repo(tmp_path / "click")
+
+    spec = build_click_default_map_split_spec(repo)
+
+    assert spec.source_action.kind == SourceRegionActionKind.REPLACE_DELIMITED_REGION
+    assert spec.test_action.kind == "insert_pytest_function_after_anchor"
+    assert [action.kind for action in spec.text_actions] == [
+        "insert_text_around_anchor",
+        "insert_text_around_anchor",
+        "insert_text_around_anchor",
+    ]
+    action_kind_text = " ".join(
+        [spec.source_action.kind.value, spec.test_action.kind]
+        + [action.kind for action in spec.text_actions]
+    )
+    assert "click_3364" not in action_kind_text
+    assert spec.base_ref == "8bd8b4a074c55c03b6eb5666edc44a9c43df38a2"
+    assert spec.accepted_head_ref == "94004f1b5a4a982e8e33ef8d5f00cfb0e1dabddd"
+    assert spec.validation_command.startswith("PYTHONPATH=src ")
+    assert spec.allowed_write_paths == (
+        "CHANGES.rst",
+        "docs/commands.md",
+        "docs/conf.py",
+        "src/click/core.py",
+        "tests/test_defaults.py",
+    )
+
+
+def test_materializes_click_default_map_split_candidate_with_reusable_actions(
+    tmp_path: Path,
+) -> None:
+    accepted_repo = _write_click_default_map_split_fixture_repo(tmp_path / "accepted")
+    accepted_candidate = materialize_heldout_source_region_candidate(
+        accepted_repo,
+        build_click_default_map_split_spec(
+            accepted_repo,
+            base_ref=_repo_head(accepted_repo),
+        ),
+        write=True,
+        validate=False,
+    )
+    accepted_diff = tmp_path / "accepted.diff"
+    accepted_diff.write_text(
+        str(accepted_candidate.candidate_after["candidate_diff"]),
+        encoding="utf-8",
+    )
+
+    repo = _write_click_default_map_split_fixture_repo(tmp_path / "candidate")
+    candidate = materialize_heldout_source_region_candidate(
+        repo,
+        build_click_default_map_split_spec(repo, base_ref=_repo_head(repo)),
+        write=True,
+        validate=False,
+        accepted_diff_path=accepted_diff,
+    )
+    record = candidate.to_record()
+
+    assert record["status"] == "materialized"
+    assert record["accepted_head_ref"] == "94004f1b5a4a982e8e33ef8d5f00cfb0e1dabddd"
+    assert record["residual_labels"] == ["candidate_validation_deferred"]
+    assert record["mutation_scope"]["actual_changed_files"] == [
+        "CHANGES.rst",
+        "docs/commands.md",
+        "docs/conf.py",
+        "src/click/core.py",
+        "tests/test_defaults.py",
+    ]
+    assert record["mutation_scope"]["writes_outside_allowlist"] == []
+    assert record["accepted_diff_comparison"]["normalized_diff_equal"] is True
+    assert (
+        record["accepted_diff_comparison"]["scope_comparisons"]["source_test"][
+            "normalized_diff_equal"
+        ]
+        is True
+    )
+    assert (
+        record["accepted_diff_comparison"]["scope_comparisons"]["source_docs_test"][
+            "normalized_diff_equal"
+        ]
+        is True
+    )
+    action_kinds = [action["kind"] for action in record["action_records"]]
+    assert action_kinds == [
+        "replace_delimited_region",
+        "insert_pytest_function_after_anchor",
+        "insert_text_around_anchor",
+        "insert_text_around_anchor",
+        "insert_text_around_anchor",
+    ]
+    source_after = record["candidate_after"]["source_file"]["candidate_after"]
+    assert source_after["ast_parse_ok"] is True
+    assert source_after["signature_preserved"] is None
+    assert "self.type.split_envvar_value(value)" in source_after["diff"]
+    test_after = record["candidate_after"]["test_file"]["candidate_after"]
+    assert test_after["ast_parse_ok"] is True
+    assert "test_default_map_nargs" in test_after["diff"]
+    text_files = record["candidate_after"]["text_files"]
+    assert [item["target_file"] for item in text_files] == [
+        "CHANGES.rst",
+        "docs/commands.md",
+        "docs/conf.py",
+    ]
+    assert "### Multi-value parameters" in text_files[1]["candidate_after"]["diff"]
+
+
 def _write_requests_fixture_repo(repo: Path) -> Path:
     (repo / "src" / "requests").mkdir(parents=True)
     (repo / "tests").mkdir(parents=True)
@@ -595,6 +704,191 @@ def _write_click_write_usage_fixture_repo(repo: Path) -> Path:
 
                 visible = strip_ansi(rendered)
                 assert visible == "Usage: cli [OPTIONS]\\n"
+            '''
+        ).lstrip(),
+        encoding="utf-8",
+    )
+    subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+    subprocess.run(["git", "add", "."], cwd=repo, check=True)
+    subprocess.run(
+        [
+            "git",
+            "-c",
+            "user.name=j3-test",
+            "-c",
+            "user.email=j3-test@example.invalid",
+            "commit",
+            "-q",
+            "-m",
+            "base",
+        ],
+        cwd=repo,
+        check=True,
+    )
+    return repo
+
+
+def _write_click_default_map_split_fixture_repo(repo: Path) -> Path:
+    (repo / "src" / "click").mkdir(parents=True)
+    (repo / "tests").mkdir(parents=True)
+    (repo / "docs").mkdir(parents=True)
+    (repo / "src" / "click" / "core.py").write_text(
+        dedent(
+            '''
+            import typing as t
+            import collections.abc as cabc
+
+
+            class ParameterSource:
+                COMMANDLINE = "COMMANDLINE"
+                DEFAULT = "DEFAULT"
+                DEFAULT_MAP = "DEFAULT_MAP"
+                ENVIRONMENT = "ENVIRONMENT"
+
+
+            UNSET = object()
+
+
+            class Parameter:
+                name = "point"
+                nargs = 1
+                type = object()
+
+                def value_from_envvar(self, ctx):
+                    return None
+
+                def get_default(self, ctx):
+                    return UNSET
+
+                def consume_value(
+                    self, ctx, opts: cabc.Mapping[str, t.Any]
+                ) -> tuple[t.Any, ParameterSource]:
+                    """Returns the parameter value produced by the parser."""
+                    value = opts.get(self.name, UNSET)  # type: ignore
+                    source = (
+                        ParameterSource.COMMANDLINE
+                        if value is not UNSET
+                        else ParameterSource.DEFAULT
+                    )
+
+                    if value is UNSET:
+                        envvar_value = self.value_from_envvar(ctx)
+                        if envvar_value is not None:
+                            value = envvar_value
+                            source = ParameterSource.ENVIRONMENT
+
+                    if value is UNSET:
+                        default_map_value = ctx.lookup_default(self.name)  # type: ignore[arg-type]
+                        if default_map_value is not None or ctx._default_map_has(self.name):
+                            value = default_map_value
+                            source = ParameterSource.DEFAULT_MAP
+
+                    if value is UNSET:
+                        default_value = self.get_default(ctx)
+                        if default_value is not UNSET:
+                            value = default_value
+                            source = ParameterSource.DEFAULT
+
+                    return value, source
+            '''
+        ).lstrip(),
+        encoding="utf-8",
+    )
+    (repo / "tests" / "test_defaults.py").write_text(
+        dedent(
+            '''
+            import pytest
+
+            import click
+            from click.core import UNSET
+
+
+            class _Marker:
+                pass
+
+
+            @pytest.mark.parametrize(
+                ("default_map", "args", "expected"),
+                [
+                    ({"value": "from-map"}, [], "from-map"),
+                    ({"value": lambda: "lazy-map"}, [], "lazy-map"),
+                    ({"value": None}, [], None),
+                    ({"value": "from-map"}, ["--opt"], _Marker),
+                ],
+            )
+            def test_default_map_with_callable_flag_value(runner, default_map, args, expected):
+                @click.command()
+                @click.option("--opt", "value", flag_value=_Marker, default=True)
+                def cli(value):
+                    click.echo(repr(value), nl=False)
+
+                kwargs = {}
+                if default_map is not None:
+                    kwargs["default_map"] = default_map
+                result = runner.invoke(cli, args, **kwargs)
+                assert result.exit_code == 0
+                assert result.output == repr(expected)
+
+
+            def test_unset_in_default_map(runner):
+                @click.command(
+                    context_settings={"default_map": {"port": UNSET}},
+                )
+                @click.option("--port", default=8000)
+                def cli(port):
+                    click.echo(f"port={port}")
+
+                result = runner.invoke(cli, [])
+                assert result.exit_code == 0
+                assert result.output.strip() == "port=8000"
+            '''
+        ).lstrip(),
+        encoding="utf-8",
+    )
+    (repo / "docs" / "commands.md").write_text(
+        dedent(
+            '''
+            And in action:
+
+            .. click:run::
+
+                invoke(cli, prog_name='cli', args=['runserver'], default_map={
+                    'runserver': {
+                        'port': 5000
+                    }
+                })
+            ```
+
+            ## Context Defaults
+
+            Starting with Click 2.0 you can override defaults for contexts.
+            '''
+        ).lstrip(),
+        encoding="utf-8",
+    )
+    (repo / "docs" / "conf.py").write_text(
+        dedent(
+            '''
+            extlinks = {
+                "issue": ("https://github.com/pallets/click/issues/%s", "#%s"),
+                "pr": ("https://github.com/pallets/click/pull/%s", "#%s"),
+            }
+            intersphinx_mapping = {
+                "python": ("https://docs.python.org/3/", None),
+            }
+
+            # HTML -----------------------------------------------------------------
+            '''
+        ).lstrip(),
+        encoding="utf-8",
+    )
+    (repo / "CHANGES.rst").write_text(
+        dedent(
+            '''
+            .. currentmodule:: click
+
+            Version 8.3.3
+            -------------
             '''
         ).lstrip(),
         encoding="utf-8",

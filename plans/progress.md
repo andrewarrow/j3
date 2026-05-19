@@ -4481,7 +4481,7 @@ meaningful work. Do not replace this file with a daily reset.
   teacher-assisted labels; checksum and split/leakage discipline; retention
   and redistribution classes; release exclusions; and a concrete checklist for
   a future durable training manifest task.
-- Commit: pending.
+- Commit: implementation/evidence pending final hash.
 - Push: pending.
 - Next: use the policy as the contract for the next durable training manifest
   task.
@@ -5857,4 +5857,44 @@ meaningful work. Do not replace this file with a daily reset.
   docs dimension, while `click-3420` is the broader ANSI wrapping row.
 - Next: dispatch a worker for `MAT-024` to attempt `pallets/click#3364` with
   reusable source-region plus docs/test insertion or refinement actions.
+- Blockers: none.
+
+### 2026-05-19 - MAT-024 - Click #3364 default_map source/docs/test materialization
+
+- Owner: worker MAT-024.
+- Files changed: `j3/heldout_source_region_candidate.py`,
+  `tests/test_heldout_source_region_candidate.py`,
+  `docs/MAT_024_CLICK_3364_SOURCE_DOCS_TEST_CANDIDATE_2026-05-19.md`,
+  `plans/active.md`, `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `python -m py_compile j3/heldout_source_region_candidate.py
+  tests/test_heldout_source_region_candidate.py` -> passed; `pytest
+  tests/test_heldout_source_region_candidate.py -q` -> 13 passed; live fresh
+  checkout run `PYTHONPATH=/Users/aa/os/j3 python -m
+  j3.heldout_source_region_candidate --candidate click-3364 --repo-path
+  /tmp/j3-mat-024-click-3364/live --accepted-diff
+  /tmp/j3-mat-024-click-3364/final/accepted.diff --out
+  /tmp/j3-mat-024-click-3364/final/candidate.json --report
+  /tmp/j3-mat-024-click-3364/final/report.md --diff-out
+  /tmp/j3-mat-024-click-3364/final/candidate.diff --validate
+  --validation-timeout-seconds 60` -> validated; validation command
+  `PYTHONPATH=src python -m pytest
+  tests/test_defaults.py::test_default_map_nargs -q` -> `5 passed in
+  0.02s`; `python -m json.tool
+  /tmp/j3-mat-024-click-3364/final/candidate.json` -> passed.
+- Result: materialized `pallets/click#3364` from base
+  `8bd8b4a074c55c03b6eb5666edc44a9c43df38a2` to accepted head
+  `94004f1b5a4a982e8e33ef8d5f00cfb0e1dabddd`. The candidate changed
+  `CHANGES.rst`, `docs/commands.md`, `docs/conf.py`, `src/click/core.py`, and
+  `tests/test_defaults.py`, recorded candidate-after diff/hash metadata plus
+  mutation scope, and used reusable `replace_delimited_region`,
+  `insert_pytest_function_after_anchor`, and `insert_text_around_anchor`
+  action records. Full accepted-diff parity, source/test scoped parity, and
+  source/docs/test scoped parity are all true. The first live attempt exposed
+  an exact target-selection blocker for function-name targeting because
+  `consume_value` is ambiguous in Click; the final row uses bounded delimited
+  source-region markers rather than adding class-qualified target selection.
+- Commit: pending.
+- Push: pending.
+- Next: coordinator should review `MAT-024` and decide whether to attempt the
+  broader `click-3420` ANSI wrapping constrained row.
 - Blockers: none.

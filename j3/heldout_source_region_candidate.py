@@ -30,6 +30,7 @@ HELDOUT_SOURCE_REGION_CANDIDATE_SCHEMA_VERSION = (
     "heldout-source-region-candidate-v1"
 )
 PYTEST_INSERTION_SCHEMA_VERSION = "repo-convention-pytest-insertion-v1"
+TEXT_INSERTION_SCHEMA_VERSION = "bounded-text-insertion-v1"
 DEFAULT_REQUESTS_BASE_REF = "b684dcb9bbf3aa557d1238e72062c4a29737dd1c"
 DEFAULT_REQUESTS_STREAM_WRAPPER_BASE_REF = (
     "0b401c76b6e80a4eecf3c690085b2553f6e261ca"
@@ -48,6 +49,12 @@ DEFAULT_CLICK_WRITE_USAGE_BASE_REF = (
 )
 DEFAULT_CLICK_WRITE_USAGE_HEAD_REF = (
     "0551bf53588ae87f462d336f24f853a156fefe3a"
+)
+DEFAULT_CLICK_DEFAULT_MAP_SPLIT_BASE_REF = (
+    "8bd8b4a074c55c03b6eb5666edc44a9c43df38a2"
+)
+DEFAULT_CLICK_DEFAULT_MAP_SPLIT_HEAD_REF = (
+    "94004f1b5a4a982e8e33ef8d5f00cfb0e1dabddd"
 )
 DEFAULT_PYTEST_SCANNER_BASE_REF = "7df5d80ff3a98714a1d3cdbe82941229e511f4b3"
 DEFAULT_VALIDATION_COMMAND = (
@@ -68,6 +75,10 @@ DEFAULT_CLICK_WRITE_USAGE_VALIDATION_COMMAND = (
     "tests/test_formatting.py::test_help_formatter_write_usage_without_args_styled_prefix "
     "tests/test_formatting.py::test_command_write_usage_no_args -q"
 )
+DEFAULT_CLICK_DEFAULT_MAP_SPLIT_VALIDATION_COMMAND = (
+    "PYTHONPATH=src python -m pytest "
+    "tests/test_defaults.py::test_default_map_nargs -q"
+)
 DEFAULT_PYTEST_SCANNER_VALIDATION_COMMAND = (
     "PYTHONPATH=src python -c "
     "\"from _pytest.mark.expression import Expression; "
@@ -84,6 +95,11 @@ REQUESTS_SESSIONS_PATH = "src/requests/sessions.py"
 REQUESTS_TEST_REQUESTS_PATH = "tests/test_requests.py"
 CLICK_FORMATTING_PATH = "src/click/formatting.py"
 CLICK_TEST_FORMATTING_PATH = "tests/test_formatting.py"
+CLICK_CORE_PATH = "src/click/core.py"
+CLICK_TEST_DEFAULTS_PATH = "tests/test_defaults.py"
+CLICK_COMMANDS_DOC_PATH = "docs/commands.md"
+CLICK_DOCS_CONF_PATH = "docs/conf.py"
+CLICK_CHANGES_PATH = "CHANGES.rst"
 PYTEST_EXPRESSION_PATH = "src/_pytest/mark/expression.py"
 PYTEST_MARK_EXPRESSION_TEST_PATH = "testing/test_mark_expression.py"
 
@@ -150,6 +166,49 @@ class PytestInsertionAction:
 
 
 @dataclass(frozen=True, slots=True)
+class TextInsertionAction:
+    """Reusable bounded text insertion for docs, changelogs, and config files."""
+
+    target_file: str
+    anchor_text: str
+    insertion_source: str
+    insert_once_contains: str
+    position: str = "after_anchor"
+    kind: str = "insert_text_around_anchor"
+    schema_version: str = TEXT_INSERTION_SCHEMA_VERSION
+    max_added_lines: int = 80
+    rationale: str | None = None
+
+    def __post_init__(self) -> None:
+        _validate_relative_path(self.target_file)
+        if self.position not in {"after_anchor", "before_anchor"}:
+            raise ValueError("position must be after_anchor or before_anchor")
+        if not self.anchor_text:
+            raise ValueError("anchor_text is required")
+        if not self.insert_once_contains:
+            raise ValueError("insert_once_contains is required")
+        if self.max_added_lines < 1:
+            raise ValueError("max_added_lines must be >= 1")
+
+    def to_record(self) -> dict[str, object]:
+        return {
+            "schema_version": self.schema_version,
+            "kind": self.kind,
+            "target": {
+                "file_path": self.target_file,
+                "position": self.position,
+            },
+            "constraints": {
+                "max_added_lines": self.max_added_lines,
+                "insert_once_contains": self.insert_once_contains,
+            },
+            "anchor_text": self.anchor_text,
+            "insertion_source": self.insertion_source,
+            "rationale": self.rationale,
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class HeldoutSourceRegionSpec:
     """Parameterized source/test candidate replay spec."""
 
@@ -166,6 +225,7 @@ class HeldoutSourceRegionSpec:
     allowed_write_paths: tuple[str, ...]
     source_action: SourceRegionAction
     test_action: PytestInsertionAction
+    text_actions: tuple[TextInsertionAction, ...] = field(default_factory=tuple)
     action_family_reuse_evidence: tuple[dict[str, object], ...] = field(
         default_factory=tuple
     )
@@ -174,6 +234,8 @@ class HeldoutSourceRegionSpec:
     def __post_init__(self) -> None:
         for path in (self.source_file, self.test_file, *self.allowed_write_paths):
             _validate_relative_path(path)
+        for action in self.text_actions:
+            _validate_relative_path(action.target_file)
 
 
 @dataclass(frozen=True, slots=True)
@@ -208,6 +270,38 @@ class PytestInsertionResult:
                 "diff": self.diff,
                 "ast_parse_ok": self.ast_parse_ok,
                 "ast_delta": _json_copy(self.ast_delta),
+                "sha256_before": self.sha256_before,
+                "sha256_after": self.sha256_after,
+            },
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class TextInsertionResult:
+    """Candidate-after metadata for a bounded text insertion action."""
+
+    status: str
+    target_file: str
+    insertion_line: int | None
+    added_line_count: int
+    diff: str
+    diff_summary: dict[str, object]
+    sha256_before: str
+    sha256_after: str
+    patched_source: str = field(repr=False)
+    wrote_file: bool = False
+
+    def to_record(self) -> dict[str, object]:
+        return {
+            "schema_version": "bounded-text-insertion-candidate-after-v1",
+            "status": self.status,
+            "target_file": self.target_file,
+            "insertion_line": self.insertion_line,
+            "wrote_file": self.wrote_file,
+            "candidate_after": {
+                "added_line_count": self.added_line_count,
+                "diff_summary": dict(self.diff_summary),
+                "diff": self.diff,
                 "sha256_before": self.sha256_before,
                 "sha256_after": self.sha256_after,
             },
@@ -592,6 +686,131 @@ def build_click_write_usage_spec(
     )
 
 
+def build_click_default_map_split_spec(
+    repo_path: Path,
+    *,
+    base_ref: str = DEFAULT_CLICK_DEFAULT_MAP_SPLIT_BASE_REF,
+    accepted_head_ref: str = DEFAULT_CLICK_DEFAULT_MAP_SPLIT_HEAD_REF,
+    validation_command: str = DEFAULT_CLICK_DEFAULT_MAP_SPLIT_VALIDATION_COMMAND,
+) -> HeldoutSourceRegionSpec:
+    """Build the held-out Click default_map multi-value splitting candidate."""
+
+    source_text = _repo_file(repo_path, CLICK_CORE_PATH).read_text(encoding="utf-8")
+    source_action = _click_default_map_split_source_action(source_text)
+    test_action = PytestInsertionAction(
+        target_file=CLICK_TEST_DEFAULTS_PATH,
+        anchor_function_name="test_default_map_with_callable_flag_value",
+        function_name="test_default_map_nargs",
+        insertion_source=_click_default_map_split_test_source(),
+        max_added_lines=60,
+        surrounding_blank_lines=2,
+        rationale=(
+            "insert default_map multi-value regression after the existing "
+            "default_map flag-value precedence coverage"
+        ),
+    )
+    text_actions = (
+        TextInsertionAction(
+            target_file=CLICK_CHANGES_PATH,
+            anchor_text=".. currentmodule:: click\n",
+            insertion_source=_click_default_map_split_changelog_source(),
+            insert_once_contains=":pr:`3364`",
+            max_added_lines=30,
+            rationale=(
+                "record the behavior fix in the current changelog section "
+                "without using a PR-specific action kind"
+            ),
+        ),
+        TextInsertionAction(
+            target_file=CLICK_COMMANDS_DOC_PATH,
+            anchor_text="## Context Defaults",
+            insertion_source=_click_default_map_split_commands_doc_source(),
+            insert_once_contains="### Multi-value parameters",
+            position="before_anchor",
+            max_added_lines=40,
+            rationale=(
+                "document multi-value default_map splitting next to the "
+                "default_map command example"
+            ),
+        ),
+        TextInsertionAction(
+            target_file=CLICK_DOCS_CONF_PATH,
+            anchor_text=(
+                'intersphinx_mapping = {\n'
+                '    "python": ("https://docs.python.org/3/", None),\n'
+                "}\n"
+            ),
+            insertion_source="myst_heading_anchors = 3\n",
+            insert_once_contains="myst_heading_anchors = 3",
+            max_added_lines=1,
+            rationale=(
+                "enable stable MyST heading anchors for the docs cross-reference "
+                "inserted by the commands documentation"
+            ),
+        ),
+    )
+    return HeldoutSourceRegionSpec(
+        candidate_id="mat-024-click-default-map-split",
+        repo_id="pallets/click",
+        repo_url="https://github.com/pallets/click",
+        repo_split="held_out",
+        base_ref=base_ref,
+        accepted_head_ref=accepted_head_ref,
+        reference_pr_url="https://github.com/pallets/click/pull/3364",
+        prompt=(
+            "Split string values read from default_map for multi-value Click "
+            "parameters the same way environment variable values are split."
+        ),
+        source_file=CLICK_CORE_PATH,
+        test_file=CLICK_TEST_DEFAULTS_PATH,
+        validation_command=validation_command,
+        allowed_write_paths=(
+            CLICK_CHANGES_PATH,
+            CLICK_COMMANDS_DOC_PATH,
+            CLICK_DOCS_CONF_PATH,
+            CLICK_CORE_PATH,
+            CLICK_TEST_DEFAULTS_PATH,
+        ),
+        source_action=source_action,
+        test_action=test_action,
+        text_actions=text_actions,
+        action_family_reuse_evidence=(
+            {
+                "action_kind": SourceRegionActionKind.REPLACE_DELIMITED_REGION.value,
+                "reused_from": [
+                    "MAT-008",
+                    "MAT-009",
+                    "MAT-020",
+                    "MAT-022",
+                    "MAT-023",
+                ],
+                "evidence": (
+                    "same bounded source-region action schema; target file, "
+                    "local default_map branch, and replacement are "
+                    "parameters"
+                ),
+            },
+            {
+                "action_kind": "insert_pytest_function_after_anchor",
+                "reused_from": ["MAT-008", "MAT-009", "MAT-020", "MAT-022"],
+                "evidence": (
+                    "same repo-convention pytest insertion shape; target "
+                    "test file, anchor function, and inserted pytest block "
+                    "are parameters"
+                ),
+            },
+            {
+                "action_kind": "insert_text_around_anchor",
+                "reused_from": ["MAT-017", "MAT-023-doc-gap"],
+                "evidence": (
+                    "same bounded text insertion shape; target file, anchor, "
+                    "position, and inserted docs text are parameters"
+                ),
+            },
+        ),
+    )
+
+
 def materialize_heldout_source_region_candidate(
     repo_path: Path,
     spec: HeldoutSourceRegionSpec,
@@ -605,7 +824,11 @@ def materialize_heldout_source_region_candidate(
 
     repo = repo_path.expanduser().resolve()
     blockers: list[dict[str, str]] = []
-    action_records = [spec.source_action.to_record(), spec.test_action.to_record()]
+    action_records = [
+        spec.source_action.to_record(),
+        spec.test_action.to_record(),
+        *[action.to_record() for action in spec.text_actions],
+    ]
 
     head = _git_stdout(repo, ("rev-parse", "HEAD"))
     if head and head != spec.base_ref:
@@ -620,6 +843,7 @@ def materialize_heldout_source_region_candidate(
     hashes_before = _file_hashes(repo, spec.allowed_write_paths)
     source_result: SourceRegionMaterializationResult | None = None
     test_result: PytestInsertionResult | None = None
+    text_results: list[TextInsertionResult] = []
 
     if not blockers:
         try:
@@ -646,6 +870,16 @@ def materialize_heldout_source_region_candidate(
             )
         except HeldoutSourceRegionCandidateError as error:
             blockers.append(error.blocker)
+
+    if not blockers:
+        for text_action in spec.text_actions:
+            try:
+                text_results.append(
+                    materialize_text_insertion(repo, text_action, write=write)
+                )
+            except HeldoutSourceRegionCandidateError as error:
+                blockers.append(error.blocker)
+                break
 
     hashes_after = _file_hashes(repo, spec.allowed_write_paths)
     candidate_diff = _git_diff(repo, spec.allowed_write_paths)
@@ -674,6 +908,10 @@ def materialize_heldout_source_region_candidate(
     accepted_diff_comparison = _accepted_diff_comparison(
         candidate_diff,
         accepted_diff_path=accepted_diff_path,
+        scope_path_sets={
+            "source_test": (spec.source_file, spec.test_file),
+            "source_docs_test": tuple(spec.allowed_write_paths),
+        },
     )
     if accepted_diff_comparison.get("accepted_diff_available") is False:
         blockers.append(
@@ -696,9 +934,11 @@ def materialize_heldout_source_region_candidate(
     else:
         test_record = test_result.to_record()
 
+    text_records = [result.to_record() for result in text_results]
     candidate_after = {
         "source_file": source_record,
         "test_file": test_record,
+        "text_files": text_records,
         "candidate_diff": candidate_diff,
         "candidate_diff_summary": _diff_summary(candidate_diff),
         "candidate_changed_files": changed_files,
@@ -708,7 +948,11 @@ def materialize_heldout_source_region_candidate(
     mutation_scope = {
         "mode": "heldout_source_region_source_test",
         "allowed_write_paths": list(spec.allowed_write_paths),
-        "planned_write_files": [spec.source_file, spec.test_file],
+        "planned_write_files": [
+            spec.source_file,
+            spec.test_file,
+            *[action.target_file for action in spec.text_actions],
+        ],
         "actual_changed_files": changed_files,
         "writes_outside_allowlist": writes_outside_allowlist,
         "only_accepted_source_test_files_changed": (
@@ -848,6 +1092,81 @@ def materialize_pytest_insertion(
     )
 
 
+def materialize_text_insertion(
+    repo_path: Path,
+    action: TextInsertionAction,
+    *,
+    write: bool = False,
+) -> TextInsertionResult:
+    """Insert bounded text before or after an anchor and record metadata."""
+
+    repo = repo_path.expanduser().resolve()
+    target_path = _repo_file(repo, action.target_file)
+    before = target_path.read_text(encoding="utf-8")
+    if action.insert_once_contains in before:
+        return TextInsertionResult(
+            status="already_applied",
+            target_file=action.target_file,
+            insertion_line=None,
+            added_line_count=0,
+            diff="",
+            diff_summary={"hunk_count": 0, "changed_line_count": 0},
+            sha256_before=_sha256_text(before),
+            sha256_after=_sha256_text(before),
+            patched_source=before,
+            wrote_file=False,
+        )
+
+    added_line_count = sum(
+        1 for line in action.insertion_source.splitlines() if line.strip()
+    )
+    if added_line_count > action.max_added_lines:
+        raise HeldoutSourceRegionCandidateError(
+            "text insertion added-line budget exceeded",
+            blocker={
+                "field": "text_insertion",
+                "reason": "bounded_text_insertion_blocked",
+                "message": "text insertion added-line budget exceeded",
+            },
+        )
+
+    anchor_index = before.find(action.anchor_text)
+    if anchor_index == -1:
+        raise HeldoutSourceRegionCandidateError(
+            f"text anchor not found in {action.target_file}",
+            blocker={
+                "field": "text_insertion",
+                "reason": "bounded_text_insertion_blocked",
+                "message": f"text anchor not found in {action.target_file}",
+            },
+        )
+
+    if action.position == "after_anchor":
+        insertion_index = anchor_index + len(action.anchor_text)
+    else:
+        insertion_index = anchor_index
+    patched = (
+        before[:insertion_index] + action.insertion_source + before[insertion_index:]
+    )
+    if write:
+        target_path.write_text(patched, encoding="utf-8")
+
+    insertion_line = before[:insertion_index].count("\n") + 1
+    diff = _unified_diff(before, patched, action.target_file)
+    return TextInsertionResult(
+        status="materialized" if write else "candidate_after",
+        target_file=action.target_file,
+        insertion_line=insertion_line,
+        added_line_count=added_line_count,
+        diff=diff,
+        diff_summary=_diff_summary(diff),
+        sha256_before=_sha256_text(before),
+        sha256_after=_sha256_text(patched),
+        patched_source=patched,
+        wrote_file=write,
+    )
+
+
 def write_candidate_artifacts(
     candidate: HeldoutSourceRegionCandidate,
     *,
@@ -895,7 +1214,9 @@ def render_candidate_report(candidate: HeldoutSourceRegionCandidate) -> str:
         f"- Accepted diff normalized match: "
         f"`{comparison.get('normalized_diff_equal')}`",
         f"- Accepted source/test scoped match: "
-        f"`{comparison.get('scoped_normalized_diff_equal')}`",
+        f"`{comparison.get('scope_comparisons', {}).get('source_test', {}).get('normalized_diff_equal', comparison.get('scoped_normalized_diff_equal'))}`",
+        f"- Accepted source/docs/test scoped match: "
+        f"`{comparison.get('scope_comparisons', {}).get('source_docs_test', {}).get('normalized_diff_equal')}`",
         f"- Zero hosted LLM source judgment: "
         f"`{candidate.zero_hosted_llm_source_judgment}`",
         "",
@@ -1331,6 +1652,153 @@ def _click_write_usage_test_source() -> str:
     )
 
 
+def _click_default_map_split_source_action(source: str) -> SourceRegionAction:
+    return SourceRegionAction(
+        kind=SourceRegionActionKind.REPLACE_DELIMITED_REGION,
+        target=SourceRegionTarget(
+            file_path=CLICK_CORE_PATH,
+            region_name="default_map_multivalue_string_split",
+            start_marker=(
+                "if default_map_value is not None or ctx._default_map_has(self.name):"
+            ),
+            end_marker="if value is UNSET:",
+        ),
+        replacement_source=_click_default_map_split_source_replacement(),
+        constraints=SourceRegionConstraints(
+            max_changed_source_lines=7,
+            must_preserve_signature=False,
+        ),
+        rationale=(
+            "split string default_map values for multi-value parameters before "
+            "the normal type-cast path sees them"
+        ),
+    )
+
+
+def _click_default_map_split_source_replacement() -> str:
+    return "\n".join(
+        [
+            "                value = default_map_value",
+            "                source = ParameterSource.DEFAULT_MAP",
+            "",
+            "                # A string from default_map must be split for multi-value",
+            "                # parameters, matching value_from_envvar behavior.",
+            "                if isinstance(value, str) and self.nargs != 1:",
+            "                    value = self.type.split_envvar_value(value)",
+            "",
+            "",
+        ]
+    )
+
+
+def _click_default_map_split_test_source() -> str:
+    return "\n".join(
+        [
+            "@pytest.mark.parametrize(",
+            '    ("default_map", "option_kwargs", "cli_args", "expected"),',
+            "    [",
+            "        # String is split for nargs=2 option.",
+            '        ({"point": "3 4"}, {"nargs": 2, "type": int}, [], (3, 4)),',
+            "        # String is split for explicit Tuple type.",
+            '        ({"point": "hello world"}, {"type": (str, str)}, [], ("hello", "world")),',
+            "        # Already-structured tuple passes through unchanged.",
+            '        ({"point": ("a", "b")}, {"nargs": 2}, [], ("a", "b")),',
+            "        # Already-structured list passes through unchanged.",
+            '        ({"point": [5, 6]}, {"nargs": 2, "type": int}, [], (5, 6)),',
+            "        # CLI args override default_map for nargs > 1.",
+            "        (",
+            '            {"point": "3 4"},',
+            '            {"nargs": 2, "type": int},',
+            '            ["--point", "10", "20"],',
+            "            (10, 20),",
+            "        ),",
+            "    ],",
+            ")",
+            "def test_default_map_nargs(runner, default_map, option_kwargs, cli_args, expected):",
+            "    \"\"\"A string in ``default_map`` for an option with ``nargs > 1`` should be",
+            "    split the same way an environment variable string is split.",
+            "",
+            "    Regression test for https://github.com/pallets/click/issues/2745.",
+            "    \"\"\"",
+            "",
+            "    @click.command()",
+            '    @click.option("--point", **option_kwargs)',
+            "    def cli(point):",
+            "        click.echo(repr(point))",
+            "",
+            "    result = runner.invoke(cli, cli_args, default_map=default_map)",
+            "    assert result.exit_code == 0",
+            "    assert result.output.strip() == repr(expected)",
+        ]
+    )
+
+
+def _click_default_map_split_changelog_source() -> str:
+    return "\n".join(
+        [
+            "",
+            "Version 8.4.0",
+            "-------------",
+            "",
+            "Unreleased",
+            "",
+            "-   :class:`ParamType` typing improvements. :pr:`3371`",
+            "",
+            "    -   :class:`ParamType` is now a generic abstract base class,",
+            "        parameterized by its converted value type.",
+            "    -   :meth:`~ParamType.convert` return types are narrowed on all",
+            "        concrete types (``str`` for :class:`STRING`, ``int`` for",
+            "        :class:`INT`, etc.).",
+            "    -   :meth:`~ParamType.to_info_dict` returns specific",
+            "        :class:`~typing.TypedDict` subclasses instead of",
+            "        ``dict[str, Any]``.",
+            "    -   :class:`CompositeParamType` and the number-range base are now",
+            "        generic with abstract methods.",
+            "-   Split string values from ``default_map`` for parameters with ``nargs > 1``",
+            "    or :class:`Tuple` type, matching environment variable behavior.",
+            "    :issue:`2745` :pr:`3364`",
+            "",
+        ]
+    )
+
+
+def _click_default_map_split_commands_doc_source() -> str:
+    return "\n".join(
+        [
+            "### Multi-value parameters",
+            "",
+            "When a `default_map` value is a string for a parameter with `nargs > 1` or a",
+            "{class}`Tuple` type, the string is split automatically, the same way an",
+            "environment variable would be. By default, values are split on whitespace. See",
+            "[Multiple Options from Environment",
+            "Values](options.md#multiple-options-from-environment-values) for details on",
+            "splitting behavior.",
+            "",
+            "```python",
+            "default_map = {",
+            '    "draw": {',
+            '        "point": "3 4",  # split into ("3", "4") for nargs=2',
+            '        "color": "red",  # passed as-is for nargs=1',
+            "    }",
+            "}",
+            "```",
+            "",
+            "You can also pass an already-structured tuple or list, which will be used as-is",
+            "without splitting:",
+            "",
+            "```python",
+            "default_map = {",
+            '    "draw": {',
+            '        "point": (3, 4),  # used directly',
+            "    }",
+            "}",
+            "```",
+            "",
+            "",
+        ]
+    )
+
+
 def _line_number(source: str, needle: str) -> int:
     for index, line in enumerate(source.splitlines(), start=1):
         if line == needle:
@@ -1522,6 +1990,7 @@ def _accepted_diff_comparison(
     candidate_diff: str,
     *,
     accepted_diff_path: Path | None,
+    scope_path_sets: dict[str, Sequence[str]] | None = None,
 ) -> dict[str, object]:
     if accepted_diff_path is None:
         return {
@@ -1543,6 +2012,13 @@ def _accepted_diff_comparison(
         candidate_changed_files,
     )
     normalized_scoped_accepted = _normalize_diff(scoped_accepted_diff)
+    scope_comparisons: dict[str, dict[str, object]] = {}
+    for name, paths in (scope_path_sets or {}).items():
+        scope_comparisons[name] = _diff_scope_comparison(
+            candidate_diff,
+            accepted_diff,
+            paths,
+        )
     return {
         "accepted_diff_available": True,
         "candidate_changed_files": candidate_changed_files,
@@ -1556,6 +2032,7 @@ def _accepted_diff_comparison(
         "scoped_normalized_diff_equal": (
             normalized_candidate == normalized_scoped_accepted
         ),
+        "scope_comparisons": scope_comparisons,
         "parity_diff": ""
         if normalized_candidate == normalized_accepted
         else "".join(
@@ -1564,6 +2041,35 @@ def _accepted_diff_comparison(
                 normalized_candidate.splitlines(keepends=True),
                 fromfile="accepted.diff",
                 tofile="candidate.diff",
+            )
+        ),
+    }
+
+
+def _diff_scope_comparison(
+    candidate_diff: str,
+    accepted_diff: str,
+    paths: Sequence[str],
+) -> dict[str, object]:
+    candidate_scoped_diff = _filter_diff_to_paths(candidate_diff, paths)
+    accepted_scoped_diff = _filter_diff_to_paths(accepted_diff, paths)
+    normalized_candidate = _normalize_diff(candidate_scoped_diff)
+    normalized_accepted = _normalize_diff(accepted_scoped_diff)
+    return {
+        "paths": list(paths),
+        "candidate_changed_files": _diff_changed_files(candidate_scoped_diff),
+        "accepted_changed_files": _diff_changed_files(accepted_scoped_diff),
+        "candidate_diff_line_count": len(candidate_scoped_diff.splitlines()),
+        "accepted_diff_line_count": len(accepted_scoped_diff.splitlines()),
+        "normalized_diff_equal": normalized_candidate == normalized_accepted,
+        "parity_diff": ""
+        if normalized_candidate == normalized_accepted
+        else "".join(
+            difflib.unified_diff(
+                normalized_accepted.splitlines(keepends=True),
+                normalized_candidate.splitlines(keepends=True),
+                fromfile="accepted.scope.diff",
+                tofile="candidate.scope.diff",
             )
         ),
     }
@@ -1661,6 +2167,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             "requests-7433",
             "requests-7328",
             "click-3434",
+            "click-3364",
         ),
         default="requests-7427",
     )
@@ -1682,6 +2189,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         spec = build_requests_redirect_history_spec(args.repo_path)
     elif args.candidate == "click-3434":
         spec = build_click_write_usage_spec(args.repo_path)
+    elif args.candidate == "click-3364":
+        spec = build_click_default_map_split_spec(args.repo_path)
     else:
         spec = build_requests_no_proxy_domain_boundary_spec(args.repo_path)
     candidate = materialize_heldout_source_region_candidate(

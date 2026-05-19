@@ -157,39 +157,23 @@ This is the live coordinator board. Keep it current and compact.
   source/test scoped parity is true. Remaining non-materialized MAT-007 counts
   are now `current_structured_action = 4`, `general_typed_builder = 0`,
   `repo_convention_builder = 4`, `constrained_local_generator = 2`, and
-  `not_currently_expressible = 2`. `MAT-024` is now assigned to
-  `pallets/click#3364`, the smaller remaining Click row with source, docs, and
-  tests.
+  `not_currently_expressible = 2`. `MAT-024` now materializes and
+  live-validates the smaller remaining Click row, `pallets/click#3364`, with
+  exact full accepted-diff parity across source, docs, changelog/config docs,
+  and tests. Remaining non-materialized MAT-007 counts are now
+  `current_structured_action = 4`, `general_typed_builder = 0`,
+  `repo_convention_builder = 4`, `constrained_local_generator = 1`, and
+  `not_currently_expressible = 2`.
 
 ## Active Tasks
 
-### `MAT-024`: Held-out Click default-map splitting source/docs/test candidate
-
-- Status: active
-- Owner: worker.
-- Scope: attempt `pallets/click#3364` with reusable bounded source-region plus
-  docs/test insertion or refinement action records. Allowed writes are focused
-  extensions to `j3/heldout_source_region_candidate.py`,
-  `tests/test_heldout_source_region_candidate.py`, focused `docs/MAT_024_*`,
-  generated artifacts under `/tmp`, and plan updates. Avoid transition
-  scoring, issue/PR ranking, local-knowledge records, matrix manifests, and
-  unrelated materializer families.
-- Acceptance: determine pinned base/head refs, accepted changed files,
-  validation command, mutation scope, candidate-after diff/hash metadata,
-  accepted-diff comparison, and live validation result for `click-3364`. Use
-  reusable action kinds rather than a PR-named action. Explicitly separate full
-  accepted-diff parity from source/test scoped parity and source/docs/test
-  scoped parity if the accepted PR spans docs and tests. If target selection,
-  source-region materialization, docs/test insertion/refinement, parity, or
-  validation blocks, record the exact blocker.
-- Tests: focused source-region candidate tests, JSON/report checks if added,
-  `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and live
-  focused validation when materialized.
+No active worker task is recorded after `MAT-024` completion. The coordinator
+should review the result before assigning the broader `click-3420` ANSI
+wrapping row.
 
 ## Ready Queue
 
-No separate ready worker task is queued while `MAT-024` is active. `click-3420`
-remains the broader ANSI wrapping row after `MAT-024`.
+`click-3420` remains the broader ANSI wrapping row after `MAT-024`.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
@@ -214,6 +198,23 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `MAT-024`: materialized `pallets/click#3364` from base
+  `8bd8b4a074c55c03b6eb5666edc44a9c43df38a2` to accepted head
+  `94004f1b5a4a982e8e33ef8d5f00cfb0e1dabddd`. The candidate changed
+  `CHANGES.rst`, `docs/commands.md`, `docs/conf.py`, `src/click/core.py`, and
+  `tests/test_defaults.py`, recorded candidate-after diff/hash metadata plus
+  mutation scope, and used reusable `replace_delimited_region`,
+  `insert_pytest_function_after_anchor`, and `insert_text_around_anchor`
+  action records. Full accepted-diff parity, source/test scoped parity, and
+  source/docs/test scoped parity are all true. Live focused validation used
+  checkout-local source with `PYTHONPATH=src` and passed:
+  `tests/test_defaults.py::test_default_map_nargs`. Artifacts:
+  `docs/MAT_024_CLICK_3364_SOURCE_DOCS_TEST_CANDIDATE_2026-05-19.md`,
+  `/tmp/j3-mat-024-click-3364/final/candidate.json`,
+  `/tmp/j3-mat-024-click-3364/final/report.md`,
+  `/tmp/j3-mat-024-click-3364/final/candidate.diff`,
+  `/tmp/j3-mat-024-click-3364/final/accepted.diff`, and
+  `/tmp/j3-mat-024-click-3364/final/accepted-files.txt`.
 - `MAT-023`: materialized `pallets/click#3434` from base
   `7c99ebe23b931f27562d926814423cce85fd9766` to PR head
   `0551bf53588ae87f462d336f24f853a156fefe3a`. The candidate changed only

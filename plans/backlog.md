@@ -3382,7 +3382,7 @@ Long-term target:
 
 ### MAT-024: Held-out Click default-map splitting source/docs/test candidate
 
-- Status: active
+- Status: done
 - Why: after `MAT-023`, the remaining constrained held-out rows are
   `click-3420` and `click-3364`. `click-3364` is the smaller row and pressure
   tests whether the source-region materializer can handle a bounded source
@@ -3405,12 +3405,27 @@ Long-term target:
 - Tests: focused source-region candidate tests, JSON/report checks if added,
   `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and live
   focused validation when materialized.
+- Completion note: materialized `pallets/click#3364` from base
+  `8bd8b4a074c55c03b6eb5666edc44a9c43df38a2` to accepted head
+  `94004f1b5a4a982e8e33ef8d5f00cfb0e1dabddd`. The candidate changed
+  `CHANGES.rst`, `docs/commands.md`, `docs/conf.py`, `src/click/core.py`, and
+  `tests/test_defaults.py`; full accepted-diff parity, source/test scoped
+  parity, and source/docs/test scoped parity are true. Live focused validation
+  passed `PYTHONPATH=src python -m pytest
+  tests/test_defaults.py::test_default_map_nargs -q` with `5 passed in
+  0.02s`. Artifacts:
+  `docs/MAT_024_CLICK_3364_SOURCE_DOCS_TEST_CANDIDATE_2026-05-19.md`,
+  `/tmp/j3-mat-024-click-3364/final/candidate.json`,
+  `/tmp/j3-mat-024-click-3364/final/report.md`,
+  `/tmp/j3-mat-024-click-3364/final/candidate.diff`,
+  `/tmp/j3-mat-024-click-3364/final/accepted.diff`, and
+  `/tmp/j3-mat-024-click-3364/final/accepted-files.txt`.
 
 ## Next Recommended Queue
 
 Start with these unless fresh evidence changes the order:
 
-1. Continue constrained source/test materialization with `MAT-024`
-   `click-3364`, then reassess the broader `click-3420` ANSI wrapping row.
+1. Reassess the broader `click-3420` ANSI wrapping constrained row after
+   `MAT-024`.
 2. Separately decide whether to pursue the `TRANS-012` shadow-advice-only
    residual examples; product transition routing remains shadow-only.

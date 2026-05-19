@@ -68,7 +68,7 @@ This is the live coordinator board. Keep it current and compact.
   - Expected tests: focused transition action scoring/ranking tests,
     `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
 - `SCALE-001`: draft local pretraining feasibility inventory.
-  - Owner: coordinator dispatch in progress; worker pending.
+  - Owner: worker Lovelace (`019e3e0f-4b73-7141-a80d-cb3da6da5fb2`).
   - Scope: focused documentation under `docs/` plus required plan updates.
   - Acceptance: separates near-term local encoders from frontier-scale
     language/code pretraining and lists the local data that exists versus what

@@ -4377,7 +4377,8 @@ meaningful work. Do not replace this file with a daily reset.
   write scope is a focused training feasibility document under `docs/`, while
   `MODEL-004` owns the transition scorer files. `MODEL-005` remains queued
   until the scorer worker returns to avoid overlapping scorer edits.
-- Commit: pending.
-- Push: pending.
-- Next: dispatch a worker for `SCALE-001` after plan consistency checks pass.
+- Commit: fb8df9e.
+- Push: succeeded.
+- Next: worker Lovelace (`019e3e0f-4b73-7141-a80d-cb3da6da5fb2`) is running
+  `SCALE-001`.
 - Blockers: none.

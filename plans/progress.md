@@ -6193,3 +6193,23 @@ meaningful work. Do not replace this file with a daily reset.
 - Next: coordinator should review `MAT-029` and assign the final remaining
   repo-convention row, `click-3405`, if still desired.
 - Blockers: none.
+
+### 2026-05-19 - Coordinator Review And Dispatch - MAT-030
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, and
+  `plans/progress.md`.
+- Tests: `python -m py_compile j3/heldout_repo_convention_candidate.py
+  tests/test_heldout_repo_convention_candidate.py` plus `pytest
+  tests/test_heldout_repo_convention_candidate.py -q` -> 9 passed; `pytest
+  tests/test_plan_consistency.py -q` -> 6 passed; `python -m json.tool
+  /tmp/j3-mat-029-pytest-14429/final/candidate.json` -> passed; `git diff
+  --check` -> passed.
+- Result: reviewed `MAT-029`; the artifact records the accepted changelog-only
+  mismatch, exact repo-convention and source/test scoped parity, allowed
+  mutation scope, candidate-after diff/hash metadata, reusable action records,
+  and focused live validation. `origin/main` is aligned after the worker push.
+- Next: dispatch a worker for `MAT-030` to attempt the final remaining
+  repo-convention row, `pallets/click#3405`, with reusable pager helper and
+  Click test-convention action records.
+- Blockers: none.

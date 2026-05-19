@@ -3619,11 +3619,39 @@ Long-term target:
   `repo_convention_builder = 1`, `constrained_local_generator = 0`, and
   `not_currently_expressible = 2`.
 
+### MAT-030: Held-out Click pager convention candidate
+
+- Status: active
+- Why: `click-3405` is the final remaining `repo_convention_builder` row after
+  `MAT-029`. It is the broadest remaining convention case, spanning Click
+  pager helper behavior plus local monkeypatch, skip, fixture, and stream test
+  conventions.
+- Write scope: focused repo-convention materializer/planner extensions and
+  tests as needed, optional `docs/MAT_030_*`, generated artifacts under
+  `/tmp`, and plan updates. Avoid transition scoring, issue/PR ranking,
+  validation-policy changes, local-knowledge records, matrix manifests, and
+  unrelated materializer families.
+- Acceptance: attempt `pallets/click#3405` using reusable repo-convention and
+  bounded source/test update action records, not a PR-named action kind.
+  Determine and record pinned base/head refs, accepted changed files,
+  validation command, mutation scope, candidate-after diff/hash metadata,
+  accepted-diff comparison, and live validation result. If the accepted PR
+  spans changelog or docs, separate full accepted-diff parity from source/test
+  scoped parity explicitly. If target selection, pager helper construction,
+  local monkeypatch/skip/fixture/stream test convention detection, parity, or
+  validation blocks, record the exact blocker without broadening scope
+  silently.
+- Tests: focused repo-convention/materializer tests if code changes are made,
+  JSON/report checks if artifacts are written,
+  `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and live
+  focused validation when materialized.
+
 ## Next Recommended Queue
 
 Start with these unless fresh evidence changes the order:
 
-1. After coordinator review, dispatch the remaining repo-convention row,
-   `click-3405`.
+1. Review `MAT-030` after completion, then reconcile repo-convention closure
+   coverage if the final row is materialized or record the blocker if it is
+   not.
 2. Separately decide whether to pursue the `TRANS-012` shadow-advice-only
    residual examples; product transition routing remains shadow-only.

@@ -190,12 +190,36 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-No active worker task is assigned after `MAT-029` completion.
+### `MAT-030`: Held-out Click pager convention candidate
+
+- Status: active
+- Owner: worker MAT-030.
+- Started: 2026-05-19.
+- Write scope: focused repo-convention materializer/planner extensions and
+  tests as needed, optional `docs/MAT_030_*`, generated artifacts under
+  `/tmp`, and plan updates. Avoid transition scoring, issue/PR ranking,
+  validation-policy changes, local-knowledge records, matrix manifests, and
+  unrelated materializer families.
+- Acceptance: attempt `pallets/click#3405` using reusable repo-convention and
+  bounded source/test update action records, not a PR-named action kind.
+  Determine and record pinned base/head refs, accepted changed files,
+  validation command, mutation scope, candidate-after diff/hash metadata,
+  accepted-diff comparison, and live validation result. If the accepted PR
+  spans changelog or docs, separate full accepted-diff parity from source/test
+  scoped parity explicitly. If target selection, pager helper construction,
+  local monkeypatch/skip/fixture/stream test convention detection, parity, or
+  validation blocks, record the exact blocker without broadening scope
+  silently.
+- Expected tests: focused repo-convention/materializer tests if code changes
+  are made, JSON/report checks if artifacts are written,
+  `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and live
+  focused validation when materialized.
 
 ## Ready Queue
 
-Next recommended bounded worker task: materialize the remaining
-repo-convention row, `click-3405`, after coordinator review and assignment.
+No queued worker task remains while `MAT-030` is active. After it completes,
+review repo-convention closure coverage and decide whether to dispatch a
+coverage refresh or move to the shadow-advice-only residual examples.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 

@@ -137,18 +137,34 @@ This is the live coordinator board. Keep it current and compact.
   `insert_pytest_function_after_anchor` records; live validation reached the
   local `pytest-httpbin` redirect endpoint but timed out under the bounded
   run, so the row is recorded with `candidate_validation_timeout` rather than
-  as a validation pass.
+  as a validation pass. `MAT-021` is now isolating that timeout before the
+  constrained-source queue moves to another row.
 
 ## Active Tasks
 
-No active worker task is currently assigned. Coordinator review should decide
-whether to drill into the `requests-7433` local validation timeout or continue
-to the next constrained source/test row.
+### `MAT-021`: Requests #7433 validation timeout drilldown
+
+- Status: active
+- Owner: worker.
+- Scope: inspect only the `requests-7433` live-validation timeout and focused
+  evidence artifacts. Allowed writes are focused `docs/MAT_021_*`, optional
+  generated artifacts under `/tmp`, and plan updates unless a tiny reusable
+  validation-report field is required. Avoid new materializer action kinds,
+  transition scoring, issue/PR ranking, local-knowledge changes, matrix
+  manifests, and unrelated constrained rows.
+- Acceptance: distinguish candidate regression from accepted-head behavior and
+  local harness/setup timeout. Compare candidate, accepted head, and base when
+  useful; run bounded diagnostic validation with explicit timeouts; record
+  command, runtime, stdout/stderr tails, exact blocker or pass/fail conclusion,
+  and whether `MAT-020` can be counted as live-validated.
+- Tests: diagnostic validation commands, `pytest tests/test_plan_consistency.py
+  -q`, and `git diff --check`.
 
 ## Ready Queue
 
-No ready worker task is currently queued after `MAT-020`; the next useful task
-depends on coordinator review of the validation-timeout blocker.
+No separate ready worker task is queued while `MAT-021` is active. After the
+timeout is classified, the constrained-source queue can move to
+`requests-7328` or `click-3434` if the validation evidence is sufficient.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 

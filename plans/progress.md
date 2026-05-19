@@ -5655,9 +5655,9 @@ meaningful work. Do not replace this file with a daily reset.
   kind was added. A reusable `surrounding_blank_lines` pytest-insertion
   parameter was added so class-method insertions can match local formatting
   without changing action kind.
-- Commit: 49527cc implementation; completion metadata recorded in follow-up
-  plan-only commit.
-- Push: implementation commit pushed successfully to `origin/main`.
+- Commit: 49527cc implementation; completion metadata: 960ca86.
+- Push: implementation and completion-metadata commits pushed successfully to
+  `origin/main`.
 - Next: coordinator should review whether to drill into the local
   `pytest-httpbin` redirect timeout before counting this as live-validated; if
   continuing constrained materialization, `requests-7328` remains the compact
@@ -5665,3 +5665,22 @@ meaningful work. Do not replace this file with a daily reset.
 - Blockers: live focused validation timed out after reaching the local
   `pytest-httpbin` redirect endpoint; recorded as
   `candidate_validation_timeout`.
+
+### 2026-05-19 - Coordinator Review And Dispatch - MAT-021
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, and
+  `plans/progress.md`.
+- Tests: `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check` -> passed.
+- Result: reviewed `MAT-020` and the follow-up focused verification. Exact
+  source/test diff parity and reusable action coverage are established, but the
+  live-validation timeout is still decision-relevant: the coordinator should
+  not silently count the row as live-validated or skip to another constrained
+  row until the timeout is classified.
+- Next: dispatch a worker for `MAT-021` with ownership of focused
+  validation-timeout evidence, docs/artifacts, and plan updates. The worker
+  should compare candidate, accepted head, and base behavior when useful, then
+  record whether `MAT-020` remains validation-blocked or can be counted as
+  live-validated.
+- Blockers: none.

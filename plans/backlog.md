@@ -3260,6 +3260,31 @@ Long-term target:
   `/tmp/j3-mat-020-requests-7433-final/candidate.diff`, and
   `/tmp/j3-mat-020-requests-7433-final/accepted.diff`.
 
+### MAT-021: Requests #7433 validation timeout drilldown
+
+- Status: active
+- Why: `MAT-020` proved exact source/test accepted-diff parity for
+  `psf/requests#7433`, but the live focused validation timed out after
+  reaching the local `pytest-httpbin` redirect endpoint. Before counting the
+  row as live-validated or moving the constrained-source queue forward, isolate
+  whether the timeout belongs to the candidate, the accepted head, the base
+  harness, or the local validation environment.
+- Write scope: focused `docs/MAT_021_*`, optional generated artifacts under
+  `/tmp`, and plan updates. Avoid new materializer action kinds, transition
+  scoring, issue/PR ranking, validation-policy changes, local-knowledge
+  records, matrix manifests, and unrelated constrained rows. Only touch
+  `j3/heldout_source_region_candidate.py` or focused tests if a tiny reusable
+  validation-report field is required to record the evidence accurately.
+- Acceptance: rerun or reproduce the `requests-7433` validation with bounded
+  timeouts; compare candidate, accepted head, and base behavior when useful;
+  record command lines, timeout limits, runtimes, stdout/stderr tails, and
+  whether the observed timeout is a candidate regression, accepted-head
+  behavior, base/harness behavior, or local setup issue. Explicitly state
+  whether `MAT-020` can be counted as live-validated or remains
+  `candidate_validation_timeout`.
+- Tests: diagnostic validation commands, `pytest tests/test_plan_consistency.py
+  -q`, and `git diff --check`.
+
 ## Next Recommended Queue
 
 Start with these unless fresh evidence changes the order:
@@ -3267,7 +3292,7 @@ Start with these unless fresh evidence changes the order:
 1. Coordinator review should decide whether to drill into the
    `requests-7433` local validation timeout or accept the materialization
    evidence as exact source/test parity with validation blocked by the local
-   `pytest-httpbin` redirect path.
+   `pytest-httpbin` redirect path. `MAT-021` is active for this drilldown.
 2. If continuing constrained source/test materialization, keep
    `requests-7328` as the compact alternate and `click-3434` as the next
    formatter-family row.

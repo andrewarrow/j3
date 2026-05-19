@@ -821,7 +821,7 @@ Long-term target:
 
 ### TRANS-014: Rerun expanded standard residual evidence after MODEL-013
 
-- Status: active
+- Status: done
 - Owner: worker TRANS-014, assigned on 2026-05-19.
 - Why: `MODEL-013` directly replayed the nested-package missing-import
   residual, but the committed expanded-standard residual evidence still
@@ -841,6 +841,48 @@ Long-term target:
 - Tests: `run-transition-shadow-matrix`, checksum verification,
   `report-transition-residuals --matrix`, `decide-transition-guarded-trial`,
   `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+- Completion note: reran the expanded standard matrix under
+  `/tmp/j3-trans-014-expanded-standard-after-model013`. Totals and suite gates
+  are unchanged from `TRANS-013`: 5 suites, 60 tasks, 60 ranked solved tasks,
+  12,753 candidates, 19 held-out groups, 0 matrix residuals, 4 baseline
+  residuals, and zero hosted usage. The residual report narrowed from 3 to 2
+  shadow-advice-only examples, both in `greenshot_5_subset`:
+  `profile_signature_propagation` and `visible_balance_attribute_decoys`.
+  `receipt_label_nested_module_import_decoy` is gone in full replay; the
+  shadow scorer top-ranks the passing nested import from
+  `shop.reports.money`. Guarded decision remains `remain_shadow_only` because
+  not all suite gates are `ready_for_guarded_opt_in`; product routing remains
+  shadow-only. Recommended next bounded task: `MODEL-014`.
+
+### MODEL-014: Add signature-propagation shadow-advice evidence
+
+- Status: ready
+- Why: after `TRANS-014`, one of the two remaining GreenShot-5
+  shadow-advice-only examples is
+  `greenshot_5_subset/profile_signature_propagation`. The failure is a
+  `TypeError` for keyword `username`; the passing candidate propagates the
+  `render_profile` signature from `name` to `username`, while the shadow top
+  candidate rewrites one call keyword from `username` to `name` and fails.
+- Write scope: likely `j3/transition_action_scoring.py`, focused tests in
+  `tests/test_transition_action_scoring.py`, optional concise evidence doc
+  under `docs/MODEL_014_*`, and plan updates. Do not edit product routing,
+  matrix manifests, candidate generation, ranker routing, guarded-trial
+  policy, local-knowledge records, materializer code, or `plans/strategy.md`.
+- Acceptance: add narrow shadow-advice evidence that promotes
+  symbol-aligned `propagate_signature` candidates when the new parameter
+  matches the `TypeError` keyword name and failure context names the same
+  source file or function; demote or avoid over-promoting call-site rename
+  decoys for the same missing keyword; prove with a focused scorer test or
+  saved-artifact replay that the passing `render_profile` propagation ranks
+  ahead of the failing call-site rename for
+  `greenshot_5_subset/profile_signature_propagation`; keep product routing
+  shadow-only.
+- Tests: `pytest tests/test_transition_action_scoring.py -q`, focused
+  residual/advice replay for `profile_signature_propagation`,
+  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+- Notes: keep `visible_balance_attribute_decoys` separate unless the
+  implementation exposes reusable source or candidate-after semantic evidence
+  shared with attribute repair.
 
 ## Workstream E: Repo State, Actions, And Models
 

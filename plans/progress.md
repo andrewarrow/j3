@@ -6898,3 +6898,45 @@ meaningful work. Do not replace this file with a daily reset.
   gone in full replay, and decide whether the next bounded semantic API task
   should target signature propagation or attribute repair.
 - Blockers: none.
+
+### 2026-05-19 - TRANS-014 - Expanded standard residual evidence after MODEL-013
+
+- Owner: worker TRANS-014.
+- Files changed:
+  `docs/TRANS_014_EXPANDED_STANDARD_AFTER_MODEL013_EVIDENCE_2026-05-19.md`,
+  `plans/active.md`, `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `python cli.py run-transition-shadow-matrix --matrix
+  examples/transition_shadow_matrix.json --out
+  /tmp/j3-trans-014-expanded-standard-after-model013 --json` -> passed;
+  `shasum -a 256 -c
+  /tmp/j3-trans-014-expanded-standard-after-model013/evidence/checksums.sha256`
+  -> passed; `python cli.py report-transition-residuals --matrix
+  /tmp/j3-trans-014-expanded-standard-after-model013 --out
+  /tmp/j3-trans-014-expanded-standard-after-model013-residual-report.json
+  --json` -> 2 residual-report examples; `python cli.py
+  decide-transition-guarded-trial --matrix
+  /tmp/j3-trans-014-expanded-standard-after-model013 --out
+  /tmp/j3-trans-014-expanded-standard-after-model013-guarded-decision.json
+  --json` -> `remain_shadow_only`; `pytest tests/test_plan_consistency.py -q`
+  -> 6 passed; `git diff --check` -> passed.
+- Result: reran the expanded standard transition matrix after `MODEL-013`.
+  Totals and suite gates are unchanged from `TRANS-013`: 5 suites, 60 tasks,
+  60 ranked solved tasks, 12,753 candidates, 19 held-out groups, 0 matrix
+  residuals, 4 baseline residuals, and zero hosted usage. The residual report
+  narrowed from 3 to 2 shadow-advice-only examples,
+  `profile_signature_propagation` and `visible_balance_attribute_decoys`.
+  `receipt_label_nested_module_import_decoy` is gone in full replay; the
+  shadow scorer top-ranks the passing
+  `from shop.reports.money import format_receipt_total` candidate. Guarded
+  decision remains `remain_shadow_only` because not all suite gates are
+  `ready_for_guarded_opt_in`; product routing remains shadow-only.
+- Commit: documentation/evidence commit for this task; hash reported in
+  worker final.
+- Push: documentation/evidence commit pushed by worker after verification.
+- Next: coordinator should review `TRANS-014`, then dispatch `MODEL-014`, a
+  bounded signature-propagation shadow-advice scorer task for
+  `greenshot_5_subset/profile_signature_propagation`. Keep
+  `visible_balance_attribute_decoys` separate unless a later implementation
+  exposes shared source or candidate-after semantic evidence.
+- Blockers: none for evidence replay; broad GreenShot-5 semantic API scoring
+  remains under-specified without source or candidate-after semantic evidence.

@@ -2506,7 +2506,7 @@ Long-term target:
 
 ### VAL-004: Reusable behavior-negative-only issue/PR shadow gate
 
-- Status: active
+- Status: done
 - Why: VAL-003 proved behavior-observable hard negatives can be ranked without
   label leakage, but the result lives in a one-off policy probe. The next
   step is to make that distinction reusable without changing production gates.
@@ -2521,6 +2521,13 @@ Long-term target:
   metrics beyond shadow-only.
 - Tests: focused ranking/policy tests, plan consistency, `git diff --check`,
   and a smoke command that writes a VAL-004 artifact bundle.
+- Completion note: added `j3.issue_pr_behavior_shadow_gate`, a reusable
+  shadow-only gate over VAL-003-style policy rows. The gate reports strict
+  readiness as `blocked`, behavior-negative-only readiness as
+  `ranked_shadow_only` with `pass@1 = 1.0` and `pass@k = 1.0`, two
+  label-dependent coverage-gap product blockers, leakage risk `blocked_high`,
+  and production decision `remain_shadow_only`. Behavior-negative-only metrics
+  are explicitly not production-eligible and do not change production ranking.
 
 ### MAT-013: Refresh real PR materialization coverage after general-AST expansion
 

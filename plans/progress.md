@@ -4174,3 +4174,38 @@ meaningful work. Do not replace this file with a daily reset.
   hard check that assignment annotation/type-ignore placement stays in the pure
   typed-builder layer before using `statement_block_replace`.
 - Blockers: none.
+
+### 2026-05-18 - VAL-004 - Behavior-negative-only issue/PR shadow gate
+
+- Owner: worker Pauli (`019e3df2-761d-7430-884f-173cf9e43c1e`).
+- Files changed: `j3/issue_pr_behavior_shadow_gate.py`,
+  `tests/test_issue_pr_behavior_shadow_gate.py`, `plans/active.md`,
+  `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `python -m py_compile j3/issue_pr_behavior_shadow_gate.py
+  tests/test_issue_pr_behavior_shadow_gate.py` -> passed; `pytest
+  tests/test_issue_pr_behavior_shadow_gate.py -q` -> 6 passed; `pytest
+  tests/test_issue_pr_behavior_shadow_gate.py
+  tests/test_issue_pr_coverage_gap_policy.py
+  tests/test_issue_pr_candidate_ranking.py -q` -> 21 passed; `python -m
+  j3.issue_pr_behavior_shadow_gate --policy-report
+  /tmp/j3-val-003-coverage-gap-policy-probe/val-003-policy-report.json
+  --out-dir /tmp/j3-val-004-behavior-shadow-gate` -> passed; `pytest
+  tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check` ->
+  passed.
+- Result: added a reusable shadow gate that consumes VAL-003-style policy rows
+  and reports strict readiness, behavior-negative-only readiness, pass@1/pass@k,
+  blocker counts, leakage risk, runtime, and the exact production-gate stance.
+  Strict issue/PR ranking remains `blocked` because two coverage-gap product
+  blockers depend on decoy labels. Behavior-negative-only issue/PR ranking is
+  `ranked_shadow_only` with `pass@1 = 1.0` and `pass@k = 1.0`, six
+  behavior-observable negatives, two product blockers, leakage risk
+  `blocked_high`, and production decision `remain_shadow_only`. The
+  behavior-negative-only metrics are explicitly not production-eligible and do
+  not change production ranking.
+- Commit: pending.
+- Push: pending.
+- Next: review the remaining issue/PR production blockers or dispatch the next
+  bounded materialization row, `psf/requests#7437`, after coordinator review.
+- Blockers: strict issue/PR ranking remains blocked by label-dependent
+  coverage-gap product blocker classification; behavior-negative-only metrics
+  remain shadow-only.

@@ -46,29 +46,20 @@ This is the live coordinator board. Keep it current and compact.
   `ranked_shadow_only` at `pass@1 = 1.0` and `pass@k = 1.0`, but strict
   issue/PR ranking remains blocked because two pass-pass coverage-gap product
   blockers depend on decoy labels or accepted-test structure rather than
-  observable validation failure evidence.
+  observable validation failure evidence. `VAL-004` now exposes that policy as
+  a reusable shadow gate: strict readiness is `blocked`,
+  behavior-negative-only readiness is `ranked_shadow_only` with
+  `pass@1 = 1.0` and `pass@k = 1.0`, leakage risk is `blocked_high`, and the
+  production decision is `remain_shadow_only`.
 
 ## Active Tasks
 
-### `VAL-004`: Reusable behavior-negative-only issue/PR shadow gate
-
-- Status: active
-- Owner: worker Pauli (`019e3df2-761d-7430-884f-173cf9e43c1e`).
-- Write scope: issue/PR ranking or validation-policy helper code/tests,
-  optional `docs/VAL_004_*`, generated artifacts under `/tmp`, and
-  task-specific planning updates. Avoid typed-builder materialization modules.
-- Acceptance: expose a reusable shadow gate record that consumes
-  VAL-003-style policy rows and reports strict readiness,
-  behavior-negative-only readiness, pass@1/pass@k, blocker counts, leakage
-  risk, and the exact production-gate stance. The gate must keep strict
-  issue/PR ranking blocked when coverage-gap product blockers are
-  label-dependent and must not promote behavior-only metrics beyond
-  shadow-only.
+No active worker tasks are recorded after `VAL-004` and `MAT-013` returned.
 
 ## Ready Queue
 
-One active worker remains. Reassess after `VAL-004` returns or assign the next
-non-overlapping materialization task.
+Coordinator should reassess and dispatch the next bounded task from the
+backlog.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
@@ -92,6 +83,18 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `VAL-004`: added a reusable behavior-negative-only issue/PR shadow gate over
+  VAL-003-style policy rows. Strict issue/PR ranking remains `blocked` because
+  two coverage-gap product blockers depend on decoy labels;
+  behavior-negative-only issue/PR ranking is `ranked_shadow_only` with
+  `pass@1 = 1.0` and `pass@k = 1.0`, six behavior-observable negatives, two
+  product blockers, leakage risk `blocked_high`, and production decision
+  `remain_shadow_only`.
+  Behavior-negative-only metrics are not production-eligible and do not change
+  production ranking. Artifacts:
+  `/tmp/j3-val-004-behavior-shadow-gate/val-004-shadow-gate.json`,
+  `/tmp/j3-val-004-behavior-shadow-gate/val-004-shadow-gate.md`, and
+  `/tmp/j3-val-004-behavior-shadow-gate/val-004-shadow-gate-rows.jsonl`.
 - `MAT-013`: refreshed the MAT-007 real PR materialization coverage panel using
   MAT-010 through MAT-012 evidence. Three of the seven held-out
   `general_typed_builder` rows are now materialized and live-validated:

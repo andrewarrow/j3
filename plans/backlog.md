@@ -897,7 +897,7 @@ Long-term target:
 
 ### TRANS-015: Rerun expanded standard residual evidence after MODEL-014
 
-- Status: active
+- Status: done
 - Owner: worker TRANS-015, assigned on 2026-05-19.
 - Why: `MODEL-014` directly replayed the signature-propagation residual, but
   the committed expanded-standard residual evidence still predates that scorer
@@ -916,6 +916,43 @@ Long-term target:
 - Tests: `run-transition-shadow-matrix`, checksum verification,
   `report-transition-residuals --matrix`, `decide-transition-guarded-trial`,
   `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+- Completion note: reran the expanded standard transition matrix after
+  `MODEL-014` under `/tmp/j3-trans-015-expanded-standard-after-model014`.
+  Matrix totals and suite gates are unchanged from `TRANS-014`: 5 suites, 60
+  tasks, 60 ranked solved tasks, 12,753 candidates, 19 held-out groups, 0
+  matrix residuals, 4 baseline residuals, and zero hosted usage. The residual
+  report narrowed from 2 to 1 shadow-advice-only example.
+  `profile_signature_propagation` is gone in full replay; the scorer top-ranks
+  the passing `propagate_signature` on `shop/profiles.py::render_profile` from
+  `name` to `username`. Only `visible_balance_attribute_decoys` remains.
+  Guarded decision remains `remain_shadow_only`, so product routing remains
+  shadow-only. Recommended next bounded task: `MODEL-015`.
+
+### MODEL-015: Add visible-balance attribute-repair shadow-advice evidence
+
+- Status: ready
+- Why: after `TRANS-015`, the only remaining residual-report example is
+  `greenshot_5_subset/visible_balance_attribute_decoys`. It is a
+  shadow-advice-only scorer gap, not a matrix residual or suite-gate failure.
+- Write scope: `j3/transition_action_scoring.py`,
+  `tests/test_transition_action_scoring.py`, and plan updates. Do not edit
+  candidate generation, product routing, matrix manifests, guarded-trial
+  policy, local-knowledge records, materializer code, or `plans/strategy.md`.
+- Acceptance: add narrow V1/advice evidence that ranks the passing
+  `change_attribute amount_cents -> balance_cents` candidate ahead of failing
+  same-location decoys `available_cents` and `pending_cents` for
+  `visible_balance_attribute_decoys`; direct replay over
+  `/tmp/j3-trans-015-expanded-standard-after-model014/suite/greenshot_5_subset/candidate-outcomes.jsonl`
+  should top-rank the passing candidate. Product routing must remain
+  shadow-only.
+- Tests: focused transition action scoring tests, direct residual/advice replay
+  for `visible_balance_attribute_decoys`,
+  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+- Notes: keep this slice narrow. The current evidence is an `AttributeError` in
+  `shop/accounts.py`, public test/function context naming `visible_balance`,
+  and three same-location `change_attribute` candidates with identical
+  failure-hint scores. Avoid broad attribute-repair scoring without source or
+  candidate-after semantic evidence.
 
 ## Workstream E: Repo State, Actions, And Models
 

@@ -77,6 +77,13 @@ This is the live coordinator board. Keep it current and compact.
   unchanged, the residual report narrowed from 3 to 2 shadow-advice-only
   GreenShot-5 examples, `receipt_label_nested_module_import_decoy` is gone in
   full replay, and the guarded decision remains `remain_shadow_only`.
+  `MODEL-014` added narrow TypeError signature-propagation advice evidence,
+  and `TRANS-015` confirmed the expanded standard matrix totals and suite
+  gates stayed unchanged while the residual report narrowed from 2 to 1
+  shadow-advice-only GreenShot-5 example. `profile_signature_propagation` is
+  gone in full replay; only `visible_balance_attribute_decoys` remains. The
+  guarded decision remains `remain_shadow_only`, and product routing remains
+  shadow-only.
   Tests-only wedge guarded opt-in also remains
   blocked after `REAL-003` scored `pass@3 = 0/4`; `GS7-008` now materializes
   and live-validates the `iniconfig` calibration candidate. `REAL-005` extends
@@ -239,41 +246,30 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-### `TRANS-015`: Rerun expanded standard residual evidence after MODEL-014
-
-- Status: active
-- Owner: worker TRANS-015, assigned on 2026-05-19.
-- Scope: generated outputs under `/tmp/j3-trans-015-expanded-standard-after-model014`,
-  a concise evidence doc under `docs/TRANS_015_*`, and plan updates.
-- Acceptance: rerun the expanded standard transition matrix after
-  `MODEL-014`, regenerate matrix residual, advice/residual, checksum, and
-  guarded-decision evidence, compare against `TRANS-014`, and record whether
-  `profile_signature_propagation` is gone and whether only
-  `visible_balance_attribute_decoys` remains.
-- Guardrails: do not edit scorer logic, candidate generation, product routing,
-  matrix manifests, guarded-trial policy, local-knowledge records,
-  materializer code, or `plans/strategy.md`.
-- Expected tests: `python cli.py run-transition-shadow-matrix --matrix
-  examples/transition_shadow_matrix.json --out
-  /tmp/j3-trans-015-expanded-standard-after-model014`, checksum verification,
-  `python cli.py report-transition-residuals --matrix
-  /tmp/j3-trans-015-expanded-standard-after-model014`, `python cli.py
-  decide-transition-guarded-trial --matrix
-  /tmp/j3-trans-015-expanded-standard-after-model014`,
-  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
+No active worker tasks are currently recorded.
 
 ## Ready Queue
 
-No ready worker tasks are currently recorded while `TRANS-015` is active.
+### `MODEL-015`: Add visible-balance attribute-repair shadow-advice evidence
+
+- Status: ready.
+- Goal: add a bounded shadow-advice scorer slice for
+  `greenshot_5_subset/visible_balance_attribute_decoys` after `TRANS-015`
+  confirmed it is the only remaining residual-report example.
+- Write scope: scorer logic/tests and plan updates only if assigned by the
+  coordinator. Do not change product routing or guarded-trial policy.
+- Acceptance: direct replay should rank the passing
+  `change_attribute amount_cents -> balance_cents` candidate ahead of the
+  failing `available_cents` and `pending_cents` decoys using narrow local
+  public API/test-name evidence for visible balance behavior.
+- Expected tests: focused transition action scoring tests, direct saved-artifact
+  replay for `visible_balance_attribute_decoys`,
+  `pytest tests/test_plan_consistency.py -q`, and `git diff --check`.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
 ## Paused Or Blocked
 
-- `visible_balance_attribute_decoys` is expected to remain as the separate
-  GreenShot-5 shadow-advice-only attribute scorer task after the `MODEL-014`
-  direct replay. It is not a matrix residual or suite-gate failure; `TRANS-015`
-  should confirm the full replay shape before implementation continues.
 - `MODEL-002`: superseded by bounded scorer subtasks in the backlog, beginning
   with `MODEL-003` through `MODEL-009`.
 
@@ -288,6 +284,41 @@ Review before assigning more work if:
 - the next useful task is unclear
 
 ## Recently Completed
+
+### `TRANS-015`: Rerun expanded standard residual evidence after MODEL-014
+
+- Status: completed by worker TRANS-015 on 2026-05-19.
+- Result: reran the expanded standard transition matrix after `MODEL-014`
+  under `/tmp/j3-trans-015-expanded-standard-after-model014`. Totals and
+  suite gates are unchanged from `TRANS-014`: 5 suites, 60 tasks, 60 ranked
+  solved tasks, 12,753 candidates, 19 held-out groups, 0 matrix residuals, 4
+  baseline residuals, and zero hosted usage. The residual report narrowed from
+  2 to 1 shadow-advice-only example. `profile_signature_propagation` is gone
+  in full replay; the scorer top-ranks the passing `propagate_signature` on
+  `shop/profiles.py::render_profile` from `name` to `username`. Only
+  `visible_balance_attribute_decoys` remains. Guarded decision remains
+  `remain_shadow_only` because not all suite gates are
+  `ready_for_guarded_opt_in`; product routing remains shadow-only.
+- Commit: pending.
+- Push: pending.
+- Tests: `python cli.py run-transition-shadow-matrix --matrix
+  examples/transition_shadow_matrix.json --out
+  /tmp/j3-trans-015-expanded-standard-after-model014 --json` -> passed;
+  `shasum -a 256 -c
+  /tmp/j3-trans-015-expanded-standard-after-model014/evidence/checksums.sha256`
+  -> passed; `python cli.py report-transition-residuals --matrix
+  /tmp/j3-trans-015-expanded-standard-after-model014 --out
+  /tmp/j3-trans-015-expanded-standard-after-model014-residual-report.json
+  --json` -> 1 residual-report example; `python cli.py
+  decide-transition-guarded-trial --matrix
+  /tmp/j3-trans-015-expanded-standard-after-model014 --out
+  /tmp/j3-trans-015-expanded-standard-after-model014-guarded-decision.json
+  --json` -> `remain_shadow_only`; `pytest tests/test_plan_consistency.py -q`
+  -> 6 passed; `git diff --check` -> passed.
+- Recommended next: `MODEL-015`, a bounded attribute-repair scorer task for
+  `greenshot_5_subset/visible_balance_attribute_decoys`.
+- Blockers: none for evidence replay; broad attribute-repair scoring remains
+  under-specified without source or candidate-after semantic evidence.
 
 ### `MODEL-014`: Add signature-propagation shadow-advice evidence
 

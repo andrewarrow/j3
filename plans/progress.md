@@ -7021,3 +7021,44 @@ meaningful work. Do not replace this file with a daily reset.
   residual is gone in full replay, and decide the exact scope for the
   remaining attribute-repair residual.
 - Blockers: none.
+
+### 2026-05-19 - TRANS-015 - Expanded standard residual evidence after MODEL-014
+
+- Owner: worker TRANS-015.
+- Files changed:
+  `docs/TRANS_015_EXPANDED_STANDARD_AFTER_MODEL014_EVIDENCE_2026-05-19.md`,
+  `plans/active.md`, `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `python cli.py run-transition-shadow-matrix --matrix
+  examples/transition_shadow_matrix.json --out
+  /tmp/j3-trans-015-expanded-standard-after-model014 --json` -> passed;
+  `shasum -a 256 -c
+  /tmp/j3-trans-015-expanded-standard-after-model014/evidence/checksums.sha256`
+  -> passed; `python cli.py report-transition-residuals --matrix
+  /tmp/j3-trans-015-expanded-standard-after-model014 --out
+  /tmp/j3-trans-015-expanded-standard-after-model014-residual-report.json
+  --json` -> 1 residual-report example; `python cli.py
+  decide-transition-guarded-trial --matrix
+  /tmp/j3-trans-015-expanded-standard-after-model014 --out
+  /tmp/j3-trans-015-expanded-standard-after-model014-guarded-decision.json
+  --json` -> `remain_shadow_only`; `pytest tests/test_plan_consistency.py -q`
+  -> 6 passed; `git diff --check` -> passed.
+- Result: reran the expanded standard transition matrix after `MODEL-014`.
+  Totals and suite gates are unchanged from `TRANS-014`: 5 suites, 60 tasks,
+  60 ranked solved tasks, 12,753 candidates, 19 held-out groups, 0 matrix
+  residuals, 4 baseline residuals, and zero hosted usage. The residual report
+  narrowed from 2 to 1 shadow-advice-only example:
+  `visible_balance_attribute_decoys`. `profile_signature_propagation` is gone
+  in full replay; the shadow outcome is `improved` and the scorer top-ranks
+  the passing `propagate_signature` on `shop/profiles.py::render_profile` from
+  `name` to `username`. Guarded decision remains `remain_shadow_only` because
+  not all suite gates are `ready_for_guarded_opt_in`; product routing remains
+  shadow-only.
+- Commit: pending.
+- Push: pending.
+- Next: dispatch `MODEL-015`, a bounded attribute-repair shadow-advice scorer
+  task for `greenshot_5_subset/visible_balance_attribute_decoys`. The concrete
+  evidence is an `AttributeError` in `shop/accounts.py`, public
+  `visible_balance` context, and three same-location `change_attribute`
+  candidates where only `amount_cents -> balance_cents` passes.
+- Blockers: none for evidence replay; broad attribute-repair scoring remains
+  under-specified without source or candidate-after semantic evidence.

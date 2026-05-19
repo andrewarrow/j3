@@ -4271,8 +4271,8 @@ meaningful work. Do not replace this file with a daily reset.
   required purposes are cited. `REQUIRED_KNOWLEDGE_PURPOSES` remains
   `test_location`, `import_style`, `validation`, and the no-record and
   partial-record planner tests still report missing attribution.
-- Commit: pending.
-- Push: pending.
+- Commit: ecedaad.
+- Push: succeeded.
 - Next: keep tests-only attribution gates intact while the coordinator chooses
   the next ready task after `MAT-014` or another disjoint slice returns.
 - Blockers: none.

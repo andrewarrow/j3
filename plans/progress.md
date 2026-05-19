@@ -4554,8 +4554,8 @@ meaningful work. Do not replace this file with a daily reset.
   durable-row checksum requirements; requires split/leakage metadata for future
   overlap checks; and handles excluded scratch rows and local-only durable rows
   without building datasets.
-- Commit: pending.
-- Push: pending.
+- Commit: 6ab45cb.
+- Push: succeeded.
 - Next: build a tiny manifest builder/checker over existing reviewed artifacts
   only after the coordinator chooses a concrete source set and cross-row
   overlap policy.

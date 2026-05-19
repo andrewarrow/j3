@@ -88,11 +88,12 @@ This is the live coordinator board. Keep it current and compact.
 
 ## Active Tasks
 
-- `TRANS-010` -> worker pending: rerun the full current standard transition
-  shadow matrix after `MODEL-007`, `MODEL-008`, and the clean `TRANS-009`
-  subset before broadening the manifest. Scope is evidence only: generated
-  outputs under `/tmp`, a concise evidence doc if useful, and plan updates.
-  Do not edit `examples/transition_shadow_matrix.json` in this slice.
+- `TRANS-010` -> worker Pascal
+  (`019e3e66-ea26-7493-98a8-5a64aca17a72`): rerun the full current standard
+  transition shadow matrix after `MODEL-007`, `MODEL-008`, and the clean
+  `TRANS-009` subset before broadening the manifest. Scope is evidence only:
+  generated outputs under `/tmp`, a concise evidence doc if useful, and plan
+  updates. Do not edit `examples/transition_shadow_matrix.json` in this slice.
 
 ## Ready Queue
 

@@ -77,11 +77,22 @@ This is the live coordinator board. Keep it current and compact.
   and only then fall back to the next MAT-007 `general_typed_builder` row such
   as `psf/requests#7437`.
 
+### `KNOW-003`: Wire knowledge-use attribution into tests-only planning
+
+- Status: active
+- Owner: worker Lorentz (`019e3de6-2a58-7e01-8efe-d09e29652ac7`).
+- Write scope: tests-only planning/outcome attribution, especially
+  `j3/real_repo_tests_planner.py`, `j3/local_knowledge.py`,
+  `tests/test_real_repo_tests_planner.py`, `tests/test_local_knowledge.py`,
+  optional `docs/KNOW_003_*`, and task-specific planning updates. Avoid
+  issue/PR ranking, validation-policy, and typed-builder materialization files.
+- Acceptance: tests-only candidate/outcome rows cite retrieved knowledge
+  record ids by purpose, and missing citations produce a machine-readable
+  `knowledge_not_used` or `missing_knowledge` residual rather than prose only.
+
 ## Ready Queue
 
-These are good next assignments for the next loop:
-
-1. `KNOW-003`: wire knowledge-use attribution into tests-only planning.
+The active set is at the configured maximum. Reassess after one worker returns.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 

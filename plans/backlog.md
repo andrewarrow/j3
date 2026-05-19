@@ -875,7 +875,7 @@ Long-term target:
 
 ### KNOW-003: Wire knowledge-use attribution into tests-only planning
 
-- Status: ready
+- Status: active
 - Why: `KNOW-002` created citeable records, but wedge candidates must record
   whether they actually used layout, import, and validation knowledge.
 - Write scope: tests-only planning/outcome attribution, focused tests, and plan

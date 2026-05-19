@@ -4024,3 +4024,21 @@ meaningful work. Do not replace this file with a daily reset.
 - Next: spawn one worker for `VAL-003` and one worker for `MAT-012`, then
   record their worker IDs.
 - Blockers: none.
+
+### 2026-05-18 - Coordinator Dispatch - KNOW-003
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, and
+  `plans/progress.md`.
+- Tests: `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check -- plans/active.md plans/backlog.md plans/progress.md` ->
+  passed.
+- Result: started the next ready disjoint slice while the recorded `VAL-003`
+  and `MAT-012` workers initialize. `KNOW-003` attacks whether tests-only
+  candidate/outcome rows use local knowledge as explicit attribution rather
+  than incidental planner context.
+- Commit: pending.
+- Push: pending.
+- Next: worker Lorentz (`019e3de6-2a58-7e01-8efe-d09e29652ac7`) is running
+  `KNOW-003`; keep the active set capped until one worker returns.
+- Blockers: none.

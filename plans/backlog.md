@@ -3737,7 +3737,7 @@ Long-term target:
 
 ### MAT-033: Held-out Flask autoescape current action candidate
 
-- Status: active
+- Status: done
 - Why: `MAT-032` closes the smallest Click current-action row. `flask-6013` is
   the next compact remaining row: a targeted expression replacement in
   `Flask.select_jinja_autoescape` plus accepted text updates.
@@ -3763,12 +3763,27 @@ Long-term target:
   changes are made, JSON/report checks if artifacts are written,
   `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and live
   focused Flask validation when materialized.
+- Completion note: materialized and live-validated `pallets/flask#6013` from
+  base `06ea505ce2b2042af26e96d35ebf159af7c0869d` to accepted head
+  `9368fb3f3c52d74534d14c1bef03c79c103356cd`. The candidate uses generic
+  `replace_function_region` and `insert_text_around_anchor` records, changes
+  only `CHANGES.rst` and `src/flask/sansio/app.py`, records candidate-after
+  diff/hash metadata and mutation scope, and has exact full accepted-diff,
+  source-only scoped, and source/docs scoped parity. Live validation passed.
+  Remaining non-materialized MAT-007 counts are
+  `current_structured_action = 2`, `general_typed_builder = 0`,
+  `repo_convention_builder = 0`, `constrained_local_generator = 0`, and
+  `not_currently_expressible = 2`. Artifacts:
+  `docs/MAT_033_FLASK_6013_AUTOESCAPE_CANDIDATE_2026-05-19.md`,
+  `/tmp/j3-mat-033-flask-6013-live/final/candidate.json`,
+  `/tmp/j3-mat-033-flask-6013-live/final/report.md`, and
+  `/tmp/j3-mat-033-flask-6013-live/final/candidate.diff`.
 
 ## Next Recommended Queue
 
 Start with these unless fresh evidence changes the order:
 
 1. Review `MAT-033`, then continue the remaining `current_structured_action`
-   rows if the Flask replay is materialized cleanly.
+   rows with `flask-5898` or `pytest-14472`.
 2. Separately decide whether to pursue the `TRANS-012` shadow-advice-only
    residual examples; product transition routing remains shadow-only.

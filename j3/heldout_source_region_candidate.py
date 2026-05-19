@@ -68,6 +68,12 @@ DEFAULT_CLICK_DEPRECATED_HELP_BASE_REF = (
 DEFAULT_CLICK_DEPRECATED_HELP_HEAD_REF = (
     "61acdcc4ce718f1f6e49e79625c0a6b088bc8189"
 )
+DEFAULT_FLASK_AUTOESCAPE_BASE_REF = (
+    "06ea505ce2b2042af26e96d35ebf159af7c0869d"
+)
+DEFAULT_FLASK_AUTOESCAPE_HEAD_REF = (
+    "9368fb3f3c52d74534d14c1bef03c79c103356cd"
+)
 DEFAULT_PYTEST_SCANNER_BASE_REF = "7df5d80ff3a98714a1d3cdbe82941229e511f4b3"
 DEFAULT_VALIDATION_COMMAND = (
     "python -m pytest "
@@ -108,6 +114,14 @@ DEFAULT_CLICK_DEPRECATED_HELP_VALIDATION_COMMAND = (
     "assert 'Old option (DEPRECATED)' in result.output, result.output; "
     "assert 'Old option(DEPRECATED)' not in result.output, result.output\""
 )
+DEFAULT_FLASK_AUTOESCAPE_VALIDATION_COMMAND = (
+    "PYTHONPATH=src python -c "
+    "\"from flask import Flask; "
+    "app = Flask(__name__); "
+    "assert app.select_jinja_autoescape('INDEX.HTML'); "
+    "assert app.select_jinja_autoescape('template.SVG'); "
+    "assert not app.select_jinja_autoescape('readme.TXT')\""
+)
 DEFAULT_PYTEST_SCANNER_VALIDATION_COMMAND = (
     "PYTHONPATH=src python -c "
     "\"from _pytest.mark.expression import Expression; "
@@ -130,6 +144,8 @@ CLICK_TEST_DEFAULTS_PATH = "tests/test_defaults.py"
 CLICK_COMMANDS_DOC_PATH = "docs/commands.md"
 CLICK_DOCS_CONF_PATH = "docs/conf.py"
 CLICK_CHANGES_PATH = "CHANGES.rst"
+FLASK_APP_PATH = "src/flask/sansio/app.py"
+FLASK_CHANGES_PATH = "CHANGES.rst"
 PYTEST_EXPRESSION_PATH = "src/_pytest/mark/expression.py"
 PYTEST_MARK_EXPRESSION_TEST_PATH = "testing/test_mark_expression.py"
 
@@ -1018,6 +1034,95 @@ def build_click_deprecated_help_spec(
                     "same bounded delimited source-region action schema; "
                     "target file, local markers, and replacement expression "
                     "are parameters"
+                ),
+            },
+        ),
+    )
+
+
+def build_flask_autoescape_spec(
+    repo_path: Path,
+    *,
+    base_ref: str = DEFAULT_FLASK_AUTOESCAPE_BASE_REF,
+    accepted_head_ref: str = DEFAULT_FLASK_AUTOESCAPE_HEAD_REF,
+    validation_command: str = DEFAULT_FLASK_AUTOESCAPE_VALIDATION_COMMAND,
+) -> HeldoutSourceRegionSpec:
+    """Build the held-out Flask case-insensitive autoescape candidate."""
+
+    source_text = _repo_file(repo_path, FLASK_APP_PATH).read_text(encoding="utf-8")
+    source_action = _flask_autoescape_source_action(source_text)
+    text_actions = (
+        TextInsertionAction(
+            target_file=FLASK_CHANGES_PATH,
+            anchor_text=(
+                "-   ``provide_automatic_options=True`` can be used to enable it "
+                "for a view when\n"
+                "    it's disabled in config. Previously, only disabling worked. "
+                ":issue:`5916`\n"
+            ),
+            insertion_source=_flask_autoescape_changelog_source(),
+            insert_once_contains=(
+                "``Flask.select_jinja_autoescape`` uses case-insensitive comparison"
+            ),
+            max_added_lines=4,
+            rationale=(
+                "record the case-insensitive autoescape filename comparison in "
+                "the current changelog section"
+            ),
+        ),
+        TextInsertionAction(
+            target_file=FLASK_APP_PATH,
+            anchor_text=(
+                "        template name. If no template name is given, "
+                "returns `True`.\n\n"
+            ),
+            insertion_source=_flask_autoescape_versionchanged_source(),
+            insert_once_contains=(
+                "Use case-insensitive comparison instead of only lower case."
+            ),
+            max_added_lines=3,
+            rationale=(
+                "record the public select_jinja_autoescape behavior change in "
+                "the method docstring"
+            ),
+        ),
+    )
+    return HeldoutSourceRegionSpec(
+        candidate_id="mat-033-flask-autoescape-case-insensitive",
+        repo_id="pallets/flask",
+        repo_url="https://github.com/pallets/flask",
+        repo_split="held_out",
+        base_ref=base_ref,
+        accepted_head_ref=accepted_head_ref,
+        reference_pr_url="https://github.com/pallets/flask/pull/6013",
+        prompt=(
+            "Make Flask.select_jinja_autoescape compare template file "
+            "extensions case-insensitively so upper-case suffixes such as "
+            ".HTML and .SVG are autoescaped."
+        ),
+        source_file=FLASK_APP_PATH,
+        validation_command=validation_command,
+        allowed_write_paths=(FLASK_CHANGES_PATH, FLASK_APP_PATH),
+        source_action=source_action,
+        text_actions=text_actions,
+        source_test_scope_paths=(FLASK_APP_PATH,),
+        action_family_reuse_evidence=(
+            {
+                "action_kind": SourceRegionActionKind.REPLACE_FUNCTION_REGION.value,
+                "reused_from": ["MAT-008", "MAT-009", "MAT-020", "MAT-032"],
+                "evidence": (
+                    "same bounded source-region schema; target file, method, "
+                    "single return-expression line, and replacement expression "
+                    "are parameters"
+                ),
+            },
+            {
+                "action_kind": "insert_text_around_anchor",
+                "reused_from": ["MAT-017", "MAT-024", "MAT-025"],
+                "evidence": (
+                    "same bounded text insertion shape; target file, anchor, "
+                    "position, and inserted changelog or source-doc text are "
+                    "parameters"
                 ),
             },
         ),
@@ -2388,6 +2493,64 @@ def _click_deprecated_help_source_replacement() -> str:
     )
 
 
+def _flask_autoescape_source_action(source: str) -> SourceRegionAction:
+    original = (
+        '        return filename.endswith((".html", ".htm", ".xml", ".xhtml", ".svg"))'
+    )
+    already_applied = (
+        '        return filename.lower().endswith((".html", ".htm", ".xml", ".xhtml", ".svg"))'
+    )
+    if original not in source and already_applied not in source:
+        raise SourceRegionMaterializationError(
+            "select_jinja_autoescape suffix comparison not found",
+            residual="target_selection",
+        )
+    target_line = already_applied if already_applied in source else original
+    line = _line_number(source, target_line)
+    return SourceRegionAction(
+        kind=SourceRegionActionKind.REPLACE_FUNCTION_REGION,
+        target=SourceRegionTarget(
+            file_path=FLASK_APP_PATH,
+            function_name="select_jinja_autoescape",
+            region_name="case_insensitive_autoescape_suffix_check",
+            start_line=line,
+            end_line=line,
+        ),
+        replacement_source=_flask_autoescape_source_replacement(),
+        constraints=SourceRegionConstraints(max_changed_source_lines=2),
+        rationale=(
+            "normalize the filename to lower case before matching known "
+            "autoescape template suffixes"
+        ),
+    )
+
+
+def _flask_autoescape_source_replacement() -> str:
+    return (
+        '        return filename.lower().endswith((".html", ".htm", ".xml", ".xhtml", ".svg"))'
+    )
+
+
+def _flask_autoescape_changelog_source() -> str:
+    return "\n".join(
+        [
+            "-   ``Flask.select_jinja_autoescape`` uses case-insensitive comparison instead",
+            "    of only lower case file extensions. :pr:`6012`",
+        ]
+    ) + "\n"
+
+
+def _flask_autoescape_versionchanged_source() -> str:
+    return "\n".join(
+        [
+            "        .. versionchanged:: 3.2",
+            "            Use case-insensitive comparison instead of only lower case.",
+            "",
+            "",
+        ]
+    )
+
+
 def _line_number(source: str, needle: str) -> int:
     for index, line in enumerate(source.splitlines(), start=1):
         if line == needle:
@@ -2759,6 +2922,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             "click-3364",
             "click-3420",
             "click-3423",
+            "flask-6013",
         ),
         default="requests-7427",
     )
@@ -2786,6 +2950,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         spec = build_click_ansi_wrapping_spec(args.repo_path)
     elif args.candidate == "click-3423":
         spec = build_click_deprecated_help_spec(args.repo_path)
+    elif args.candidate == "flask-6013":
+        spec = build_flask_autoescape_spec(args.repo_path)
     else:
         spec = build_requests_no_proxy_domain_boundary_spec(args.repo_path)
     candidate = materialize_heldout_source_region_candidate(

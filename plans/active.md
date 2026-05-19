@@ -195,43 +195,24 @@ This is the live coordinator board. Keep it current and compact.
   option-help separator expression. Remaining non-materialized MAT-007 counts
   are now `current_structured_action = 3`, `general_typed_builder = 0`,
   `repo_convention_builder = 0`, `constrained_local_generator = 0`, and
+  `not_currently_expressible = 2`. `MAT-033` now materializes and
+  live-validates `pallets/flask#6013` with exact full accepted-diff parity
+  using reusable source-region and bounded text insertion records for the
+  autoescape suffix expression, changelog entry, and method docstring note.
+  Remaining non-materialized MAT-007 counts are now
+  `current_structured_action = 2`, `general_typed_builder = 0`,
+  `repo_convention_builder = 0`, `constrained_local_generator = 0`, and
   `not_currently_expressible = 2`.
 
 ## Active Tasks
 
-### `MAT-033`: Held-out Flask autoescape current action candidate
-
-- Status: active
-- Owner: worker MAT-033.
-- Started: 2026-05-19.
-- Write scope: focused current structured-action/source-region materializer
-  extensions and tests as needed, optional `docs/MAT_033_*`, generated
-  artifacts under `/tmp`, and plan updates. Likely code scope is
-  `j3/heldout_source_region_candidate.py` and
-  `tests/test_heldout_source_region_candidate.py`; avoid repo-convention
-  materializer code unless a concrete blocker requires it.
-- Acceptance: attempt `pallets/flask#6013` using reusable current structured
-  action records for the targeted `select_jinja_autoescape` expression
-  replacement and any accepted changelog/source-doc text updates, not a
-  PR-named action kind. Determine and record pinned base/head refs, accepted
-  changed files, validation command, mutation scope, candidate-after
-  diff/hash metadata, accepted-diff comparison, and live validation result.
-  The accepted diff appears to touch `CHANGES.rst` and
-  `src/flask/sansio/app.py`; separate full accepted-diff parity from
-  source-only or source/docs scoped parity if the worker intentionally covers a
-  narrower scope. If target selection, expression replacement, text insertion,
-  parity, or validation blocks, record the exact blocker without broadening
-  scope silently.
-- Expected tests: focused source-region/current-action materializer tests if
-  code changes are made, JSON/report checks if artifacts are written,
-  `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and live
-  focused Flask validation when materialized.
+No active worker task is recorded. The coordinator should review `MAT-033`
+before dispatching the next remaining `current_structured_action` row.
 
 ## Ready Queue
 
-No queued worker task remains while `MAT-033` is active. The remaining
-`current_structured_action` rows after `flask-6013` are `flask-5898` and
-`pytest-14472`; the shadow-advice-only
+The remaining `current_structured_action` rows after `flask-6013` are
+`flask-5898` and `pytest-14472`; the shadow-advice-only
 residual examples remain a separate workstream and should not be mixed into
 MAT-007 held-out materialization counts.
 
@@ -257,6 +238,21 @@ Review before assigning more work if:
 - the next useful task is unclear
 
 ## Recently Completed
+
+### `MAT-033`: Held-out Flask autoescape current action candidate
+
+- Status: completed by worker MAT-033 on 2026-05-19.
+- Result: materialized and live-validated `pallets/flask#6013` from base
+  `06ea505ce2b2042af26e96d35ebf159af7c0869d` to accepted head
+  `9368fb3f3c52d74534d14c1bef03c79c103356cd`. Candidate changed
+  `CHANGES.rst` and `src/flask/sansio/app.py`, matched the full accepted
+  diff exactly, and passed the focused `Flask.select_jinja_autoescape`
+  validation command.
+- Artifacts:
+  `docs/MAT_033_FLASK_6013_AUTOESCAPE_CANDIDATE_2026-05-19.md`,
+  `/tmp/j3-mat-033-flask-6013-live/final/candidate.json`,
+  `/tmp/j3-mat-033-flask-6013-live/final/report.md`, and
+  `/tmp/j3-mat-033-flask-6013-live/final/candidate.diff`.
 
 - `MAT-032`: materialized `pallets/click#3423` from base
   `fc6c7c47edd6110b6bd5a1a5297b2035214b0cd1` to accepted head

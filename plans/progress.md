@@ -6385,3 +6385,44 @@ meaningful work. Do not replace this file with a daily reset.
 - Next: dispatch a worker for `MAT-033` to attempt `pallets/flask#6013` with
   reusable expression replacement and accepted text-update action records.
 - Blockers: none.
+
+### 2026-05-19 - MAT-033 - Flask #6013 autoescape current action materialization
+
+- Owner: worker MAT-033.
+- Files changed: `j3/heldout_source_region_candidate.py`,
+  `tests/test_heldout_source_region_candidate.py`,
+  `docs/MAT_033_FLASK_6013_AUTOESCAPE_CANDIDATE_2026-05-19.md`,
+  `plans/active.md`, `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `python -m py_compile j3/heldout_source_region_candidate.py
+  tests/test_heldout_source_region_candidate.py` -> passed; `pytest
+  tests/test_heldout_source_region_candidate.py -q` -> 19 passed; live fresh
+  checkout run `PYTHONPATH=/Users/aa/os/j3 python -m
+  j3.heldout_source_region_candidate --candidate flask-6013 --repo-path
+  /tmp/j3-mat-033-flask-6013-live/repo --accepted-diff
+  /tmp/j3-mat-033-flask-6013-live/accepted.diff --out
+  /tmp/j3-mat-033-flask-6013-live/final/candidate.json --report
+  /tmp/j3-mat-033-flask-6013-live/final/report.md --diff-out
+  /tmp/j3-mat-033-flask-6013-live/final/candidate.diff --validate
+  --validation-timeout-seconds 90` -> validated; validation command
+  `PYTHONPATH=src python -c "from flask import Flask; app = Flask(__name__);
+  assert app.select_jinja_autoescape('INDEX.HTML'); assert
+  app.select_jinja_autoescape('template.SVG'); assert not
+  app.select_jinja_autoescape('readme.TXT')"` -> passed; `python -m
+  json.tool /tmp/j3-mat-033-flask-6013-live/final/candidate.json` ->
+  passed.
+- Result: materialized `pallets/flask#6013` from base
+  `06ea505ce2b2042af26e96d35ebf159af7c0869d` to accepted head
+  `9368fb3f3c52d74534d14c1bef03c79c103356cd`. The candidate changed
+  `CHANGES.rst` and `src/flask/sansio/app.py`, recorded candidate-after
+  diff/hash metadata plus mutation scope, and used reusable
+  `replace_function_region` and `insert_text_around_anchor` action records.
+  Full accepted-diff parity, source-only scoped parity, source/docs scoped
+  parity, and changed-file parity are true. Remaining non-materialized
+  MAT-007 counts are now `current_structured_action = 2`,
+  `general_typed_builder = 0`, `repo_convention_builder = 0`,
+  `constrained_local_generator = 0`, and `not_currently_expressible = 2`.
+- Commit: pending.
+- Push: pending.
+- Next: coordinator should review `MAT-033`, then choose the next remaining
+  `current_structured_action` row from `flask-5898` or `pytest-14472`.
+- Blockers: none.

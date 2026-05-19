@@ -4215,7 +4215,9 @@ meaningful work. Do not replace this file with a daily reset.
 - Owner: coordinator.
 - Files changed: `plans/active.md`, `plans/backlog.md`, and
   `plans/progress.md`.
-- Tests: pending.
+- Tests: `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check -- plans/active.md plans/backlog.md plans/progress.md` ->
+  passed.
 - Result: reviewed the completed `VAL-004` and `MAT-013` batch. The strict
   issue/PR ranking gate remains blocked by label-dependent coverage-gap
   product blocker classification, while behavior-negative-only metrics remain
@@ -4223,8 +4225,9 @@ meaningful work. Do not replace this file with a daily reset.
   residuals: `MAT-014` tests whether `psf/requests#7437` can stay in the pure
   typed-builder layer, and `KNOW-006` closes the held-out h11 import-style
   knowledge attribution gap exposed by KNOW-003.
-- Commit: pending.
-- Push: pending.
-- Next: spawn one worker for `MAT-014` and one worker for `KNOW-006`, then
-  record their worker IDs.
+- Commit: 45c1d0e.
+- Push: succeeded.
+- Next: worker Dalton (`019e3dfa-a835-7f91-9d8f-77e6d1fc3ea2`) is running
+  `MAT-014`; worker James (`019e3dfa-a857-7941-8a7a-827462b044cf`) is running
+  `KNOW-006`.
 - Blockers: none.

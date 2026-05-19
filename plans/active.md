@@ -57,7 +57,7 @@ This is the live coordinator board. Keep it current and compact.
 ### `MAT-014`: Requests #7437 pure typed-builder materialization probe
 
 - Status: active
-- Owner: pending worker spawn.
+- Owner: worker Dalton (`019e3dfa-a835-7f91-9d8f-77e6d1fc3ea2`).
 - Write scope: `j3/heldout_typed_builder_candidate.py`,
   `tests/test_heldout_typed_builder_candidate.py`, optional
   `docs/MAT_014_*`, generated artifacts under `/tmp`, and task-specific
@@ -74,7 +74,7 @@ This is the live coordinator board. Keep it current and compact.
 ### `KNOW-006`: Held-out h11 import-style knowledge gap
 
 - Status: active
-- Owner: pending worker spawn.
+- Owner: worker James (`019e3dfa-a857-7941-8a7a-827462b044cf`).
 - Write scope: local knowledge and tests-only planning attribution, especially
   `j3/local_knowledge.py`, `j3/real_repo_tests_planner.py`,
   `tests/test_local_knowledge.py`, `tests/test_real_repo_tests_planner.py`,

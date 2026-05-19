@@ -995,6 +995,37 @@ Long-term target:
   direct-replay versus full-matrix residual-report discrepancy before assigning
   broader attribute-repair scorer work.
 
+### MODEL-016: Restore AttributeError fields in transition advice scoring
+
+- Status: active
+- Owner: worker MODEL-016, assigned on 2026-05-19.
+- Why: coordinator review of `TRANS-016` found the direct-replay versus
+  full-matrix discrepancy is an advice input parity gap. The direct
+  `candidate-outcomes.jsonl` rows include `missing_attributes` and traceback
+  locations, so `MODEL-015` ranks the passing
+  `amount_cents -> balance_cents` candidate first. The advice-side
+  `PytestFailureHint` record omits those fields, so the full
+  `transition-advice.jsonl` scorer cannot activate the AttributeError
+  visible-balance features and still ties the attribute candidates.
+- Write scope: `j3/transition_scorer_advice.py`,
+  `tests/test_transition_scorer_advice.py`, and plan updates. Do not edit
+  scorer weights, candidate generation, product routing, matrix manifests,
+  guarded-trial policy, local-knowledge records, materializer code, or
+  `plans/strategy.md`.
+- Acceptance: advice-side hint serialization preserves AttributeError
+  `missing_attributes` and traceback/source-file context needed by
+  `score_transition_action_candidate`; a focused advice-path regression builds
+  three real `CandidatePatch` attribute candidates and proves the scorer top
+  candidate is the passing `amount_cents -> balance_cents` edit; product
+  routing remains shadow-only.
+- Tests: focused `tests/test_transition_scorer_advice.py`, focused transition
+  action scoring regression if needed, direct advice-path replay for
+  `visible_balance_attribute_decoys`, `pytest tests/test_plan_consistency.py
+  -q`, and `git diff --check`.
+- Notes: keep the slice to advice input parity. If preserving the fields
+  clears the full residual report, verify that separately with a follow-up
+  `TRANS-017` evidence replay.
+
 ## Workstream E: Repo State, Actions, And Models
 
 ### REPO-001: Summarize repo-state encoder coverage

@@ -7185,3 +7185,30 @@ meaningful work. Do not replace this file with a daily reset.
   full shadow-scorer reporting before assigning broader scorer work.
 - Blockers: none for evidence generation; the full residual report still has
   one shadow-advice-only example.
+
+### 2026-05-19 - Coordinator Review And Dispatch - MODEL-016
+
+- Owner: coordinator.
+- Files changed: `plans/active.md`, `plans/backlog.md`, and
+  `plans/progress.md`.
+- Tests: `pytest tests/test_plan_consistency.py -q` -> 6 passed;
+  `git diff --check` -> passed; checksum verification for
+  `/tmp/j3-trans-016-expanded-standard-after-model015/evidence/checksums.sha256`
+  -> passed; direct scorer replay over
+  `/tmp/j3-trans-016-expanded-standard-after-model015/suite/greenshot_5_subset/candidate-outcomes.jsonl`
+  for `visible_balance_attribute_decoys` -> rank 1 passing
+  `change_attribute amount_cents -> balance_cents` scored `3.220000000000`,
+  ahead of failing `available_cents` and `pending_cents` decoys at
+  `1.470000000000`; stored `transition-advice.jsonl` still had the failing
+  `available_cents` candidate as shadow-scorer top at `1.92`.
+- Result: reviewed and closed `TRANS-016`. The root cause is an advice input
+  parity gap, not a broader scorer-weight problem: direct candidate outcomes
+  include AttributeError `missing_attributes` and traceback/source-file
+  context, while `transition_scorer_advice._failure_hint_record` omits
+  `missing_attributes` and traceback locations. That omission prevents the
+  `MODEL-015` visible-balance AttributeError features from activating during
+  full shadow advice generation.
+- Next: dispatch `MODEL-016` to preserve the missing AttributeError fields in
+  advice-side hint serialization and add a focused advice-path regression.
+- Blockers: product routing remains shadow-only until a later evidence replay
+  proves the full residual report and suite gates support changing it.

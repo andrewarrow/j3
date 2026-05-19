@@ -3423,7 +3423,7 @@ Long-term target:
 
 ### MAT-025: Held-out Click ANSI wrapping source/test candidate
 
-- Status: active
+- Status: done
 - Why: after `MAT-024`, `pallets/click#3420` is the final remaining
   constrained held-out row from the MAT-019 panel. It is broader than
   `click-3434` and `click-3364`: ANSI-aware text wrapping requires local
@@ -3446,12 +3446,29 @@ Long-term target:
 - Tests: focused source-region candidate tests, JSON/report checks if added,
   `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and live
   focused validation when materialized.
+- Completion note: materialized `pallets/click#3420` from base
+  `d959898db264aaf07e70ad4eafa254286f9a5185` to accepted head
+  `587e3cc7f4804a4fa62f3dab8839a6e1f8954d7c`. The candidate changed
+  `CHANGES.rst`, `src/click/_textwrap.py`, `src/click/formatting.py`, and
+  `tests/test_formatting.py`; full accepted-diff parity, source/test scoped
+  parity, and source/docs/test scoped parity are true. Live focused validation
+  passed `PYTHONPATH=src python -m pytest
+  tests/test_formatting.py::test_wrap_text_visible_width
+  tests/test_formatting.py::test_write_usage_styled_prefix_keeps_options_on_one_line
+  -q` with `4 passed in 0.01s`. Artifacts:
+  `docs/MAT_025_CLICK_3420_ANSI_WRAPPING_CANDIDATE_2026-05-19.md`,
+  `/tmp/j3-mat-025-click-3420/final/candidate.json`,
+  `/tmp/j3-mat-025-click-3420/final/report.md`,
+  `/tmp/j3-mat-025-click-3420/final/candidate.diff`,
+  `/tmp/j3-mat-025-click-3420/final/accepted.diff`, and
+  `/tmp/j3-mat-025-click-3420/final/accepted-files.txt`.
 
 ## Next Recommended Queue
 
 Start with these unless fresh evidence changes the order:
 
-1. Complete `MAT-025` for the broader `click-3420` ANSI wrapping constrained
-   row, then refresh constrained-source coverage counts.
+1. Coordinator review should refresh constrained-source coverage counts now
+   that the MAT-019 constrained held-out panel has no remaining
+   `constrained_local_generator` rows.
 2. Separately decide whether to pursue the `TRANS-012` shadow-advice-only
    residual examples; product transition routing remains shadow-only.

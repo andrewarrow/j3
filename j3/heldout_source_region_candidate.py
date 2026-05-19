@@ -56,6 +56,12 @@ DEFAULT_CLICK_DEFAULT_MAP_SPLIT_BASE_REF = (
 DEFAULT_CLICK_DEFAULT_MAP_SPLIT_HEAD_REF = (
     "94004f1b5a4a982e8e33ef8d5f00cfb0e1dabddd"
 )
+DEFAULT_CLICK_ANSI_WRAPPING_BASE_REF = (
+    "d959898db264aaf07e70ad4eafa254286f9a5185"
+)
+DEFAULT_CLICK_ANSI_WRAPPING_HEAD_REF = (
+    "587e3cc7f4804a4fa62f3dab8839a6e1f8954d7c"
+)
 DEFAULT_PYTEST_SCANNER_BASE_REF = "7df5d80ff3a98714a1d3cdbe82941229e511f4b3"
 DEFAULT_VALIDATION_COMMAND = (
     "python -m pytest "
@@ -79,6 +85,12 @@ DEFAULT_CLICK_DEFAULT_MAP_SPLIT_VALIDATION_COMMAND = (
     "PYTHONPATH=src python -m pytest "
     "tests/test_defaults.py::test_default_map_nargs -q"
 )
+DEFAULT_CLICK_ANSI_WRAPPING_VALIDATION_COMMAND = (
+    "PYTHONPATH=src python -m pytest "
+    "tests/test_formatting.py::test_wrap_text_visible_width "
+    "tests/test_formatting.py::test_write_usage_styled_prefix_keeps_options_on_one_line "
+    "-q"
+)
 DEFAULT_PYTEST_SCANNER_VALIDATION_COMMAND = (
     "PYTHONPATH=src python -c "
     "\"from _pytest.mark.expression import Expression; "
@@ -94,6 +106,7 @@ REQUESTS_MODELS_PATH = "src/requests/models.py"
 REQUESTS_SESSIONS_PATH = "src/requests/sessions.py"
 REQUESTS_TEST_REQUESTS_PATH = "tests/test_requests.py"
 CLICK_FORMATTING_PATH = "src/click/formatting.py"
+CLICK_TEXTWRAP_PATH = "src/click/_textwrap.py"
 CLICK_TEST_FORMATTING_PATH = "tests/test_formatting.py"
 CLICK_CORE_PATH = "src/click/core.py"
 CLICK_TEST_DEFAULTS_PATH = "tests/test_defaults.py"
@@ -225,15 +238,28 @@ class HeldoutSourceRegionSpec:
     allowed_write_paths: tuple[str, ...]
     source_action: SourceRegionAction
     test_action: PytestInsertionAction
+    extra_source_actions: tuple[SourceRegionAction, ...] = field(default_factory=tuple)
     text_actions: tuple[TextInsertionAction, ...] = field(default_factory=tuple)
     action_family_reuse_evidence: tuple[dict[str, object], ...] = field(
         default_factory=tuple
     )
     accepted_head_ref: str | None = None
+    source_test_scope_paths: tuple[str, ...] | None = None
 
     def __post_init__(self) -> None:
-        for path in (self.source_file, self.test_file, *self.allowed_write_paths):
+        for path in (
+            self.source_file,
+            self.test_file,
+            *self.allowed_write_paths,
+            *(
+                ()
+                if self.source_test_scope_paths is None
+                else self.source_test_scope_paths
+            ),
+        ):
             _validate_relative_path(path)
+        for action in self.extra_source_actions:
+            _validate_relative_path(action.target.file_path)
         for action in self.text_actions:
             _validate_relative_path(action.target_file)
 
@@ -811,6 +837,131 @@ def build_click_default_map_split_spec(
     )
 
 
+def build_click_ansi_wrapping_spec(
+    repo_path: Path,
+    *,
+    base_ref: str = DEFAULT_CLICK_ANSI_WRAPPING_BASE_REF,
+    accepted_head_ref: str = DEFAULT_CLICK_ANSI_WRAPPING_HEAD_REF,
+    validation_command: str = DEFAULT_CLICK_ANSI_WRAPPING_VALIDATION_COMMAND,
+) -> HeldoutSourceRegionSpec:
+    """Build the held-out Click ANSI-aware wrapping candidate."""
+
+    textwrap_source = _repo_file(repo_path, CLICK_TEXTWRAP_PATH).read_text(
+        encoding="utf-8"
+    )
+    formatting_source = _repo_file(repo_path, CLICK_FORMATTING_PATH).read_text(
+        encoding="utf-8"
+    )
+    source_action = _click_ansi_textwrap_source_action(textwrap_source)
+    formatting_action = _click_ansi_formatting_docstring_action(formatting_source)
+    test_action = PytestInsertionAction(
+        target_file=CLICK_TEST_FORMATTING_PATH,
+        anchor_function_name="test_help_formatter_write_text",
+        function_name="test_wrap_text_visible_width",
+        insertion_source=_click_ansi_wrapping_test_source(),
+        max_added_lines=80,
+        surrounding_blank_lines=2,
+        trailing_blank_lines=0,
+        rationale=(
+            "insert ANSI visible-width wrapping regressions after existing "
+            "HelpFormatter text wrapping coverage"
+        ),
+    )
+    text_actions = (
+        TextInsertionAction(
+            target_file=CLICK_TEST_FORMATTING_PATH,
+            anchor_text="import click\n",
+            insertion_source="from click._compat import strip_ansi\n",
+            insert_once_contains="from click._compat import strip_ansi",
+            max_added_lines=1,
+            rationale=(
+                "add the existing Click ANSI stripping helper used by the "
+                "formatter regressions"
+            ),
+        ),
+        TextInsertionAction(
+            target_file=CLICK_CHANGES_PATH,
+            anchor_text="    pager. :pr:`1572`\n",
+            insertion_source=_click_ansi_wrapping_changelog_source(),
+            insert_once_contains=":pr:`3420`",
+            max_added_lines=5,
+            rationale=(
+                "record the ANSI visible-width wrapping behavior change in "
+                "the current changelog section"
+            ),
+        ),
+    )
+    return HeldoutSourceRegionSpec(
+        candidate_id="mat-025-click-ansi-wrapping",
+        repo_id="pallets/click",
+        repo_url="https://github.com/pallets/click",
+        repo_split="held_out",
+        base_ref=base_ref,
+        accepted_head_ref=accepted_head_ref,
+        reference_pr_url="https://github.com/pallets/click/pull/3420",
+        prompt=(
+            "Make Click text wrapping measure visible terminal width so ANSI "
+            "escape sequences in text, indents, or placeholders do not count "
+            "toward wrapping decisions."
+        ),
+        source_file=CLICK_TEXTWRAP_PATH,
+        test_file=CLICK_TEST_FORMATTING_PATH,
+        validation_command=validation_command,
+        allowed_write_paths=(
+            CLICK_CHANGES_PATH,
+            CLICK_TEXTWRAP_PATH,
+            CLICK_FORMATTING_PATH,
+            CLICK_TEST_FORMATTING_PATH,
+        ),
+        source_action=source_action,
+        extra_source_actions=(formatting_action,),
+        test_action=test_action,
+        text_actions=text_actions,
+        source_test_scope_paths=(
+            CLICK_TEXTWRAP_PATH,
+            CLICK_FORMATTING_PATH,
+            CLICK_TEST_FORMATTING_PATH,
+        ),
+        action_family_reuse_evidence=(
+            {
+                "action_kind": SourceRegionActionKind.REPLACE_DELIMITED_REGION.value,
+                "reused_from": ["MAT-024"],
+                "evidence": (
+                    "same bounded delimited source-region schema; target file, "
+                    "local markers, import allowance, and replacement region "
+                    "are parameters"
+                ),
+            },
+            {
+                "action_kind": SourceRegionActionKind.REPLACE_FUNCTION_REGION.value,
+                "reused_from": ["MAT-008", "MAT-009", "MAT-020", "MAT-023"],
+                "evidence": (
+                    "same bounded function-region schema; target function and "
+                    "docstring line range are parameters"
+                ),
+            },
+            {
+                "action_kind": "insert_pytest_function_after_anchor",
+                "reused_from": ["MAT-008", "MAT-009", "MAT-020", "MAT-023"],
+                "evidence": (
+                    "same repo-convention pytest insertion shape; target "
+                    "test file, anchor function, and inserted pytest block "
+                    "are parameters"
+                ),
+            },
+            {
+                "action_kind": "insert_text_around_anchor",
+                "reused_from": ["MAT-017", "MAT-024"],
+                "evidence": (
+                    "same bounded text insertion shape; target file, anchor, "
+                    "position, and inserted import or changelog text are "
+                    "parameters"
+                ),
+            },
+        ),
+    )
+
+
 def materialize_heldout_source_region_candidate(
     repo_path: Path,
     spec: HeldoutSourceRegionSpec,
@@ -826,6 +977,7 @@ def materialize_heldout_source_region_candidate(
     blockers: list[dict[str, str]] = []
     action_records = [
         spec.source_action.to_record(),
+        *[action.to_record() for action in spec.extra_source_actions],
         spec.test_action.to_record(),
         *[action.to_record() for action in spec.text_actions],
     ]
@@ -841,16 +993,20 @@ def materialize_heldout_source_region_candidate(
         )
 
     hashes_before = _file_hashes(repo, spec.allowed_write_paths)
-    source_result: SourceRegionMaterializationResult | None = None
+    source_results: list[SourceRegionMaterializationResult] = []
     test_result: PytestInsertionResult | None = None
     text_results: list[TextInsertionResult] = []
 
-    if not blockers:
+    for source_action in (spec.source_action, *spec.extra_source_actions):
+        if blockers:
+            break
         try:
-            source_result = materialize_source_region(
-                repo,
-                spec.source_action,
-                write=write,
+            source_results.append(
+                materialize_source_region(
+                    repo,
+                    source_action,
+                    write=write,
+                )
             )
         except SourceRegionMaterializationError as error:
             blockers.append(
@@ -909,7 +1065,8 @@ def materialize_heldout_source_region_candidate(
         candidate_diff,
         accepted_diff_path=accepted_diff_path,
         scope_path_sets={
-            "source_test": (spec.source_file, spec.test_file),
+            "source_test": spec.source_test_scope_paths
+            or (spec.source_file, spec.test_file),
             "source_docs_test": tuple(spec.allowed_write_paths),
         },
     )
@@ -923,10 +1080,10 @@ def materialize_heldout_source_region_candidate(
         )
 
     source_record: dict[str, object]
-    if source_result is None:
+    if not source_results:
         source_record = {"available": False, "target_file": spec.source_file}
     else:
-        source_record = source_result.to_record()
+        source_record = source_results[0].to_record()
 
     test_record: dict[str, object]
     if test_result is None:
@@ -937,6 +1094,7 @@ def materialize_heldout_source_region_candidate(
     text_records = [result.to_record() for result in text_results]
     candidate_after = {
         "source_file": source_record,
+        "source_files": [result.to_record() for result in source_results],
         "test_file": test_record,
         "text_files": text_records,
         "candidate_diff": candidate_diff,
@@ -949,7 +1107,13 @@ def materialize_heldout_source_region_candidate(
         "mode": "heldout_source_region_source_test",
         "allowed_write_paths": list(spec.allowed_write_paths),
         "planned_write_files": [
-            spec.source_file,
+            *[
+                action.target.file_path
+                for action in (
+                    spec.source_action,
+                    *spec.extra_source_actions,
+                )
+            ],
             spec.test_file,
             *[action.target_file for action in spec.text_actions],
         ],
@@ -1799,6 +1963,320 @@ def _click_default_map_split_commands_doc_source() -> str:
     )
 
 
+def _click_ansi_textwrap_source_action(source: str) -> SourceRegionAction:
+    return SourceRegionAction(
+        kind=SourceRegionActionKind.REPLACE_DELIMITED_REGION,
+        target=SourceRegionTarget(
+            file_path=CLICK_TEXTWRAP_PATH,
+            region_name="ansi_visible_width_text_wrapper",
+            start_marker="from contextlib import contextmanager",
+            end_marker="    @contextmanager",
+        ),
+        replacement_source=_click_ansi_textwrap_source_replacement(),
+        constraints=SourceRegionConstraints(
+            max_changed_source_lines=170,
+            must_preserve_signature=False,
+            allowed_import_changes=(
+                "from ._compat import _ansi_re",
+                "from ._compat import term_len",
+            ),
+        ),
+        rationale=(
+            "measure wrapping widths with Click's ANSI-aware terminal length "
+            "helper and avoid cutting inside ANSI escape sequences"
+        ),
+    )
+
+
+def _click_ansi_textwrap_source_replacement() -> str:
+    return "\n".join(
+        [
+            "",
+            "from ._compat import _ansi_re",
+            "from ._compat import term_len",
+            "",
+            "",
+            "def _truncate_visible(text: str, n: int) -> str:",
+            '    """Return the longest prefix of ``text`` containing at most ``n`` visible',
+            "    characters.",
+            "",
+            "    ANSI escape sequences inside the prefix are kept intact and do not count",
+            "    toward the visible width. A cut is never placed inside an escape sequence.",
+            '    """',
+            "    if n <= 0:",
+            '        return ""',
+            "",
+            "    visible = 0",
+            "    i = 0",
+            "    cut = 0",
+            "    end = len(text)",
+            "    while i < end:",
+            "        m = _ansi_re.match(text, i)",
+            "        if m is not None:",
+            "            i = m.end()",
+            "            continue",
+            "        visible += 1",
+            "        i += 1",
+            "        cut = i",
+            "        if visible >= n:",
+            "            break",
+            "    return text[:cut]",
+            "",
+            "",
+            "class TextWrapper(textwrap.TextWrapper):",
+            '    """``textwrap.TextWrapper`` variant that measures widths by visible',
+            "    character count.",
+            "",
+            "    ANSI escape sequences embedded in chunks, indents, or the placeholder are",
+            "    excluded from the width budget. Without this, styled help text (a styled",
+            "    ``Usage:`` prefix, a colorized option name, ...) would be wrapped earlier",
+            "    than its visible length warrants and tokens would split mid-word.",
+            '    """',
+            "",
+            "    def _handle_long_word(",
+            "        self,",
+            "        reversed_chunks: list[str],",
+            "        cur_line: list[str],",
+            "        cur_len: int,",
+            "        width: int,",
+            "    ) -> None:",
+            "        space_left = max(width - cur_len, 1)",
+            "",
+            "        if self.break_long_words:",
+            "            last = reversed_chunks[-1]",
+            "            cut = _truncate_visible(last, space_left)",
+            "            res = last[len(cut) :]",
+            "            cur_line.append(cut)",
+            "            reversed_chunks[-1] = res",
+            "        elif not cur_line:",
+            "            cur_line.append(reversed_chunks.pop())",
+            "",
+            "    def _wrap_chunks(self, chunks: list[str]) -> list[str]:",
+            '        """Wrap chunks counting widths in visible characters.',
+            "",
+            "        Mirrors the algorithm of :meth:`textwrap.TextWrapper._wrap_chunks`",
+            "        with every width measurement routed through",
+            "        :func:`click._compat.term_len` instead of :func:`len`, so ANSI escape",
+            "        bytes in chunks, indents, or the placeholder do not inflate the count.",
+            "",
+            "        .. seealso::",
+            "            :class:`textwrap.TextWrapper` in the Python standard library documentation:",
+            "            https://docs.python.org/3/library/textwrap.html#textwrap.TextWrapper",
+            "",
+            "            Reference implementation in CPython:",
+            "            https://github.com/python/cpython/blob/main/Lib/textwrap.py",
+            '        """',
+            "        lines: list[str] = []",
+            "        if self.width <= 0:",
+            '            raise ValueError(f"invalid width {self.width!r} (must be > 0)")',
+            "        if self.max_lines is not None:",
+            "            if self.max_lines > 1:",
+            "                indent = self.subsequent_indent",
+            "            else:",
+            "                indent = self.initial_indent",
+            "            if term_len(indent) + term_len(self.placeholder.lstrip()) > self.width:",
+            '                raise ValueError("placeholder too large for max width")',
+            "",
+            "        chunks.reverse()",
+            "",
+            "        while chunks:",
+            "            cur_line: list[str] = []",
+            "            cur_len = 0",
+            "",
+            "            if lines:",
+            "                indent = self.subsequent_indent",
+            "            else:",
+            "                indent = self.initial_indent",
+            "",
+            "            width = self.width - term_len(indent)",
+            "",
+            '            if self.drop_whitespace and chunks[-1].strip() == "" and lines:',
+            "                del chunks[-1]",
+            "",
+            "            while chunks:",
+            "                n = term_len(chunks[-1])",
+            "",
+            "                if cur_len + n <= width:",
+            "                    cur_line.append(chunks.pop())",
+            "                    cur_len += n",
+            "",
+            "                else:",
+            "                    break",
+            "",
+            "            if chunks and term_len(chunks[-1]) > width:",
+            "                self._handle_long_word(chunks, cur_line, cur_len, width)",
+            "                cur_len = sum(map(term_len, cur_line))",
+            "",
+            '            if self.drop_whitespace and cur_line and cur_line[-1].strip() == "":',
+            "                cur_len -= term_len(cur_line[-1])",
+            "                del cur_line[-1]",
+            "",
+            "            if cur_line:",
+            "                if (",
+            "                    self.max_lines is None",
+            "                    or len(lines) + 1 < self.max_lines",
+            "                    or (",
+            "                        not chunks",
+            "                        or self.drop_whitespace",
+            "                        and len(chunks) == 1",
+            "                        and not chunks[0].strip()",
+            "                    )",
+            "                    and cur_len <= width",
+            "                ):",
+            '                    lines.append(indent + "".join(cur_line))',
+            "                else:",
+            "                    while cur_line:",
+            "                        if (",
+            "                            cur_line[-1].strip()",
+            "                            and cur_len + term_len(self.placeholder) <= width",
+            "                        ):",
+            "                            cur_line.append(self.placeholder)",
+            '                            lines.append(indent + "".join(cur_line))',
+            "                            break",
+            "                        cur_len -= term_len(cur_line[-1])",
+            "                        del cur_line[-1]",
+            "                    else:",
+            "                        if lines:",
+            "                            prev_line = lines[-1].rstrip()",
+            "                            if (",
+            "                                term_len(prev_line) + term_len(self.placeholder)",
+            "                                <= self.width",
+            "                            ):",
+            "                                lines[-1] = prev_line + self.placeholder",
+            "                                break",
+            "                        lines.append(indent + self.placeholder.lstrip())",
+            "                    break",
+            "",
+            "        return lines",
+            "",
+            "",
+        ]
+    )
+
+
+def _click_ansi_formatting_docstring_action(source: str) -> SourceRegionAction:
+    start_line = _line_number(
+        source,
+        "    :param preserve_paragraphs: if this flag is set then the wrapping will",
+    )
+    end_line = _first_line_after(
+        source,
+        start_line,
+        "                                intelligently handle paragraphs.",
+    )
+    return SourceRegionAction(
+        kind=SourceRegionActionKind.REPLACE_FUNCTION_REGION,
+        target=SourceRegionTarget(
+            file_path=CLICK_FORMATTING_PATH,
+            function_name="wrap_text",
+            region_name="visible_width_versionchanged_docstring",
+            start_line=start_line,
+            end_line=end_line,
+        ),
+        replacement_source=_click_ansi_formatting_docstring_replacement(),
+        constraints=SourceRegionConstraints(max_changed_source_lines=8),
+        rationale=(
+            "record that wrap_text now measures visible character width in "
+            "the public function docstring"
+        ),
+    )
+
+
+def _click_ansi_formatting_docstring_replacement() -> str:
+    return "\n".join(
+        [
+            "    :param preserve_paragraphs: if this flag is set then the wrapping will",
+            "                                intelligently handle paragraphs.",
+            "",
+            "    .. versionchanged:: 8.4",
+            "        Width is measured in visible characters. ANSI escape sequences in",
+            "        ``text``, ``initial_indent``, or ``subsequent_indent`` no longer",
+            "        count toward the width budget, so styled input wraps based on what",
+            "        the user sees instead of raw byte length.",
+        ]
+    )
+
+
+def _click_ansi_wrapping_test_source() -> str:
+    return "\n".join(
+        [
+            "@pytest.mark.parametrize(",
+            '    ("body", "width", "initial_indent"),',
+            "    [",
+            "        # Styled ``initial_indent`` must be measured by visible width, so the",
+            "        # ``Usage:`` prefix shouldn't push ``[OPTIONS]`` to the second line.",
+            "        # Regression for the asymmetry between ``HelpFormatter.write_usage``",
+            "        # (which sized the prefix with ``term_len``) and ``wrap_text``",
+            "        # (which previously used raw ``len``).",
+            "        pytest.param(",
+            '            "[OPTIONS]",',
+            "            30,",
+            '            "\\x1b[38;2;38;139;210m\\x1b[1mUsage:\\x1b[0m ",',
+            '            id="styled-initial-indent-does-not-break-body",',
+            "        ),",
+            "        # Styled chunks in the body itself wrap on visible width.",
+            "        pytest.param(",
+            '            "\\x1b[31malpha\\x1b[0m \\x1b[31mbeta\\x1b[0m"',
+            '            " \\x1b[31mgamma\\x1b[0m \\x1b[31mdelta\\x1b[0m",',
+            "            15,",
+            '            "",',
+            '            id="styled-body-wraps-on-visible-width",',
+            "        ),",
+            "        # ``_handle_long_word`` cuts a styled token between visible",
+            "        # characters; the ANSI escape sequence must not be split.",
+            "        pytest.param(",
+            '            "\\x1b[31mabcdefghij\\x1b[0m",',
+            "            5,",
+            '            "",',
+            '            id="styled-long-word-breaks-on-visible-width",',
+            "        ),",
+            "    ],",
+            ")",
+            "def test_wrap_text_visible_width(body, width, initial_indent):",
+            '    """``wrap_text`` of styled input produces the same line layout as',
+            "    ``wrap_text`` of the ANSI-stripped input.",
+            "",
+            "    ANSI escape bytes must not count toward the width budget, regardless",
+            "    of whether they appear in the body, in ``initial_indent``, or when a",
+            "    styled token has to be broken in the middle.",
+            '    """',
+            "    styled = click.formatting.wrap_text(",
+            "        body, width=width, initial_indent=initial_indent",
+            "    )",
+            "    plain = click.formatting.wrap_text(",
+            "        strip_ansi(body), width=width, initial_indent=strip_ansi(initial_indent)",
+            "    )",
+            "",
+            "    styled_visible = [strip_ansi(line) for line in styled.splitlines()]",
+            "    assert styled_visible == plain.splitlines()",
+            "",
+            "",
+            "def test_write_usage_styled_prefix_keeps_options_on_one_line():",
+            '    """End-to-end: a downstream-styled ``Usage:`` prefix should not split',
+            "    ``[OPTIONS]`` across two lines.",
+            '    """',
+            '    styled_prefix = "\\x1b[38;2;38;139;210m\\x1b[1mUsage:\\x1b[0m "',
+            "",
+            "    formatter = click.HelpFormatter(width=40)",
+            '    formatter.write_usage("cli", "[OPTIONS]", prefix=styled_prefix)',
+            "    rendered = formatter.getvalue()",
+            "",
+            "    visible = strip_ansi(rendered)",
+            '    assert visible == "Usage: cli [OPTIONS]\\n"',
+        ]
+    )
+
+
+def _click_ansi_wrapping_changelog_source() -> str:
+    return "\n".join(
+        [
+            "-   :class:`~click.formatting.TextWrapper` and",
+            "    :func:`~click.formatting.wrap_text` now measure line width in visible",
+            "    characters, ignoring ANSI escape sequences. :pr:`3420`",
+        ]
+    ) + "\n"
+
+
 def _line_number(source: str, needle: str) -> int:
     for index, line in enumerate(source.splitlines(), start=1):
         if line == needle:
@@ -2168,6 +2646,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             "requests-7328",
             "click-3434",
             "click-3364",
+            "click-3420",
         ),
         default="requests-7427",
     )
@@ -2191,6 +2670,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         spec = build_click_write_usage_spec(args.repo_path)
     elif args.candidate == "click-3364":
         spec = build_click_default_map_split_spec(args.repo_path)
+    elif args.candidate == "click-3420":
+        spec = build_click_ansi_wrapping_spec(args.repo_path)
     else:
         spec = build_requests_no_proxy_domain_boundary_spec(args.repo_path)
     candidate = materialize_heldout_source_region_candidate(

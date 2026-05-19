@@ -5920,3 +5920,45 @@ meaningful work. Do not replace this file with a daily reset.
   broader ANSI wrapping source/test row, with reusable source-region and pytest
   insertion/refinement actions.
 - Blockers: none.
+
+### 2026-05-19 - MAT-025 - Click #3420 ANSI wrapping materialization
+
+- Owner: worker MAT-025.
+- Files changed: `j3/heldout_source_region_candidate.py`,
+  `tests/test_heldout_source_region_candidate.py`,
+  `docs/MAT_025_CLICK_3420_ANSI_WRAPPING_CANDIDATE_2026-05-19.md`,
+  `plans/active.md`, `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `python -m py_compile j3/heldout_source_region_candidate.py
+  tests/test_heldout_source_region_candidate.py` -> passed; `pytest
+  tests/test_heldout_source_region_candidate.py -q` -> 15 passed; live fresh
+  checkout run `PYTHONPATH=/Users/aa/os/j3 python -m
+  j3.heldout_source_region_candidate --candidate click-3420 --repo-path
+  /tmp/j3-mat-025-click-3420/live --accepted-diff
+  /tmp/j3-mat-025-click-3420/accepted.diff --out
+  /tmp/j3-mat-025-click-3420/final/candidate.json --report
+  /tmp/j3-mat-025-click-3420/final/report.md --diff-out
+  /tmp/j3-mat-025-click-3420/final/candidate.diff --validate
+  --validation-timeout-seconds 60` -> validated; validation command
+  `PYTHONPATH=src python -m pytest
+  tests/test_formatting.py::test_wrap_text_visible_width
+  tests/test_formatting.py::test_write_usage_styled_prefix_keeps_options_on_one_line
+  -q` -> `4 passed in 0.01s`; `python -m json.tool
+  /tmp/j3-mat-025-click-3420/final/candidate.json` -> passed.
+- Result: materialized `pallets/click#3420` from base
+  `d959898db264aaf07e70ad4eafa254286f9a5185` to accepted head
+  `587e3cc7f4804a4fa62f3dab8839a6e1f8954d7c`. The candidate changed
+  `CHANGES.rst`, `src/click/_textwrap.py`, `src/click/formatting.py`, and
+  `tests/test_formatting.py`, recorded candidate-after diff/AST/hash metadata
+  plus mutation scope, and used reusable `replace_delimited_region`,
+  `replace_function_region`, `insert_pytest_function_after_anchor`, and
+  `insert_text_around_anchor` action records. Full accepted-diff parity,
+  source/test scoped parity, and source/docs/test scoped parity are true. The
+  final MAT-019 constrained held-out row is now materialized and
+  live-validated; remaining non-materialized constrained-local-generator count
+  is zero.
+- Commit: pending.
+- Push: pending.
+- Next: coordinator should review the completed constrained-source/test panel
+  and choose the next bounded task; shadow-advice-only residual examples remain
+  separate from this materialization work.
+- Blockers: none.

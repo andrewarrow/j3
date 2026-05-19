@@ -160,41 +160,22 @@ This is the live coordinator board. Keep it current and compact.
   `not_currently_expressible = 2`. `MAT-024` now materializes and
   live-validates the smaller remaining Click row, `pallets/click#3364`, with
   exact full accepted-diff parity across source, docs, changelog/config docs,
-  and tests. Remaining non-materialized MAT-007 counts are now
+  and tests. `MAT-025` then materializes and live-validates the final
+  remaining constrained row from the MAT-019 panel, `pallets/click#3420`,
+  with exact full accepted-diff parity across changelog, source, and tests.
+  Remaining non-materialized MAT-007 counts are now
   `current_structured_action = 4`, `general_typed_builder = 0`,
-  `repo_convention_builder = 4`, `constrained_local_generator = 1`, and
-  `not_currently_expressible = 2`. `MAT-025` is now assigned to the final
-  remaining constrained row from the MAT-019 panel, `pallets/click#3420`, the
-  broader ANSI wrapping task.
+  `repo_convention_builder = 4`, `constrained_local_generator = 0`, and
+  `not_currently_expressible = 2`.
 
 ## Active Tasks
 
-### `MAT-025`: Held-out Click ANSI wrapping source/test candidate
-
-- Status: active
-- Owner: worker.
-- Scope: attempt `pallets/click#3420` with reusable bounded source-region and
-  pytest insertion/refinement action records. Allowed writes are focused
-  extensions to `j3/heldout_source_region_candidate.py`,
-  `tests/test_heldout_source_region_candidate.py`, focused `docs/MAT_025_*`,
-  generated artifacts under `/tmp`, and plan updates. Avoid transition
-  scoring, issue/PR ranking, local-knowledge records, matrix manifests, and
-  unrelated materializer families.
-- Acceptance: determine pinned base/head refs, accepted changed files,
-  validation command, mutation scope, candidate-after diff/AST/hash metadata,
-  accepted-diff comparison, and live validation result for `click-3420`. Use
-  reusable action kinds rather than a PR-named action. Explicitly separate full
-  accepted-diff parity from source/test scoped parity if the accepted PR spans
-  docs, changelog, or other companion files. If target selection, source-region
-  materialization, pytest insertion/refinement, parity, or validation blocks,
-  record the exact blocker without broadening silently.
-- Tests: focused source-region candidate tests, JSON/report checks if added,
-  `pytest tests/test_plan_consistency.py -q`, `git diff --check`, and live
-  focused validation when materialized.
+No active worker task is assigned after `MAT-025`.
 
 ## Ready Queue
 
-No separate ready worker task is queued while `MAT-025` is active.
+No separate ready worker task is queued after `MAT-025`; coordinator review
+should choose the next bounded task from the backlog.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
@@ -219,6 +200,26 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `MAT-025`: materialized `pallets/click#3420` from base
+  `d959898db264aaf07e70ad4eafa254286f9a5185` to accepted head
+  `587e3cc7f4804a4fa62f3dab8839a6e1f8954d7c`. The candidate changed
+  `CHANGES.rst`, `src/click/_textwrap.py`, `src/click/formatting.py`, and
+  `tests/test_formatting.py`, recorded candidate-after diff/AST/hash metadata
+  plus mutation scope, and used reusable `replace_delimited_region`,
+  `replace_function_region`, `insert_pytest_function_after_anchor`, and
+  `insert_text_around_anchor` action records. Full accepted-diff parity,
+  source/test scoped parity, and source/docs/test scoped parity are all true.
+  Live focused validation used checkout-local source with `PYTHONPATH=src` and
+  passed:
+  `tests/test_formatting.py::test_wrap_text_visible_width` and
+  `tests/test_formatting.py::test_write_usage_styled_prefix_keeps_options_on_one_line`.
+  Artifacts:
+  `docs/MAT_025_CLICK_3420_ANSI_WRAPPING_CANDIDATE_2026-05-19.md`,
+  `/tmp/j3-mat-025-click-3420/final/candidate.json`,
+  `/tmp/j3-mat-025-click-3420/final/report.md`,
+  `/tmp/j3-mat-025-click-3420/final/candidate.diff`,
+  `/tmp/j3-mat-025-click-3420/final/accepted.diff`, and
+  `/tmp/j3-mat-025-click-3420/final/accepted-files.txt`.
 - `MAT-024`: materialized `pallets/click#3364` from base
   `8bd8b4a074c55c03b6eb5666edc44a9c43df38a2` to accepted head
   `94004f1b5a4a982e8e33ef8d5f00cfb0e1dabddd`. The candidate changed

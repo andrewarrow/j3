@@ -6,6 +6,7 @@ from textwrap import dedent
 
 from j3.heldout_source_region_candidate import (
     _accepted_diff_comparison,
+    build_click_ansi_wrapping_spec,
     build_click_default_map_split_spec,
     build_click_write_usage_spec,
     _mark_expression_scanner_source_replacement,
@@ -536,6 +537,131 @@ def test_materializes_click_default_map_split_candidate_with_reusable_actions(
     assert "### Multi-value parameters" in text_files[1]["candidate_after"]["diff"]
 
 
+def test_click_ansi_wrapping_spec_uses_reusable_action_kinds(
+    tmp_path: Path,
+) -> None:
+    repo = _write_click_ansi_wrapping_fixture_repo(tmp_path / "click")
+
+    spec = build_click_ansi_wrapping_spec(repo)
+
+    assert spec.source_action.kind == SourceRegionActionKind.REPLACE_DELIMITED_REGION
+    assert [action.kind for action in spec.extra_source_actions] == [
+        SourceRegionActionKind.REPLACE_FUNCTION_REGION,
+    ]
+    assert spec.test_action.kind == "insert_pytest_function_after_anchor"
+    assert [action.kind for action in spec.text_actions] == [
+        "insert_text_around_anchor",
+        "insert_text_around_anchor",
+    ]
+    action_kind_text = " ".join(
+        [spec.source_action.kind.value]
+        + [action.kind.value for action in spec.extra_source_actions]
+        + [spec.test_action.kind]
+        + [action.kind for action in spec.text_actions]
+    )
+    assert "click_3420" not in action_kind_text
+    assert spec.base_ref == "d959898db264aaf07e70ad4eafa254286f9a5185"
+    assert spec.accepted_head_ref == "587e3cc7f4804a4fa62f3dab8839a6e1f8954d7c"
+    assert spec.validation_command.startswith("PYTHONPATH=src ")
+    assert spec.allowed_write_paths == (
+        "CHANGES.rst",
+        "src/click/_textwrap.py",
+        "src/click/formatting.py",
+        "tests/test_formatting.py",
+    )
+    assert spec.source_test_scope_paths == (
+        "src/click/_textwrap.py",
+        "src/click/formatting.py",
+        "tests/test_formatting.py",
+    )
+
+
+def test_materializes_click_ansi_wrapping_candidate_with_reusable_actions(
+    tmp_path: Path,
+) -> None:
+    accepted_repo = _write_click_ansi_wrapping_fixture_repo(tmp_path / "accepted")
+    accepted_candidate = materialize_heldout_source_region_candidate(
+        accepted_repo,
+        build_click_ansi_wrapping_spec(
+            accepted_repo,
+            base_ref=_repo_head(accepted_repo),
+        ),
+        write=True,
+        validate=False,
+    )
+    accepted_diff = tmp_path / "accepted.diff"
+    accepted_diff.write_text(
+        str(accepted_candidate.candidate_after["candidate_diff"]),
+        encoding="utf-8",
+    )
+
+    repo = _write_click_ansi_wrapping_fixture_repo(tmp_path / "candidate")
+    candidate = materialize_heldout_source_region_candidate(
+        repo,
+        build_click_ansi_wrapping_spec(repo, base_ref=_repo_head(repo)),
+        write=True,
+        validate=False,
+        accepted_diff_path=accepted_diff,
+    )
+    record = candidate.to_record()
+
+    assert record["status"] == "materialized"
+    assert record["accepted_head_ref"] == "587e3cc7f4804a4fa62f3dab8839a6e1f8954d7c"
+    assert record["residual_labels"] == ["candidate_validation_deferred"]
+    assert record["mutation_scope"]["actual_changed_files"] == [
+        "CHANGES.rst",
+        "src/click/_textwrap.py",
+        "src/click/formatting.py",
+        "tests/test_formatting.py",
+    ]
+    assert record["mutation_scope"]["writes_outside_allowlist"] == []
+    assert record["accepted_diff_comparison"]["normalized_diff_equal"] is True
+    assert (
+        record["accepted_diff_comparison"]["scope_comparisons"]["source_test"][
+            "accepted_changed_files"
+        ]
+        == [
+            "src/click/_textwrap.py",
+            "src/click/formatting.py",
+            "tests/test_formatting.py",
+        ]
+    )
+    assert (
+        record["accepted_diff_comparison"]["scope_comparisons"]["source_test"][
+            "normalized_diff_equal"
+        ]
+        is True
+    )
+    action_kinds = [action["kind"] for action in record["action_records"]]
+    assert action_kinds == [
+        "replace_delimited_region",
+        "replace_function_region",
+        "insert_pytest_function_after_anchor",
+        "insert_text_around_anchor",
+        "insert_text_around_anchor",
+    ]
+    source_files = record["candidate_after"]["source_files"]
+    assert [item["file_path"] for item in source_files] == [
+        "src/click/_textwrap.py",
+        "src/click/formatting.py",
+    ]
+    assert source_files[0]["candidate_after"]["ast_parse_ok"] is True
+    assert "def _truncate_visible" in source_files[0]["candidate_after"]["diff"]
+    assert "def _wrap_chunks" in source_files[0]["candidate_after"]["diff"]
+    assert source_files[1]["candidate_after"]["signature_preserved"] is True
+    assert "versionchanged:: 8.4" in source_files[1]["candidate_after"]["diff"]
+    test_after = record["candidate_after"]["test_file"]["candidate_after"]
+    assert test_after["ast_parse_ok"] is True
+    assert "test_wrap_text_visible_width" in test_after["diff"]
+    text_files = record["candidate_after"]["text_files"]
+    assert [item["target_file"] for item in text_files] == [
+        "tests/test_formatting.py",
+        "CHANGES.rst",
+    ]
+    assert "from click._compat import strip_ansi" in text_files[0]["candidate_after"]["diff"]
+    assert ":pr:`3420`" in text_files[1]["candidate_after"]["diff"]
+
+
 def _write_requests_fixture_repo(repo: Path) -> Path:
     (repo / "src" / "requests").mkdir(parents=True)
     (repo / "tests").mkdir(parents=True)
@@ -889,6 +1015,171 @@ def _write_click_default_map_split_fixture_repo(repo: Path) -> Path:
 
             Version 8.3.3
             -------------
+            '''
+        ).lstrip(),
+        encoding="utf-8",
+    )
+    subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+    subprocess.run(["git", "add", "."], cwd=repo, check=True)
+    subprocess.run(
+        [
+            "git",
+            "-c",
+            "user.name=j3-test",
+            "-c",
+            "user.email=j3-test@example.invalid",
+            "commit",
+            "-q",
+            "-m",
+            "base",
+        ],
+        cwd=repo,
+        check=True,
+    )
+    return repo
+
+
+def _write_click_ansi_wrapping_fixture_repo(repo: Path) -> Path:
+    (repo / "src" / "click").mkdir(parents=True)
+    (repo / "tests").mkdir(parents=True)
+    (repo / "src" / "click" / "_textwrap.py").write_text(
+        dedent(
+            '''
+            from __future__ import annotations
+
+            import collections.abc as cabc
+            import textwrap
+            from contextlib import contextmanager
+
+
+            class TextWrapper(textwrap.TextWrapper):
+                def _handle_long_word(
+                    self,
+                    reversed_chunks: list[str],
+                    cur_line: list[str],
+                    cur_len: int,
+                    width: int,
+                ) -> None:
+                    space_left = max(width - cur_len, 1)
+
+                    if self.break_long_words:
+                        last = reversed_chunks[-1]
+                        cut = last[:space_left]
+                        res = last[space_left:]
+                        cur_line.append(cut)
+                        reversed_chunks[-1] = res
+                    elif not cur_line:
+                        cur_line.append(reversed_chunks.pop())
+
+                @contextmanager
+                def extra_indent(self, indent: str) -> cabc.Iterator[None]:
+                    old_initial_indent = self.initial_indent
+                    old_subsequent_indent = self.subsequent_indent
+                    self.initial_indent += indent
+                    self.subsequent_indent += indent
+
+                    try:
+                        yield
+                    finally:
+                        self.initial_indent = old_initial_indent
+                        self.subsequent_indent = old_subsequent_indent
+
+                def indent_only(self, text: str) -> str:
+                    rv = []
+
+                    for idx, line in enumerate(text.splitlines()):
+                        indent = self.initial_indent
+
+                        if idx > 0:
+                            indent = self.subsequent_indent
+
+                        rv.append(f"{indent}{line}")
+
+                    return "\\n".join(rv)
+            '''
+        ).lstrip(),
+        encoding="utf-8",
+    )
+    (repo / "src" / "click" / "formatting.py").write_text(
+        dedent(
+            '''
+            def wrap_text(
+                text: str,
+                width: int = 78,
+                initial_indent: str = "",
+                subsequent_indent: str = "",
+                preserve_paragraphs: bool = False,
+            ) -> str:
+                """A helper function that intelligently wraps text.  By default, it
+                assumes that it operates on a single paragraph of text but if the
+                `preserve_paragraphs` parameter is provided it will intelligently
+                handle paragraphs (defined by two empty lines).
+
+                If paragraphs are handled, a paragraph can be prefixed with an empty
+                line containing the ``\\b`` character (``\\x08``) to indicate that
+                no rewrapping should happen in that block.
+
+                :param text: the text that should be rewrapped.
+                :param width: the maximum width for the text.
+                :param initial_indent: the initial indent that should be placed on the
+                                       first line as a string.
+                :param subsequent_indent: the indent string that should be placed on
+                                          each consecutive line.
+                :param preserve_paragraphs: if this flag is set then the wrapping will
+                                            intelligently handle paragraphs.
+                """
+                from ._textwrap import TextWrapper
+
+                wrapper = TextWrapper(
+                    width,
+                    initial_indent=initial_indent,
+                    subsequent_indent=subsequent_indent,
+                    replace_whitespace=False,
+                )
+                return wrapper.fill(text)
+
+
+            class HelpFormatter:
+                pass
+            '''
+        ).lstrip(),
+        encoding="utf-8",
+    )
+    (repo / "tests" / "test_formatting.py").write_text(
+        dedent(
+            '''
+            import pytest
+
+            import click
+
+
+            def test_basic_functionality(runner):
+                assert runner
+
+
+            def test_help_formatter_write_text():
+                text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit"
+                formatter = click.HelpFormatter(width=len("  Lorem ipsum dolor sit amet,"))
+                formatter.current_indent = 2
+                formatter.write_text(text)
+                actual = formatter.getvalue()
+                expected = "  Lorem ipsum dolor sit amet,\\n  consectetur adipiscing elit\\n"
+                assert actual == expected
+            '''
+        ).lstrip(),
+        encoding="utf-8",
+    )
+    (repo / "CHANGES.rst").write_text(
+        dedent(
+            '''
+            Unreleased
+            ----------
+
+            -   Add ``click.get_pager_file`` for file-like access to an output
+                pager. :pr:`1572`
+            -   Show custom error messages from types when :func:`prompt` with
+                ``hide_input=True`` fails validation, instead of always showing a
+                generic message. Built-in type messages mask the input value.
             '''
         ).lstrip(),
         encoding="utf-8",

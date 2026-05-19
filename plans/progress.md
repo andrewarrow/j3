@@ -5353,3 +5353,35 @@ meaningful work. Do not replace this file with a daily reset.
   `tests/test_heldout_typed_builder_candidate.py`, optional `docs/MAT_015_*`,
   generated `/tmp` artifacts, and plan updates.
 - Blockers: none.
+
+### 2026-05-19 - MAT-015 - Flask #5808 method annotation materialization
+
+- Owner: worker Codex.
+- Files changed: `j3/heldout_typed_builder_candidate.py`,
+  `tests/test_heldout_typed_builder_candidate.py`,
+  `docs/MAT_015_FLASK_5808_TYPED_BUILDER_CANDIDATE_2026-05-19.md`,
+  `plans/active.md`, `plans/backlog.md`, and `plans/progress.md`.
+- Tests: `python -m py_compile j3/heldout_typed_builder_candidate.py
+  tests/test_heldout_typed_builder_candidate.py` -> passed; `pytest
+  tests/test_heldout_typed_builder_candidate.py -q` -> 15 passed; live fresh
+  checkout run `python -m j3.heldout_typed_builder_candidate --candidate
+  flask-5808 --repo-path /tmp/j3-mat-015-flask-5808-live --accepted-diff
+  /tmp/j3-mat-015-flask-5808-final/accepted.diff --out
+  /tmp/j3-mat-015-flask-5808-final/candidate.json --report
+  /tmp/j3-mat-015-flask-5808-final/report.md --diff-out
+  /tmp/j3-mat-015-flask-5808-final/candidate.diff --validate` -> passed;
+  `pytest tests/test_plan_consistency.py -q` -> 6 passed; `git diff --check`
+  -> passed.
+- Result: materialized and live-validated `pallets/flask#5808` from base
+  `85793d6c223dd845e8f218403a5ced83041d37e1` to accepted head
+  `dbd4c2882593f6118103120aa96fa9acdf7deedb`. The candidate changed only
+  `src/flask/sansio/app.py`, matched the accepted PR diff after normalization,
+  and passed `python -m py_compile src/flask/sansio/app.py` in `0.022s`.
+  The row stays in the pure typed-builder layer using reusable
+  `function_signature_update`; no `statement_block_replace` was used.
+- Commit: pending.
+- Push: pending.
+- Next: coordinator should review MAT-015 and select the next bounded ready
+  materialization or ranking task; remaining MAT-013 typed rows are larger
+  helper extraction / filesystem idiom rewrites.
+- Blockers: none.

@@ -42,6 +42,10 @@ CLICK_PARSER_PATH = "src/click/parser.py"
 DEFAULT_REQUESTS_7437_BASE_REF = "0b401c76b6e80a4eecf3c690085b2553f6e261ca"
 DEFAULT_REQUESTS_7437_HEAD_REF = "dfe9ab8143fb71c72673738f25f0571347226b63"
 DEFAULT_REQUESTS_7437_VALIDATION_COMMAND = "python -m py_compile src/requests/models.py"
+DEFAULT_FLASK_5808_BASE_REF = "85793d6c223dd845e8f218403a5ced83041d37e1"
+DEFAULT_FLASK_5808_HEAD_REF = "dbd4c2882593f6118103120aa96fa9acdf7deedb"
+DEFAULT_FLASK_5808_VALIDATION_COMMAND = "python -m py_compile src/flask/sansio/app.py"
+FLASK_SANSIO_APP_PATH = "src/flask/sansio/app.py"
 
 
 class HeldoutTypedBuilderCandidateError(ValueError):
@@ -1105,6 +1109,63 @@ def build_requests_response_reason_spec(
                 "evidence": (
                     "places a typed assignment-level ignore by scoped AST "
                     "target and ignore code, avoiding statement_block_replace"
+                ),
+            },
+        ),
+    )
+
+
+def build_flask_jinja_autoescape_spec(
+    repo_path: Path,
+    *,
+    base_ref: str = DEFAULT_FLASK_5808_BASE_REF,
+    accepted_head_ref: str = DEFAULT_FLASK_5808_HEAD_REF,
+    validation_command: str = DEFAULT_FLASK_5808_VALIDATION_COMMAND,
+) -> HeldoutTypedBuilderSpec:
+    """Build the held-out flask#5808 select_jinja_autoescape typing spec."""
+
+    _repo_file(repo_path, FLASK_SANSIO_APP_PATH)
+    return HeldoutTypedBuilderSpec(
+        candidate_id="mat-015-flask-jinja-autoescape-filename-typing",
+        repo_id="pallets/flask",
+        repo_url="https://github.com/pallets/flask",
+        repo_split="held_out",
+        base_ref=base_ref,
+        accepted_head_ref=accepted_head_ref,
+        reference_pr_url="https://github.com/pallets/flask/pull/5808",
+        prompt=(
+            "Allow App.select_jinja_autoescape to receive None for the template "
+            "filename parameter without using a statement-block replacement."
+        ),
+        target_file=FLASK_SANSIO_APP_PATH,
+        validation_command=validation_command,
+        allowed_write_paths=(FLASK_SANSIO_APP_PATH,),
+        typed_actions=(
+            FunctionSignatureUpdateAction(
+                target_file=FLASK_SANSIO_APP_PATH,
+                class_name="App",
+                function_name="select_jinja_autoescape",
+                parameter_annotations=(("filename", "str | None"),),
+                rationale=(
+                    "widen the method parameter annotation to match the "
+                    "existing None branch in the method body"
+                ),
+            ),
+        ),
+        action_family_reuse_evidence=(
+            {
+                "action_kind": "function_signature_update",
+                "reusable_parameters": [
+                    "target_file",
+                    "class_name",
+                    "function_name",
+                    "parameter_annotations",
+                    "return_annotation",
+                ],
+                "evidence": (
+                    "reuses the general signature updater for a class method "
+                    "parameter annotation, avoiding a flask-specific action "
+                    "or statement_block_replace"
                 ),
             },
         ),
@@ -2770,7 +2831,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     parser.add_argument(
         "--candidate",
-        choices=("click-3422", "requests-7441", "click-3396", "requests-7437"),
+        choices=(
+            "click-3422",
+            "requests-7441",
+            "click-3396",
+            "requests-7437",
+            "flask-5808",
+        ),
         default="click-3422",
     )
     parser.add_argument("--repo-path", type=Path, required=True)
@@ -2785,6 +2852,8 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.candidate == "click-3396":
         spec = build_click_sentinel_parser_spec(args.repo_path)
+    elif args.candidate == "flask-5808":
+        spec = build_flask_jinja_autoescape_spec(args.repo_path)
     elif args.candidate == "requests-7437":
         spec = build_requests_response_reason_spec(args.repo_path)
     elif args.candidate == "requests-7441":

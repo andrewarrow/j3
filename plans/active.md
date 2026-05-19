@@ -109,20 +109,18 @@ This is the live coordinator board. Keep it current and compact.
   production decision is `remain_shadow_only`. `MAT-014` materializes and
   live-validates `psf/requests#7437` in the pure typed-builder layer using
   reusable `type_annotation_update` and `assignment_type_ignore_update`
-  actions; `statement_block_replace` was not needed.
+  actions; `statement_block_replace` was not needed. `MAT-015` materializes
+  and live-validates `pallets/flask#5808` in the pure typed-builder layer
+  using reusable `function_signature_update`; `statement_block_replace` was
+  not needed.
 
 ## Active Tasks
 
-- `MAT-015`: assigned to materialize the remaining held-out
-  `pallets/flask#5808` method annotation row with reusable typed-builder
-  actions. Keep the slice in `j3/heldout_typed_builder_candidate.py`,
-  `tests/test_heldout_typed_builder_candidate.py`, optional focused docs, and
-  plan updates. Do not edit transition scoring, issue/PR ranking, validation
-  policy, local knowledge, or matrix manifests.
+No active worker task is currently assigned.
 
 ## Ready Queue
 
-No ready worker task is currently queued while `MAT-015` is active.
+No ready worker task is currently queued after `MAT-015` completion.
 
 Run at most two tasks in parallel unless write scopes are plainly disjoint.
 
@@ -147,6 +145,17 @@ Review before assigning more work if:
 
 ## Recently Completed
 
+- `MAT-015`: materialized and live-validated `pallets/flask#5808` from base
+  `85793d6c223dd845e8f218403a5ced83041d37e1` to accepted head
+  `dbd4c2882593f6118103120aa96fa9acdf7deedb`. The candidate changed only
+  `src/flask/sansio/app.py`, matched the accepted PR diff after
+  normalization, and passed `python -m py_compile src/flask/sansio/app.py` in
+  `0.022s`. The row stays in the pure typed-builder layer using reusable
+  `function_signature_update`; no `statement_block_replace` was used.
+  Artifacts: `/tmp/j3-mat-015-flask-5808-final/candidate.json`,
+  `/tmp/j3-mat-015-flask-5808-final/report.md`,
+  `/tmp/j3-mat-015-flask-5808-final/candidate.diff`, and
+  `/tmp/j3-mat-015-flask-5808-final/accepted.diff`.
 - `TRANS-012`: reran the expanded standard transition matrix after
   `TRANS-003`. The run covered 5 suites, 60 tasks, 60 ranked solved tasks,
   12,753 candidates, and 19 held-out groups, with 0 matrix residuals, 4

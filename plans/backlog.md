@@ -3058,7 +3058,7 @@ Long-term target:
 
 ### MAT-015: Flask #5808 method annotation typed-builder probe
 
-- Status: active
+- Status: done
 - Why: after `MAT-014`, the MAT-013 held-out typed/general-AST gap still has
   three unresolved `general_typed_builder` rows. `pallets/flask#5808` is the
   smallest remaining row: a one-file method annotation update that should stay
@@ -3078,6 +3078,13 @@ Long-term target:
   insufficient.
 - Tests: focused typed-builder materializer tests, plan consistency,
   `git diff --check`, and live validation or a recorded validation blocker.
+- Completion note: materialized and live-validated `pallets/flask#5808` from
+  base `85793d6c223dd845e8f218403a5ced83041d37e1` to accepted head
+  `dbd4c2882593f6118103120aa96fa9acdf7deedb`. The candidate changed only
+  `src/flask/sansio/app.py`, matched the accepted PR diff after
+  normalization, passed `python -m py_compile src/flask/sansio/app.py`, and
+  stayed in the pure typed-builder layer using reusable
+  `function_signature_update` without `statement_block_replace`.
 
 ## Next Recommended Queue
 

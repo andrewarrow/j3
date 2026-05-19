@@ -60,7 +60,7 @@ This is the live coordinator board. Keep it current and compact.
 ### `MODEL-003`: Penalize add-keyword decoys
 
 - Status: active
-- Owner: pending worker spawn.
+- Owner: worker Laplace (`019e3e00-fb6c-7462-a03e-aca348bf9807`).
 - Write scope: transition scorer/advice fixtures, features, and tests for
   add-keyword decoy ranking only, especially `j3/transition_action_scoring.py`,
   `j3/transition_scorer_advice.py`, `j3/transition_ranking.py`,
